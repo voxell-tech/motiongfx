@@ -81,6 +81,12 @@ pub struct SequenceController {
     pub target_slide_index: usize,
 }
 
+impl SequenceController {
+    pub fn curr_time(&self) -> f32 {
+        self.curr_time
+    }
+}
+
 /// Manipulates the `target_time` variable of the [`SequenceController`] component attached to this entity with a `time_scale`.
 #[derive(Component, Default)]
 pub struct SequencePlayer {
