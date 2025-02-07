@@ -17,23 +17,37 @@ impl F32Lerp for kurbo::Stroke {
 
 impl F32Lerp<peniko::ColorStops, peniko::ColorStops> for peniko::Color {
     fn f32lerp(&self, rhs: &peniko::ColorStops, t: f32) -> peniko::ColorStops {
-        let self_stops = peniko::ColorStops::from_vec(vec![peniko::ColorStop {
-            offset: 0.0,
-            color: *self,
-        }]);
+        let self_stops = peniko::ColorStops::from(
+            [peniko::ColorStop {
+                offset: 0.0,
+                color: peniko::color::DynamicColor::from_alpha_color(*self),
+            }]
+            .as_slice(),
+        );
 
-        peniko::ColorStops::f32lerp(&self_stops, rhs, t)
+        bevy_vello_graphics::bevy_vello::prelude::peniko::ColorStops(smallvec::SmallVec::f32lerp(
+            &self_stops.0,
+            &rhs.0,
+            t,
+        ))
     }
 }
 
 impl F32Lerp<peniko::Color, peniko::ColorStops> for peniko::ColorStops {
     fn f32lerp(&self, rhs: &peniko::Color, t: f32) -> peniko::ColorStops {
-        let other_stops = peniko::ColorStops::from_vec(vec![peniko::ColorStop {
-            offset: 0.0,
-            color: *rhs,
-        }]);
+        let other_stops = peniko::ColorStops::from(
+            [peniko::ColorStop {
+                offset: 0.0,
+                color: peniko::color::DynamicColor::from_alpha_color(*rhs),
+            }]
+            .as_slice(),
+        );
 
-        peniko::ColorStops::f32lerp(self, &other_stops, t)
+        bevy_vello_graphics::bevy_vello::prelude::peniko::ColorStops(smallvec::SmallVec::f32lerp(
+            self,
+            &other_stops,
+            t,
+        ))
     }
 }
 
@@ -52,6 +66,7 @@ impl F32Lerp for peniko::Brush {
                         kind: other_grad.kind,
                         extend: other_grad.extend,
                         stops: peniko::Color::f32lerp(self_color, &other_grad.stops, t),
+                        ..Default::default()
                     });
                 }
 
@@ -67,6 +82,7 @@ impl F32Lerp for peniko::Brush {
                         kind: self_grad.kind,
                         extend: self_grad.extend,
                         stops: peniko::ColorStops::f32lerp(&self_grad.stops, other_color, t),
+                        ..Default::default()
                     });
                 }
 
@@ -81,6 +97,7 @@ impl F32Lerp for peniko::Brush {
                         kind: self_grad.kind,
                         extend: self_grad.extend,
                         stops: peniko::ColorStops::f32lerp(&self_grad.stops, &other_grad.stops, t),
+                        ..Default::default()
                     });
                 }
 
@@ -139,18 +156,17 @@ impl F32Lerp for peniko::ColorStop {
     fn f32lerp(&self, rhs: &Self, t: f32) -> Self {
         Self {
             offset: f32::lerp(self.offset, rhs.offset, t),
-            color: peniko::Color::f32lerp(&self.color, &rhs.color, t),
+            color: peniko::color::DynamicColor::from_alpha_color(peniko::Color::f32lerp(
+                &self.color.to_alpha_color(),
+                &rhs.color.to_alpha_color(),
+                t,
+            )),
         }
     }
 }
 
 impl F32Lerp for peniko::Color {
     fn f32lerp(&self, rhs: &Self, t: f32) -> Self {
-        Self::rgba8(
-            u8::f32lerp(&self.r, &rhs.r, t),
-            u8::f32lerp(&self.g, &rhs.g, t),
-            u8::f32lerp(&self.b, &rhs.b, t),
-            u8::f32lerp(&self.a, &rhs.a, t),
-        )
+        self.lerp_rect(*rhs, t)
     }
 }

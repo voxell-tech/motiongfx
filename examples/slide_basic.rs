@@ -1,4 +1,4 @@
-use bevy::{core_pipeline::bloom::BloomSettings, pbr::NotShadowCaster, prelude::*};
+use bevy::{core_pipeline::tonemapping::Tonemapping, pbr::NotShadowCaster, prelude::*};
 use bevy_motiongfx::{prelude::*, MotionGfxPlugin};
 
 fn main() {
@@ -12,7 +12,11 @@ fn main() {
         .run();
 }
 
-fn slide_basic(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
+fn slide_basic(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     // Color palette
     let palette = ColorPalette::default();
 
@@ -23,16 +27,14 @@ fn slide_basic(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         base_color: palette.get(ColorKey::Green),
         ..default()
     };
+    let material_handle = materials.add(material.clone());
     let id = commands
         .spawn((
             NotShadowCaster,
-            PbrBundle {
-                transform,
-                mesh: meshes.add(Cuboid::default()),
-                ..default()
-            },
+            Mesh3d(meshes.add(Cuboid::default())),
+            transform,
+            MeshMaterial3d(material_handle.clone()),
         ))
-        .add_new_asset(material.clone())
         .id();
     let mut cube = (id, (transform, material));
 
@@ -44,16 +46,14 @@ fn slide_basic(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         base_color: palette.get(ColorKey::Blue),
         ..default()
     };
+    let material_handle = materials.add(material.clone());
     let id = commands
         .spawn((
             NotShadowCaster,
-            PbrBundle {
-                transform,
-                mesh: meshes.add(Sphere::default()),
-                ..default()
-            },
+            Mesh3d(meshes.add(Sphere::default())),
+            transform,
+            MeshMaterial3d(material_handle.clone()),
         ))
-        .add_new_asset(material.clone())
         .id();
     let mut sphere = (id, (transform, material));
 
@@ -78,23 +78,22 @@ fn slide_basic(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 fn setup(mut commands: Commands) {
     // Camera
-    commands
-        .spawn(Camera3dBundle {
-            camera: Camera {
-                hdr: true,
-                ..default()
-            },
-            transform: Transform::from_xyz(0.0, 0.0, 15.0),
-            tonemapping: bevy::core_pipeline::tonemapping::Tonemapping::AcesFitted,
+    commands.spawn((
+        Camera {
+            hdr: true,
             ..default()
-        })
-        .insert(BloomSettings::default());
+        },
+        Camera3d::default(),
+        Transform::from_xyz(0.0, 0.0, 15.0),
+        Tonemapping::AcesFitted,
+        bevy::core_pipeline::bloom::Bloom::default(),
+    ));
 
     // Directional light
-    commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_xyz(3.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        DirectionalLight::default(),
+        Transform::from_xyz(3.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 }
 
 fn slide_movement(mut q_slides: Query<&mut SlideController>, keys: Res<ButtonInput<KeyCode>>) {

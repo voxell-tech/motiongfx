@@ -127,7 +127,7 @@ pub(crate) fn slide_controller(
 
         // Update sequence target time and target slide index
         sequence_controller.target_time +=
-            time.delta_seconds() * slide_controller.utime_scale * direction as f32;
+            time.delta_secs() * slide_controller.utime_scale * direction as f32;
         sequence_controller.target_slide_index = slide_controller.target_slide_index;
 
         // Initialize as mid

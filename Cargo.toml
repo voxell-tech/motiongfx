@@ -10,8 +10,8 @@ repository = "https://github.com/nixon-voxell/bevy_motiongfx"
 readme = "README.md"
 
 [workspace.dependencies]
-bevy = { version = "0.14", default-features = false }
-bevy_vello_graphics = { version = "0.1.0", git = "https://github.com/voxell-tech/bevy_vello_graphics" }
+bevy = { version = "0.15", default-features = false }
+bevy_vello_graphics = { version = "0.1.0", git = "https://github.com/Jaghov/bevy_vello_graphics" }
 smallvec = "1"
 
 [package]
@@ -19,7 +19,7 @@ name = "bevy_motiongfx"
 categories = ["graphics", "gui", "rendering", "motion-graphics", "vector-graphics"]
 description = "Motion graphics creation tool in Bevy. (Highly inspired by Motion Canvas and Manim)"
 exclude = ["/assets/", "/.github/", "/examples/"]
-keywords = ["motion-graphics", "game", "gamedev", "graphics", "bevy", "vello"]
+keywords = ["motion-graphics", "game", "gamedev", "graphics", "bevy"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -29,16 +29,14 @@ readme.workspace = true
 [dependencies]
 motiongfx_core = { version = "0.1.0", path = "crates/motiongfx_core" }
 motiongfx_common = { version = "0.1.0", path = "crates/motiongfx_common", optional = true }
-motiongfx_vello = { version = "0.1.0", path = "crates/motiongfx_vello", optional = true }
 bevy = { workspace = true }
 
 [features]
-default = ["common", "vello_graphics"]
+default = ["common"]
 common = ["dep:motiongfx_common"]
-vello_graphics = ["dep:motiongfx_vello", "motiongfx_core/vello_graphics"]
 
 [dev-dependencies]
-bevy = "0.14"
+bevy = {version = "0.15", features= ["wayland"]}
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"

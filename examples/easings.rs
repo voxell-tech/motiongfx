@@ -1,4 +1,8 @@
-use bevy::{core_pipeline::bloom::BloomSettings, pbr::NotShadowCaster, prelude::*};
+use bevy::{
+    core_pipeline::{bloom::Bloom, tonemapping::Tonemapping},
+    pbr::NotShadowCaster,
+    prelude::*,
+};
 use bevy_motiongfx::{prelude::*, MotionGfxPlugin};
 
 fn main() {
@@ -12,7 +16,11 @@ fn main() {
         .run();
 }
 
-fn easings(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
+fn easings(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     let easings = [
         ease::linear,
         ease::sine::ease_in_out,
@@ -39,6 +47,7 @@ fn easings(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         emissive: palette.get(ColorKey::Blue).to_linear() * 100.0,
         ..default()
     };
+    let material_handle = materials.add(material.clone());
 
     for i in 0..capacity {
         let transform =
@@ -48,13 +57,10 @@ fn easings(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         let id = commands
             .spawn((
                 NotShadowCaster,
-                PbrBundle {
-                    transform,
-                    mesh: mesh_handle.clone(),
-                    ..default()
-                },
+                Mesh3d(mesh_handle.clone()),
+                transform,
+                MeshMaterial3d(material_handle.clone()),
             ))
-            .add_new_asset(material.clone())
             .id();
 
         spheres.push((id, (transform, material.clone())));
@@ -91,17 +97,16 @@ fn easings(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 fn setup(mut commands: Commands) {
     // Camera
-    commands
-        .spawn(Camera3dBundle {
-            camera: Camera {
-                hdr: true,
-                ..default()
-            },
-            transform: Transform::from_xyz(0.0, 0.0, 15.0),
-            tonemapping: bevy::core_pipeline::tonemapping::Tonemapping::AcesFitted,
+    commands.spawn((
+        Camera {
+            hdr: true,
             ..default()
-        })
-        .insert(BloomSettings::default());
+        },
+        Camera3d::default(),
+        Transform::from_xyz(0.0, 0.0, 15.0),
+        Tonemapping::AcesFitted,
+        Bloom::default(),
+    ));
 }
 
 fn timeline_movement(
@@ -111,11 +116,11 @@ fn timeline_movement(
 ) {
     for (mut sequence_player, mut sequence_time) in q_timelines.iter_mut() {
         if keys.pressed(KeyCode::KeyD) {
-            sequence_time.target_time += time.delta_seconds();
+            sequence_time.target_time += time.delta_secs();
         }
 
         if keys.pressed(KeyCode::KeyA) {
-            sequence_time.target_time -= time.delta_seconds();
+            sequence_time.target_time -= time.delta_secs();
         }
 
         if keys.just_pressed(KeyCode::Space) {
