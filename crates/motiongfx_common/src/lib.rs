@@ -1,7 +1,4 @@
-use bevy::{
-    ecs::system::{EntityCommand, EntityCommands},
-    prelude::*,
-};
+use bevy::prelude::*;
 use motiongfx_core::{prelude::*, UpdateSequenceSet};
 
 pub mod motion;
@@ -38,30 +35,30 @@ impl Plugin for MotionGfxCommonPlugin {
     }
 }
 
-pub trait AddNewAssetCommandExt<A: Asset> {
-    /// Adds a new asset and attach the handle to this entity.
-    fn add_new_asset(&mut self, asset: A) -> &mut Self;
-}
+// pub trait AddNewAssetCommandExt<A: Asset> {
+//     /// Adds a new asset and attach the handle to this entity.
+//     fn add_new_asset(&mut self, asset: A) -> &mut Self;
+// }
 
-impl<A: Asset> AddNewAssetCommandExt<A> for EntityCommands<'_> {
-    fn add_new_asset(&mut self, asset: A) -> &mut Self {
-        self.queue(AddNewAssetCommand(asset))
-    }
-}
+// impl<A: Asset> AddNewAssetCommandExt<A> for EntityCommands<'_> {
+//     fn add_new_asset(&mut self, asset: A) -> &mut Self {
+//         self.queue(AddNewAssetCommand(asset))
+//     }
+// }
 
-pub struct AddNewAssetCommand<A: Asset>(A);
+// pub struct AddNewAssetCommand<A: Asset>(A);
 
-impl<A: Asset> EntityCommand for AddNewAssetCommand<A> {
-    fn apply(self, id: Entity, world: &mut World) {
-        let mut materials = world.get_resource_mut::<Assets<A>>().unwrap_or_else(|| {
-            panic!(
-                "Assets<{}> resource not initialized.",
-                A::type_ident().unwrap()
-            )
-        });
+// impl<A: Asset> EntityCommand for AddNewAssetCommand<A> {
+//     fn apply(self, id: Entity, world: &mut World) {
+//         let mut materials = world.get_resource_mut::<Assets<A>>().unwrap_or_else(|| {
+//             panic!(
+//                 "Assets<{}> resource not initialized.",
+//                 A::type_ident().unwrap()
+//             )
+//         });
 
-        let material = materials.add(self.0);
+//         let material = materials.add(self.0);
 
-        // world.entity_mut(id).insert(material);
-    }
-}
+//         // world.entity_mut(id).insert(material);
+//     }
+// }

@@ -11,7 +11,6 @@ readme = "README.md"
 
 [workspace.dependencies]
 bevy = { version = "0.15", default-features = false }
-bevy_vello_graphics = { version = "0.1.0", git = "https://github.com/Jaghov/bevy_vello_graphics" }
 smallvec = "1"
 
 [package]

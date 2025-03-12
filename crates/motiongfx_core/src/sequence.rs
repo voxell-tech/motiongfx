@@ -1,4 +1,4 @@
-use bevy::{prelude::*, sprite::Material2d};
+use bevy::prelude::*;
 
 use crate::action::{Action, ActionMeta};
 
