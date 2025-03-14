@@ -1,6 +1,5 @@
-use bevy::prelude::*;
-
 use crate::action::{Action, ActionMeta};
+use bevy::prelude::*;
 
 /// Bundle to encapsulate [`Sequence`] and [`SequenceController`].
 #[derive(Bundle, Default)]
@@ -263,7 +262,7 @@ pub fn update_asset<U, A, T>(
 ) where
     T: Send + Sync + 'static,
     U: Component,
-    A: bevy::prelude::Asset,
+    A: Asset,
     AssetId<A>: for<'a> From<&'a U>,
 {
     // let q_handles = q_handles.iter
