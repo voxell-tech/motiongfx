@@ -1,6 +1,5 @@
-use bevy::prelude::*;
-
 use crate::action::{Action, ActionMeta};
+use bevy::prelude::*;
 
 /// Bundle to encapsulate [`Sequence`] and [`SequenceController`].
 #[derive(Bundle, Default)]
@@ -255,15 +254,18 @@ pub fn update_component<U, T>(
 }
 
 /// System for mutating the [`Asset`] related [`Action`]s that are inside the [`Sequence`].
-pub fn update_asset<U, T>(
-    q_handles: Query<&Handle<U>>,
-    mut assets: ResMut<Assets<U>>,
-    q_actions: Query<&'static Action<T, U>>,
+pub fn update_asset<U, A, T>(
+    q_handles: Query<&U>,
+    mut assets: ResMut<Assets<A>>,
+    q_actions: Query<&'static Action<T, A>>,
     q_sequences: Query<(&Sequence, &SequenceController)>,
 ) where
     T: Send + Sync + 'static,
-    U: Asset,
+    U: Component,
+    A: Asset,
+    AssetId<A>: for<'a> From<&'a U>,
 {
+    // let q_handles = q_handles.iter
     for (sequence, sequence_controller) in q_sequences.iter() {
         if let Some(action) = generate_action_iter(&q_actions, sequence, sequence_controller) {
             for (action, action_meta) in action {
@@ -313,7 +315,7 @@ pub(crate) fn sequence_player(
 ) {
     for (sequence, mut sequence_controller, sequence_player) in q_sequences.iter_mut() {
         sequence_controller.target_time = f32::clamp(
-            sequence_controller.target_time + time.delta_seconds() * sequence_player.time_scale,
+            sequence_controller.target_time + time.delta_secs() * sequence_player.time_scale,
             0.0,
             sequence.duration(),
         );

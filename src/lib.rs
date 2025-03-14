@@ -31,17 +31,11 @@ pub use motiongfx_core;
 #[cfg(feature = "common")]
 pub use motiongfx_common;
 
-#[cfg(feature = "vello_graphics")]
-pub use motiongfx_vello;
-
 pub mod prelude {
     pub use motiongfx_core::prelude::*;
 
     #[cfg(feature = "common")]
     pub use motiongfx_common::prelude::*;
-
-    #[cfg(feature = "vello_graphics")]
-    pub use motiongfx_vello::prelude::*;
 }
 
 pub struct MotionGfxPlugin;
@@ -51,7 +45,5 @@ impl Plugin for MotionGfxPlugin {
         app.add_plugins(motiongfx_core::MotionGfxCorePlugin);
         #[cfg(feature = "common")]
         app.add_plugins(motiongfx_common::MotionGfxCommonPlugin);
-        #[cfg(feature = "vello_graphics")]
-        app.add_plugins(motiongfx_vello::MotionGfxVelloPlugin);
     }
 }

@@ -44,12 +44,9 @@ fn hello_world(
             let id = commands
                 .spawn((
                     NotShadowCaster,
-                    PbrBundle {
-                        transform,
-                        mesh: mesh_handle.clone(),
-                        material: material_handle.clone(),
-                        ..default()
-                    },
+                    Mesh3d(mesh_handle.clone()),
+                    transform,
+                    MeshMaterial3d(material_handle.clone()),
                 ))
                 .id();
             cubes.push((id, transform));
@@ -107,21 +104,22 @@ fn hello_world(
 
 fn setup(mut commands: Commands) {
     // Camera
-    commands.spawn(Camera3dBundle {
-        camera: Camera {
+    commands.spawn((
+        Camera {
             hdr: true,
             ..default()
         },
-        transform: Transform::from_xyz(-0.5, -0.5, 15.0),
-        tonemapping: Tonemapping::AcesFitted,
-        ..default()
-    });
+        Camera3d::default(),
+        Transform::from_xyz(0.0, 0.0, 15.0),
+        Tonemapping::AcesFitted,
+        bevy::core_pipeline::bloom::Bloom::default(),
+    ));
 
     // Directional light
-    commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_xyz(3.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        DirectionalLight::default(),
+        Transform::from_xyz(3.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 }
 
 fn timeline_movement(
@@ -131,11 +129,11 @@ fn timeline_movement(
 ) {
     for (mut sequence_player, mut sequence_time) in q_timelines.iter_mut() {
         if keys.pressed(KeyCode::KeyD) {
-            sequence_time.target_time += time.delta_seconds();
+            sequence_time.target_time += time.delta_secs();
         }
 
         if keys.pressed(KeyCode::KeyA) {
-            sequence_time.target_time -= time.delta_seconds();
+            sequence_time.target_time -= time.delta_secs();
         }
 
         if keys.just_pressed(KeyCode::Space) {

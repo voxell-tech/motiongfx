@@ -7,7 +7,6 @@ repository.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
-bevy_vello_graphics = { workspace = true, optional = true }
 smallvec = { workspace = true }
 motiongfx_core_macros = { version = "0.1.0", path = "macros" }
 
@@ -16,4 +15,3 @@ workspace = true
 
 [features]
 default = []
-vello_graphics = ["dep:bevy_vello_graphics"]
