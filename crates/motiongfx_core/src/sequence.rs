@@ -1,5 +1,7 @@
-use crate::action::{Action, ActionMeta};
+use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
+
+use crate::action::{Action, ActionMeta};
 
 /// Bundle to encapsulate [`Sequence`] and [`SequenceController`].
 #[derive(Bundle, Default)]
@@ -223,7 +225,7 @@ pub fn update_component<U, T>(
     q_sequences: Query<(&Sequence, &SequenceController)>,
 ) where
     T: Send + Sync + 'static,
-    U: Component,
+    U: Component<Mutability = Mutable>,
 {
     for (sequence, sequence_controller) in q_sequences.iter() {
         if let Some(action) = generate_action_iter(&q_actions, sequence, sequence_controller) {

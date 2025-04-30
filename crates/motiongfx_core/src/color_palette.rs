@@ -1,5 +1,5 @@
 use bevy::color::{Color, Srgba};
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
 use core::hash::Hash;
 
 #[derive(Clone)]
