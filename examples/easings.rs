@@ -1,16 +1,15 @@
-use bevy::{
-    core_pipeline::{bloom::Bloom, tonemapping::Tonemapping},
-    pbr::NotShadowCaster,
-    prelude::*,
-};
-use bevy_motiongfx::{prelude::*, MotionGfxPlugin};
+use bevy::core_pipeline::bloom::Bloom;
+use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::pbr::NotShadowCaster;
+use bevy::prelude::*;
+use bevy_motiongfx::prelude::*;
 
 fn main() {
     App::new()
         // Bevy plugins
         .add_plugins(DefaultPlugins)
         // Custom plugins
-        .add_plugins(MotionGfxPlugin)
+        .add_plugins(bevy_motiongfx::MotionGfxPlugin)
         .add_systems(Startup, (setup, easings))
         .add_systems(Update, timeline_movement)
         .run();
@@ -47,9 +46,9 @@ fn easings(
         emissive: palette.get(ColorKey::Blue).to_linear() * 100.0,
         ..default()
     };
-    let material_handle = materials.add(material.clone());
 
     for i in 0..capacity {
+        let material_handle = materials.add(material.clone());
         let transform =
             Transform::from_translation(Vec3::new(-5.0, (i as f32) - (capacity as f32) * 0.5, 0.0))
                 .with_scale(Vec3::ONE);
@@ -68,22 +67,29 @@ fn easings(
 
     // Generate sequence
     let sequence = spheres
-        .iter_mut()
+        .iter()
         .zip(easings)
-        .map(|(s, e)| {
+        .map(|((entity, (transform, material)), ease_fn)| {
             commands
                 .add_motion({
-                    let x = s.transform().transform.translation.x;
-                    s.transform()
-                        .to_translation_x(x + 10.0)
-                        .with_ease(e)
-                        .animate(1.0)
+                    let x = transform.translation.x;
+                    Action::<_, Transform>::new_f32lerp(*entity, x, x + 10.0, |t| {
+                        &mut t.translation.x
+                    })
+                    .with_ease(ease_fn)
+                    .animate(1.0)
                 })
-                .add_motion(
-                    s.std_material()
-                        .to_emissive(palette.get(ColorKey::Red).to_linear() * 100.0)
-                        .animate(1.0),
-                )
+                .add_motion({
+                    let color = material.emissive;
+                    Action::<_, StandardMaterial>::new_f32lerp(
+                        *entity,
+                        color,
+                        palette.get(ColorKey::Red).to_linear() * 100.0,
+                        |m| &mut m.emissive,
+                    )
+                    .with_ease(ease_fn)
+                    .animate(1.0)
+                })
                 .all()
         })
         .collect::<Vec<_>>()

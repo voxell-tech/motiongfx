@@ -34,6 +34,9 @@ bevy = { workspace = true }
 default = ["common"]
 common = ["dep:motiongfx_common"]
 
+[dev-dependencies]
+bevy = "0.16.0"
+
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
 bool_comparison = "allow"
