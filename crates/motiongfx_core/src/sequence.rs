@@ -1,5 +1,5 @@
-use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
+use bevy::{asset::AsAssetId, ecs::component::Mutable};
 
 use crate::action::{Action, ActionMeta};
 
@@ -256,16 +256,14 @@ pub fn update_component<U, T>(
 }
 
 /// System for mutating the [`Asset`] related [`Action`]s that are inside the [`Sequence`].
-pub fn update_asset<U, A, T>(
-    q_handles: Query<&U>,
-    mut assets: ResMut<Assets<A>>,
-    q_actions: Query<&'static Action<T, A>>,
+pub fn update_asset<Comp, AnimateType>(
+    q_handles: Query<&Comp>,
+    mut assets: ResMut<Assets<Comp::Asset>>,
+    q_actions: Query<&'static Action<AnimateType, Comp::Asset>>,
     q_sequences: Query<(&Sequence, &SequenceController)>,
 ) where
-    T: Send + Sync + 'static,
-    U: Component,
-    A: Asset,
-    AssetId<A>: for<'a> From<&'a U>,
+    AnimateType: Send + Sync + 'static,
+    Comp: Component + AsAssetId,
 {
     // let q_handles = q_handles.iter
     for (sequence, sequence_controller) in q_sequences.iter() {
@@ -277,7 +275,7 @@ pub fn update_asset<U, A, T>(
                 };
 
                 // Get asset to mutate based on the handle id
-                let Some(asset) = assets.get_mut(handle) else {
+                let Some(asset) = assets.get_mut(handle.as_asset_id()) else {
                     continue;
                 };
 
