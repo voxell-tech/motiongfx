@@ -1,5 +1,10 @@
-use crate::action::{Action, ActionMeta};
+use std::iter::Iterator;
+
 use bevy::prelude::*;
+use bevy::{asset::AsAssetId, ecs::component::Mutable};
+
+use crate::action::{Action, ActionMeta};
+use crate::ThreadSafe;
 
 /// Bundle to encapsulate [`Sequence`] and [`SequenceController`].
 #[derive(Bundle, Default)]
@@ -73,7 +78,7 @@ impl Sequence {
 /// Plays the [`Sequence`] component attached to this entity through `target_time` manipulation.
 #[derive(Component, Default)]
 pub struct SequenceController {
-    pub(crate) curr_time: f32,
+    time: f32,
     /// Target time to reach (and not exceed).
     pub target_time: f32,
     /// Target slide index to reach (and not exceed).
@@ -135,9 +140,11 @@ pub fn chain(sequences: &[Sequence]) -> Sequence {
 
     for sequence in sequences {
         for action_meta in &sequence.action_metas {
-            final_sequence
-                .action_metas
-                .push(action_meta.with_start_time(action_meta.start_time + chain_duration));
+            final_sequence.action_metas.push(
+                action_meta.with_start_time(
+                    action_meta.start_time + chain_duration,
+                ),
+            );
         }
 
         chain_duration += sequence.duration;
@@ -189,13 +196,18 @@ pub fn flow(t: f32, sequences: &[Sequence]) -> Sequence {
 
     for sequence in sequences {
         for action_meta in &sequence.action_metas {
-            final_sequence
-                .action_metas
-                .push(action_meta.with_start_time(action_meta.start_time + flow_duration));
+            final_sequence.action_metas.push(
+                action_meta.with_start_time(
+                    action_meta.start_time + flow_duration,
+                ),
+            );
         }
 
         flow_duration += t;
-        final_duration = f32::max(final_duration, flow_duration + sequence.duration);
+        final_duration = f32::max(
+            final_duration,
+            flow_duration + sequence.duration,
+        );
     }
 
     final_sequence.duration = final_duration;
@@ -207,33 +219,50 @@ pub fn delay(t: f32, sequence: Sequence) -> Sequence {
     let mut final_sequence = Sequence::default();
 
     for action_meta in &sequence.action_metas {
-        final_sequence
-            .action_metas
-            .push(action_meta.with_start_time(action_meta.start_time + t));
+        final_sequence.action_metas.push(
+            action_meta.with_start_time(action_meta.start_time + t),
+        );
     }
 
     final_sequence.duration = sequence.duration + t;
     final_sequence
 }
 
-/// System for mutating the [`Component`] related [`Action`]s that are inside the [`Sequence`].
-pub fn update_component<U, T>(
-    mut q_components: Query<&mut U>,
-    q_actions: Query<&'static Action<T, U>>,
+/// System for animating the [`Component`] related [`Action`]s that are inside the [`Sequence`].
+pub fn animate_component<Comp, Target>(
+    mut q_components: Query<&mut Comp>,
+    q_actions: Query<&'static Action<Target, Comp>>,
     q_sequences: Query<(&Sequence, &SequenceController)>,
 ) where
-    T: Send + Sync + 'static,
-    U: Component,
+    Comp: Component<Mutability = Mutable>,
+    Target: ThreadSafe,
 {
     for (sequence, sequence_controller) in q_sequences.iter() {
-        if let Some(action) = generate_action_iter(&q_actions, sequence, sequence_controller) {
-            for (action, action_meta) in action {
+        if let Some(action) = generate_action_iter(
+            &q_actions,
+            sequence,
+            sequence_controller,
+        ) {
+            for (
+                Action {
+                    entity,
+                    start,
+                    end,
+                    get_field_fn,
+                    interp_fn,
+                    ease_fn,
+                },
+                action_meta,
+            ) in action
+            {
                 // Get component to mutate based on action id
-                let Ok(mut component) = q_components.get_mut(action.target_id) else {
+                let Ok(mut component) = q_components.get_mut(*entity)
+                else {
                     continue;
                 };
 
-                let mut unit_time = (sequence_controller.target_time - action_meta.start_time)
+                let mut unit_time = (sequence_controller.target_time
+                    - action_meta.start_time)
                     / action_meta.duration;
 
                 // In case of division by 0.0
@@ -243,43 +272,59 @@ pub fn update_component<U, T>(
 
                 unit_time = f32::clamp(unit_time, 0.0, 1.0);
                 // Calculate unit time using ease function
-                unit_time = (action.ease_fn)(unit_time);
+                unit_time = ease_fn(unit_time);
 
                 // Mutate the component using interpolate function
-                let field = (action.get_field_fn)(&mut component);
-                *field = (action.interp_fn)(&action.start, &action.end, unit_time);
+                let field = get_field_fn(&mut component);
+                *field = interp_fn(start, end, unit_time);
             }
         }
     }
 }
 
-/// System for mutating the [`Asset`] related [`Action`]s that are inside the [`Sequence`].
-pub fn update_asset<U, A, T>(
-    q_handles: Query<&U>,
-    mut assets: ResMut<Assets<A>>,
-    q_actions: Query<&'static Action<T, A>>,
+/// System for animating the [`Asset`] related [`Action`]s that are inside the [`Sequence`].
+pub fn animate_asset<Comp, Target>(
+    q_handles: Query<&Comp>,
+    mut assets: ResMut<Assets<Comp::Asset>>,
+    q_actions: Query<&'static Action<Target, Comp::Asset>>,
     q_sequences: Query<(&Sequence, &SequenceController)>,
 ) where
-    T: Send + Sync + 'static,
-    U: Component,
-    A: Asset,
-    AssetId<A>: for<'a> From<&'a U>,
+    Comp: Component + AsAssetId,
+    Target: ThreadSafe,
 {
     // let q_handles = q_handles.iter
     for (sequence, sequence_controller) in q_sequences.iter() {
-        if let Some(action) = generate_action_iter(&q_actions, sequence, sequence_controller) {
-            for (action, action_meta) in action {
+        if let Some(action) = generate_action_iter(
+            &q_actions,
+            sequence,
+            sequence_controller,
+        ) {
+            for (
+                Action {
+                    entity,
+                    start,
+                    end,
+                    get_field_fn,
+                    interp_fn,
+                    ease_fn,
+                },
+                action_meta,
+            ) in action
+            {
                 // Get handle based on action id
-                let Ok(handle) = q_handles.get(action.target_id) else {
+                let Ok(handle) = q_handles.get(*entity) else {
                     continue;
                 };
 
                 // Get asset to mutate based on the handle id
-                let Some(asset) = assets.get_mut(handle) else {
+                let Some(asset) =
+                    assets.get_mut(handle.as_asset_id())
+                else {
                     continue;
                 };
 
-                let mut unit_time = (sequence_controller.target_time - action_meta.start_time)
+                let mut unit_time = (sequence_controller.target_time
+                    - action_meta.start_time)
                     / action_meta.duration;
 
                 // In case of division by 0.0
@@ -289,50 +334,64 @@ pub fn update_asset<U, A, T>(
 
                 unit_time = f32::clamp(unit_time, 0.0, 1.0);
                 // Calculate unit time using ease function
-                unit_time = (action.ease_fn)(unit_time);
+                unit_time = ease_fn(unit_time);
 
                 // Mutate the component using interpolate function
-                let field = (action.get_field_fn)(asset);
-                *field = (action.interp_fn)(&action.start, &action.end, unit_time);
+                let field = get_field_fn(asset);
+                *field = interp_fn(start, end, unit_time);
             }
         }
     }
 }
 
-/// Safely update the `target_time` in [`SequenceController`] after performing all the necessary actions.
-pub(crate) fn sequence_controller(mut q_sequences: Query<(&Sequence, &mut SequenceController)>) {
-    for (sequence, mut sequence_controller) in q_sequences.iter_mut() {
-        sequence_controller.target_time =
-            f32::clamp(sequence_controller.target_time, 0.0, sequence.duration());
-        sequence_controller.curr_time = sequence_controller.target_time;
-    }
-}
-
-/// Update [`SequenceController`] based on `time_scale` of [`SequencePlayer`].
-pub(crate) fn sequence_player(
-    mut q_sequences: Query<(&Sequence, &mut SequenceController, &SequencePlayer)>,
+/// Update [`SequenceController::target_time`] based on [`SequencePlayer::time_scale`].
+pub(crate) fn update_target_time(
+    mut q_sequences: Query<(
+        &Sequence,
+        &mut SequenceController,
+        &SequencePlayer,
+    )>,
     time: Res<Time>,
 ) {
-    for (sequence, mut sequence_controller, sequence_player) in q_sequences.iter_mut() {
+    for (sequence, mut sequence_controller, sequence_player) in
+        q_sequences.iter_mut()
+    {
         sequence_controller.target_time = f32::clamp(
-            sequence_controller.target_time + time.delta_secs() * sequence_player.time_scale,
+            sequence_controller.target_time
+                + time.delta_secs() * sequence_player.time_scale,
             0.0,
             sequence.duration(),
         );
     }
 }
 
+/// Safely update [`SequenceController::time`] after performing
+/// all the necessary actions.
+pub(crate) fn update_time(
+    mut q_sequences: Query<(&Sequence, &mut SequenceController)>,
+) {
+    for (sequence, mut controller) in q_sequences.iter_mut() {
+        controller.target_time = f32::clamp(
+            controller.target_time,
+            0.0,
+            sequence.duration(),
+        );
+
+        controller.time = controller.target_time;
+    }
+}
+
 fn generate_action_iter<'a, T, U>(
     q_actions: &'a Query<&'static Action<T, U>>,
     sequence: &'a Sequence,
-    sequence_controller: &'a SequenceController,
-) -> Option<impl std::iter::Iterator<Item = (&'a Action<T, U>, &'a ActionMeta)>>
+    controller: &'a SequenceController,
+) -> Option<impl Iterator<Item = (&'a Action<T, U>, &'a ActionMeta)>>
 where
-    T: Send + Sync + 'static,
+    T: ThreadSafe,
 {
     // Do not perform any actions if there are no changes to the timeline timings
     // or there are no actions at all.
-    if sequence_controller.curr_time == sequence_controller.target_time
+    if controller.time == controller.target_time
         || sequence.action_metas.is_empty()
     {
         return None;
@@ -340,16 +399,13 @@ where
 
     // Calculate time flow direction based on time difference
     let direction =
-        f32::signum(sequence_controller.target_time - sequence_controller.curr_time) as isize;
+        f32::signum(controller.target_time - controller.time)
+            as isize;
 
-    let timeline_start = f32::min(
-        sequence_controller.curr_time,
-        sequence_controller.target_time,
-    );
-    let timeline_end = f32::max(
-        sequence_controller.curr_time,
-        sequence_controller.target_time,
-    );
+    let timeline_start =
+        f32::min(controller.time, controller.target_time);
+    let timeline_end =
+        f32::max(controller.time, controller.target_time);
 
     let mut start_index = 0;
     let mut end_index = sequence.action_metas.len() - 1;
@@ -365,7 +421,9 @@ where
     Some(std::iter::from_fn(move || {
         // Loop through `Action`s in the direction that the timeline is going towards.
         loop {
-            if action_index == (end_index as isize + direction) as usize {
+            if action_index
+                == (end_index as isize + direction) as usize
+            {
                 return None;
             }
 
@@ -373,7 +431,8 @@ where
             let action_id = action_meta.id();
 
             let slide_direction = isize::signum(
-                sequence_controller.target_slide_index as isize - action_meta.slide_index as isize,
+                controller.target_slide_index as isize
+                    - action_meta.slide_index as isize,
             );
 
             // Continue only when slide direction matches or is 0
@@ -381,7 +440,8 @@ where
                 return None;
             }
 
-            action_index = (action_index as isize + direction) as usize;
+            action_index =
+                (action_index as isize + direction) as usize;
 
             let is_time_overlap = time_range_overlap(
                 action_meta.start_time,
@@ -403,6 +463,11 @@ where
 }
 
 /// Calculate if 2 time range (in float) overlaps.
-fn time_range_overlap(a_begin: f32, a_end: f32, b_begin: f32, b_end: f32) -> bool {
+fn time_range_overlap(
+    a_begin: f32,
+    a_end: f32,
+    b_begin: f32,
+    b_end: f32,
+) -> bool {
     a_begin <= b_end && b_begin <= a_end
 }

@@ -10,7 +10,7 @@ repository = "https://github.com/nixon-voxell/bevy_motiongfx"
 readme = "README.md"
 
 [workspace.dependencies]
-bevy = { version = "0.15", default-features = false , features = ["bevy_color", "bevy_asset", "bevy_pbr", "bevy_sprite"]}
+bevy = { version = "0.16.0", default-features = false , features = ["bevy_color", "bevy_asset", "bevy_pbr", "bevy_sprite"]}
 smallvec = "1"
 
 [package]
@@ -35,7 +35,7 @@ default = ["common"]
 common = ["dep:motiongfx_common"]
 
 [dev-dependencies]
-bevy = "0.15"
+bevy = "0.16.0"
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"

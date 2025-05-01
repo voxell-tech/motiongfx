@@ -11,20 +11,23 @@ pub struct SlideBundle {
 
 #[derive(Component, Clone)]
 pub struct SlideController {
-    /// Start time of all slides including 1 extra at the end that represents the duration of the entire sequence.
+    /// Start time of all slides including 1 extra at the end
+    /// that represents the duration of the entire sequence.
     start_times: Vec<f32>,
     target_slide_index: usize,
     curr_state: SlideCurrState,
     target_state: SlideTargetState,
-    utime_scale: f32,
+    time_scale: f32,
 }
 
 impl SlideController {
     pub fn next(&mut self) {
         match self.curr_state {
             SlideCurrState::End => {
-                self.target_slide_index =
-                    usize::min(self.target_slide_index + 1, self.slide_count() - 1);
+                self.target_slide_index = usize::min(
+                    self.target_slide_index + 1,
+                    self.slide_count() - 1,
+                );
             }
             _ => {
                 self.target_state = SlideTargetState::End;
@@ -35,7 +38,8 @@ impl SlideController {
     pub fn prev(&mut self) {
         match self.curr_state {
             SlideCurrState::Start => {
-                self.target_slide_index = self.target_slide_index.saturating_sub(1);
+                self.target_slide_index =
+                    self.target_slide_index.saturating_sub(1);
             }
             _ => {
                 self.target_state = SlideTargetState::Start;
@@ -43,14 +47,19 @@ impl SlideController {
         }
     }
 
-    pub fn seek(&mut self, slide_index: usize, slide_state: SlideTargetState) {
-        self.target_slide_index = usize::min(slide_index, self.slide_count() - 1);
+    pub fn seek(
+        &mut self,
+        slide_index: usize,
+        slide_state: SlideTargetState,
+    ) {
+        self.target_slide_index =
+            usize::min(slide_index, self.slide_count() - 1);
         self.target_state = slide_state;
     }
 
     #[inline]
     pub fn set_time_scale(&mut self, time_scale: f32) {
-        self.utime_scale = f32::abs(time_scale);
+        self.time_scale = f32::abs(time_scale);
     }
 
     #[inline]
@@ -66,7 +75,7 @@ impl Default for SlideController {
             target_slide_index: 0,
             curr_state: SlideCurrState::default(),
             target_state: SlideTargetState::default(),
-            utime_scale: 1.0,
+            time_scale: 1.0,
         }
     }
 }
@@ -109,11 +118,16 @@ pub fn create_slide(mut sequences: Vec<Sequence>) -> SlideBundle {
 }
 
 pub(crate) fn slide_controller(
-    mut q_slides: Query<(&mut SlideController, &mut SequenceController)>,
+    mut q_slides: Query<(
+        &mut SlideController,
+        &mut SequenceController,
+    )>,
     time: Res<Time>,
 ) {
-    for (mut slide_controller, mut sequence_controller) in q_slides.iter_mut() {
-        if slide_controller.utime_scale <= f32::EPSILON {
+    for (mut slide_controller, mut sequence_controller) in
+        q_slides.iter_mut()
+    {
+        if slide_controller.time_scale <= f32::EPSILON {
             continue;
         }
 
@@ -126,16 +140,19 @@ pub(crate) fn slide_controller(
         };
 
         // Update sequence target time and target slide index
-        sequence_controller.target_time +=
-            time.delta_secs() * slide_controller.utime_scale * direction as f32;
-        sequence_controller.target_slide_index = slide_controller.target_slide_index;
+        sequence_controller.target_time += time.delta_secs()
+            * slide_controller.time_scale
+            * direction as f32;
+        sequence_controller.target_slide_index =
+            slide_controller.target_slide_index;
 
         // Initialize as mid
         slide_controller.curr_state = SlideCurrState::Mid;
 
         // Clamp target time based on direction
         if direction < 0 {
-            let start_time = slide_controller.start_times[sequence_controller.target_slide_index];
+            let start_time = slide_controller.start_times
+                [sequence_controller.target_slide_index];
 
             // Start time reached
             if sequence_controller.target_time <= start_time {
@@ -143,7 +160,8 @@ pub(crate) fn slide_controller(
                 sequence_controller.target_time = start_time;
             }
         } else {
-            let end_time = slide_controller.start_times[sequence_controller.target_slide_index + 1];
+            let end_time = slide_controller.start_times
+                [sequence_controller.target_slide_index + 1];
 
             // End time reached
             if sequence_controller.target_time >= end_time {

@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
 use proc_macro::TokenStream;
-use proc_macro2::{Punct, Spacing, Span, TokenStream as TokenStream2};
+use proc_macro2::{
+    Punct, Spacing, Span, TokenStream as TokenStream2,
+};
 use quote::{quote, TokenStreamExt};
 use syn::{
     parse::{Parse, ParseStream},
@@ -25,7 +27,9 @@ impl Parse for CombinationTuple {
     }
 }
 
-fn generate_tuple_combinations(count: usize) -> (Vec<Ident>, TokenStream2) {
+fn generate_tuple_combinations(
+    count: usize,
+) -> (Vec<Ident>, TokenStream2) {
     assert!(count > 0, "Number of generics must be greater than 0.");
 
     let mut tuple_idents = Vec::with_capacity(count);
@@ -60,7 +64,8 @@ pub fn tuple_combinations(input: TokenStream) -> TokenStream {
         let (tuple_idents, generics) = generate_tuple_combinations(c);
 
         for (i, tuple_ident) in tuple_idents.iter().enumerate() {
-            let number_token = TokenStream2::from_str(&format!("{i}")).unwrap();
+            let number_token =
+                TokenStream2::from_str(&format!("{i}")).unwrap();
             let q = quote! {
                 #macro_ident!([#generics], #tuple_ident, #number_token);
             };

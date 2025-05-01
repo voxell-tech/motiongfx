@@ -5,6 +5,7 @@ use crate::{
     f32lerp::F32Lerp,
     prelude::MultiSeqOrd,
     sequence::Sequence,
+    ThreadSafe,
 };
 
 /// Function for interpolating a type based on a [`f32`] time.
@@ -16,7 +17,7 @@ pub type GetFieldMut<T, U> = fn(source: &mut U) -> &mut T;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use bevy::prelude::*;
 /// use motiongfx_core::prelude::*;
 ///
@@ -124,7 +125,7 @@ pub use act;
 #[derive(Component, Clone, Copy)]
 pub struct Action<T, U> {
     /// Target [`Entity`] for [`Component`] manipulation.
-    pub(crate) target_id: Entity,
+    pub(crate) entity: Entity,
     /// Initial value of the action.
     pub(crate) start: T,
     /// Final value of the action.
@@ -140,14 +141,14 @@ pub struct Action<T, U> {
 impl<T, U> Action<T, U> {
     /// Creates a new [`Action`].
     pub fn new(
-        target_id: Entity,
+        entity: Entity,
         start: T,
         end: T,
         interp_fn: InterpFn<T>,
         get_field_fn: GetFieldMut<T, U>,
     ) -> Self {
         Self {
-            target_id,
+            entity,
             start,
             end,
             get_field_fn,
@@ -184,13 +185,13 @@ where
     /// Creates a new [`Action`] with [`F32Lerp`] as the default
     /// [interpolation function](InterpFn).
     pub fn new_f32lerp(
-        target_id: Entity,
+        entity: Entity,
         start: T,
         end: T,
         get_field_fn: GetFieldMut<T, U>,
     ) -> Self {
         Self {
-            target_id,
+            entity,
             start,
             end,
             get_field_fn,
@@ -253,8 +254,8 @@ impl<'a> SequenceBuilder<'a, 'a> {
     /// Converts a [`Motion`] into a [`SequenceBuilder`].
     pub fn add_motion<T, U>(mut self, motion: Motion<T, U>) -> Self
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static,
+        T: ThreadSafe,
+        U: ThreadSafe,
     {
         self.sequences.push(self.commands.play_motion(motion));
         self
@@ -287,14 +288,17 @@ pub trait SequenceBuilderExt<'w> {
     /// Converts a [`Motion`] into a [`Sequence`].
     fn play_motion<T, U>(&mut self, motion: Motion<T, U>) -> Sequence
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static;
+        T: ThreadSafe,
+        U: ThreadSafe;
 
     /// Converts a [`Motion`] into a [`SequenceBuilder`].
-    fn add_motion<T, U>(&mut self, motion: Motion<T, U>) -> SequenceBuilder<'w, '_>
+    fn add_motion<T, U>(
+        &mut self,
+        motion: Motion<T, U>,
+    ) -> SequenceBuilder<'w, '_>
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static;
+        T: ThreadSafe,
+        U: ThreadSafe;
 
     fn sleep(&mut self, duration: f32) -> Sequence;
 }
@@ -302,8 +306,8 @@ pub trait SequenceBuilderExt<'w> {
 impl<'w> SequenceBuilderExt<'w> for Commands<'w, '_> {
     fn play_motion<T, U>(&mut self, motion: Motion<T, U>) -> Sequence
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static,
+        T: ThreadSafe,
+        U: ThreadSafe,
     {
         let action_id = self.spawn(motion.action).id();
         let mut action_meta = ActionMeta::new(action_id);
@@ -312,10 +316,13 @@ impl<'w> SequenceBuilderExt<'w> for Commands<'w, '_> {
         Sequence::single(action_meta)
     }
 
-    fn add_motion<T, U>(&mut self, motion: Motion<T, U>) -> SequenceBuilder<'w, '_>
+    fn add_motion<T, U>(
+        &mut self,
+        motion: Motion<T, U>,
+    ) -> SequenceBuilder<'w, '_>
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static,
+        T: ThreadSafe,
+        U: ThreadSafe,
     {
         let mut commands = self.reborrow();
         let sequences = vec![commands.play_motion(motion)];
