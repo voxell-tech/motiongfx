@@ -2,8 +2,7 @@ use bevy::asset::AsAssetId;
 use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
 use sequence::{
-    animate_asset, animate_component, update_curr_time,
-    update_target_time,
+    animate_asset, animate_component, update_target_time, update_time,
 };
 use slide::slide_controller;
 
@@ -38,17 +37,21 @@ impl Plugin for MotionGfxCorePlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets(
             PostUpdate,
-            (MotionGfxSet::TargetTime, MotionGfxSet::Animate).chain(),
+            (
+                MotionGfxSet::TargetTime,
+                MotionGfxSet::Animate,
+                MotionGfxSet::Time,
+            )
+                .chain(),
         );
 
         app.add_systems(
-            Update,
+            PostUpdate,
             (
-                (update_target_time, slide_controller),
-                update_curr_time,
-            )
-                .chain()
-                .in_set(MotionGfxSet::TargetTime),
+                (update_target_time, slide_controller)
+                    .in_set(MotionGfxSet::TargetTime),
+                update_time.in_set(MotionGfxSet::Time),
+            ),
         );
     }
 }
@@ -57,9 +60,10 @@ impl Plugin for MotionGfxCorePlugin {
 pub enum MotionGfxSet {
     /// Advance the target time in the [`sequence::SequenceController`].
     TargetTime,
+    /// Perform animation updates.
     Animate,
-    /// Advance the current time in the [`sequence::SequenceController`].
-    CurrTime,
+    /// Advance the time in the [`sequence::SequenceController`].
+    Time,
 }
 
 /// Utility function for registering animatable components.

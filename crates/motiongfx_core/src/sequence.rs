@@ -78,9 +78,9 @@ impl Sequence {
 /// Plays the [`Sequence`] component attached to this entity through `target_time` manipulation.
 #[derive(Component, Default)]
 pub struct SequenceController {
-    curr_time: f32,
+    time: f32,
     /// Target time to reach (and not exceed).
-    pub time: f32,
+    pub target_time: f32,
     /// Target slide index to reach (and not exceed).
     pub target_slide_index: usize,
 }
@@ -261,7 +261,7 @@ pub fn animate_component<Comp, Target>(
                     continue;
                 };
 
-                let mut unit_time = (sequence_controller.time
+                let mut unit_time = (sequence_controller.target_time
                     - action_meta.start_time)
                     / action_meta.duration;
 
@@ -323,7 +323,7 @@ pub fn animate_asset<Comp, Target>(
                     continue;
                 };
 
-                let mut unit_time = (sequence_controller.time
+                let mut unit_time = (sequence_controller.target_time
                     - action_meta.start_time)
                     / action_meta.duration;
 
@@ -356,8 +356,8 @@ pub(crate) fn update_target_time(
     for (sequence, mut sequence_controller, sequence_player) in
         q_sequences.iter_mut()
     {
-        sequence_controller.time = f32::clamp(
-            sequence_controller.time
+        sequence_controller.target_time = f32::clamp(
+            sequence_controller.target_time
                 + time.delta_secs() * sequence_player.time_scale,
             0.0,
             sequence.duration(),
@@ -367,14 +367,17 @@ pub(crate) fn update_target_time(
 
 /// Safely update [`SequenceController::time`] after performing
 /// all the necessary actions.
-pub(crate) fn update_curr_time(
+pub(crate) fn update_time(
     mut q_sequences: Query<(&Sequence, &mut SequenceController)>,
 ) {
     for (sequence, mut controller) in q_sequences.iter_mut() {
-        controller.time =
-            f32::clamp(controller.time, 0.0, sequence.duration());
+        controller.target_time = f32::clamp(
+            controller.target_time,
+            0.0,
+            sequence.duration(),
+        );
 
-        controller.curr_time = controller.time;
+        controller.time = controller.target_time;
     }
 }
 
@@ -388,7 +391,7 @@ where
 {
     // Do not perform any actions if there are no changes to the timeline timings
     // or there are no actions at all.
-    if controller.curr_time == controller.time
+    if controller.time == controller.target_time
         || sequence.action_metas.is_empty()
     {
         return None;
@@ -396,12 +399,13 @@ where
 
     // Calculate time flow direction based on time difference
     let direction =
-        f32::signum(controller.time - controller.curr_time) as isize;
+        f32::signum(controller.target_time - controller.time)
+            as isize;
 
     let timeline_start =
-        f32::min(controller.curr_time, controller.time);
+        f32::min(controller.time, controller.target_time);
     let timeline_end =
-        f32::max(controller.curr_time, controller.time);
+        f32::max(controller.time, controller.target_time);
 
     let mut start_index = 0;
     let mut end_index = sequence.action_metas.len() - 1;

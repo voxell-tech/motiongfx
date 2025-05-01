@@ -140,7 +140,7 @@ pub(crate) fn slide_controller(
         };
 
         // Update sequence target time and target slide index
-        sequence_controller.time += time.delta_secs()
+        sequence_controller.target_time += time.delta_secs()
             * slide_controller.time_scale
             * direction as f32;
         sequence_controller.target_slide_index =
@@ -155,18 +155,18 @@ pub(crate) fn slide_controller(
                 [sequence_controller.target_slide_index];
 
             // Start time reached
-            if sequence_controller.time <= start_time {
+            if sequence_controller.target_time <= start_time {
                 slide_controller.curr_state = SlideCurrState::Start;
-                sequence_controller.time = start_time;
+                sequence_controller.target_time = start_time;
             }
         } else {
             let end_time = slide_controller.start_times
                 [sequence_controller.target_slide_index + 1];
 
             // End time reached
-            if sequence_controller.time >= end_time {
+            if sequence_controller.target_time >= end_time {
                 slide_controller.curr_state = SlideCurrState::End;
-                sequence_controller.time = end_time;
+                sequence_controller.target_time = end_time;
             }
         }
     }
