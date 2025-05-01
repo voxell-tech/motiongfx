@@ -136,12 +136,12 @@ fn timeline_movement(
     for (mut sequence_player, mut sequence_time) in
         q_timelines.iter_mut()
     {
-        if keys.pressed(KeyCode::KeyD) {
-            sequence_time.time += time.delta_secs();
+        if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
+            sequence_time.target_time += time.delta_secs();
         }
 
-        if keys.pressed(KeyCode::KeyA) {
-            sequence_time.time -= time.delta_secs();
+        if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
+            sequence_time.target_time -= time.delta_secs();
         }
 
         if keys.just_pressed(KeyCode::Space) {
