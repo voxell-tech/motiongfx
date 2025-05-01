@@ -17,7 +17,7 @@ pub type GetFieldMut<T, U> = fn(source: &mut U) -> &mut T;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use bevy::prelude::*;
 /// use motiongfx_core::prelude::*;
 ///
@@ -125,7 +125,7 @@ pub use act;
 #[derive(Component, Clone, Copy)]
 pub struct Action<T, U> {
     /// Target [`Entity`] for [`Component`] manipulation.
-    pub(crate) target_id: Entity,
+    pub(crate) entity: Entity,
     /// Initial value of the action.
     pub(crate) start: T,
     /// Final value of the action.
@@ -141,14 +141,14 @@ pub struct Action<T, U> {
 impl<T, U> Action<T, U> {
     /// Creates a new [`Action`].
     pub fn new(
-        target_id: Entity,
+        entity: Entity,
         start: T,
         end: T,
         interp_fn: InterpFn<T>,
         get_field_fn: GetFieldMut<T, U>,
     ) -> Self {
         Self {
-            target_id,
+            entity,
             start,
             end,
             get_field_fn,
@@ -185,13 +185,13 @@ where
     /// Creates a new [`Action`] with [`F32Lerp`] as the default
     /// [interpolation function](InterpFn).
     pub fn new_f32lerp(
-        target_id: Entity,
+        entity: Entity,
         start: T,
         end: T,
         get_field_fn: GetFieldMut<T, U>,
     ) -> Self {
         Self {
-            target_id,
+            entity,
             start,
             end,
             get_field_fn,
@@ -292,7 +292,10 @@ pub trait SequenceBuilderExt<'w> {
         U: ThreadSafe;
 
     /// Converts a [`Motion`] into a [`SequenceBuilder`].
-    fn add_motion<T, U>(&mut self, motion: Motion<T, U>) -> SequenceBuilder<'w, '_>
+    fn add_motion<T, U>(
+        &mut self,
+        motion: Motion<T, U>,
+    ) -> SequenceBuilder<'w, '_>
     where
         T: ThreadSafe,
         U: ThreadSafe;
@@ -313,7 +316,10 @@ impl<'w> SequenceBuilderExt<'w> for Commands<'w, '_> {
         Sequence::single(action_meta)
     }
 
-    fn add_motion<T, U>(&mut self, motion: Motion<T, U>) -> SequenceBuilder<'w, '_>
+    fn add_motion<T, U>(
+        &mut self,
+        motion: Motion<T, U>,
+    ) -> SequenceBuilder<'w, '_>
     where
         T: ThreadSafe,
         U: ThreadSafe,

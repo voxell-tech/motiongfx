@@ -1,12 +1,14 @@
-use bevy::{core_pipeline::tonemapping::Tonemapping, pbr::NotShadowCaster, prelude::*};
-use bevy_motiongfx::{prelude::*, MotionGfxPlugin};
+use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::pbr::NotShadowCaster;
+use bevy::prelude::*;
+use bevy_motiongfx::prelude::*;
 
 fn main() {
     App::new()
         // Bevy plugins
         .add_plugins(DefaultPlugins)
         // Custom plugins
-        .add_plugins(MotionGfxPlugin)
+        .add_plugins(bevy_motiongfx::MotionGfxPlugin)
         .add_systems(Startup, (setup, slide_basic))
         .add_systems(Update, slide_movement)
         .run();
@@ -58,18 +60,26 @@ fn slide_basic(
     let mut sphere = (id, (transform, material));
 
     // Create slides
-    let slide0 = commands.play_motion(cube.transform().to_scale(Vec3::ONE).animate(1.0));
+    let slide0 = commands.play_motion(
+        cube.transform().to_scale(Vec3::ONE).animate(1.0),
+    );
 
     let slide1 = [
         commands
-            .add_motion(cube.transform().to_translation_x(-x_offset).animate(1.0))
+            .add_motion(
+                cube.transform()
+                    .to_translation_x(-x_offset)
+                    .animate(1.0),
+            )
             .add_motion(
                 cube.std_material()
                     .to_base_color(palette.get(ColorKey::Base0))
                     .animate(1.0),
             )
             .all(),
-        commands.play_motion(sphere.transform().to_scale(Vec3::ONE).animate(1.0)),
+        commands.play_motion(
+            sphere.transform().to_scale(Vec3::ONE).animate(1.0),
+        ),
     ]
     .flow(0.1);
 
@@ -92,11 +102,15 @@ fn setup(mut commands: Commands) {
     // Directional light
     commands.spawn((
         DirectionalLight::default(),
-        Transform::from_xyz(3.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(3.0, 10.0, 5.0)
+            .looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
 
-fn slide_movement(mut q_slides: Query<&mut SlideController>, keys: Res<ButtonInput<KeyCode>>) {
+fn slide_movement(
+    mut q_slides: Query<&mut SlideController>,
+    keys: Res<ButtonInput<KeyCode>>,
+) {
     for mut slide in q_slides.iter_mut() {
         if keys.just_pressed(KeyCode::Space) {
             slide.set_time_scale(1.0);

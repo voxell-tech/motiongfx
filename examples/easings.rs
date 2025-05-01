@@ -49,9 +49,12 @@ fn easings(
 
     for i in 0..capacity {
         let material_handle = materials.add(material.clone());
-        let transform =
-            Transform::from_translation(Vec3::new(-5.0, (i as f32) - (capacity as f32) * 0.5, 0.0))
-                .with_scale(Vec3::ONE);
+        let transform = Transform::from_translation(Vec3::new(
+            -5.0,
+            (i as f32) - (capacity as f32) * 0.5,
+            0.0,
+        ))
+        .with_scale(Vec3::ONE);
 
         let id = commands
             .spawn((
@@ -73,9 +76,12 @@ fn easings(
             commands
                 .add_motion({
                     let x = transform.translation.x;
-                    Action::<_, Transform>::new_f32lerp(*entity, x, x + 10.0, |t| {
-                        &mut t.translation.x
-                    })
+                    Action::<_, Transform>::new_f32lerp(
+                        *entity,
+                        x,
+                        x + 10.0,
+                        |t| &mut t.translation.x,
+                    )
                     .with_ease(ease_fn)
                     .animate(1.0)
                 })
@@ -84,7 +90,8 @@ fn easings(
                     Action::<_, StandardMaterial>::new_f32lerp(
                         *entity,
                         color,
-                        palette.get(ColorKey::Red).to_linear() * 100.0,
+                        palette.get(ColorKey::Red).to_linear()
+                            * 100.0,
                         |m| &mut m.emissive,
                     )
                     .with_ease(ease_fn)
@@ -116,17 +123,22 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement(
-    mut q_timelines: Query<(&mut SequencePlayer, &mut SequenceController)>,
+    mut q_timelines: Query<(
+        &mut SequencePlayer,
+        &mut SequenceController,
+    )>,
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
-    for (mut sequence_player, mut sequence_time) in q_timelines.iter_mut() {
+    for (mut sequence_player, mut sequence_time) in
+        q_timelines.iter_mut()
+    {
         if keys.pressed(KeyCode::KeyD) {
-            sequence_time.target_time += time.delta_secs();
+            sequence_time.time += time.delta_secs();
         }
 
         if keys.pressed(KeyCode::KeyA) {
-            sequence_time.target_time -= time.delta_secs();
+            sequence_time.time -= time.delta_secs();
         }
 
         if keys.just_pressed(KeyCode::Space) {

@@ -1,7 +1,10 @@
 use bevy::asset::AsAssetId;
 use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
-use sequence::{animate_asset, animate_component, update_curr_time, update_target_time};
+use sequence::{
+    animate_asset, animate_component, update_curr_time,
+    update_target_time,
+};
 use slide::slide_controller;
 
 pub mod action;
@@ -17,11 +20,13 @@ pub mod prelude {
     pub use crate::color_palette::{ColorKey, ColorPalette};
     pub use crate::f32lerp::F32Lerp;
     pub use crate::sequence::{
-        all, any, chain, delay, flow, MultiSeqOrd, Sequence, SequenceBundle, SequenceController,
-        SequencePlayer, SequencePlayerBundle, SingleSeqOrd,
+        all, any, chain, delay, flow, MultiSeqOrd, Sequence,
+        SequenceBundle, SequenceController, SequencePlayer,
+        SequencePlayerBundle, SingleSeqOrd,
     };
     pub use crate::slide::{
-        create_slide, SlideBundle, SlideController, SlideCurrState, SlideTargetState,
+        create_slide, SlideBundle, SlideController, SlideCurrState,
+        SlideTargetState,
     };
     pub use crate::tuple_motion::{GetId, GetMut, GetMutValue};
     pub use crate::{ease, MotionGfxAnimateAppExt, MotionGfxSet};
@@ -33,22 +38,28 @@ impl Plugin for MotionGfxCorePlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets(
             PostUpdate,
-            (MotionGfxSet::Time, MotionGfxSet::Animate).chain(),
+            (MotionGfxSet::TargetTime, MotionGfxSet::Animate).chain(),
         );
 
         app.add_systems(
             Update,
-            ((update_target_time, slide_controller), update_curr_time)
+            (
+                (update_target_time, slide_controller),
+                update_curr_time,
+            )
                 .chain()
-                .in_set(MotionGfxSet::Time),
+                .in_set(MotionGfxSet::TargetTime),
         );
     }
 }
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MotionGfxSet {
-    Time,
+    /// Advance the target time in the [`sequence::SequenceController`].
+    TargetTime,
     Animate,
+    /// Advance the current time in the [`sequence::SequenceController`].
+    CurrTime,
 }
 
 /// Utility function for registering animatable components.
@@ -72,7 +83,8 @@ impl MotionGfxAnimateAppExt for App {
     {
         self.add_systems(
             PostUpdate,
-            animate_component::<Comp, Target>.in_set(MotionGfxSet::Animate),
+            animate_component::<Comp, Target>
+                .in_set(MotionGfxSet::Animate),
         )
     }
 
@@ -83,7 +95,8 @@ impl MotionGfxAnimateAppExt for App {
     {
         self.add_systems(
             PostUpdate,
-            animate_asset::<Comp, Target>.in_set(MotionGfxSet::Animate),
+            animate_asset::<Comp, Target>
+                .in_set(MotionGfxSet::Animate),
         )
     }
 }

@@ -1,12 +1,14 @@
-use bevy::{core_pipeline::tonemapping::Tonemapping, pbr::NotShadowCaster, prelude::*};
-use bevy_motiongfx::{prelude::*, MotionGfxPlugin};
+use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::pbr::NotShadowCaster;
+use bevy::prelude::*;
+use bevy_motiongfx::prelude::*;
 
 fn main() {
     App::new()
         // Bevy plugins
         .add_plugins(DefaultPlugins)
         // Custom plugins
-        .add_plugins(MotionGfxPlugin)
+        .add_plugins(bevy_motiongfx::MotionGfxPlugin)
         .add_systems(Startup, (setup, hello_world))
         .add_systems(Update, timeline_movement)
         .run();
@@ -118,22 +120,28 @@ fn setup(mut commands: Commands) {
     // Directional light
     commands.spawn((
         DirectionalLight::default(),
-        Transform::from_xyz(3.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(3.0, 10.0, 5.0)
+            .looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
 
 fn timeline_movement(
-    mut q_timelines: Query<(&mut SequencePlayer, &mut SequenceController)>,
+    mut q_timelines: Query<(
+        &mut SequencePlayer,
+        &mut SequenceController,
+    )>,
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
-    for (mut sequence_player, mut sequence_time) in q_timelines.iter_mut() {
+    for (mut sequence_player, mut sequence_time) in
+        q_timelines.iter_mut()
+    {
         if keys.pressed(KeyCode::KeyD) {
-            sequence_time.target_time += time.delta_secs();
+            sequence_time.time += time.delta_secs();
         }
 
         if keys.pressed(KeyCode::KeyA) {
-            sequence_time.target_time -= time.delta_secs();
+            sequence_time.time -= time.delta_secs();
         }
 
         if keys.just_pressed(KeyCode::Space) {

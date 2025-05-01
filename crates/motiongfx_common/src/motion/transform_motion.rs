@@ -6,7 +6,9 @@ pub trait TransformMotion<const N: usize> {
     fn transform(&mut self) -> TransformMotionBuilder;
 }
 
-impl<const N: usize, T: GetMutValue<Transform, N>> TransformMotion<N> for (Entity, T) {
+impl<const N: usize, T: GetMutValue<Transform, N>> TransformMotion<N>
+    for (Entity, T)
+{
     fn transform(&mut self) -> TransformMotionBuilder {
         TransformMotionBuilder::new(self.id(), self.1.get_mut_value())
     }
@@ -22,7 +24,10 @@ impl<'a> TransformMotionBuilder<'a> {
         Self { id, transform }
     }
 
-    pub fn to(&mut self, transfrom: Transform) -> Action<Transform, Transform> {
+    pub fn to(
+        &mut self,
+        transfrom: Transform,
+    ) -> Action<Transform, Transform> {
         act!(
             (self.id, Transform),
             start = { *self.transform },
@@ -30,7 +35,10 @@ impl<'a> TransformMotionBuilder<'a> {
         )
     }
 
-    pub fn to_translation(&mut self, translation: Vec3) -> Action<Vec3, Transform> {
+    pub fn to_translation(
+        &mut self,
+        translation: Vec3,
+    ) -> Action<Vec3, Transform> {
         act!(
             (self.id, Transform),
             start = { self.transform }.translation,
@@ -38,7 +46,10 @@ impl<'a> TransformMotionBuilder<'a> {
         )
     }
 
-    pub fn to_translation_x(&mut self, x: f32) -> Action<f32, Transform> {
+    pub fn to_translation_x(
+        &mut self,
+        x: f32,
+    ) -> Action<f32, Transform> {
         act!(
             (self.id, Transform),
             start = { self.transform }.translation.x,
@@ -46,7 +57,10 @@ impl<'a> TransformMotionBuilder<'a> {
         )
     }
 
-    pub fn to_translation_y(&mut self, y: f32) -> Action<f32, Transform> {
+    pub fn to_translation_y(
+        &mut self,
+        y: f32,
+    ) -> Action<f32, Transform> {
         act!(
             (self.id, Transform),
             start = { self.transform }.translation.y,
@@ -54,7 +68,10 @@ impl<'a> TransformMotionBuilder<'a> {
         )
     }
 
-    pub fn to_translation_z(&mut self, z: f32) -> Action<f32, Transform> {
+    pub fn to_translation_z(
+        &mut self,
+        z: f32,
+    ) -> Action<f32, Transform> {
         act!(
             (self.id, Transform),
             start = { self.transform }.translation.z,
@@ -62,7 +79,10 @@ impl<'a> TransformMotionBuilder<'a> {
         )
     }
 
-    pub fn to_scale(&mut self, scale: Vec3) -> Action<Vec3, Transform> {
+    pub fn to_scale(
+        &mut self,
+        scale: Vec3,
+    ) -> Action<Vec3, Transform> {
         act!(
             (self.id, Transform),
             start = { self.transform }.scale,
@@ -94,7 +114,10 @@ impl<'a> TransformMotionBuilder<'a> {
         )
     }
 
-    pub fn to_rotation(&mut self, rotation: Quat) -> Action<Quat, Transform> {
+    pub fn to_rotation(
+        &mut self,
+        rotation: Quat,
+    ) -> Action<Quat, Transform> {
         act!(
             (self.id, Transform),
             start = { self.transform }.rotation,

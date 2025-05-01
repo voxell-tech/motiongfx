@@ -6,7 +6,8 @@ pub mod motion;
 pub mod prelude {
     pub use crate::{
         motion::{
-            standard_material_motion::StandardMaterialMotion, transform_motion::TransformMotion,
+            standard_material_motion::StandardMaterialMotion,
+            transform_motion::TransformMotion,
         },
         MotionGfxCommonPlugin,
     };
