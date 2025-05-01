@@ -5,6 +5,7 @@ use crate::{
     f32lerp::F32Lerp,
     prelude::MultiSeqOrd,
     sequence::Sequence,
+    ThreadSafe,
 };
 
 /// Function for interpolating a type based on a [`f32`] time.
@@ -253,8 +254,8 @@ impl<'a> SequenceBuilder<'a, 'a> {
     /// Converts a [`Motion`] into a [`SequenceBuilder`].
     pub fn add_motion<T, U>(mut self, motion: Motion<T, U>) -> Self
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static,
+        T: ThreadSafe,
+        U: ThreadSafe,
     {
         self.sequences.push(self.commands.play_motion(motion));
         self
@@ -287,14 +288,14 @@ pub trait SequenceBuilderExt<'w> {
     /// Converts a [`Motion`] into a [`Sequence`].
     fn play_motion<T, U>(&mut self, motion: Motion<T, U>) -> Sequence
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static;
+        T: ThreadSafe,
+        U: ThreadSafe;
 
     /// Converts a [`Motion`] into a [`SequenceBuilder`].
     fn add_motion<T, U>(&mut self, motion: Motion<T, U>) -> SequenceBuilder<'w, '_>
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static;
+        T: ThreadSafe,
+        U: ThreadSafe;
 
     fn sleep(&mut self, duration: f32) -> Sequence;
 }
@@ -302,8 +303,8 @@ pub trait SequenceBuilderExt<'w> {
 impl<'w> SequenceBuilderExt<'w> for Commands<'w, '_> {
     fn play_motion<T, U>(&mut self, motion: Motion<T, U>) -> Sequence
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static,
+        T: ThreadSafe,
+        U: ThreadSafe,
     {
         let action_id = self.spawn(motion.action).id();
         let mut action_meta = ActionMeta::new(action_id);
@@ -314,8 +315,8 @@ impl<'w> SequenceBuilderExt<'w> for Commands<'w, '_> {
 
     fn add_motion<T, U>(&mut self, motion: Motion<T, U>) -> SequenceBuilder<'w, '_>
     where
-        T: Send + Sync + 'static,
-        U: Send + Sync + 'static,
+        T: ThreadSafe,
+        U: ThreadSafe,
     {
         let mut commands = self.reborrow();
         let sequences = vec![commands.play_motion(motion)];

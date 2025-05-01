@@ -11,12 +11,13 @@ pub struct SlideBundle {
 
 #[derive(Component, Clone)]
 pub struct SlideController {
-    /// Start time of all slides including 1 extra at the end that represents the duration of the entire sequence.
+    /// Start time of all slides including 1 extra at the end
+    /// that represents the duration of the entire sequence.
     start_times: Vec<f32>,
     target_slide_index: usize,
     curr_state: SlideCurrState,
     target_state: SlideTargetState,
-    utime_scale: f32,
+    time_scale: f32,
 }
 
 impl SlideController {
@@ -50,7 +51,7 @@ impl SlideController {
 
     #[inline]
     pub fn set_time_scale(&mut self, time_scale: f32) {
-        self.utime_scale = f32::abs(time_scale);
+        self.time_scale = f32::abs(time_scale);
     }
 
     #[inline]
@@ -66,7 +67,7 @@ impl Default for SlideController {
             target_slide_index: 0,
             curr_state: SlideCurrState::default(),
             target_state: SlideTargetState::default(),
-            utime_scale: 1.0,
+            time_scale: 1.0,
         }
     }
 }
@@ -113,7 +114,7 @@ pub(crate) fn slide_controller(
     time: Res<Time>,
 ) {
     for (mut slide_controller, mut sequence_controller) in q_slides.iter_mut() {
-        if slide_controller.utime_scale <= f32::EPSILON {
+        if slide_controller.time_scale <= f32::EPSILON {
             continue;
         }
 
@@ -127,7 +128,7 @@ pub(crate) fn slide_controller(
 
         // Update sequence target time and target slide index
         sequence_controller.target_time +=
-            time.delta_secs() * slide_controller.utime_scale * direction as f32;
+            time.delta_secs() * slide_controller.time_scale * direction as f32;
         sequence_controller.target_slide_index = slide_controller.target_slide_index;
 
         // Initialize as mid

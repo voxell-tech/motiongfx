@@ -1,7 +1,10 @@
+use std::iter::Iterator;
+
 use bevy::prelude::*;
 use bevy::{asset::AsAssetId, ecs::component::Mutable};
 
 use crate::action::{Action, ActionMeta};
+use crate::ThreadSafe;
 
 /// Bundle to encapsulate [`Sequence`] and [`SequenceController`].
 #[derive(Bundle, Default)]
@@ -218,14 +221,14 @@ pub fn delay(t: f32, sequence: Sequence) -> Sequence {
     final_sequence
 }
 
-/// System for mutating the [`Component`] related [`Action`]s that are inside the [`Sequence`].
-pub fn update_component<U, T>(
-    mut q_components: Query<&mut U>,
-    q_actions: Query<&'static Action<T, U>>,
+/// System for animating the [`Component`] related [`Action`]s that are inside the [`Sequence`].
+pub fn animate_component<Comp, Target>(
+    mut q_components: Query<&mut Comp>,
+    q_actions: Query<&'static Action<Target, Comp>>,
     q_sequences: Query<(&Sequence, &SequenceController)>,
 ) where
-    T: Send + Sync + 'static,
-    U: Component<Mutability = Mutable>,
+    Comp: Component<Mutability = Mutable>,
+    Target: ThreadSafe,
 {
     for (sequence, sequence_controller) in q_sequences.iter() {
         if let Some(action) = generate_action_iter(&q_actions, sequence, sequence_controller) {
@@ -255,15 +258,15 @@ pub fn update_component<U, T>(
     }
 }
 
-/// System for mutating the [`Asset`] related [`Action`]s that are inside the [`Sequence`].
-pub fn update_asset<Comp, AnimateType>(
+/// System for animating the [`Asset`] related [`Action`]s that are inside the [`Sequence`].
+pub fn animate_asset<Comp, Target>(
     q_handles: Query<&Comp>,
     mut assets: ResMut<Assets<Comp::Asset>>,
-    q_actions: Query<&'static Action<AnimateType, Comp::Asset>>,
+    q_actions: Query<&'static Action<Target, Comp::Asset>>,
     q_sequences: Query<(&Sequence, &SequenceController)>,
 ) where
-    AnimateType: Send + Sync + 'static,
     Comp: Component + AsAssetId,
+    Target: ThreadSafe,
 {
     // let q_handles = q_handles.iter
     for (sequence, sequence_controller) in q_sequences.iter() {
@@ -299,17 +302,8 @@ pub fn update_asset<Comp, AnimateType>(
     }
 }
 
-/// Safely update the `target_time` in [`SequenceController`] after performing all the necessary actions.
-pub(crate) fn sequence_controller(mut q_sequences: Query<(&Sequence, &mut SequenceController)>) {
-    for (sequence, mut sequence_controller) in q_sequences.iter_mut() {
-        sequence_controller.target_time =
-            f32::clamp(sequence_controller.target_time, 0.0, sequence.duration());
-        sequence_controller.curr_time = sequence_controller.target_time;
-    }
-}
-
-/// Update [`SequenceController`] based on `time_scale` of [`SequencePlayer`].
-pub(crate) fn sequence_player(
+/// Update [`SequenceController::target_time`] based on [`SequencePlayer::time_scale`].
+pub(crate) fn update_target_time(
     mut q_sequences: Query<(&Sequence, &mut SequenceController, &SequencePlayer)>,
     time: Res<Time>,
 ) {
@@ -322,13 +316,24 @@ pub(crate) fn sequence_player(
     }
 }
 
+/// Safely update [`SequenceController::curr_time`] after performing
+/// all the necessary actions.
+pub(crate) fn update_curr_time(mut q_sequences: Query<(&Sequence, &mut SequenceController)>) {
+    for (sequence, mut sequence_controller) in q_sequences.iter_mut() {
+        sequence_controller.target_time =
+            f32::clamp(sequence_controller.target_time, 0.0, sequence.duration());
+
+        sequence_controller.curr_time = sequence_controller.target_time;
+    }
+}
+
 fn generate_action_iter<'a, T, U>(
     q_actions: &'a Query<&'static Action<T, U>>,
     sequence: &'a Sequence,
     sequence_controller: &'a SequenceController,
-) -> Option<impl std::iter::Iterator<Item = (&'a Action<T, U>, &'a ActionMeta)>>
+) -> Option<impl Iterator<Item = (&'a Action<T, U>, &'a ActionMeta)>>
 where
-    T: Send + Sync + 'static,
+    T: ThreadSafe,
 {
     // Do not perform any actions if there are no changes to the timeline timings
     // or there are no actions at all.

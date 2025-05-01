@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use motiongfx_core::{prelude::*, UpdateSequenceSet};
+use motiongfx_core::prelude::*;
 
 pub mod motion;
 
@@ -16,21 +16,15 @@ pub struct MotionGfxCommonPlugin;
 
 impl Plugin for MotionGfxCommonPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                update_component::<Transform, Vec3>,
-                update_component::<Transform, Quat>,
-                update_component::<Transform, f32>,
-                update_component::<Sprite, Color>,
-                update_component::<Sprite, f32>,
-                update_asset::<MeshMaterial3d<StandardMaterial>, Color>,
-                update_asset::<MeshMaterial3d<StandardMaterial>, LinearRgba>,
-                update_asset::<MeshMaterial3d<StandardMaterial>, f32>,
-                update_asset::<MeshMaterial2d<ColorMaterial>, Color>,
-                update_asset::<MeshMaterial2d<ColorMaterial>, f32>,
-            )
-                .in_set(UpdateSequenceSet),
-        );
+        app.animate_component::<Transform, Vec3>()
+            .animate_component::<Transform, Quat>()
+            .animate_component::<Transform, f32>()
+            .animate_component::<Sprite, Color>()
+            .animate_component::<Sprite, f32>()
+            .animate_asset::<MeshMaterial3d<StandardMaterial>, Color>()
+            .animate_asset::<MeshMaterial3d<StandardMaterial>, LinearRgba>()
+            .animate_asset::<MeshMaterial3d<StandardMaterial>, f32>()
+            .animate_asset::<MeshMaterial2d<ColorMaterial>, Color>()
+            .animate_asset::<MeshMaterial2d<ColorMaterial>, f32>();
     }
 }
