@@ -7,7 +7,6 @@ use sequence::{
 use slide::slide_controller;
 
 pub mod action;
-pub mod color_palette;
 pub mod ease;
 pub mod f32lerp;
 pub mod sequence;
@@ -16,7 +15,6 @@ pub mod tuple_motion;
 
 pub mod prelude {
     pub use crate::action::{act, Action, SequenceBuilderExt};
-    pub use crate::color_palette::{ColorKey, ColorPalette};
     pub use crate::f32lerp::F32Lerp;
     pub use crate::sequence::{
         all, any, chain, delay, flow, MultiSeqOrd, Sequence,

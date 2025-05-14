@@ -24,14 +24,14 @@ fn hello_world(
 
     const CAPACITY: usize = WIDTH * HEIGHT;
 
-    // Color palette
-    let palette = ColorPalette::default();
+    // Color.
+    let green = Srgba::hex("A9DC76").unwrap().into();
 
-    // Create cubes
+    // Create cubes.
     let mut cubes = Vec::with_capacity(CAPACITY);
     let mesh_handle = meshes.add(Cuboid::default());
     let material_handle = materials.add(StandardMaterial {
-        base_color: palette.get(ColorKey::Green),
+        base_color: green,
         ..default()
     });
 
@@ -55,7 +55,7 @@ fn hello_world(
         }
     }
 
-    // Generate sequence
+    // Generate sequence.
     let mut cube_seqs = Vec::with_capacity(CAPACITY);
 
     for w in 0..WIDTH {
@@ -105,7 +105,6 @@ fn hello_world(
 }
 
 fn setup(mut commands: Commands) {
-    // Camera
     commands.spawn((
         Camera {
             hdr: true,

@@ -19,14 +19,16 @@ fn slide_basic(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Color palette
-    let palette = ColorPalette::default();
+    // Color.
+    let green = Srgba::hex("A9DC76").unwrap().into();
+    let blue = Srgba::hex("78DCE8").unwrap().into();
+    let base0 = Srgba::hex("19181A").unwrap().into();
 
-    // Cube
+    // Cube.
     let x_offset = 2.0;
     let transform = Transform::default().with_scale(Vec3::splat(0.0));
     let material = StandardMaterial {
-        base_color: palette.get(ColorKey::Green),
+        base_color: green,
         ..default()
     };
     let material_handle = materials.add(material.clone());
@@ -40,12 +42,12 @@ fn slide_basic(
         .id();
     let mut cube = (id, (transform, material));
 
-    // Sphere
+    // Sphere.
     let transform = Transform::default()
         .with_translation(Vec3::X * x_offset)
         .with_scale(Vec3::splat(0.0));
     let material = StandardMaterial {
-        base_color: palette.get(ColorKey::Blue),
+        base_color: blue,
         ..default()
     };
     let material_handle = materials.add(material.clone());
@@ -59,7 +61,7 @@ fn slide_basic(
         .id();
     let mut sphere = (id, (transform, material));
 
-    // Create slides
+    // Create slides.
     let slide0 = commands.play_motion(
         cube.transform().to_scale(Vec3::ONE).animate(1.0),
     );
@@ -72,9 +74,7 @@ fn slide_basic(
                     .animate(1.0),
             )
             .add_motion(
-                cube.std_material()
-                    .to_base_color(palette.get(ColorKey::Base0))
-                    .animate(1.0),
+                cube.std_material().to_base_color(base0).animate(1.0),
             )
             .all(),
         commands.play_motion(
@@ -87,7 +87,6 @@ fn slide_basic(
 }
 
 fn setup(mut commands: Commands) {
-    // Camera
     commands.spawn((
         Camera {
             hdr: true,
@@ -99,7 +98,6 @@ fn setup(mut commands: Commands) {
         bevy::core_pipeline::bloom::Bloom::default(),
     ));
 
-    // Directional light
     commands.spawn((
         DirectionalLight::default(),
         Transform::from_xyz(3.0, 10.0, 5.0)

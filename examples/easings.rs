@@ -35,15 +35,17 @@ fn easings(
 
     let capacity = easings.len();
 
-    // Color palette
-    let palette = ColorPalette::default();
+    // Colors.
+    let blue =
+        LinearRgba::from(Srgba::hex("78DCE8").unwrap()) * 100.0;
+    let red = LinearRgba::from(Srgba::hex("FF6188").unwrap()) * 100.0;
 
-    // Create spheres
+    // Create spheres.
     let mut spheres = Vec::with_capacity(capacity);
     let mesh_handle = meshes.add(Sphere::default());
     let material = StandardMaterial {
         base_color: Color::WHITE,
-        emissive: palette.get(ColorKey::Blue).to_linear() * 100.0,
+        emissive: blue,
         ..default()
     };
 
@@ -68,7 +70,7 @@ fn easings(
         spheres.push((id, (transform, material.clone())));
     }
 
-    // Generate sequence
+    // Generate sequence.
     let sequence = spheres
         .iter()
         .zip(easings)
@@ -90,8 +92,7 @@ fn easings(
                     Action::<StandardMaterial, _>::new_f32lerp(
                         *entity,
                         color,
-                        palette.get(ColorKey::Red).to_linear()
-                            * 100.0,
+                        red,
                         |m| &mut m.emissive,
                     )
                     .with_ease(ease_fn)
@@ -109,7 +110,6 @@ fn easings(
 }
 
 fn setup(mut commands: Commands) {
-    // Camera
     commands.spawn((
         Camera {
             hdr: true,
