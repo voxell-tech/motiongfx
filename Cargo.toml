@@ -6,7 +6,7 @@ members = ["crates/*", ]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/nixon-voxell/bevy_motiongfx"
+repository = "https://github.com/nixon-voxell/motiongfx"
 readme = "README.md"
 
 [workspace.dependencies]
@@ -14,7 +14,7 @@ bevy = { version = "0.16.0", default-features = false , features = ["bevy_color"
 smallvec = "1"
 
 [package]
-name = "bevy_motiongfx"
+name = "motiongfx"
 categories = ["graphics", "gui", "rendering", "motion-graphics", "vector-graphics"]
 description = "Motion graphics creation tool in Bevy. (Highly inspired by Motion Canvas and Manim)"
 exclude = ["/assets/", "/.github/", "/examples/"]

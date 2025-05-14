@@ -1,14 +1,14 @@
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::pbr::NotShadowCaster;
 use bevy::prelude::*;
-use bevy_motiongfx::prelude::*;
+use motiongfx::prelude::*;
 
 fn main() {
     App::new()
         // Bevy plugins
         .add_plugins(DefaultPlugins)
         // Custom plugins
-        .add_plugins(bevy_motiongfx::MotionGfxPlugin)
+        .add_plugins(motiongfx::MotionGfxPlugin)
         .add_systems(Startup, (setup, slide_basic))
         .add_systems(Update, slide_movement)
         .run();
