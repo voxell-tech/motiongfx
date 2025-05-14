@@ -140,18 +140,6 @@ macro_rules! act {
 
 pub use act;
 
-pub struct _Action<T, F> {
-    /// Target [`Entity`] for [`Component`] manipulation.
-    pub entity: Entity,
-    pub action_fn: ActionFn<T, F>,
-    /// Function for getting a mutable reference of a field (or itself) from `T`.
-    pub get_field_fn: GetFieldMut<T, F>,
-    /// Function for interpolating the value based on a [`f32`] time.
-    pub interp_fn: InterpFn<T>,
-    /// Function for easing the [`f32`] time value for the action.
-    pub ease_fn: EaseFn,
-}
-
 /// Basic data structure to describe an animation action.
 #[derive(Component, Clone, Copy)]
 pub struct Action<T, F> {
@@ -233,8 +221,8 @@ where
 }
 
 #[derive(Clone, Copy)]
-pub(crate) struct ActionMeta {
-    /// Target `Entity` for `Action`.
+pub(crate) struct ActionSpan {
+    /// Target [`Entity`] for [`Action`].
     action_id: Entity,
     /// Time at which animation should begin.
     pub(crate) start_time: f32,
@@ -244,7 +232,7 @@ pub(crate) struct ActionMeta {
     pub(crate) slide_index: usize,
 }
 
-impl ActionMeta {
+impl ActionSpan {
     pub fn new(action_id: Entity) -> Self {
         Self {
             action_id,
@@ -341,10 +329,10 @@ impl<'w> SequenceBuilderExt<'w> for Commands<'w, '_> {
         U: ThreadSafe,
     {
         let action_id = self.spawn(motion.action).id();
-        let mut action_meta = ActionMeta::new(action_id);
-        action_meta.duration = motion.duration;
+        let mut span = ActionSpan::new(action_id);
+        span.duration = motion.duration;
 
-        Sequence::single(action_meta)
+        Sequence::single(span)
     }
 
     fn add_motion<T, U>(

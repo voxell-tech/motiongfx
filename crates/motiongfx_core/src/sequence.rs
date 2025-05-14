@@ -3,8 +3,9 @@ use std::iter::Iterator;
 use bevy::asset::AsAssetId;
 use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
+use smallvec::SmallVec;
 
-use crate::action::{Action, ActionMeta};
+use crate::action::{Action, ActionSpan};
 use crate::ThreadSafe;
 
 /// Bundle to encapsulate [`Sequence`] and [`SequenceController`].
@@ -44,17 +45,16 @@ impl SequencePlayerBundle {
 #[derive(Component, Default, Clone)]
 pub struct Sequence {
     duration: f32,
-    // TODO(perf): Use SmallVec to prevent heap allocations for single action sequences.
-    pub(crate) action_metas: Vec<ActionMeta>,
+    pub(crate) spans: SmallVec<[ActionSpan; 1]>,
 }
 
 impl Sequence {
-    pub(crate) fn single(action_meta: ActionMeta) -> Self {
-        let duration = action_meta.duration;
-        Self {
-            action_metas: vec![action_meta],
-            duration,
-        }
+    pub(crate) fn single(span: ActionSpan) -> Self {
+        let duration = span.duration;
+        let mut spans = SmallVec::new();
+        spans.push(span);
+
+        Self { spans, duration }
     }
 
     pub(crate) fn empty(duration: f32) -> Self {
@@ -65,8 +65,8 @@ impl Sequence {
     }
 
     pub(crate) fn set_slide_index(&mut self, slide_index: usize) {
-        for action_meta in &mut self.action_metas {
-            action_meta.slide_index = slide_index;
+        for span in &mut self.spans {
+            span.slide_index = slide_index;
         }
     }
 
@@ -140,10 +140,10 @@ pub fn chain(sequences: &[Sequence]) -> Sequence {
     let mut chain_duration = 0.0;
 
     for sequence in sequences {
-        for action_meta in &sequence.action_metas {
-            final_sequence.action_metas.push(
-                action_meta.with_start_time(
-                    action_meta.start_time + chain_duration,
+        for span in &sequence.spans {
+            final_sequence.spans.push(
+                span.with_start_time(
+                    span.start_time + chain_duration,
                 ),
             );
         }
@@ -161,8 +161,8 @@ pub fn all(sequences: &[Sequence]) -> Sequence {
     let mut max_duration = 0.0;
 
     for sequence in sequences {
-        for action_meta in &sequence.action_metas {
-            final_sequence.action_metas.push(*action_meta);
+        for span in &sequence.spans {
+            final_sequence.spans.push(*span);
         }
 
         max_duration = f32::max(max_duration, sequence.duration);
@@ -178,8 +178,8 @@ pub fn any(sequences: &[Sequence]) -> Sequence {
     let mut min_duration = 0.0;
 
     for action_grp in sequences {
-        for action_meta in &action_grp.action_metas {
-            final_sequence.action_metas.push(*action_meta);
+        for span in &action_grp.spans {
+            final_sequence.spans.push(*span);
         }
 
         min_duration = f32::min(min_duration, action_grp.duration);
@@ -196,11 +196,9 @@ pub fn flow(t: f32, sequences: &[Sequence]) -> Sequence {
     let mut final_duration = 0.0;
 
     for sequence in sequences {
-        for action_meta in &sequence.action_metas {
-            final_sequence.action_metas.push(
-                action_meta.with_start_time(
-                    action_meta.start_time + flow_duration,
-                ),
+        for span in &sequence.spans {
+            final_sequence.spans.push(
+                span.with_start_time(span.start_time + flow_duration),
             );
         }
 
@@ -219,10 +217,10 @@ pub fn flow(t: f32, sequences: &[Sequence]) -> Sequence {
 pub fn delay(t: f32, sequence: Sequence) -> Sequence {
     let mut final_sequence = Sequence::default();
 
-    for action_meta in &sequence.action_metas {
-        final_sequence.action_metas.push(
-            action_meta.with_start_time(action_meta.start_time + t),
-        );
+    for span in &sequence.spans {
+        final_sequence
+            .spans
+            .push(span.with_start_time(span.start_time + t));
     }
 
     final_sequence.duration = sequence.duration + t;
@@ -253,7 +251,7 @@ pub fn animate_component<Comp, Field>(
                     interp_fn,
                     ease_fn,
                 },
-                action_meta,
+                span,
             ) in action
             {
                 // Get component to mutate based on action id
@@ -263,8 +261,8 @@ pub fn animate_component<Comp, Field>(
                 };
 
                 let mut unit_time = (sequence_controller.target_time
-                    - action_meta.start_time)
-                    / action_meta.duration;
+                    - span.start_time)
+                    / span.duration;
 
                 // In case of division by 0.0
                 if f32::is_nan(unit_time) {
@@ -309,7 +307,7 @@ pub fn animate_asset<Comp, Field>(
                     interp_fn,
                     ease_fn,
                 },
-                action_meta,
+                span,
             ) in action
             {
                 // Get handle based on action id
@@ -325,8 +323,8 @@ pub fn animate_asset<Comp, Field>(
                 };
 
                 let mut unit_time = (sequence_controller.target_time
-                    - action_meta.start_time)
-                    / action_meta.duration;
+                    - span.start_time)
+                    / span.duration;
 
                 // In case of division by 0.0
                 if f32::is_nan(unit_time) {
@@ -386,14 +384,14 @@ fn generate_action_iter<'a, T, F>(
     q_actions: &'a Query<&'static Action<T, F>>,
     sequence: &'a Sequence,
     controller: &'a SequenceController,
-) -> Option<impl Iterator<Item = (&'a Action<T, F>, &'a ActionMeta)>>
+) -> Option<impl Iterator<Item = (&'a Action<T, F>, &'a ActionSpan)>>
 where
     F: ThreadSafe,
 {
     // Do not perform any actions if there are no changes to the timeline timings
     // or there are no actions at all.
     if controller.time == controller.target_time
-        || sequence.action_metas.is_empty()
+        || sequence.spans.is_empty()
     {
         return None;
     }
@@ -409,7 +407,7 @@ where
         f32::max(controller.time, controller.target_time);
 
     let mut start_index = 0;
-    let mut end_index = sequence.action_metas.len() - 1;
+    let mut end_index = sequence.spans.len() - 1;
 
     // Swap direction if needed
     if direction == -1 {
@@ -428,12 +426,12 @@ where
                 return None;
             }
 
-            let action_meta = &sequence.action_metas[action_index];
-            let action_id = action_meta.id();
+            let span = &sequence.spans[action_index];
+            let action_id = span.id();
 
             let slide_direction = isize::signum(
                 controller.target_slide_index as isize
-                    - action_meta.slide_index as isize,
+                    - span.slide_index as isize,
             );
 
             // Continue only when slide direction matches or is 0
@@ -445,8 +443,8 @@ where
                 (action_index as isize + direction) as usize;
 
             let is_time_overlap = time_range_overlap(
-                action_meta.start_time,
-                action_meta.end_time(),
+                span.start_time,
+                span.end_time(),
                 timeline_start,
                 timeline_end,
             );
@@ -457,7 +455,7 @@ where
 
             // Ignore if `Action` does not exists
             if let Ok(action) = q_actions.get(action_id) {
-                return Some((action, action_meta));
+                return Some((action, span));
             }
         }
     }))
