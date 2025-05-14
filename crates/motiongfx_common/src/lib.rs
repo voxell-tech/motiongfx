@@ -4,13 +4,11 @@ use motiongfx_core::prelude::*;
 pub mod motion;
 
 pub mod prelude {
-    pub use crate::{
-        motion::{
-            standard_material_motion::StandardMaterialMotion,
-            transform_motion::TransformMotion,
-        },
-        MotionGfxCommonPlugin,
+    pub use crate::motion::{
+        standard_material_motion::StandardMaterialMotion,
+        transform_motion::TransformMotion,
     };
+    pub use crate::MotionGfxCommonPlugin;
 }
 
 pub struct MotionGfxCommonPlugin;

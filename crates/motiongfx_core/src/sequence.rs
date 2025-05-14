@@ -1,7 +1,8 @@
 use std::iter::Iterator;
 
+use bevy::asset::AsAssetId;
+use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
-use bevy::{asset::AsAssetId, ecs::component::Mutable};
 
 use crate::action::{Action, ActionMeta};
 use crate::ThreadSafe;
@@ -229,13 +230,13 @@ pub fn delay(t: f32, sequence: Sequence) -> Sequence {
 }
 
 /// System for animating the [`Component`] related [`Action`]s that are inside the [`Sequence`].
-pub fn animate_component<Comp, Target>(
+pub fn animate_component<Comp, Field>(
     mut q_components: Query<&mut Comp>,
-    q_actions: Query<&'static Action<Target, Comp>>,
+    q_actions: Query<&'static Action<Comp, Field>>,
     q_sequences: Query<(&Sequence, &SequenceController)>,
 ) where
     Comp: Component<Mutability = Mutable>,
-    Target: ThreadSafe,
+    Field: ThreadSafe,
 {
     for (sequence, sequence_controller) in q_sequences.iter() {
         if let Some(action) = generate_action_iter(
@@ -283,14 +284,14 @@ pub fn animate_component<Comp, Target>(
 }
 
 /// System for animating the [`Asset`] related [`Action`]s that are inside the [`Sequence`].
-pub fn animate_asset<Comp, Target>(
+pub fn animate_asset<Comp, Field>(
     q_handles: Query<&Comp>,
     mut assets: ResMut<Assets<Comp::Asset>>,
-    q_actions: Query<&'static Action<Target, Comp::Asset>>,
+    q_actions: Query<&'static Action<Comp::Asset, Field>>,
     q_sequences: Query<(&Sequence, &SequenceController)>,
 ) where
     Comp: Component + AsAssetId,
-    Target: ThreadSafe,
+    Field: ThreadSafe,
 {
     // let q_handles = q_handles.iter
     for (sequence, sequence_controller) in q_sequences.iter() {
@@ -381,13 +382,13 @@ pub(crate) fn update_time(
     }
 }
 
-fn generate_action_iter<'a, T, U>(
-    q_actions: &'a Query<&'static Action<T, U>>,
+fn generate_action_iter<'a, T, F>(
+    q_actions: &'a Query<&'static Action<T, F>>,
     sequence: &'a Sequence,
     controller: &'a SequenceController,
-) -> Option<impl Iterator<Item = (&'a Action<T, U>, &'a ActionMeta)>>
+) -> Option<impl Iterator<Item = (&'a Action<T, F>, &'a ActionMeta)>>
 where
-    T: ThreadSafe,
+    F: ThreadSafe,
 {
     // Do not perform any actions if there are no changes to the timeline timings
     // or there are no actions at all.

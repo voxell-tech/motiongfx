@@ -38,7 +38,7 @@ impl<'a> TransformMotionBuilder<'a> {
     pub fn to_translation(
         &mut self,
         translation: Vec3,
-    ) -> Action<Vec3, Transform> {
+    ) -> Action<Transform, Vec3> {
         act!(
             (self.id, Transform),
             start = { self.transform }.translation,
@@ -49,7 +49,7 @@ impl<'a> TransformMotionBuilder<'a> {
     pub fn to_translation_x(
         &mut self,
         x: f32,
-    ) -> Action<f32, Transform> {
+    ) -> Action<Transform, f32> {
         act!(
             (self.id, Transform),
             start = { self.transform }.translation.x,
@@ -60,7 +60,7 @@ impl<'a> TransformMotionBuilder<'a> {
     pub fn to_translation_y(
         &mut self,
         y: f32,
-    ) -> Action<f32, Transform> {
+    ) -> Action<Transform, f32> {
         act!(
             (self.id, Transform),
             start = { self.transform }.translation.y,
@@ -71,7 +71,7 @@ impl<'a> TransformMotionBuilder<'a> {
     pub fn to_translation_z(
         &mut self,
         z: f32,
-    ) -> Action<f32, Transform> {
+    ) -> Action<Transform, f32> {
         act!(
             (self.id, Transform),
             start = { self.transform }.translation.z,
@@ -82,7 +82,7 @@ impl<'a> TransformMotionBuilder<'a> {
     pub fn to_scale(
         &mut self,
         scale: Vec3,
-    ) -> Action<Vec3, Transform> {
+    ) -> Action<Transform, Vec3> {
         act!(
             (self.id, Transform),
             start = { self.transform }.scale,
@@ -90,7 +90,7 @@ impl<'a> TransformMotionBuilder<'a> {
         )
     }
 
-    pub fn to_scale_x(&mut self, x: f32) -> Action<f32, Transform> {
+    pub fn to_scale_x(&mut self, x: f32) -> Action<Transform, f32> {
         act!(
             (self.id, Transform),
             start = { self.transform }.scale.x,
@@ -98,7 +98,7 @@ impl<'a> TransformMotionBuilder<'a> {
         )
     }
 
-    pub fn to_scale_y(&mut self, y: f32) -> Action<f32, Transform> {
+    pub fn to_scale_y(&mut self, y: f32) -> Action<Transform, f32> {
         act!(
             (self.id, Transform),
             start = { self.transform }.scale.y,
@@ -106,7 +106,7 @@ impl<'a> TransformMotionBuilder<'a> {
         )
     }
 
-    pub fn to_scale_z(&mut self, z: f32) -> Action<f32, Transform> {
+    pub fn to_scale_z(&mut self, z: f32) -> Action<Transform, f32> {
         act!(
             (self.id, Transform),
             start = { self.transform }.scale.z,
@@ -117,7 +117,7 @@ impl<'a> TransformMotionBuilder<'a> {
     pub fn to_rotation(
         &mut self,
         rotation: Quat,
-    ) -> Action<Quat, Transform> {
+    ) -> Action<Transform, Quat> {
         act!(
             (self.id, Transform),
             start = { self.transform }.rotation,

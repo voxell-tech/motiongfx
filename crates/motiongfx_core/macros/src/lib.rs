@@ -5,12 +5,9 @@ use proc_macro2::{
     Punct, Spacing, Span, TokenStream as TokenStream2,
 };
 use quote::{quote, TokenStreamExt};
-use syn::{
-    parse::{Parse, ParseStream},
-    parse_macro_input,
-    token::Comma,
-    Ident, LitInt, Result,
-};
+use syn::parse::{Parse, ParseStream};
+use syn::token::Comma;
+use syn::{parse_macro_input, Ident, LitInt, Result};
 
 struct CombinationTuple {
     macro_ident: Ident,

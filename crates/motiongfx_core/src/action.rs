@@ -1,17 +1,36 @@
 use bevy::prelude::*;
 
-use crate::{
-    ease::{cubic, EaseFn},
-    f32lerp::F32Lerp,
-    prelude::MultiSeqOrd,
-    sequence::Sequence,
-    ThreadSafe,
-};
+use crate::ease::{cubic, EaseFn};
+use crate::f32lerp::F32Lerp;
+use crate::sequence::{MultiSeqOrd, Sequence};
+use crate::ThreadSafe;
 
 /// Function for interpolating a type based on a [`f32`] time.
 pub type InterpFn<T> = fn(start: &T, end: &T, t: f32) -> T;
-/// Function for getting a mutable reference of a field (or itself) of type `T` in type `U`.
-pub type GetFieldMut<T, U> = fn(source: &mut U) -> &mut T;
+/// Function for getting a mutable reference of a field of type `U` in type `T`.
+/// Type `U` can be similar to `T` as well.
+pub type GetFieldMut<T, F> = fn(source: &mut T) -> &mut F;
+/// Function for getting the end value of an action based on the current (start) value.
+/// The value can be a field of type `F` in type `T`.
+/// Type `F` can be similar to `T` as well.
+///
+/// # Example
+/// ```
+/// use motiongfx_core::action::ActionFn;
+///
+/// struct Point {
+///     pub x: f32,
+///     pub y: f32,
+/// }
+///
+/// let point = Point {
+///     x: 1.0,
+///     y: 2.0,
+/// }
+/// let move_pointx_action = |point: &Point| { point.x += 10.0 };
+/// ```
+pub type ActionFn<T, F> = fn(source: &T) -> &F;
+// TODO: Move the example to [`Action`]
 
 /// Creates an [`Action`] and changes the animated value to the end value.
 ///
@@ -121,31 +140,43 @@ macro_rules! act {
 
 pub use act;
 
+pub struct _Action<T, F> {
+    /// Target [`Entity`] for [`Component`] manipulation.
+    pub entity: Entity,
+    pub action_fn: ActionFn<T, F>,
+    /// Function for getting a mutable reference of a field (or itself) from `T`.
+    pub get_field_fn: GetFieldMut<T, F>,
+    /// Function for interpolating the value based on a [`f32`] time.
+    pub interp_fn: InterpFn<T>,
+    /// Function for easing the [`f32`] time value for the action.
+    pub ease_fn: EaseFn,
+}
+
 /// Basic data structure to describe an animation action.
 #[derive(Component, Clone, Copy)]
-pub struct Action<T, U> {
+pub struct Action<T, F> {
     /// Target [`Entity`] for [`Component`] manipulation.
     pub(crate) entity: Entity,
     /// Initial value of the action.
-    pub(crate) start: T,
+    pub(crate) start: F,
     /// Final value of the action.
-    pub(crate) end: T,
+    pub(crate) end: F,
     /// Function for getting a mutable reference of a field (or itself) from the component.
-    pub(crate) get_field_fn: GetFieldMut<T, U>,
-    /// Function for interpolating the value based on a [`f32`] time.
-    pub(crate) interp_fn: InterpFn<T>,
+    pub(crate) get_field_fn: GetFieldMut<T, F>,
+    /// Function for interpolating the field value based on a [`f32`] time.
+    pub(crate) interp_fn: InterpFn<F>,
     /// Function for easing the [`f32`] time value for the action.
     pub(crate) ease_fn: EaseFn,
 }
 
-impl<T, U> Action<T, U> {
+impl<T, F> Action<T, F> {
     /// Creates a new [`Action`].
     pub fn new(
         entity: Entity,
-        start: T,
-        end: T,
-        interp_fn: InterpFn<T>,
-        get_field_fn: GetFieldMut<T, U>,
+        start: F,
+        end: F,
+        interp_fn: InterpFn<F>,
+        get_field_fn: GetFieldMut<T, F>,
     ) -> Self {
         Self {
             entity,
@@ -164,13 +195,13 @@ impl<T, U> Action<T, U> {
     }
 
     /// Overwrite the existing [interpolation function](InterpFn).
-    pub fn with_interp(mut self, interp_fn: InterpFn<T>) -> Self {
+    pub fn with_interp(mut self, interp_fn: InterpFn<F>) -> Self {
         self.interp_fn = interp_fn;
         self
     }
 
     /// Convert an [`Action`] into a [`Motion`] by adding a duration.
-    pub fn animate(self, duration: f32) -> Motion<T, U> {
+    pub fn animate(self, duration: f32) -> Motion<T, F> {
         Motion {
             action: self,
             duration,
@@ -178,24 +209,24 @@ impl<T, U> Action<T, U> {
     }
 }
 
-impl<T, U> Action<T, U>
+impl<T, F> Action<T, F>
 where
-    T: F32Lerp,
+    F: F32Lerp,
 {
     /// Creates a new [`Action`] with [`F32Lerp`] as the default
     /// [interpolation function](InterpFn).
     pub fn new_f32lerp(
         entity: Entity,
-        start: T,
-        end: T,
-        get_field_fn: GetFieldMut<T, U>,
+        start: F,
+        end: F,
+        get_field_fn: GetFieldMut<T, F>,
     ) -> Self {
         Self {
             entity,
             start,
             end,
             get_field_fn,
-            interp_fn: T::f32lerp,
+            interp_fn: F::f32lerp,
             ease_fn: cubic::ease_in_out,
         }
     }

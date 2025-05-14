@@ -68,10 +68,10 @@ pub enum MotionGfxSet {
 
 /// Utility function for registering animatable components.
 pub trait MotionGfxAnimateAppExt {
-    fn animate_component<Comp, Target>(&mut self) -> &mut Self
+    fn animate_component<Comp, Field>(&mut self) -> &mut Self
     where
         Comp: Component<Mutability = Mutable>,
-        Target: ThreadSafe;
+        Field: ThreadSafe;
 
     fn animate_asset<Comp, Target>(&mut self) -> &mut Self
     where
@@ -80,26 +80,26 @@ pub trait MotionGfxAnimateAppExt {
 }
 
 impl MotionGfxAnimateAppExt for App {
-    fn animate_component<Comp, Target>(&mut self) -> &mut Self
+    fn animate_component<Comp, Field>(&mut self) -> &mut Self
     where
         Comp: Component<Mutability = Mutable>,
-        Target: ThreadSafe,
+        Field: ThreadSafe,
     {
         self.add_systems(
             PostUpdate,
-            animate_component::<Comp, Target>
+            animate_component::<Comp, Field>
                 .in_set(MotionGfxSet::Animate),
         )
     }
 
-    fn animate_asset<Comp, Target>(&mut self) -> &mut Self
+    fn animate_asset<Comp, Field>(&mut self) -> &mut Self
     where
         Comp: Component + AsAssetId,
-        Target: ThreadSafe,
+        Field: ThreadSafe,
     {
         self.add_systems(
             PostUpdate,
-            animate_asset::<Comp, Target>
+            animate_asset::<Comp, Field>
                 .in_set(MotionGfxSet::Animate),
         )
     }

@@ -76,7 +76,7 @@ fn easings(
             commands
                 .add_motion({
                     let x = transform.translation.x;
-                    Action::<_, Transform>::new_f32lerp(
+                    Action::<Transform, _>::new_f32lerp(
                         *entity,
                         x,
                         x + 10.0,
@@ -87,7 +87,7 @@ fn easings(
                 })
                 .add_motion({
                     let color = material.emissive;
-                    Action::<_, StandardMaterial>::new_f32lerp(
+                    Action::<StandardMaterial, _>::new_f32lerp(
                         *entity,
                         color,
                         palette.get(ColorKey::Red).to_linear()
