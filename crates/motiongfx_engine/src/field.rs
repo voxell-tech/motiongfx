@@ -273,7 +273,7 @@ pub use field_hash_raw;
 
 /// Creates a [`FieldHash`] with type safety.
 ///
-/// Use [`field_raw!`] for the non type safe version.
+/// Use [`field_hash_raw!`] for the non type safe version.
 #[macro_export]
 macro_rules! field_hash {
     (<$source:ty>$(::$field:tt)+) => {

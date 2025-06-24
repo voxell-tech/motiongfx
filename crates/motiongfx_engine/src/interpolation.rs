@@ -1,9 +1,9 @@
 use bevy::math::*;
 use bevy::prelude::*;
 
-/// Trait for interpolating between 2 values based on a [`f32`] `t` value.
+/// Trait for interpolating between 2 values based on a f32 `t` value.
 pub trait Interpolation<T = Self, U = Self> {
-    /// Lerp between 2 values based on a [`f32`] `t` value.
+    /// Linearly interpolate between 2 values based on a f32 `t` value.
     fn interp(&self, rhs: &T, t: f32) -> U;
 }
 

@@ -129,7 +129,7 @@ where
 }
 
 #[derive(SystemParam)]
-pub struct KeyframeSampler<'w, 's, Source, Target>
+pub(crate) struct KeyframeSampler<'w, 's, Source, Target>
 where
     Target: ThreadSafe,
     Source: ThreadSafe,
@@ -168,7 +168,7 @@ where
     Target: Interpolation + Clone + ThreadSafe,
 {
     /// Sample [`Keyframes`] for tracks with the [`SampleKeyframes`] component.
-    pub fn sample_keyframes(
+    pub(crate) fn sample_keyframes(
         &mut self,
         field_hash: FieldHash,
         mut apply_sample: impl FnMut(
@@ -329,7 +329,7 @@ where
 
 /// System parameters needed to create a [`KeyframeBaker`].
 #[derive(SystemParam)]
-pub struct KeyframeBaker<'w, 's, Source, Target>
+pub(crate) struct KeyframeBaker<'w, 's, Source, Target>
 where
     Source: 'static,
     Target: 'static,
@@ -350,7 +350,7 @@ where
     Target: Clone + ThreadSafe,
 {
     /// Bake [`Action`]s into [`Keyframes`] if the `field_hash` maches.
-    pub fn bake_keyframes<'a>(
+    pub(crate) fn bake_keyframes<'a>(
         &mut self,
         track_id: Entity,
         field_hash: FieldHash,

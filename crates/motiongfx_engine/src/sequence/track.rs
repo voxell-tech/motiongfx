@@ -7,6 +7,8 @@ use crate::field::FieldHash;
 
 // For docs.
 #[allow(unused_imports)]
+use super::keyframe::Keyframes;
+#[allow(unused_imports)]
 use crate::action::ActionSpan;
 
 use super::keyframe::BakeKeyframe;
@@ -112,7 +114,7 @@ pub struct Track {
     /// The [`ActionSpan`] indices in the [`Sequence`].
     /// Indices should be in ascending order.
     span_ids: NonEmpty<usize>,
-    /// The target entity that stores the [`Keyframe`]s of the track.
+    /// The target entity that stores the [`Keyframes`] of the track.
     track_id: Entity,
 }
 
@@ -123,7 +125,7 @@ impl Track {
         &self.span_ids
     }
 
-    /// Get the target entity that stores the [`Keyframe`]s of the track.
+    /// Get the target entity that stores the [`Keyframes`] of the track.
     pub fn track_id(&self) -> Entity {
         self.track_id
     }

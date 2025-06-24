@@ -138,7 +138,7 @@ fn update_curr_time(
 #[component(immutable)]
 pub struct Sequence {
     duration: f32,
-    /// Stores the [`ActionSpans`] that makes up the sequence.
+    /// Stores the [`ActionSpan`]s that makes up the sequence.
     pub(crate) spans: SmallVec<[ActionSpan; 1]>,
 }
 
