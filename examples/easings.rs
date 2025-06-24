@@ -67,46 +67,37 @@ fn easings(
             ))
             .id();
 
-        spheres.push((id, (transform, material.clone())));
+        spheres.push(id);
     }
 
     // Generate sequence.
     let sequence = spheres
         .iter()
         .zip(easings)
-        .map(|((entity, (transform, material)), ease_fn)| {
-            commands
-                .add_motion({
-                    let x = transform.translation.x;
-                    Action::<Transform, _>::new_f32lerp(
-                        *entity,
-                        x,
-                        x + 10.0,
-                        |t| &mut t.translation.x,
+        .map(|(&sphere, ease_fn)| {
+            [
+                commands
+                    .entity(sphere)
+                    .act(field!(<Transform>::translation::x), |x| {
+                        x + 10.0
+                    })
+                    .with_ease(ease_fn)
+                    .play(1.0),
+                commands
+                    .entity(sphere)
+                    .act(
+                        field!(<StandardMaterial>::emissive),
+                        move |_| red,
                     )
                     .with_ease(ease_fn)
-                    .animate(1.0)
-                })
-                .add_motion({
-                    let color = material.emissive;
-                    Action::<StandardMaterial, _>::new_f32lerp(
-                        *entity,
-                        color,
-                        red,
-                        |m| &mut m.emissive,
-                    )
-                    .with_ease(ease_fn)
-                    .animate(1.0)
-                })
-                .all()
+                    .play(1.0),
+            ]
+            .all()
         })
         .collect::<Vec<_>>()
         .chain();
 
-    commands.spawn(SequencePlayerBundle {
-        sequence,
-        ..default()
-    });
+    commands.spawn((sequence, SequencePlayer::default()));
 }
 
 fn setup(mut commands: Commands) {

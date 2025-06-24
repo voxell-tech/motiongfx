@@ -51,7 +51,7 @@ fn hello_world(
                     MeshMaterial3d(material_handle.clone()),
                 ))
                 .id();
-            cubes.push((id, transform));
+            cubes.push(id);
         }
     }
 
@@ -61,36 +61,39 @@ fn hello_world(
     for w in 0..WIDTH {
         for h in 0..HEIGHT {
             let c = w * WIDTH + h;
-            let cube = &mut cubes[c];
+            let cube = cubes[c];
 
             let circ_ease = ease::circ::ease_in_out;
 
-            let sequence = commands
-                .add_motion(
-                    cube.transform()
-                        .to_scale(Vec3::splat(0.9))
-                        .with_ease(circ_ease)
-                        .animate(1.0),
-                )
-                .add_motion({
-                    let x = cube.transform().transform.translation.x;
-                    cube.transform()
-                        .to_translation_x(x + 1.0)
-                        .with_ease(circ_ease)
-                        .animate(1.0)
-                })
-                .add_motion(
-                    cube.transform()
-                        .to_rotation(Quat::from_euler(
+            let sequence = [
+                commands
+                    .entity(cube)
+                    .act(field!(<Transform>::scale), |_| {
+                        Vec3::splat(0.9)
+                    })
+                    .with_ease(circ_ease)
+                    .play(1.0),
+                commands
+                    .entity(cube)
+                    .act(field!(<Transform>::translation::x), |x| {
+                        x + 1.0
+                    })
+                    .with_ease(circ_ease)
+                    .play(1.0),
+                commands
+                    .entity(cube)
+                    .act(field!(<Transform>::rotation), |_| {
+                        Quat::from_euler(
                             EulerRot::XYZ,
                             0.0,
                             f32::to_radians(90.0),
                             0.0,
-                        ))
-                        .with_ease(circ_ease)
-                        .animate(1.0),
-                )
-                .all();
+                        )
+                    })
+                    .with_ease(circ_ease)
+                    .play(1.0),
+            ]
+            .all();
 
             cube_seqs.push(sequence);
         }
@@ -98,10 +101,7 @@ fn hello_world(
 
     let sequence = cube_seqs.flow(0.01);
 
-    commands.spawn(SequencePlayerBundle {
-        sequence,
-        ..default()
-    });
+    commands.spawn((sequence, SequencePlayer::default()));
 }
 
 fn setup(mut commands: Commands) {
