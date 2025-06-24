@@ -55,7 +55,7 @@ fn mark_tracks_for_sampling(
                 continue;
             }
 
-            // Trigger the track.
+            // Mark the track to sample keyframes.
             commands.entity(track.track_id()).insert(SampleKeyframes);
         }
     }
@@ -167,6 +167,7 @@ where
     Source: ThreadSafe,
     Target: Interpolation + Clone + ThreadSafe,
 {
+    /// Sample [`Keyframes`] for tracks with the [`SampleKeyframes`] component.
     pub fn sample_keyframes(
         &mut self,
         field_hash: FieldHash,

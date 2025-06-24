@@ -81,31 +81,6 @@ impl ActionSpan {
     }
 
     #[inline]
-    pub(crate) fn with_duration(mut self, duration: f32) -> Self {
-        self.duration = duration;
-        self
-    }
-
-    #[inline]
-    pub(crate) fn with_slide_index(
-        mut self,
-        slide_index: u32,
-    ) -> Self {
-        self.slide_index = slide_index;
-        self
-    }
-
-    #[inline]
-    pub(crate) fn set_start_time(&mut self, start_time: f32) {
-        self.start_time = start_time;
-    }
-
-    #[inline]
-    pub(crate) fn set_duration(&mut self, duration: f32) {
-        self.duration = duration;
-    }
-
-    #[inline]
     pub(crate) fn set_slide_index(&mut self, slide_index: u32) {
         self.slide_index = slide_index;
     }
