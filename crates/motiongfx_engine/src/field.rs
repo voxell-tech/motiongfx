@@ -111,7 +111,7 @@ pub use field_bundle;
 pub struct Field<Source, Target> {
     /// The path of the field in the source.
     /// (e.g. `Transform::translation::x` will have
-    /// a field path of ":: translation :: x").
+    /// a field path of "::translation::x").
     ///
     /// You can achieved this using [`stringify!`].
     pub field_path: &'static str,
@@ -202,7 +202,7 @@ macro_rules! field {
         {
             let builder = $crate::field::FieldBuilder::new(
                 |source: $source| source$(.$field)*,
-                stringify!($(::$field)*),
+                $crate::stringify_field!($(::$field)*),
             );
 
             builder.build()
@@ -221,8 +221,6 @@ pub use field;
 /// ### field-path
 ///
 /// See [`Field::field_path`]
-///
-/// You can achieved this using [`stringify!`].
 #[derive(
     Component,
     Deref,
@@ -266,10 +264,19 @@ where
 #[macro_export]
 macro_rules! field_hash_raw {
     (<$source:ty>$(::$field:tt)*) => {
-        $crate::field::FieldHash::new::<$source>(stringify!($(::$field)*))
+        $crate::field::FieldHash::new::<$source>(
+            $crate::stringify_field!($(::$field)*)
+        )
     };
 }
 pub use field_hash_raw;
+
+#[macro_export]
+macro_rules! stringify_field {
+    ($(::$field:tt)*) => {
+        concat!($("::", stringify!($field),)*)
+    };
+}
 
 /// Creates a [`FieldHash`] with type safety.
 ///
@@ -445,7 +452,7 @@ mod test {
         assert_eq!(&value.name.0, accessor.get_ref(&value));
 
         accessor.get_mut(&mut value).push_str(" likes sweet.");
-        assert_eq!(value.name.0, "bob likes sweet");
+        assert_eq!(value.name.0, "bob likes sweet.");
     }
 
     #[test]
@@ -454,6 +461,11 @@ mod test {
             field_bundle!(<NestedName>::name::0);
 
         assert_eq!(field, field!(<NestedName>::name::0));
-        assert_eq!(accessor, accessor!(<NestedName>::name::0));
+        assert_eq!(
+            core::any::type_name_of_val(&accessor),
+            core::any::type_name_of_val(
+                &accessor!(<NestedName>::name::0)
+            )
+        );
     }
 }
