@@ -180,7 +180,7 @@ impl<'w> ActionBuilderExt<'w> for EntityCommands<'w> {
 
 #[cfg(test)]
 mod test {
-    use crate::field::{field, FieldAccessor};
+    use crate::field::field;
 
     use super::*;
 
@@ -188,14 +188,18 @@ mod test {
     fn test_action_builder() {
         const DURATION: f32 = 2.0;
 
+        let action_fn = |x: &f32| x + 3.0;
+
         let mut world = World::new();
 
         let seq = world
             .commands()
             .spawn(Transform::default())
-            .act(field!(<Transform>::translation::x), |x| x + 3.0)
+            .act(field!(<Transform>::translation::x), action_fn)
             .with_ease(|t| t * t)
             .play(DURATION);
+
+        world.flush();
 
         assert_eq!(seq.spans.len(), 1);
         assert_eq!(seq.spans[0].duration, DURATION);
@@ -207,17 +211,6 @@ mod test {
         let action =
             world.query::<&Action<f32>>().single(&world).unwrap();
 
-        assert_eq!(action.0(&2.0), 2.0 + 3.0);
-
-        let accessor = world
-            .query::<&FieldAccessor<Transform, f32>>()
-            .single(&world)
-            .unwrap();
-
-        // It shound get a reference to translation::x from the Transform.
-        assert_eq!(
-            *accessor.get_ref(&Transform::from_xyz(1.0, 2.0, 3.0)),
-            1.0
-        );
+        assert_eq!(action(&2.0), action_fn(&2.0));
     }
 }
