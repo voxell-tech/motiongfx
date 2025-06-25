@@ -2,7 +2,7 @@ use bevy::asset::AsAssetId;
 use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
 use segment::{
-    bake_asset_keyframes, bake_component_keyframes,
+    bake_asset_actions, bake_component_actions,
     sample_asset_keyframes, sample_component_keyframes,
 };
 use smallvec::SmallVec;
@@ -66,7 +66,7 @@ impl AnimateAppExt for App {
             sample_component_keyframes(field_bundle.field)
                 .in_set(MotionGfxSet::Sample),
         )
-        .add_observer(bake_component_keyframes(field_bundle.field))
+        .add_observer(bake_component_actions(field_bundle.field))
         .register_field(field_bundle)
     }
 
@@ -83,7 +83,7 @@ impl AnimateAppExt for App {
             sample_asset_keyframes::<Source, _>(field_bundle.field)
                 .in_set(MotionGfxSet::Sample),
         )
-        .add_observer(bake_asset_keyframes::<Source, _>(
+        .add_observer(bake_asset_actions::<Source, _>(
             field_bundle.field,
         ))
         .register_field(field_bundle)

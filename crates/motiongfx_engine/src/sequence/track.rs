@@ -11,7 +11,6 @@ use super::segment::Segment;
 #[allow(unused_imports)]
 use crate::action::ActionSpan;
 
-use super::segment::BakeKeyframe;
 use super::Sequence;
 
 pub(super) struct TrackPlugin;
@@ -32,7 +31,6 @@ fn generate_tracks(
     let sequence = q_sequences.get(sequence_id)?;
 
     let mut tracks = Tracks::default();
-    let mut track_ids = Vec::new();
 
     for (i, span) in sequence.spans.iter().enumerate() {
         let action_id = span.action_id();
@@ -49,22 +47,12 @@ fn generate_tracks(
                 track.push_span(i, span);
             }
             None => {
-                let track_id = commands
-                    .spawn((SequenceTarget(sequence_id), track_key))
-                    .id();
-
                 tracks.insert(track_key, Track::new(i, span));
-                track_ids.push(track_id);
             }
         }
     }
 
     commands.entity(sequence_id).insert(tracks);
-
-    // Bake keyframes only after the `Tracks` component is inserted.
-    for track_id in track_ids {
-        commands.entity(track_id).trigger(BakeKeyframe);
-    }
 
     Ok(())
 }
@@ -75,14 +63,8 @@ fn generate_tracks(
 #[component(immutable)]
 pub struct Tracks(HashMap<TrackKey, Track>);
 
-// /// Maps the track entity to their respective [`TrackKey`].
-// #[derive(Component, Deref, DerefMut, Default, Debug, Clone)]
-// #[component(immutable)]
-// pub struct TrackKeyKap(EntityHashMap<TrackKey>);
-
 /// Stores the keys required to uniquely identify a track.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[component(immutable)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TrackKey {
     /// The target entity that will be animated.
     action_target: ActionTarget,
@@ -144,16 +126,3 @@ impl Track {
         self.end_time
     }
 }
-
-/// The [`Track`] entities that belongs to the
-/// [`Sequence`] that is attached to this entity.
-#[derive(Component, Reflect, Deref, Clone)]
-#[reflect(Component)]
-#[relationship_target(relationship = SequenceTarget, linked_spawn)]
-pub struct SequenceTracks(Vec<Entity>);
-
-/// The [`Sequence`] entity that the [`Track`] in this entity belongs to.
-#[derive(Component, Reflect, Deref, Clone)]
-#[reflect(Component)]
-#[relationship(relationship_target = SequenceTracks)]
-pub struct SequenceTarget(Entity);

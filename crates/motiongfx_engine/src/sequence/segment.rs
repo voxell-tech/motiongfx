@@ -13,7 +13,7 @@ use crate::field::{Field, FieldAccessor, FieldMap};
 use crate::prelude::{FieldHash, Interpolation};
 use crate::{MotionGfxSet, ThreadSafe};
 
-use super::track::{SequenceTarget, TrackKey, Tracks};
+use super::track::Tracks;
 use super::{Sequence, SequenceController};
 
 pub(super) struct KeyframePlugin;
@@ -100,7 +100,7 @@ fn mark_tracks_for_sampling(
     }
 }
 
-/// Sample [`Keyframes`] value onto a [`Component`].
+/// Sample [`Segment`] value onto a [`Component`].
 pub(crate) fn sample_component_keyframes<Source, Target>(
     field: Field<Source, Target>,
 ) -> ScheduleConfigs<ScheduleSystem>
@@ -131,7 +131,7 @@ where
     system.into_configs()
 }
 
-/// Sample [`Keyframes`] value onto an [`Asset`].
+/// Sample [`Segment`] value onto an [`Asset`].
 pub(crate) fn sample_asset_keyframes<Source, Target>(
     field: Field<Source::Asset, Target>,
 ) -> ScheduleConfigs<ScheduleSystem>
@@ -264,25 +264,25 @@ where
     }
 }
 
-/// Bake [`Action`]s into [`Keyframes`] using the `Source` component
+/// Bake [`Action`]s into [`Segment`]s using the `Source` component
 /// as the starting point.
-pub(super) fn bake_component_keyframes<Source, Target>(
+pub(super) fn bake_component_actions<Source, Target>(
     field: Field<Source, Target>,
-) -> impl ObserverSystem<BakeKeyframe, ()>
+) -> impl ObserverSystem<OnInsert, Tracks>
 where
     Source: Component,
     Target: ThreadSafe + Clone,
 {
     let field_hash = field.to_hash();
 
-    let system = move |trigger: Trigger<BakeKeyframe>,
+    let system = move |trigger: Trigger<OnInsert, Tracks>,
                        mut baker: ActionBaker<Source, Target>,
                        q_comps: Query<&Source>|
           -> Result {
-        let track_id = trigger.target();
+        let sequence_id = trigger.target();
 
         baker.bake_actions(
-            track_id,
+            sequence_id,
             field_hash,
             |action_target| {
                 let comp = q_comps.get(action_target)?;
@@ -296,11 +296,11 @@ where
     IntoObserverSystem::into_system(system)
 }
 
-/// Bake [`Action`]s into [`Keyframes`] using the `Source::Asset` asset
+/// Bake [`Action`]s into [`Segment`]s using the `Source::Asset` asset
 /// as the starting point.
-pub(super) fn bake_asset_keyframes<Source, Target>(
+pub(super) fn bake_asset_actions<Source, Target>(
     field: Field<Source::Asset, Target>,
-) -> impl ObserverSystem<BakeKeyframe, ()>
+) -> impl ObserverSystem<OnInsert, Tracks>
 where
     Source: AsAssetId,
     Target: ThreadSafe + Clone,
@@ -308,14 +308,15 @@ where
     let field_hash = field.to_hash();
 
     let system =
-        move |trigger: Trigger<BakeKeyframe>,
+        move |trigger: Trigger<OnInsert, Tracks>,
               mut baker: ActionBaker<Source::Asset, Target>,
               q_comps: Query<&Source>,
               assets: Res<Assets<Source::Asset>>|
               -> Result {
-            let track_id = trigger.target();
+            let sequence_id = trigger.target();
+
             baker.bake_actions(
-                track_id,
+                sequence_id,
                 field_hash,
                 |action_target| {
                     let comp = q_comps.get(action_target)?;
@@ -345,8 +346,6 @@ where
     Target: 'static,
 {
     commands: Commands<'w, 's>,
-    q_tracks:
-        Query<'w, 's, (&'static TrackKey, &'static SequenceTarget)>,
     q_sequences: Query<'w, 's, (&'static Sequence, &'static Tracks)>,
     q_accessors:
         Query<'w, 's, &'static FieldAccessor<Source, Target>>,
@@ -362,121 +361,51 @@ where
     /// Bake [`Action`]s into [`Segment`]s if the `field_hash` matches.
     pub(crate) fn bake_actions<'a>(
         &mut self,
-        track_id: Entity,
+        sequence_id: Entity,
         field_hash: FieldHash,
         source_ref: impl Fn(Entity) -> Result<&'a Source>,
     ) -> Result {
-        let (track_key, sequence_target) =
-            self.q_tracks.get(track_id)?;
+        let (sequence, tracks) = self.q_sequences.get(sequence_id)?;
 
-        // Make sure that the field hash is the same.
-        if track_key.field_hash() != &field_hash {
-            // Safely skip if it's not the same.
-            return Ok(());
-        }
+        for (track_key, track) in tracks.iter() {
+            // Make sure that the field hash is the same.
+            if track_key.field_hash() != &field_hash {
+                // Safely skip if it's not the same.
+                continue;
+            }
 
-        let (sequence, tracks) =
-            self.q_sequences.get(sequence_target.entity())?;
+            let accessor = self.q_accessors.get(
+                *self.field_map.get(&field_hash).ok_or(format!(
+                    "No FieldRef for {field_hash:?}"
+                ))?,
+            )?;
 
-        let track = tracks
-            .get(track_key)
-            .ok_or(format!("No track found for {track_key:?}!"))?;
+            let mut value = accessor
+                .get_ref(source_ref(track_key.action_target())?)
+                .clone();
 
-        let accessor = self.q_accessors.get(
-            *self
-                .field_map
-                .get(&field_hash)
-                .ok_or(format!("No FieldRef for {field_hash:?}"))?,
-        )?;
+            for span in
+                track.span_ids().iter().map(|i| &sequence.spans[*i])
+            {
+                let action_id = span.action_id();
+                let action = self.q_actions.get(action_id)?;
 
-        let mut value = accessor
-            .get_ref(source_ref(track_key.action_target())?)
-            .clone();
+                // Update field to the next value using action.
+                let end_value = action(&value);
 
-        for span in
-            track.span_ids().iter().map(|i| &sequence.spans[*i])
-        {
-            let action_id = span.action_id();
-            let action = self.q_actions.get(action_id)?;
+                self.commands
+                    .entity(action_id)
+                    .insert(Segment::new(value, end_value.clone()));
 
-            // Update field to the next value using action.
-            let end_value = action(&value);
-
-            self.commands
-                .entity(action_id)
-                .insert(Segment::new(value, end_value.clone()));
-
-            value = end_value;
+                value = end_value;
+            }
         }
 
         Ok(())
     }
 }
 
-#[derive(Component)]
-#[component(storage = "SparseSet")]
-pub(crate) struct SampleKeyframes;
-
-/// Triggers [`bake_component_keyframes()`] and [`bake_asset_keyframes()`].
-#[derive(Event)]
-pub(crate) struct BakeKeyframe;
-
-// #[derive(Component, Deref, DerefMut, Debug, Clone)]
-// #[component(immutable)]
-// pub struct Keyframes<T>(NonEmpty<Keyframe<T>>);
-
-// impl<T> Keyframes<T> {
-//     pub fn new(first_keyframe: Keyframe<T>) -> Self {
-//         Self(NonEmpty::new(first_keyframe))
-//     }
-// }
-
-// impl<T> Keyframes<T> {
-//     pub fn sample(&self, time: f32) -> Sample<'_, T> {
-//         let index = self
-//             .binary_search_by(|kf| {
-//                 if kf.time > time {
-//                     Ordering::Greater
-//                 } else {
-//                     Ordering::Less
-//                 }
-//             })
-//             // SAFETY: Ordering::Equal is never returned.
-//             .unwrap_err();
-
-//         if index == 0 {
-//             Sample::Single(&self.first().value)
-//         } else if index >= self.len() {
-//             Sample::Single(&self.last().value)
-//         } else {
-//             let start = &self[index - 1];
-//             let end = &self[index];
-
-//             // An action id is only added at the end keyframe.
-//             // See `KeyframeBaker`.
-//             match end.action_id {
-//                 Some(action_id) => {
-//                     let percent =
-//                         (time - start.time) / (end.time - start.time);
-
-//                     Sample::Interp {
-//                         start: &start.value,
-//                         end: &end.value,
-//                         action_id,
-//                         percent,
-//                     }
-//                 }
-//                 // Interpolation method is unknown without an action id.
-//                 //
-//                 // This normally happens when there's a time gap
-//                 // between Action commands. Which in this case, the start
-//                 // and end value should always be the same anyways.
-//                 None => Sample::Single(&start.value),
-//             }
-//         }
-//     }
-// }
-
+/// Determines how a [`Segment`] should be sampled.
 #[derive(Component, Debug, Clone, Copy)]
 #[component(storage = "SparseSet", immutable)]
 pub enum SampleType {
@@ -484,22 +413,6 @@ pub enum SampleType {
     End,
     Interp(f32),
 }
-
-// /// Determines how a value should be sampled.
-// ///
-// /// Typically used for [`Keyframes::sample()`].
-// pub enum Sample<'a, T> {
-//     /// A single value that can be sampled directly.
-//     Single(&'a T),
-//     /// A value pair that needs to be sampled via
-//     /// some sort of interpolation.
-//     Interp {
-//         start: &'a T,
-//         end: &'a T,
-//         action_id: Entity,
-//         percent: f32,
-//     },
-// }
 
 #[derive(Component)]
 pub struct Segment<T> {
@@ -522,30 +435,6 @@ impl<T> Segment<T> {
         &self.end
     }
 }
-
-// /// Holds a specific `value` at a given `time`. It might also link
-// /// to an action which defines how a [`Sample`] should be interpolated.
-// #[derive(Debug, Clone, Copy)]
-// pub struct Keyframe<T> {
-//     time: f32,
-//     value: T,
-//     action_id: Option<Entity>,
-// }
-
-// impl<T> Keyframe<T> {
-//     pub fn new(time: f32, value: T) -> Self {
-//         Self {
-//             time,
-//             value,
-//             action_id: None,
-//         }
-//     }
-
-//     pub fn with_action(mut self, action_id: Entity) -> Self {
-//         self.action_id = Some(action_id);
-//         self
-//     }
-// }
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub struct Range {
