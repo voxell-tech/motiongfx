@@ -6,19 +6,19 @@ members = ["crates/*", ]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/nixon-voxell/bevy_motiongfx"
+repository = "https://github.com/nixon-voxell/motiongfx"
 readme = "README.md"
 
 [workspace.dependencies]
-bevy = { version = "0.16.0", default-features = false , features = ["bevy_color", "bevy_asset", "bevy_pbr", "bevy_sprite"]}
+bevy = { version = "0.16.1", default-features = false }
 smallvec = "1"
 
 [package]
-name = "bevy_motiongfx"
-categories = ["graphics", "gui", "rendering", "motion-graphics", "vector-graphics"]
+name = "motiongfx"
 description = "Motion graphics creation tool in Bevy. (Highly inspired by Motion Canvas and Manim)"
 exclude = ["/assets/", "/.github/", "/examples/"]
 keywords = ["motion-graphics", "game", "gamedev", "graphics", "bevy"]
+categories = ["graphics", "gui", "rendering", "motion-graphics", "vector-graphics"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -26,7 +26,7 @@ repository.workspace = true
 readme.workspace = true
 
 [dependencies]
-motiongfx_core = { version = "0.1.0", path = "crates/motiongfx_core" }
+motiongfx_engine = { version = "0.1.0", path = "crates/motiongfx_engine" }
 motiongfx_common = { version = "0.1.0", path = "crates/motiongfx_common", optional = true }
 bevy = { workspace = true }
 
@@ -35,7 +35,7 @@ default = ["common"]
 common = ["dep:motiongfx_common"]
 
 [dev-dependencies]
-bevy = "0.16.0"
+bevy = "0.16.1"
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"

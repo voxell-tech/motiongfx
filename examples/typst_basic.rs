@@ -1,7 +1,7 @@
 fn main() {}
 // use bevy::prelude::*;
-// use bevy_motiongfx::prelude::*;
-// use bevy_motiongfx::typst::{TypstCompiler, TypstCompilerPlugin};
+// use motiongfx::prelude::*;
+// use motiongfx::typst::{TypstCompiler, TypstCompilerPlugin};
 
 // fn main() {
 //     App::new()

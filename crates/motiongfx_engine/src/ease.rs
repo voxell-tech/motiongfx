@@ -1,7 +1,5 @@
 use std::f32::consts::PI;
 
-pub type EaseFn = fn(t: f32) -> f32;
-
 pub fn linear(t: f32) -> f32 {
     t
 }
