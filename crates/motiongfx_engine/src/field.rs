@@ -111,7 +111,7 @@ pub use field_bundle;
 pub struct Field<Source, Target> {
     /// The path of the field in the source.
     /// (e.g. `Transform::translation::x` will have
-    /// a field path of "::translation::x").
+    /// a field path of `"::translation::x"`).
     ///
     /// You can achieved this using [`stringify!`].
     pub field_path: &'static str,
@@ -131,6 +131,7 @@ impl<Source, Target> Field<Source, Target>
 where
     Source: 'static,
 {
+    /// Converts into a [`FieldHash`] type.
     pub fn to_hash(&self) -> FieldHash {
         FieldHash::new::<Source>(self.field_path)
     }
@@ -195,7 +196,7 @@ impl<Source, Target> FieldBuilder<Source, Target> {
     }
 }
 
-/// Creates a [`Field`] with type and path safety.
+/// Creates a [`Field`] with path safety.
 #[macro_export]
 macro_rules! field {
     (<$source:ty>$(::$field:tt)*) => {
@@ -258,7 +259,7 @@ where
     }
 }
 
-/// Creates a [`FieldHash`] without type safety.
+/// Creates a [`FieldHash`] without path safety.
 ///
 /// Use [`field!`] for the type safe version.
 #[macro_export]
@@ -278,9 +279,9 @@ macro_rules! stringify_field {
     };
 }
 
-/// Creates a [`FieldHash`] with type safety.
+/// Creates a [`FieldHash`] with path safety.
 ///
-/// Use [`field_hash_raw!`] for the non type safe version.
+/// Use [`field_hash_raw!`] for the non path safe version.
 #[macro_export]
 macro_rules! field_hash {
     (<$source:ty>$(::$field:tt)+) => {
