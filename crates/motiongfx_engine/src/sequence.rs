@@ -129,24 +129,22 @@ fn update_curr_time(
     }
 }
 
-// TODO: Remove this as a component?
-// Add type wrappers to them. e.g. Slide, Timeline..
-
 /// A group of actions in chronological order.
 #[derive(Component, Default, Clone)]
 #[require(SequenceController)]
 #[component(immutable)]
 pub struct Sequence {
-    duration: f32,
     /// Stores the [`ActionSpan`]s that makes up the sequence.
     pub(crate) spans: SmallVec<[ActionSpan; 1]>,
+    /// The duration of the entire sequence, accumulated from `spans`.
+    duration: f32,
 }
 
 impl Sequence {
     pub fn single(span: ActionSpan) -> Self {
-        let duration = span.duration();
         let mut spans = SmallVec::new();
         spans.push(span);
+        let duration = span.duration();
 
         Self { spans, duration }
     }

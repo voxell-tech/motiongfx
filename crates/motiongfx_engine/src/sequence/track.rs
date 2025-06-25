@@ -104,6 +104,7 @@ impl Track {
 
     fn push_span(&mut self, span_id: usize, span: &ActionSpan) {
         self.span_ids.push(span_id);
+        // Push the end time further down.
         self.end_time = span.end_time();
     }
 
