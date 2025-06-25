@@ -7,9 +7,8 @@ use bevy::ecs::system::{
     IntoObserverSystem, ObserverSystem, ScheduleSystem, SystemParam,
 };
 use bevy::prelude::*;
-use nonempty::NonEmpty;
 
-use crate::action::{Action, Ease, Interp};
+use crate::action::{Action, ActionTarget, Ease, Interp};
 use crate::field::{Field, FieldAccessor, FieldMap};
 use crate::prelude::{FieldHash, Interpolation};
 use crate::{MotionGfxSet, ThreadSafe};
@@ -45,18 +44,58 @@ fn mark_tracks_for_sampling(
 
         for track in tracks.values() {
             let track_range = Range {
-                begin: sequence.spans[*track.span_ids().first()]
-                    .start_time(),
-                end: sequence.spans[*track.span_ids().last()]
-                    .end_time(),
+                begin: track.start_time(),
+                end: track.end_time(),
             };
 
             if animate_range.overlap(&track_range) == false {
                 continue;
             }
 
-            // Mark the track to sample keyframes.
-            commands.entity(track.track_id()).insert(SampleKeyframes);
+            let span_ids = track.span_ids();
+
+            let index = span_ids.binary_search_by(|span_id| {
+                let span = sequence.spans[*span_id];
+
+                if controller.target_time < span.start_time() {
+                    Ordering::Greater
+                } else if controller.target_time > span.end_time() {
+                    Ordering::Less
+                } else {
+                    Ordering::Equal
+                }
+            });
+
+            match index {
+                // `target_time` is within a segment.
+                Ok(index) => {
+                    let span_id = span_ids[index];
+                    let span = &sequence.spans[span_id];
+
+                    let percent = (controller.target_time
+                        - span.start_time())
+                        / (span.end_time() - span.start_time());
+
+                    commands
+                        .entity(span.action_id())
+                        .insert(SampleType::Interp(percent));
+                }
+                // `target_time` is out of bounds.
+                Err(index) => {
+                    if index == 0 {
+                        let span = &sequence.spans[*span_ids.first()];
+                        commands
+                            .entity(span.action_id())
+                            .insert(SampleType::Start);
+                    } else {
+                        let span =
+                            &sequence.spans[span_ids[index - 1]];
+                        commands
+                            .entity(span.action_id())
+                            .insert(SampleType::End);
+                    }
+                }
+            }
         }
     }
 }
@@ -72,13 +111,14 @@ where
     let field_hash = field.to_hash();
 
     let system =
-        move |mut sampler: KeyframeSampler<Source, Target>,
+        move |mut sampler: SegmentSampler<Source, Target>,
               mut q_comps: Query<&mut Source>|
               -> Result {
             sampler.sample_keyframes(
                 field_hash,
-                |e, target, accessor| {
-                    let mut comp = q_comps.get_mut(e)?;
+                |target, action_target, accessor| {
+                    let mut comp =
+                        q_comps.get_mut(action_target.entity())?;
 
                     *accessor.get_mut(&mut comp) = target;
                     Ok(())
@@ -102,14 +142,14 @@ where
     let field_hash = field.to_hash();
 
     let system =
-        move |mut sampler: KeyframeSampler<Source::Asset, Target>,
+        move |mut sampler: SegmentSampler<Source::Asset, Target>,
               q_comps: Query<&Source>,
               mut assets: ResMut<Assets<Source::Asset>>|
               -> Result {
             sampler.sample_keyframes(
                 field_hash,
-                |e, target, accessor| {
-                    let comp = q_comps.get(e)?;
+                |target, action_target, accessor| {
+                    let comp = q_comps.get(action_target.entity())?;
                     let asset = assets
                         .get_mut(comp.as_asset_id())
                         .ok_or(format!(
@@ -128,126 +168,96 @@ where
     system.into_configs()
 }
 
+type SegmentSamplerQuery<'w, 's, Target> = Query<
+    'w,
+    's,
+    (
+        &'static Segment<Target>,
+        Option<&'static Interp<Target>>,
+        Option<&'static Ease>,
+        &'static ActionTarget,
+        &'static SampleType,
+        &'static FieldHash,
+        Entity,
+    ),
+>;
+
 #[derive(SystemParam)]
-pub(crate) struct KeyframeSampler<'w, 's, Source, Target>
+pub(crate) struct SegmentSampler<'w, 's, Source, Target>
 where
     Target: ThreadSafe,
     Source: ThreadSafe,
 {
     commands: Commands<'w, 's>,
-    q_sequences: Query<
-        'w,
-        's,
-        &'static SequenceController,
-        Changed<SequenceController>,
-    >,
-    q_tracks: Query<
-        'w,
-        's,
-        (
-            &'static SequenceTarget,
-            &'static TrackKey,
-            &'static Keyframes<Target>,
-            Entity,
-        ),
-        With<SampleKeyframes>,
-    >,
-    q_actions: Query<
-        'w,
-        's,
-        (Option<&'static Interp<Target>>, Option<&'static Ease>),
-    >,
+    q_segments: SegmentSamplerQuery<'w, 's, Target>,
     q_accessors:
         Query<'w, 's, &'static FieldAccessor<Source, Target>>,
     field_map: Res<'w, FieldMap>,
 }
 
-impl<Source, Target> KeyframeSampler<'_, '_, Source, Target>
+impl<Source, Target> SegmentSampler<'_, '_, Source, Target>
 where
     Source: ThreadSafe,
     Target: Interpolation + Clone + ThreadSafe,
 {
-    /// Sample [`Keyframes`] for tracks with the [`SampleKeyframes`] component.
+    /// Sample [`Segment`]s with the [`SampleType`] component.
     pub(crate) fn sample_keyframes(
         &mut self,
-        field_hash: FieldHash,
+        target_field_hash: FieldHash,
         mut apply_sample: impl FnMut(
-            Entity,
             Target,
+            &ActionTarget,
             &FieldAccessor<Source, Target>,
         ) -> Result,
     ) -> Result {
-        for (sequence_target, track_key, keyframes, entity) in
-            self.q_tracks.iter()
+        for (
+            segment,
+            interp,
+            ease,
+            action_target,
+            sample_type,
+            field_hash,
+            entity,
+        ) in self.q_segments.iter()
         {
             // Check for field hash eligibility.
-            if track_key.field_hash() != &field_hash {
+            if field_hash != &target_field_hash {
                 continue;
             }
 
             // Remove marker component so that sampling will not happen
             // in the next frame if it's not needed.
-            self.commands.entity(entity).remove::<SampleKeyframes>();
-
-            let Ok(controller) =
-                self.q_sequences.get(sequence_target.entity())
-            else {
-                continue;
-            };
-
-            let animation_range = Range {
-                begin: controller
-                    .curr_time()
-                    .min(controller.target_time),
-                end: controller
-                    .curr_time()
-                    .max(controller.target_time),
-            };
-
-            let track_range = Range {
-                begin: keyframes.first().time,
-                end: keyframes.last().time,
-            };
-
-            if track_range.overlap(&animation_range) == false {
-                continue;
-            }
+            self.commands.entity(entity).remove::<SampleType>();
 
             let accessor = self.q_accessors.get(
-                *self.field_map.get(&field_hash).ok_or(format!(
-                    "No FieldAccessor for {field_hash:?}"
-                ))?,
+                *self.field_map.get(&target_field_hash).ok_or(
+                    format!(
+                        "No FieldAccessor for {target_field_hash:?}"
+                    ),
+                )?,
             )?;
 
-            let sample = keyframes.sample(controller.target_time);
-            // Sample the animation value for the target.
-            let target = match sample {
-                Sample::Single(value) => value.clone(),
-                Sample::Interp {
-                    start,
-                    end,
-                    action_id,
-                    mut percent,
-                } => {
-                    let (interp, ease) =
-                        self.q_actions.get(action_id)?;
-
+            let target = match sample_type {
+                SampleType::Start => segment.start.clone(),
+                SampleType::End => segment.end.clone(),
+                SampleType::Interp(mut percent) => {
                     if let Some(ease) = ease {
                         percent = ease(percent);
                     }
 
-                    match interp {
-                        Some(interp) => interp(start, end, percent),
-                        None => Target::interp(start, end, percent),
+                    if let Some(interp) = interp {
+                        interp(&segment.start, &segment.end, percent)
+                    } else {
+                        Target::interp(
+                            &segment.start,
+                            &segment.end,
+                            percent,
+                        )
                     }
                 }
             };
 
-            apply_sample(
-                track_key.action_target(),
-                target,
-                accessor,
-            )?;
+            apply_sample(target, action_target, accessor)?;
         }
 
         Ok(())
@@ -266,12 +276,12 @@ where
     let field_hash = field.to_hash();
 
     let system = move |trigger: Trigger<BakeKeyframe>,
-                       mut baker: KeyframeBaker<Source, Target>,
+                       mut baker: ActionBaker<Source, Target>,
                        q_comps: Query<&Source>|
           -> Result {
         let track_id = trigger.target();
 
-        baker.bake_keyframes(
+        baker.bake_actions(
             track_id,
             field_hash,
             |action_target| {
@@ -299,12 +309,12 @@ where
 
     let system =
         move |trigger: Trigger<BakeKeyframe>,
-              mut baker: KeyframeBaker<Source::Asset, Target>,
+              mut baker: ActionBaker<Source::Asset, Target>,
               q_comps: Query<&Source>,
               assets: Res<Assets<Source::Asset>>|
               -> Result {
             let track_id = trigger.target();
-            baker.bake_keyframes(
+            baker.bake_actions(
                 track_id,
                 field_hash,
                 |action_target| {
@@ -327,9 +337,9 @@ where
     IntoObserverSystem::into_system(system)
 }
 
-/// System parameters needed to create a [`KeyframeBaker`].
+/// System parameters needed to bake [`Action`]s into [`Segment`]s.
 #[derive(SystemParam)]
-pub(crate) struct KeyframeBaker<'w, 's, Source, Target>
+pub(crate) struct ActionBaker<'w, 's, Source, Target>
 where
     Source: 'static,
     Target: 'static,
@@ -344,13 +354,13 @@ where
     field_map: Res<'w, FieldMap>,
 }
 
-impl<Source, Target> KeyframeBaker<'_, '_, Source, Target>
+impl<Source, Target> ActionBaker<'_, '_, Source, Target>
 where
     Source: 'static,
     Target: Clone + ThreadSafe,
 {
-    /// Bake [`Action`]s into [`Keyframes`] if the `field_hash` maches.
-    pub(crate) fn bake_keyframes<'a>(
+    /// Bake [`Action`]s into [`Segment`]s if the `field_hash` matches.
+    pub(crate) fn bake_actions<'a>(
         &mut self,
         track_id: Entity,
         field_hash: FieldHash,
@@ -379,17 +389,9 @@ where
                 .ok_or(format!("No FieldRef for {field_hash:?}"))?,
         )?;
 
-        let first_span = &sequence.spans[*track.span_ids().first()];
-
-        let mut keyframe_time = first_span.start_time();
         let mut value = accessor
             .get_ref(source_ref(track_key.action_target())?)
             .clone();
-
-        let mut keyframes = Keyframes::new(Keyframe::new(
-            keyframe_time,
-            value.clone(),
-        ));
 
         for span in
             track.span_ids().iter().map(|i| &sequence.spans[*i])
@@ -400,31 +402,12 @@ where
             // Update field to the next value using action.
             let end_value = action(&value);
 
-            if keyframe_time == span.start_time() {
-                // Continuous keyframe.
-                keyframes.push(
-                    Keyframe::new(span.end_time(), end_value.clone())
-                        .with_action(action_id),
-                );
-            } else {
-                // Non-continuous keyframe requires a new start time.
+            self.commands
+                .entity(action_id)
+                .insert(Segment::new(value, end_value.clone()));
 
-                // Action id is only added to the end frame, making sure that
-                // no interpolation is done when there's a time gap (non-continuous).
-                keyframes
-                    .push(Keyframe::new(span.start_time(), value));
-
-                keyframes.push(
-                    Keyframe::new(span.end_time(), end_value.clone())
-                        .with_action(action_id),
-                );
-            }
-
-            keyframe_time = span.end_time();
             value = end_value;
         }
-
-        self.commands.entity(track_id).insert(keyframes);
 
         Ok(())
     }
@@ -438,104 +421,131 @@ pub(crate) struct SampleKeyframes;
 #[derive(Event)]
 pub(crate) struct BakeKeyframe;
 
-#[derive(Component, Deref, DerefMut, Debug, Clone)]
-#[component(immutable)]
-pub struct Keyframes<T>(NonEmpty<Keyframe<T>>);
+// #[derive(Component, Deref, DerefMut, Debug, Clone)]
+// #[component(immutable)]
+// pub struct Keyframes<T>(NonEmpty<Keyframe<T>>);
 
-impl<T> Keyframes<T> {
-    pub fn new(first_keyframe: Keyframe<T>) -> Self {
-        Self(NonEmpty::new(first_keyframe))
+// impl<T> Keyframes<T> {
+//     pub fn new(first_keyframe: Keyframe<T>) -> Self {
+//         Self(NonEmpty::new(first_keyframe))
+//     }
+// }
+
+// impl<T> Keyframes<T> {
+//     pub fn sample(&self, time: f32) -> Sample<'_, T> {
+//         let index = self
+//             .binary_search_by(|kf| {
+//                 if kf.time > time {
+//                     Ordering::Greater
+//                 } else {
+//                     Ordering::Less
+//                 }
+//             })
+//             // SAFETY: Ordering::Equal is never returned.
+//             .unwrap_err();
+
+//         if index == 0 {
+//             Sample::Single(&self.first().value)
+//         } else if index >= self.len() {
+//             Sample::Single(&self.last().value)
+//         } else {
+//             let start = &self[index - 1];
+//             let end = &self[index];
+
+//             // An action id is only added at the end keyframe.
+//             // See `KeyframeBaker`.
+//             match end.action_id {
+//                 Some(action_id) => {
+//                     let percent =
+//                         (time - start.time) / (end.time - start.time);
+
+//                     Sample::Interp {
+//                         start: &start.value,
+//                         end: &end.value,
+//                         action_id,
+//                         percent,
+//                     }
+//                 }
+//                 // Interpolation method is unknown without an action id.
+//                 //
+//                 // This normally happens when there's a time gap
+//                 // between Action commands. Which in this case, the start
+//                 // and end value should always be the same anyways.
+//                 None => Sample::Single(&start.value),
+//             }
+//         }
+//     }
+// }
+
+#[derive(Component, Debug, Clone, Copy)]
+#[component(storage = "SparseSet", immutable)]
+pub enum SampleType {
+    Start,
+    End,
+    Interp(f32),
+}
+
+// /// Determines how a value should be sampled.
+// ///
+// /// Typically used for [`Keyframes::sample()`].
+// pub enum Sample<'a, T> {
+//     /// A single value that can be sampled directly.
+//     Single(&'a T),
+//     /// A value pair that needs to be sampled via
+//     /// some sort of interpolation.
+//     Interp {
+//         start: &'a T,
+//         end: &'a T,
+//         action_id: Entity,
+//         percent: f32,
+//     },
+// }
+
+#[derive(Component)]
+pub struct Segment<T> {
+    /// The starting value in the segment.
+    start: T,
+    /// The ending value in the segment.
+    end: T,
+}
+
+impl<T> Segment<T> {
+    pub fn new(start: T, end: T) -> Self {
+        Self { start, end }
+    }
+
+    pub fn start(&self) -> &T {
+        &self.start
+    }
+
+    pub fn end(&self) -> &T {
+        &self.end
     }
 }
 
-impl<T> Keyframes<T> {
-    pub fn sample(&self, time: f32) -> Sample<'_, T> {
-        let index = self
-            .0
-            .binary_search_by(|kf| {
-                if kf.time > time {
-                    Ordering::Greater
-                } else {
-                    Ordering::Less
-                }
-            })
-            // SAFETY: Ordering::Equal is never returned.
-            .unwrap_err();
+// /// Holds a specific `value` at a given `time`. It might also link
+// /// to an action which defines how a [`Sample`] should be interpolated.
+// #[derive(Debug, Clone, Copy)]
+// pub struct Keyframe<T> {
+//     time: f32,
+//     value: T,
+//     action_id: Option<Entity>,
+// }
 
-        if index == 0 {
-            Sample::Single(&self.first().value)
-        } else if index >= self.len() {
-            Sample::Single(&self.last().value)
-        } else {
-            let start = &self[index - 1];
-            let end = &self[index];
+// impl<T> Keyframe<T> {
+//     pub fn new(time: f32, value: T) -> Self {
+//         Self {
+//             time,
+//             value,
+//             action_id: None,
+//         }
+//     }
 
-            // An action id is only added at the end keyframe.
-            // See `KeyframeBaker`.
-            match end.action_id {
-                Some(action_id) => {
-                    let percent =
-                        (time - start.time) / (end.time - start.time);
-
-                    Sample::Interp {
-                        start: &start.value,
-                        end: &end.value,
-                        action_id,
-                        percent,
-                    }
-                }
-                // Interpolation method is unknown without an action id.
-                //
-                // This normally happens when there's a time gap
-                // between Action commands. Which in this case, the start
-                // and end value should always be the same anyways.
-                None => Sample::Single(&start.value),
-            }
-        }
-    }
-}
-
-/// Determines how a value should be sampled.
-///
-/// Typically used for [`Keyframes::sample()`].
-pub enum Sample<'a, T> {
-    /// A single value that can be sampled directly.
-    Single(&'a T),
-    /// A value pair that needs to be sampled via
-    /// some sort of interpolation.
-    Interp {
-        start: &'a T,
-        end: &'a T,
-        action_id: Entity,
-        percent: f32,
-    },
-}
-
-// TODO: Keyframe can just be BakedAction instead?
-
-/// Holds a specific `value` at a given `time`. It might also link
-/// to an action which defines how a [`Sample`] should be interpolated.
-#[derive(Debug, Clone, Copy)]
-pub struct Keyframe<T> {
-    time: f32,
-    value: T,
-    action_id: Option<Entity>,
-}
-
-impl<T> Keyframe<T> {
-    pub fn new(time: f32, value: T) -> Self {
-        Self {
-            time,
-            value,
-            action_id: None,
-        }
-    }
-
-    pub fn with_action(mut self, action_id: Entity) -> Self {
-        self.action_id = Some(action_id);
-        self
-    }
-}
+//     pub fn with_action(mut self, action_id: Entity) -> Self {
+//         self.action_id = Some(action_id);
+//         self
+//     }
+// }
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub struct Range {

@@ -1,7 +1,7 @@
 use bevy::asset::AsAssetId;
 use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
-use keyframe::{
+use segment::{
     bake_asset_keyframes, bake_component_keyframes,
     sample_asset_keyframes, sample_component_keyframes,
 };
@@ -12,7 +12,7 @@ use crate::field::{FieldBundle, RegisterFieldAppExt};
 use crate::prelude::Interpolation;
 use crate::{MotionGfxSet, ThreadSafe};
 
-pub mod keyframe;
+pub mod segment;
 pub mod track;
 
 pub(super) struct SequencePlugin;
@@ -21,7 +21,7 @@ impl Plugin for SequencePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             track::TrackPlugin,
-            keyframe::KeyframePlugin,
+            segment::KeyframePlugin,
         ));
 
         app.add_systems(

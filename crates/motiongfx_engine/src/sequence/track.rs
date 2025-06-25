@@ -7,11 +7,11 @@ use crate::field::FieldHash;
 
 // For docs.
 #[allow(unused_imports)]
-use super::keyframe::Keyframes;
+use super::segment::Segment;
 #[allow(unused_imports)]
 use crate::action::ActionSpan;
 
-use super::keyframe::BakeKeyframe;
+use super::segment::BakeKeyframe;
 use super::Sequence;
 
 pub(super) struct TrackPlugin;
@@ -46,21 +46,14 @@ fn generate_tracks(
 
         match tracks.get_mut(&track_key) {
             Some(track) => {
-                track.span_ids.push(i);
+                track.push_span(i, span);
             }
             None => {
                 let track_id = commands
                     .spawn((SequenceTarget(sequence_id), track_key))
                     .id();
 
-                tracks.insert(
-                    track_key,
-                    Track {
-                        span_ids: NonEmpty::new(i),
-                        track_id,
-                    },
-                );
-
+                tracks.insert(track_key, Track::new(i, span));
                 track_ids.push(track_id);
             }
         }
@@ -114,20 +107,41 @@ pub struct Track {
     /// The [`ActionSpan`] indices in the [`Sequence`].
     /// Indices should be in ascending order.
     span_ids: NonEmpty<usize>,
-    /// The target entity that stores the [`Keyframes`] of the track.
-    track_id: Entity,
+    start_time: f32,
+    end_time: f32,
 }
 
 impl Track {
+    fn new(span_id: usize, span: &ActionSpan) -> Self {
+        Self {
+            span_ids: NonEmpty::new(span_id),
+            start_time: span.start_time(),
+            end_time: span.end_time(),
+        }
+    }
+
+    fn push_span(&mut self, span_id: usize, span: &ActionSpan) {
+        self.span_ids.push(span_id);
+        self.end_time = span.end_time();
+    }
+
     /// Get the [`ActionSpan`] indices in the [`Sequence`].
-    /// Indices should be in ascending order.
+    /// Indices should always be in ascending order.
+    #[inline(always)]
     pub fn span_ids(&self) -> &NonEmpty<usize> {
         &self.span_ids
     }
 
-    /// Get the target entity that stores the [`Keyframes`] of the track.
-    pub fn track_id(&self) -> Entity {
-        self.track_id
+    #[inline(always)]
+    /// Get the start time of the track.
+    pub fn start_time(&self) -> f32 {
+        self.start_time
+    }
+
+    #[inline(always)]
+    /// Get the end time of the track.
+    pub fn end_time(&self) -> f32 {
+        self.end_time
     }
 }
 
