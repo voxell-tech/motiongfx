@@ -1,5 +1,7 @@
 use bevy::asset::AsAssetId;
-use bevy::ecs::component::Mutable;
+use bevy::ecs::component::{
+    ComponentHooks, Immutable, Mutable, StorageType,
+};
 use bevy::prelude::*;
 use segment::{
     bake_asset_actions, bake_component_actions,
@@ -9,7 +11,7 @@ use smallvec::SmallVec;
 
 use crate::action::ActionSpan;
 use crate::field::{FieldBundle, RegisterFieldAppExt};
-use crate::prelude::Interpolation;
+use crate::interpolation::Interpolation;
 use crate::{MotionGfxSet, ThreadSafe};
 
 pub mod segment;
@@ -26,10 +28,7 @@ impl Plugin for SequencePlugin {
 
         app.add_systems(
             PostUpdate,
-            (
-                update_target_time.in_set(MotionGfxSet::TargetTime),
-                update_curr_time.in_set(MotionGfxSet::CurrentTime),
-            ),
+            update_curr_time.in_set(MotionGfxSet::CurrentTime),
         );
     }
 }
@@ -90,28 +89,7 @@ impl AnimateAppExt for App {
     }
 }
 
-/// Update [`SequenceController::target_time`] based on [`SequencePlayer::time_scale`].
-fn update_target_time(
-    mut q_sequences: Query<(
-        &Sequence,
-        &mut SequenceController,
-        &SequencePlayer,
-    )>,
-    time: Res<Time>,
-) {
-    for (sequence, mut sequence_controller, sequence_player) in
-        q_sequences.iter_mut()
-    {
-        sequence_controller.target_time = f32::clamp(
-            sequence_controller.target_time
-                + time.delta_secs() * sequence_player.time_scale,
-            0.0,
-            sequence.duration(),
-        );
-    }
-}
-
-/// Safely update [`SequenceController::curr_time`] after performing
+/// Safely update [`SequenceController::curr_time`] after sampling
 /// all the necessary actions.
 fn update_curr_time(
     mut q_sequences: Query<(&Sequence, &mut SequenceController)>,
@@ -130,9 +108,10 @@ fn update_curr_time(
 }
 
 /// A group of actions in chronological order.
-#[derive(Component, Default, Clone)]
-#[require(SequenceController)]
-#[component(immutable)]
+///
+/// A [`SequenceController`] will also be automatically inserted
+/// through the `on_insert` hook.
+#[derive(Default, Clone)]
 pub struct Sequence {
     /// Stores the [`ActionSpan`]s that makes up the sequence.
     pub(crate) spans: SmallVec<[ActionSpan; 1]>,
@@ -142,11 +121,10 @@ pub struct Sequence {
 
 impl Sequence {
     pub fn single(span: ActionSpan) -> Self {
-        let mut spans = SmallVec::new();
-        spans.push(span);
-        let duration = span.duration();
-
-        Self { spans, duration }
+        Self {
+            duration: span.duration(),
+            spans: [span].into(),
+        }
     }
 
     pub fn empty(duration: f32) -> Self {
@@ -156,23 +134,41 @@ impl Sequence {
         }
     }
 
-    pub fn with_slide_index(mut self, index: u32) -> Self {
-        for span in self.spans.iter_mut() {
-            span.set_slide_index(index);
-        }
-
-        self
-    }
-
-    pub fn set_slide_index(&mut self, index: u32) {
-        for span in self.spans.iter_mut() {
-            span.set_slide_index(index);
-        }
-    }
-
-    #[inline]
+    #[inline(always)]
     pub fn duration(&self) -> f32 {
         self.duration
+    }
+}
+
+impl Component for Sequence {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    type Mutability = Immutable;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks.on_insert(|mut world, context| {
+            let action_ids = world
+                .get::<Self>(context.entity)
+                // SAFETY: Hook should only trigger after the component is inserted.
+                .unwrap()
+                .spans
+                .iter()
+                .map(|span| span.action_id())
+                .collect::<Vec<_>>();
+
+            for action_id in action_ids {
+                world
+                    .commands()
+                    .entity(action_id)
+                    .insert(TargetSequence(context.entity));
+            }
+
+            // Re-inserts a new SequenceController.
+            world
+                .commands()
+                .entity(context.entity)
+                .insert(SequenceController::default());
+        });
     }
 }
 
@@ -182,10 +178,8 @@ impl Sequence {
 pub struct SequenceController {
     /// The current time.
     curr_time: f32,
-    /// Target time to reach (and not exceed).
+    /// The target time to reach (and not exceed).
     pub target_time: f32,
-    /// Target slide index to reach (and not exceed).
-    pub target_slide_index: usize,
 }
 
 impl SequenceController {
@@ -195,23 +189,19 @@ impl SequenceController {
     }
 }
 
-/// Manipulates the `target_time` variable of the [`SequenceController`]
-/// component attached to this entity with a `time_scale`.
-#[derive(Component, Default)]
-pub struct SequencePlayer {
-    pub is_playing: bool,
-    pub time_scale: f32,
-}
+/// [`Action`]s that are related to this [`Sequence`].
+#[derive(Component, Reflect, Deref, Clone)]
+#[reflect(Component)]
+#[relationship_target(relationship = TargetSequence, linked_spawn)]
+pub struct SequenceActions(Vec<Entity>);
 
-impl SequencePlayer {
-    pub fn play(&mut self) {
-        self.is_playing = true;
-    }
-
-    pub fn pause(&mut self) {
-        self.is_playing = false;
-    }
-}
+/// The target [`Sequence`] that this [`Action`] belongs to.
+#[derive(
+    Component, Reflect, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash,
+)]
+#[reflect(Component)]
+#[relationship(relationship_target = SequenceActions)]
+pub struct TargetSequence(Entity);
 
 // SEQUENCE ORDERING FUNCTIONS
 
@@ -226,7 +216,7 @@ pub trait MultiSeqOrd {
     fn flow(self, delay: f32) -> Sequence;
 }
 
-impl MultiSeqOrd for &[Sequence] {
+impl<T: IntoIterator<Item = Sequence>> MultiSeqOrd for T {
     fn chain(self) -> Sequence {
         chain(self)
     }
@@ -256,7 +246,9 @@ impl SingleSeqOrd for Sequence {
 }
 
 /// Run one [`Sequence`] after another.
-pub fn chain(sequences: &[Sequence]) -> Sequence {
+pub fn chain(
+    sequences: impl IntoIterator<Item = Sequence>,
+) -> Sequence {
     let mut final_sequence = Sequence::default();
     let mut chain_duration = 0.0;
 
@@ -277,7 +269,9 @@ pub fn chain(sequences: &[Sequence]) -> Sequence {
 }
 
 /// Run all [`Sequence`]s concurrently and wait for all of them to finish.
-pub fn all(sequences: &[Sequence]) -> Sequence {
+pub fn all(
+    sequences: impl IntoIterator<Item = Sequence>,
+) -> Sequence {
     let mut final_sequence = Sequence::default();
     let mut max_duration = 0.0;
 
@@ -294,7 +288,9 @@ pub fn all(sequences: &[Sequence]) -> Sequence {
 }
 
 /// Run all [`Sequence`]s concurrently and wait for any of them to finish.
-pub fn any(sequences: &[Sequence]) -> Sequence {
+pub fn any(
+    sequences: impl IntoIterator<Item = Sequence>,
+) -> Sequence {
     let mut final_sequence = Sequence::default();
     let mut min_duration = 0.0;
 
@@ -311,7 +307,10 @@ pub fn any(sequences: &[Sequence]) -> Sequence {
 }
 
 /// Run one [`Sequence`] after another with a fixed delay time.
-pub fn flow(t: f32, sequences: &[Sequence]) -> Sequence {
+pub fn flow(
+    t: f32,
+    sequences: impl IntoIterator<Item = Sequence>,
+) -> Sequence {
     let mut final_sequence = Sequence::default();
     let mut flow_duration = 0.0;
     let mut final_duration = 0.0;

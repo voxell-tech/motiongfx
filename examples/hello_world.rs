@@ -101,7 +101,7 @@ fn hello_world(
 
     let sequence = cube_seqs.flow(0.01);
 
-    commands.spawn((sequence, SequencePlayer::default()));
+    commands.create_sequence_player([sequence]);
 }
 
 fn setup(mut commands: Commands) {
@@ -125,34 +125,36 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement(
-    mut q_timelines: Query<(
-        &mut SequencePlayer,
-        &mut SequenceController,
-    )>,
+    mut q_timelines: Query<&mut SequencePlayer>,
     keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
+    mut is_playing: Local<bool>,
 ) {
-    for (mut sequence_player, mut sequence_time) in
-        q_timelines.iter_mut()
-    {
+    for mut player in q_timelines.iter_mut() {
+        if *is_playing {
+            player.play();
+        } else {
+            player.pause();
+        }
+
         if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
-            sequence_time.target_time += time.delta_secs();
+            player.set_time_scale(1.0).play();
         }
 
         if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
-            sequence_time.target_time -= time.delta_secs();
+            player.set_time_scale(-1.0).play();
         }
 
         if keys.just_pressed(KeyCode::Space) {
+            *is_playing = true;
             if keys.pressed(KeyCode::ShiftLeft) {
-                sequence_player.time_scale = -1.0;
+                player.set_time_scale(-1.0);
             } else {
-                sequence_player.time_scale = 1.0;
+                player.set_time_scale(1.0);
             }
         }
 
         if keys.just_pressed(KeyCode::Escape) {
-            sequence_player.time_scale = 0.0;
+            *is_playing = false;
         }
     }
 }

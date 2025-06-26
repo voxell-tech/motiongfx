@@ -18,22 +18,7 @@ pub trait ActionFn<T>: Fn(&T) -> T + ThreadSafe {}
 
 impl<T, U> ActionFn<T> for U where U: Fn(&T) -> T + ThreadSafe {}
 
-/// [`Action`]s that are related to this entity.
-#[derive(Component, Reflect, Deref, Clone)]
-#[reflect(Component)]
-#[relationship_target(relationship = ActionTarget, linked_spawn)]
-pub struct RelatedActions(Vec<Entity>);
-
-/// The target entity that this [`Action`] belongs to.
-///
-/// In other words, the entity that is going to be animated
-/// by this [`Action`].
-#[derive(
-    Component, Reflect, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash,
-)]
-#[reflect(Component)]
-#[relationship(relationship_target = RelatedActions)]
-pub struct ActionTarget(Entity);
+// TODO: Add special action entity to repeat other actions...
 
 #[derive(Component, Reflect, Deref, DerefMut, Clone)]
 #[reflect(Component)]
@@ -59,12 +44,10 @@ pub struct Ease(pub EaseFn);
 pub struct ActionSpan {
     /// Target [`Entity`] with the [`Action`] component.
     action_id: Entity,
-    /// Duration of animation in seconds.
-    duration: f32,
     /// Time at which animation should begin.
     start_time: f32,
-    /// Slide that this action belongs to.
-    slide_index: u32,
+    /// Duration of animation in seconds.
+    duration: f32,
 }
 
 impl ActionSpan {
@@ -73,7 +56,6 @@ impl ActionSpan {
             action_id,
             duration,
             start_time: 0.0,
-            slide_index: 0,
         }
     }
 
@@ -83,30 +65,20 @@ impl ActionSpan {
         self
     }
 
-    #[inline]
-    pub(crate) fn set_slide_index(&mut self, slide_index: u32) {
-        self.slide_index = slide_index;
-    }
-
     /// Target [`Entity`] with the [`Action`] component.
-    #[inline]
+    #[inline(always)]
     pub fn action_id(&self) -> Entity {
         self.action_id
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn duration(&self) -> f32 {
         self.duration
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn start_time(&self) -> f32 {
         self.start_time
-    }
-
-    #[inline]
-    pub fn slide_index(&self) -> u32 {
-        self.slide_index
     }
 
     #[inline]
@@ -180,6 +152,23 @@ impl<'w> ActionBuilderExt<'w> for EntityCommands<'w> {
         )))
     }
 }
+
+/// [`Action`]s that are related to this entity.
+#[derive(Component, Reflect, Deref, Clone)]
+#[reflect(Component)]
+#[relationship_target(relationship = ActionTarget, linked_spawn)]
+pub struct RelatedActions(Vec<Entity>);
+
+/// The target entity that this [`Action`] belongs to.
+///
+/// In other words, the entity that is going to be animated
+/// by this [`Action`].
+#[derive(
+    Component, Reflect, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash,
+)]
+#[reflect(Component)]
+#[relationship(relationship_target = RelatedActions)]
+pub struct ActionTarget(Entity);
 
 #[cfg(test)]
 mod test {
