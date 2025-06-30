@@ -203,7 +203,7 @@ impl Timeline {
         matches!(self.playback, TimelinePlayback::Pause) == false
     }
 
-    /// Get the speed of the playback time.
+    /// Get the playback state of this timeline.
     #[inline(always)]
     pub fn playback(&self) -> TimelinePlayback {
         self.playback
@@ -215,7 +215,7 @@ impl Timeline {
         self.sequence_index
     }
 
-    /// Get the waypoint of the current sequence.
+    /// Get the [`SequencePoint`] of the current sequence.
     #[inline(always)]
     pub fn sequence_point(&self) -> SequencePoint {
         self.sequence_point
@@ -283,8 +283,7 @@ impl Timeline {
         self.set_playback(TimelinePlayback::Backward(time_scale))
     }
 
-    /// Prevents the timeline from advancing [`SequenceController::target_time`]
-    /// based on [`Time::delta_secs()`].
+    /// Prevents the timeline from altering [`SequenceController::target_time`].
     #[inline]
     pub fn pause(&mut self) -> &mut Self {
         self.set_playback(TimelinePlayback::Pause)
@@ -321,7 +320,7 @@ pub enum TimelinePlayback {
 
 #[derive(Default, Debug, Clone, Copy)]
 pub enum SequencePoint {
-    /// The start of the [`Sequence`].
+    /// The start of the [`Sequence`], normally at `0.0`.
     #[default]
     Start,
     /// The end of the [`Sequence`], normally at [`Sequence::duration()`].
