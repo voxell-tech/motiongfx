@@ -5,6 +5,10 @@ use smallvec::SmallVec;
 use crate::action::ActionSpan;
 use crate::MotionGfxSet;
 
+// For docs.
+#[allow(unused_imports)]
+use super::action::Action;
+
 pub mod segment;
 pub mod track;
 
