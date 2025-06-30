@@ -5,18 +5,20 @@ use bevy::prelude::*;
 use crate::sequence::SequenceController;
 
 pub mod action;
+pub mod animate;
 pub mod ease;
 pub mod field;
 pub mod interpolation;
-pub mod player;
 pub mod sequence;
+pub mod timeline;
 
 pub mod prelude {
     pub use crate::action::*;
+    pub use crate::animate::AnimateAppExt;
     pub use crate::field::*;
     pub use crate::interpolation::Interpolation;
-    pub use crate::player::*;
     pub use crate::sequence::*;
+    pub use crate::timeline::*;
     pub use crate::{ease, MotionGfxSet};
 }
 
@@ -27,7 +29,7 @@ impl Plugin for MotionGfxEnginePlugin {
         app.add_plugins((
             field::FieldPlugin,
             sequence::SequencePlugin,
-            player::PlayerPlugin,
+            timeline::TimelinePlugin,
         ));
 
         app.configure_sets(

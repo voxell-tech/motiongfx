@@ -97,7 +97,7 @@ fn easings(
         .collect::<Vec<_>>()
         .chain();
 
-    commands.spawn((sequence, SequencePlayer::default()));
+    commands.create_timeline([sequence]);
 }
 
 fn setup(mut commands: Commands) {
@@ -114,34 +114,34 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement(
-    mut q_timelines: Query<(
-        &mut SequencePlayer,
-        &mut SequenceController,
-    )>,
+    mut q_timelines: Query<&mut Timeline>,
     keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
+    mut is_playing: Local<bool>,
 ) {
-    for (mut sequence_player, mut sequence_time) in
-        q_timelines.iter_mut()
-    {
+    for mut timeline in q_timelines.iter_mut() {
+        if *is_playing == false {
+            timeline.pause();
+        }
+
         if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
-            sequence_time.target_time += time.delta_secs();
+            timeline.play_forward(1.0);
         }
 
         if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
-            sequence_time.target_time -= time.delta_secs();
+            timeline.play_backward(1.0);
         }
 
         if keys.just_pressed(KeyCode::Space) {
+            *is_playing = true;
             if keys.pressed(KeyCode::ShiftLeft) {
-                sequence_player.time_scale = -1.0;
+                timeline.play_backward(1.0);
             } else {
-                sequence_player.time_scale = 1.0;
+                timeline.play_forward(1.0);
             }
         }
 
         if keys.just_pressed(KeyCode::Escape) {
-            sequence_player.time_scale = 0.0;
+            *is_playing = false;
         }
     }
 }

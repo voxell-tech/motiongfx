@@ -1,18 +1,9 @@
-use bevy::asset::AsAssetId;
-use bevy::ecs::component::{
-    ComponentHooks, Immutable, Mutable, StorageType,
-};
+use bevy::ecs::component::{ComponentHooks, Immutable, StorageType};
 use bevy::prelude::*;
-use segment::{
-    bake_asset_actions, bake_component_actions,
-    sample_asset_keyframes, sample_component_keyframes,
-};
 use smallvec::SmallVec;
 
 use crate::action::ActionSpan;
-use crate::field::{FieldBundle, RegisterFieldAppExt};
-use crate::interpolation::Interpolation;
-use crate::{MotionGfxSet, ThreadSafe};
+use crate::MotionGfxSet;
 
 pub mod segment;
 pub mod track;
@@ -33,62 +24,6 @@ impl Plugin for SequencePlugin {
     }
 }
 
-pub trait AnimateAppExt {
-    fn animate_component<Source, Target>(
-        &mut self,
-        field_bundle: FieldBundle<Source, Target>,
-    ) -> &mut Self
-    where
-        Source: Component<Mutability = Mutable>,
-        Target: Interpolation + Clone + ThreadSafe;
-
-    fn animate_asset<Source, Target>(
-        &mut self,
-        field_bundle: FieldBundle<Source::Asset, Target>,
-    ) -> &mut Self
-    where
-        Source: AsAssetId,
-        Target: Interpolation + Clone + ThreadSafe;
-}
-
-impl AnimateAppExt for App {
-    fn animate_component<Source, Target>(
-        &mut self,
-        field_bundle: FieldBundle<Source, Target>,
-    ) -> &mut Self
-    where
-        Source: Component<Mutability = Mutable>,
-        Target: Interpolation + Clone + ThreadSafe,
-    {
-        self.add_systems(
-            PostUpdate,
-            sample_component_keyframes(field_bundle.field)
-                .in_set(MotionGfxSet::Sample),
-        )
-        .add_observer(bake_component_actions(field_bundle.field))
-        .register_field(field_bundle)
-    }
-
-    fn animate_asset<Source, Target>(
-        &mut self,
-        field_bundle: FieldBundle<Source::Asset, Target>,
-    ) -> &mut Self
-    where
-        Source: AsAssetId,
-        Target: Interpolation + Clone + ThreadSafe,
-    {
-        self.add_systems(
-            PostUpdate,
-            sample_asset_keyframes::<Source, _>(field_bundle.field)
-                .in_set(MotionGfxSet::Sample),
-        )
-        .add_observer(bake_asset_actions::<Source, _>(
-            field_bundle.field,
-        ))
-        .register_field(field_bundle)
-    }
-}
-
 /// Safely update [`SequenceController::curr_time`] after sampling
 /// all the necessary actions.
 fn update_curr_time(
@@ -97,11 +32,8 @@ fn update_curr_time(
     for (sequence, mut controller) in q_sequences.iter_mut() {
         let controller = controller.bypass_change_detection();
 
-        controller.target_time = f32::clamp(
-            controller.target_time,
-            0.0,
-            sequence.duration(),
-        );
+        controller.target_time =
+            controller.target_time.clamp(0.0, sequence.duration());
 
         controller.curr_time = controller.target_time;
     }
@@ -169,6 +101,16 @@ impl Component for Sequence {
                 .entity(context.entity)
                 .insert(SequenceController::default());
         });
+    }
+}
+
+impl IntoIterator for Sequence {
+    type Item = Self;
+
+    type IntoIter = core::iter::Once<Self>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        core::iter::once(self)
     }
 }
 

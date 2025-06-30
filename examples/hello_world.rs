@@ -101,7 +101,7 @@ fn hello_world(
 
     let sequence = cube_seqs.flow(0.01);
 
-    commands.create_sequence_player([sequence]);
+    commands.create_timeline(sequence);
 }
 
 fn setup(mut commands: Commands) {
@@ -125,31 +125,29 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement(
-    mut q_timelines: Query<&mut SequencePlayer>,
+    mut q_timelines: Query<&mut Timeline>,
     keys: Res<ButtonInput<KeyCode>>,
     mut is_playing: Local<bool>,
 ) {
-    for mut player in q_timelines.iter_mut() {
-        if *is_playing {
-            player.play();
-        } else {
-            player.pause();
+    for mut timeline in q_timelines.iter_mut() {
+        if *is_playing == false {
+            timeline.pause();
         }
 
         if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
-            player.set_time_scale(1.0).play();
+            timeline.play_forward(1.0);
         }
 
         if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
-            player.set_time_scale(-1.0).play();
+            timeline.play_backward(1.0);
         }
 
         if keys.just_pressed(KeyCode::Space) {
             *is_playing = true;
             if keys.pressed(KeyCode::ShiftLeft) {
-                player.set_time_scale(-1.0);
+                timeline.play_backward(1.0);
             } else {
-                player.set_time_scale(1.0);
+                timeline.play_forward(1.0);
             }
         }
 

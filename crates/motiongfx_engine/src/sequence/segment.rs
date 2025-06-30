@@ -277,7 +277,7 @@ where
 
 /// Bake [`Action`]s into [`Segment`]s using the `Source` component
 /// as the starting point.
-pub(super) fn bake_component_actions<Source, Target>(
+pub(crate) fn bake_component_actions<Source, Target>(
     field: Field<Source, Target>,
 ) -> impl ObserverSystem<OnInsert, Tracks>
 where
@@ -309,7 +309,7 @@ where
 
 /// Bake [`Action`]s into [`Segment`]s using the `Source::Asset` asset
 /// as the starting point.
-pub(super) fn bake_asset_actions<Source, Target>(
+pub(crate) fn bake_asset_actions<Source, Target>(
     field: Field<Source::Asset, Target>,
 ) -> impl ObserverSystem<OnInsert, Tracks>
 where

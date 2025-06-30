@@ -93,7 +93,7 @@ fn slide_basic(
     ]
     .flow(0.1);
 
-    commands.spawn(create_slide(vec![slide0, slide1]));
+    commands.create_timeline([slide0, slide1]);
 }
 
 fn setup(mut commands: Commands) {
@@ -116,22 +116,105 @@ fn setup(mut commands: Commands) {
 }
 
 fn slide_movement(
-    mut q_slides: Query<&mut SlideController>,
+    mut commands: Commands,
+    mut q_timelines: Query<(&mut Timeline, Entity)>,
     keys: Res<ButtonInput<KeyCode>>,
 ) {
-    for mut slide in q_slides.iter_mut() {
+    for (mut timeline, entity) in q_timelines.iter_mut() {
         if keys.just_pressed(KeyCode::Space) {
-            slide.set_time_scale(1.0);
+            let curr_index = timeline.sequence_index();
+            let prev_index = curr_index.saturating_sub(1);
+            let next_index = curr_index + 1;
 
             if keys.pressed(KeyCode::ShiftLeft) {
-                slide.prev();
+                // Backward motion.
+                match timeline.playback() {
+                    TimelinePlayback::Forward(_) => {
+                        // Switch to playing backward.
+                        timeline.play_backward(1.0);
+                    }
+                    TimelinePlayback::Backward(_) => {
+                        // Jump to the start of the sequence.
+                        commands.entity(entity).trigger(
+                            JumpSequence {
+                                index: curr_index,
+                                playback: TimelinePlayback::Pause,
+                                point: SequencePoint::Start,
+                            },
+                        );
+                    }
+                    TimelinePlayback::Pause => {
+                        match timeline.sequence_point() {
+                            SequencePoint::Start => {
+                                if timeline.is_first_sequence() {
+                                    continue;
+                                }
+
+                                // Move to the previous sequence and start playing.
+                                let jump = JumpSequence {
+                                    index: prev_index,
+                                    playback:
+                                        TimelinePlayback::Backward(
+                                            1.0,
+                                        ),
+                                    point: SequencePoint::End,
+                                };
+
+                                commands.entity(entity).trigger(jump);
+                            }
+                            _ => {
+                                // Switch to playing backward.
+                                timeline.play_backward(1.0);
+                            }
+                        }
+                    }
+                }
             } else {
-                slide.next();
+                // Forward motion.
+                match timeline.playback() {
+                    TimelinePlayback::Forward(_) => {
+                        // Jump to the end of the sequence.
+                        commands.entity(entity).trigger(
+                            JumpSequence {
+                                index: curr_index,
+                                playback: TimelinePlayback::Pause,
+                                point: SequencePoint::End,
+                            },
+                        );
+                    }
+                    TimelinePlayback::Backward(_) => {
+                        // Switch to playing forward.
+                        timeline.play_forward(1.0);
+                    }
+                    TimelinePlayback::Pause => {
+                        match timeline.sequence_point() {
+                            SequencePoint::End => {
+                                if timeline.is_last_sequence() {
+                                    continue;
+                                }
+
+                                // Move to the next sequence and start playing.
+                                let jump = JumpSequence {
+                                    index: next_index,
+                                    playback:
+                                        TimelinePlayback::Forward(1.0),
+                                    point: SequencePoint::Start,
+                                };
+
+                                commands.entity(entity).trigger(jump);
+                            }
+                            _ => {
+                                // Switch to playing forward.
+                                timeline.play_forward(1.0);
+                            }
+                        }
+                    }
+                }
             }
         }
 
         if keys.just_pressed(KeyCode::Escape) {
-            slide.set_time_scale(0.0);
+            timeline.pause();
         }
     }
 }
