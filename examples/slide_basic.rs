@@ -11,8 +11,6 @@ fn main() {
         .add_plugins(motiongfx::MotionGfxPlugin)
         .add_systems(Startup, (setup, slide_basic))
         .add_systems(Update, slide_movement)
-        .add_observer(forward_motion)
-        .add_observer(backward_motion)
         .run();
 }
 
@@ -118,131 +116,59 @@ fn setup(mut commands: Commands) {
 }
 
 fn slide_movement(
-    mut commands: Commands,
-    mut q_timelines: Query<(&mut TimelinePlayback, Entity)>,
+    mut q_timelines: Query<(&mut Timeline, &mut TimelinePlayback)>,
+    q_sequences: Query<(&Sequence, &SequenceController)>,
     keys: Res<ButtonInput<KeyCode>>,
-) {
-    for (mut playback, entity) in q_timelines.iter_mut() {
-        if keys.just_pressed(KeyCode::Space) {
-            if keys.pressed(KeyCode::ShiftLeft) {
-                // Backward motion.
-                commands.entity(entity).trigger(BackwardMotion);
-            } else {
-                // Forward motion.
-                commands.entity(entity).trigger(ForwardMotion);
+) -> Result {
+    for (mut timeline, mut playback) in q_timelines.iter_mut() {
+        if keys.just_pressed(KeyCode::ArrowRight) {
+            timeline.insert_command(TimelineCommand::Next(
+                SequencePoint::Start,
+            ));
+
+            playback.pause();
+        } else if keys.just_pressed(KeyCode::ArrowLeft) {
+            timeline.insert_command(TimelineCommand::Previous(
+                SequencePoint::Start,
+            ));
+
+            playback.pause();
+        } else if keys.just_pressed(KeyCode::Space)
+            && keys.pressed(KeyCode::ShiftLeft)
+        {
+            let (_, controller) = timeline
+                .curr_sequence_id()
+                .and_then(|e| q_sequences.get(e).ok())
+                .ok_or("Can't get sequence.")?;
+
+            // Already reached the start. Go to the previous sequence.
+            if controller.curr_time() <= 0.0 {
+                timeline.insert_command(TimelineCommand::Previous(
+                    SequencePoint::End,
+                ));
             }
+
+            playback.backward();
+        } else if keys.just_pressed(KeyCode::Space) {
+            let (sequence, controller) = timeline
+                .curr_sequence_id()
+                .and_then(|e| q_sequences.get(e).ok())
+                .ok_or("Can't get sequence.")?;
+
+            // Already reached the end. Go to the next sequence.
+            if controller.curr_time() >= sequence.duration() {
+                timeline.insert_command(TimelineCommand::Next(
+                    SequencePoint::Start,
+                ));
+            }
+
+            playback.forward();
         }
 
         if keys.just_pressed(KeyCode::Escape) {
             playback.pause();
         }
     }
-}
-
-fn forward_motion(
-    trigger: Trigger<ForwardMotion>,
-    mut commands: Commands,
-    mut q_timelines: Query<(&Timeline, &mut TimelinePlayback)>,
-) -> Result {
-    let entity = trigger.target();
-    let (timeline, mut playback) = q_timelines.get_mut(entity)?;
-
-    // Forward motion.
-    match *playback {
-        TimelinePlayback::Forward => {
-            // Jump to the end of the sequence.
-            commands.entity(entity).trigger(JumpSequence {
-                index: timeline.sequence_index(),
-                playback: TimelinePlayback::Pause,
-                point: SequencePoint::End,
-            });
-        }
-        TimelinePlayback::Backward => {
-            // Switch to playing forward.
-            playback.forward();
-        }
-        TimelinePlayback::Pause => {
-            match timeline.sequence_point() {
-                SequencePoint::End => {
-                    // We're already in the last sequence.
-                    if timeline.is_last_sequence() {
-                        return Ok(());
-                    }
-
-                    // Move to the next sequence and start playing.
-                    let jump = JumpSequence {
-                        index: timeline.sequence_index() + 1,
-                        playback: TimelinePlayback::Forward,
-                        point: SequencePoint::Start,
-                    };
-
-                    commands.entity(entity).trigger(jump);
-                }
-                _ => {
-                    // Switch to playing forward.
-                    playback.forward();
-                }
-            }
-        }
-    }
 
     Ok(())
 }
-
-fn backward_motion(
-    trigger: Trigger<BackwardMotion>,
-    mut commands: Commands,
-    mut q_timelines: Query<(&Timeline, &mut TimelinePlayback)>,
-) -> Result {
-    let entity = trigger.target();
-    let (timeline, mut playback) = q_timelines.get_mut(entity)?;
-
-    // Backward motion.
-    match *playback {
-        TimelinePlayback::Forward => {
-            // Switch to playing backward.
-            playback.backward();
-        }
-        TimelinePlayback::Backward => {
-            // Jump to the start of the sequence.
-            commands.entity(entity).trigger(JumpSequence {
-                index: timeline.sequence_index(),
-                playback: TimelinePlayback::Pause,
-                point: SequencePoint::Start,
-            });
-        }
-        TimelinePlayback::Pause => {
-            match timeline.sequence_point() {
-                SequencePoint::Start => {
-                    // We're already in the first sequence.
-                    if timeline.is_first_sequence() {
-                        return Ok(());
-                    }
-
-                    // Move to the previous sequence and start playing.
-                    let jump = JumpSequence {
-                        index: timeline
-                            .sequence_index()
-                            .saturating_sub(1),
-                        playback: TimelinePlayback::Backward,
-                        point: SequencePoint::End,
-                    };
-
-                    commands.entity(entity).trigger(jump);
-                }
-                _ => {
-                    // Switch to playing backward.
-                    playback.backward();
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[derive(Event)]
-pub struct ForwardMotion;
-
-#[derive(Event)]
-pub struct BackwardMotion;
