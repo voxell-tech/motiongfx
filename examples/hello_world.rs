@@ -101,7 +101,9 @@ fn hello_world(
 
     let sequence = cube_seqs.flow(0.01);
 
-    commands.create_timeline(sequence);
+    commands
+        .create_timeline(sequence)
+        .insert(TimelinePlayback::Forward);
 }
 
 fn setup(mut commands: Commands) {
@@ -125,25 +127,31 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement(
-    mut q_timelines: Query<&mut TimelinePlayback>,
+    mut q_timelines: Query<(&Timeline, &mut TimelinePlayback)>,
+    mut q_sequences: Query<&mut SequenceController>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut is_playing: Local<bool>,
-) {
-    for mut playback in q_timelines.iter_mut() {
-        if *is_playing == false {
-            playback.pause();
-        }
-
+    time: Res<Time>,
+) -> Result {
+    for (timeline, mut playback) in q_timelines.iter_mut() {
         if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
-            playback.forward();
+            let mut controller = timeline
+                .curr_sequence_id()
+                .and_then(|e| q_sequences.get_mut(e).ok())
+                .ok_or("Can't get sequence controller!")?;
+
+            controller.target_time += time.delta_secs();
         }
 
         if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
-            playback.backward();
+            let mut controller = timeline
+                .curr_sequence_id()
+                .and_then(|e| q_sequences.get_mut(e).ok())
+                .ok_or("Can't get sequence controller!")?;
+
+            controller.target_time -= time.delta_secs();
         }
 
         if keys.just_pressed(KeyCode::Space) {
-            *is_playing = true;
             if keys.pressed(KeyCode::ShiftLeft) {
                 playback.backward();
             } else {
@@ -152,7 +160,9 @@ fn timeline_movement(
         }
 
         if keys.just_pressed(KeyCode::Escape) {
-            *is_playing = false;
+            playback.pause();
         }
     }
+
+    Ok(())
 }
