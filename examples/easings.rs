@@ -97,7 +97,7 @@ fn easings(
         .collect::<Vec<_>>()
         .chain();
 
-    commands.create_timeline([sequence]);
+    commands.create_timeline(sequence);
 }
 
 fn setup(mut commands: Commands) {
@@ -114,29 +114,29 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement(
-    mut q_timelines: Query<&mut Timeline>,
+    mut q_timelines: Query<&mut TimelinePlayback>,
     keys: Res<ButtonInput<KeyCode>>,
     mut is_playing: Local<bool>,
 ) {
-    for mut timeline in q_timelines.iter_mut() {
+    for mut playback in q_timelines.iter_mut() {
         if *is_playing == false {
-            timeline.pause();
+            playback.pause();
         }
 
         if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
-            timeline.play_forward(1.0);
+            playback.forward();
         }
 
         if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
-            timeline.play_backward(1.0);
+            playback.backward();
         }
 
         if keys.just_pressed(KeyCode::Space) {
             *is_playing = true;
             if keys.pressed(KeyCode::ShiftLeft) {
-                timeline.play_backward(1.0);
+                playback.backward();
             } else {
-                timeline.play_forward(1.0);
+                playback.forward();
             }
         }
 

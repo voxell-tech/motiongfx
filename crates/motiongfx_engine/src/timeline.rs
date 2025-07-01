@@ -40,11 +40,17 @@ impl CreateTimelineAppExt for Commands<'_, '_> {
 
 /// Update [`SequenceController::target_time`] based on [`Timeline`].
 fn update_target_time(
-    mut q_timelines: Query<&mut Timeline>,
+    mut q_timelines: Query<(
+        &mut Timeline,
+        &mut TimelinePlayback,
+        &TimeScale,
+    )>,
     mut q_sequences: Query<(&Sequence, &mut SequenceController)>,
     time: Res<Time>,
 ) -> Result {
-    for mut timeline in q_timelines.iter_mut() {
+    for (mut timeline, mut playback, time_scale) in
+        q_timelines.iter_mut()
+    {
         let Some(sequence_id) = timeline.curr_sequence_id() else {
             continue;
         };
@@ -52,33 +58,36 @@ fn update_target_time(
         let (sequence, mut controller) =
             q_sequences.get_mut(sequence_id)?;
 
-        match timeline.playback {
-            TimelinePlayback::Forward(time_scale) => {
+        match *playback {
+            TimelinePlayback::Forward => {
                 if controller.curr_time() >= sequence.duration() {
-                    // When time scale indicates moving forward
+                    // When playback indicates moving forward
                     // and we've reached the end.
                     timeline.sequence_point = SequencePoint::End;
-                    timeline.pause();
+                    playback.pause();
                     continue;
                 } else {
                     controller.target_time +=
-                        time_scale * time.delta_secs();
+                        time_scale.get() * time.delta_secs();
                 }
             }
-            TimelinePlayback::Backward(time_scale) => {
+            TimelinePlayback::Backward => {
                 if controller.curr_time() <= 0.0 {
-                    // When time scale indicates moving backward
+                    // When playback indicates moving backward
                     // and we've reached the start.
                     timeline.sequence_point = SequencePoint::Start;
-                    timeline.pause();
+                    playback.pause();
                     continue;
                 } else {
                     controller.target_time -=
-                        time_scale * time.delta_secs();
+                        time_scale.get() * time.delta_secs();
                 }
             }
             TimelinePlayback::Pause => continue,
         }
+
+        timeline.sequence_point =
+            SequencePoint::Exact(controller.target_time);
     }
 
     Ok(())
@@ -86,13 +95,14 @@ fn update_target_time(
 
 fn jump_sequence(
     trigger: Trigger<JumpSequence>,
-    mut q_timelines: Query<&mut Timeline>,
+    mut q_timelines: Query<(&mut Timeline, &mut TimelinePlayback)>,
     mut q_sequences: Query<(&Sequence, &mut SequenceController)>,
 ) -> Result {
     let timeline_id = trigger.target();
     let jump = trigger.event();
 
-    let mut timeline = q_timelines.get_mut(timeline_id)?;
+    let (mut timeline, mut playback) =
+        q_timelines.get_mut(timeline_id)?;
 
     let target_index =
         jump.index.min(timeline.sequence_ids.len() - 1);
@@ -138,7 +148,7 @@ fn jump_sequence(
 
     // Apply jump configuration to the timeline.
     timeline.sequence_index = target_index;
-    timeline.playback = jump.playback;
+    *playback = jump.playback;
     timeline.sequence_point = jump.point;
 
     // No sequence to play at all!
@@ -175,12 +185,11 @@ pub struct JumpSequence {
 /// Manipulates [`SequenceController::target_time`].
 #[derive(Component, Debug)]
 #[relationship_target(relationship = TargetTimeline, linked_spawn)]
+#[require(TimelinePlayback, TimeScale)]
 pub struct Timeline {
     /// The [`Sequence`]s that is related to this timeline.
     #[relationship]
     sequence_ids: SmallVec<[Entity; 1]>,
-    /// The playback state of this timeline.
-    playback: TimelinePlayback,
     /// The index in `sequence_ids`.
     sequence_index: usize,
     /// The point of the current sequence.
@@ -195,18 +204,6 @@ impl Timeline {
     /// Returns an optional entity as `sequence_ids` might be empty.
     pub fn curr_sequence_id(&self) -> Option<Entity> {
         self.sequence_ids.get(self.sequence_index).copied()
-    }
-
-    /// Returns true if playing, false if paused.
-    #[inline(always)]
-    pub fn is_playing(&self) -> bool {
-        matches!(self.playback, TimelinePlayback::Pause) == false
-    }
-
-    /// Get the playback state of this timeline.
-    #[inline(always)]
-    pub fn playback(&self) -> TimelinePlayback {
-        self.playback
     }
 
     /// Get the current sequence index.
@@ -240,56 +237,6 @@ impl Timeline {
     }
 }
 
-impl Timeline {
-    /// Determine if and how the timeline should advance
-    /// [`SequenceController::target_time`] based on [`Time::delta_secs()`].
-    #[inline]
-    pub fn with_playback(
-        mut self,
-        playback: TimelinePlayback,
-    ) -> Self {
-        self.playback = playback;
-        self
-    }
-
-    #[inline]
-    pub fn set_playback(
-        &mut self,
-        playback: TimelinePlayback,
-    ) -> &mut Self {
-        self.playback = playback;
-        self
-    }
-
-    /// Allows the timeline to advance [`SequenceController::target_time`]
-    /// based on [`Time::delta_secs()`].
-    ///
-    /// # Caution
-    ///
-    /// `time_scale` must be positive, negative value may result in undesired behavior.
-    #[inline]
-    pub fn play_forward(&mut self, time_scale: f32) -> &mut Self {
-        self.set_playback(TimelinePlayback::Forward(time_scale))
-    }
-
-    /// Allows the timeline to reverse [`SequenceController::target_time`]
-    /// based on [`Time::delta_secs()`].
-    ///
-    /// # Caution
-    ///
-    /// `time_scale` must be positive, negative value may result in undesired behavior.
-    #[inline]
-    pub fn play_backward(&mut self, time_scale: f32) -> &mut Self {
-        self.set_playback(TimelinePlayback::Backward(time_scale))
-    }
-
-    /// Prevents the timeline from altering [`SequenceController::target_time`].
-    #[inline]
-    pub fn pause(&mut self) -> &mut Self {
-        self.set_playback(TimelinePlayback::Pause)
-    }
-}
-
 /// The target [`Timeline`] that this [`Sequence`] belongs to.
 #[derive(
     Component, Reflect, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash,
@@ -299,23 +246,32 @@ impl Timeline {
 pub struct TargetTimeline(Entity);
 
 /// The playback state of the [`Timeline`].
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Component, Default, Debug, Clone, Copy)]
 pub enum TimelinePlayback {
     /// Playing in the forward direction with a time scale.
-    ///
-    /// # Caution
-    ///
-    /// Provide only positive value, negative value may result in undesired behavior.
-    Forward(f32),
+    Forward,
     /// Playing in the backward direction with a time scale.
-    ///
-    /// # Caution
-    ///
-    /// Provide only positive value, negative value may result in undesired behavior.
-    Backward(f32),
+    Backward,
     /// Not playing at the moment.
     #[default]
     Pause,
+}
+
+impl TimelinePlayback {
+    #[inline]
+    pub fn forward(&mut self) {
+        *self = TimelinePlayback::Forward;
+    }
+
+    #[inline]
+    pub fn backward(&mut self) {
+        *self = TimelinePlayback::Backward;
+    }
+
+    #[inline]
+    pub fn pause(&mut self) {
+        *self = TimelinePlayback::Pause;
+    }
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -327,4 +283,35 @@ pub enum SequencePoint {
     End,
     /// An exact time in the [`Sequence`].
     Exact(f32),
+}
+
+/// Determines the speed of the [`Timeline`] playback.
+/// Consists of a correct-by-construction positive `f32` value .
+#[derive(Component, Debug, Deref, Clone, Copy)]
+pub struct TimeScale(f32);
+
+impl Default for TimeScale {
+    fn default() -> Self {
+        Self::new(1.0)
+    }
+}
+
+impl TimeScale {
+    /// The provided value will be passed through
+    /// [`f32::abs`] to ensure it is positive.
+    pub const fn new(time_scale: f32) -> Self {
+        Self(time_scale.abs())
+    }
+
+    /// The provided value will be passed through
+    /// [`f32::abs`] to ensure it is positive.
+    pub fn set(&mut self, time_scale: f32) {
+        self.0 = time_scale.abs();
+    }
+
+    /// Consumes itself and returns the inner `f32` value.
+    #[inline(always)]
+    pub fn get(self) -> f32 {
+        self.0
+    }
 }
