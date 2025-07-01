@@ -93,7 +93,7 @@ fn slide_basic(
     ]
     .flow(0.1);
 
-    commands.spawn(create_slide(vec![slide0, slide1]));
+    commands.create_timeline([slide0, slide1]);
 }
 
 fn setup(mut commands: Commands) {
@@ -116,22 +116,59 @@ fn setup(mut commands: Commands) {
 }
 
 fn slide_movement(
-    mut q_slides: Query<&mut SlideController>,
+    mut q_timelines: Query<(&mut Timeline, &mut TimelinePlayback)>,
+    q_sequences: Query<(&Sequence, &SequenceController)>,
     keys: Res<ButtonInput<KeyCode>>,
-) {
-    for mut slide in q_slides.iter_mut() {
-        if keys.just_pressed(KeyCode::Space) {
-            slide.set_time_scale(1.0);
+) -> Result {
+    for (mut timeline, mut playback) in q_timelines.iter_mut() {
+        if keys.just_pressed(KeyCode::ArrowRight) {
+            timeline.insert_command(TimelineCommand::Next(
+                SequencePoint::Start,
+            ));
 
-            if keys.pressed(KeyCode::ShiftLeft) {
-                slide.prev();
-            } else {
-                slide.next();
+            playback.pause();
+        } else if keys.just_pressed(KeyCode::ArrowLeft) {
+            timeline.insert_command(TimelineCommand::Previous(
+                SequencePoint::Start,
+            ));
+
+            playback.pause();
+        } else if keys.just_pressed(KeyCode::Space)
+            && keys.pressed(KeyCode::ShiftLeft)
+        {
+            let (_, controller) = timeline
+                .curr_sequence_id()
+                .and_then(|e| q_sequences.get(e).ok())
+                .ok_or("Can't get sequence.")?;
+
+            // Already reached the start. Go to the previous sequence.
+            if controller.curr_time() <= 0.0 {
+                timeline.insert_command(TimelineCommand::Previous(
+                    SequencePoint::End,
+                ));
             }
+
+            playback.backward();
+        } else if keys.just_pressed(KeyCode::Space) {
+            let (sequence, controller) = timeline
+                .curr_sequence_id()
+                .and_then(|e| q_sequences.get(e).ok())
+                .ok_or("Can't get sequence.")?;
+
+            // Already reached the end. Go to the next sequence.
+            if controller.curr_time() >= sequence.duration() {
+                timeline.insert_command(TimelineCommand::Next(
+                    SequencePoint::Start,
+                ));
+            }
+
+            playback.forward();
         }
 
         if keys.just_pressed(KeyCode::Escape) {
-            slide.set_time_scale(0.0);
+            playback.pause();
         }
     }
+
+    Ok(())
 }

@@ -22,14 +22,15 @@ impl Plugin for KeyframePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            mark_tracks_for_sampling.in_set(MotionGfxSet::MarkTrack),
+            mark_actions_for_sampling
+                .in_set(MotionGfxSet::MarkAction),
         );
     }
 }
 
 /// Mark tracks that overlaps with the current and target time
 /// from the [`SequenceController`].
-fn mark_tracks_for_sampling(
+fn mark_actions_for_sampling(
     mut commands: Commands,
     q_sequences: Query<
         (&Sequence, &SequenceController, &Tracks),
@@ -82,14 +83,24 @@ fn mark_tracks_for_sampling(
                 }
                 // `target_time` is out of bounds.
                 Err(index) => {
+                    let span = &sequence.spans
+                        [span_ids[index.saturating_sub(1)]];
+
+                    let span_range = Range {
+                        begin: span.start_time(),
+                        end: span.end_time(),
+                    };
+                    // Skip if the the animation range does not
+                    // overlap with the span range.
+                    if animate_range.overlap(&span_range) == false {
+                        continue;
+                    }
+
                     if index == 0 {
-                        let span = &sequence.spans[*span_ids.first()];
                         commands
                             .entity(span.action_id())
                             .insert(SampleType::Start);
                     } else {
-                        let span =
-                            &sequence.spans[span_ids[index - 1]];
                         commands
                             .entity(span.action_id())
                             .insert(SampleType::End);
@@ -266,7 +277,7 @@ where
 
 /// Bake [`Action`]s into [`Segment`]s using the `Source` component
 /// as the starting point.
-pub(super) fn bake_component_actions<Source, Target>(
+pub(crate) fn bake_component_actions<Source, Target>(
     field: Field<Source, Target>,
 ) -> impl ObserverSystem<OnInsert, Tracks>
 where
@@ -298,7 +309,7 @@ where
 
 /// Bake [`Action`]s into [`Segment`]s using the `Source::Asset` asset
 /// as the starting point.
-pub(super) fn bake_asset_actions<Source, Target>(
+pub(crate) fn bake_asset_actions<Source, Target>(
     field: Field<Source::Asset, Target>,
 ) -> impl ObserverSystem<OnInsert, Tracks>
 where
