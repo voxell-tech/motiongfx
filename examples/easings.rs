@@ -39,7 +39,7 @@ fn spawn_timeline(
     let blue = LinearRgba::from(palettes::tailwind::CYAN_300) * 100.0;
     let red = LinearRgba::from(palettes::tailwind::ROSE_400) * 100.0;
 
-    // Create spheres.
+    // Spawn spheres.
     let mut spheres = Vec::with_capacity(capacity);
     let mesh_handle = meshes.add(Sphere::default());
     let material = StandardMaterial {
@@ -49,24 +49,21 @@ fn spawn_timeline(
     };
 
     for i in 0..capacity {
-        let material_handle = materials.add(material.clone());
-        let transform = Transform::from_translation(Vec3::new(
-            -5.0,
-            (i as f32) - (capacity as f32) * 0.5,
-            0.0,
-        ))
-        .with_scale(Vec3::ONE);
-
-        let id = commands
+        let sphere = commands
             .spawn((
-                NotShadowCaster,
                 Mesh3d(mesh_handle.clone()),
-                transform,
-                MeshMaterial3d(material_handle.clone()),
+                MeshMaterial3d(materials.add(material.clone())),
+                Transform::from_translation(Vec3::new(
+                    -5.0,
+                    (i as f32) - (capacity as f32) * 0.5,
+                    0.0,
+                ))
+                .with_scale(Vec3::ONE),
+                NotShadowCaster,
             ))
             .id();
 
-        spheres.push(id);
+        spheres.push(sphere);
     }
 
     // Generate sequence.

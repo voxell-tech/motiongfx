@@ -20,7 +20,7 @@ fn spawn_timeline(
 ) {
     const X_OFFSET: f32 = 2.0;
 
-    // Cube.
+    // Spawn 3d models.
     let cube = commands
         .spawn((
             Mesh3d(meshes.add(Cuboid::default())),
@@ -32,7 +32,6 @@ fn spawn_timeline(
         ))
         .id();
 
-    // Sphere.
     let sphere = commands
         .spawn((
             Mesh3d(meshes.add(Sphere::default())),
@@ -46,7 +45,7 @@ fn spawn_timeline(
         ))
         .id();
 
-    // Create slides.
+    // Generate slide sequences.
     let slide0 = commands
         .entity(cube)
         .act(field!(<Transform>::scale), |_| Vec3::ONE)

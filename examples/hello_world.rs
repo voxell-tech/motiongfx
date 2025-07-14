@@ -24,7 +24,7 @@ fn spawn_timeline(
 
     const CAPACITY: usize = WIDTH * HEIGHT;
 
-    // Create cubes.
+    // Spawn cubes.
     let mut cubes = Vec::with_capacity(CAPACITY);
     let mesh_handle = meshes.add(Cuboid::default());
     let material_handle = materials.add(StandardMaterial {
@@ -106,7 +106,6 @@ fn spawn_timeline(
 fn setup(mut commands: Commands) {
     commands.spawn((
         Camera {
-            hdr: true,
             clear_color: Color::BLACK.into(),
             ..default()
         },
@@ -114,7 +113,6 @@ fn setup(mut commands: Commands) {
         Transform::from_xyz(0.0, 0.0, 15.0),
     ));
 
-    // Directional light
     commands.spawn((
         DirectionalLight::default(),
         Transform::from_xyz(3.0, 10.0, 5.0)
