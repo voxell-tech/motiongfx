@@ -1,5 +1,5 @@
+use bevy::color::palettes;
 use bevy::core_pipeline::bloom::Bloom;
-use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::pbr::NotShadowCaster;
 use bevy::prelude::*;
 use motiongfx::prelude::*;
@@ -10,12 +10,12 @@ fn main() {
         .add_plugins(DefaultPlugins)
         // Custom plugins
         .add_plugins(motiongfx::MotionGfxPlugin)
-        .add_systems(Startup, (setup, easings))
+        .add_systems(Startup, (setup, spawn_timeline))
         .add_systems(Update, timeline_movement)
         .run();
 }
 
-fn easings(
+fn spawn_timeline(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -36,11 +36,10 @@ fn easings(
     let capacity = easings.len();
 
     // Colors.
-    let blue =
-        LinearRgba::from(Srgba::hex("78DCE8").unwrap()) * 100.0;
-    let red = LinearRgba::from(Srgba::hex("FF6188").unwrap()) * 100.0;
+    let blue = LinearRgba::from(palettes::tailwind::CYAN_300) * 100.0;
+    let red = LinearRgba::from(palettes::tailwind::ROSE_400) * 100.0;
 
-    // Create spheres.
+    // Spawn spheres.
     let mut spheres = Vec::with_capacity(capacity);
     let mesh_handle = meshes.add(Sphere::default());
     let material = StandardMaterial {
@@ -50,24 +49,21 @@ fn easings(
     };
 
     for i in 0..capacity {
-        let material_handle = materials.add(material.clone());
-        let transform = Transform::from_translation(Vec3::new(
-            -5.0,
-            (i as f32) - (capacity as f32) * 0.5,
-            0.0,
-        ))
-        .with_scale(Vec3::ONE);
-
-        let id = commands
+        let sphere = commands
             .spawn((
-                NotShadowCaster,
                 Mesh3d(mesh_handle.clone()),
-                transform,
-                MeshMaterial3d(material_handle.clone()),
+                MeshMaterial3d(materials.add(material.clone())),
+                Transform::from_translation(Vec3::new(
+                    -5.0,
+                    (i as f32) - (capacity as f32) * 0.5,
+                    0.0,
+                ))
+                .with_scale(Vec3::ONE),
+                NotShadowCaster,
             ))
             .id();
 
-        spheres.push(id);
+        spheres.push(sphere);
     }
 
     // Generate sequence.
@@ -106,11 +102,11 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         Camera {
             hdr: true,
+            clear_color: Color::BLACK.into(),
             ..default()
         },
         Camera3d::default(),
         Transform::from_xyz(0.0, 0.0, 15.0),
-        Tonemapping::AcesFitted,
         Bloom::default(),
     ));
 }
@@ -122,21 +118,16 @@ fn timeline_movement(
     time: Res<Time>,
 ) -> Result {
     for (timeline, mut playback) in q_timelines.iter_mut() {
-        if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
-            let mut controller = timeline
-                .curr_sequence_id()
-                .and_then(|e| q_sequences.get_mut(e).ok())
-                .ok_or("Can't get sequence controller!")?;
+        let mut controller = timeline
+            .curr_sequence_id()
+            .and_then(|e| q_sequences.get_mut(e).ok())
+            .ok_or("Can't get sequence controller!")?;
 
+        if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
             controller.target_time += time.delta_secs();
         }
 
         if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
-            let mut controller = timeline
-                .curr_sequence_id()
-                .and_then(|e| q_sequences.get_mut(e).ok())
-                .ok_or("Can't get sequence controller!")?;
-
             controller.target_time -= time.delta_secs();
         }
 
