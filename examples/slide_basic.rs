@@ -21,34 +21,28 @@ fn spawn_timeline(
     const X_OFFSET: f32 = 2.0;
 
     // Cube.
-    let transform = Transform::default().with_scale(Vec3::splat(0.0));
-    let material = StandardMaterial {
-        base_color: palettes::tailwind::LIME_200.into(),
-        ..default()
-    };
-    let material_handle = materials.add(material.clone());
     let cube = commands
         .spawn((
             Mesh3d(meshes.add(Cuboid::default())),
-            transform,
-            MeshMaterial3d(material_handle.clone()),
+            Transform::default().with_scale(Vec3::splat(0.0)),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: palettes::tailwind::LIME_200.into(),
+                ..default()
+            })),
         ))
         .id();
 
     // Sphere.
-    let transform = Transform::default()
-        .with_translation(Vec3::X * X_OFFSET)
-        .with_scale(Vec3::splat(0.0));
-    let material = StandardMaterial {
-        base_color: palettes::tailwind::CYAN_300.into(),
-        ..default()
-    };
-    let material_handle = materials.add(material.clone());
     let sphere = commands
         .spawn((
             Mesh3d(meshes.add(Sphere::default())),
-            transform,
-            MeshMaterial3d(material_handle.clone()),
+            Transform::default()
+                .with_translation(Vec3::X * X_OFFSET)
+                .with_scale(Vec3::splat(0.0)),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: palettes::tailwind::CYAN_300.into(),
+                ..default()
+            })),
         ))
         .id();
 
