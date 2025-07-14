@@ -1,4 +1,4 @@
-use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::color::palettes;
 use bevy::pbr::NotShadowCaster;
 use bevy::prelude::*;
 use motiongfx::prelude::*;
@@ -9,12 +9,12 @@ fn main() {
         .add_plugins(DefaultPlugins)
         // Custom plugins
         .add_plugins(motiongfx::MotionGfxPlugin)
-        .add_systems(Startup, (setup, hello_world))
+        .add_systems(Startup, (setup, spawn_timeline))
         .add_systems(Update, timeline_movement)
         .run();
 }
 
-fn hello_world(
+fn spawn_timeline(
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -24,14 +24,11 @@ fn hello_world(
 
     const CAPACITY: usize = WIDTH * HEIGHT;
 
-    // Color.
-    let green = Srgba::hex("A9DC76").unwrap().into();
-
     // Create cubes.
     let mut cubes = Vec::with_capacity(CAPACITY);
     let mesh_handle = meshes.add(Cuboid::default());
     let material_handle = materials.add(StandardMaterial {
-        base_color: green,
+        base_color: palettes::tailwind::LIME_200.into(),
         ..default()
     });
 
@@ -110,12 +107,11 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         Camera {
             hdr: true,
+            clear_color: Color::BLACK.into(),
             ..default()
         },
         Camera3d::default(),
         Transform::from_xyz(0.0, 0.0, 15.0),
-        Tonemapping::AcesFitted,
-        bevy::core_pipeline::bloom::Bloom::default(),
     ));
 
     // Directional light
@@ -133,21 +129,16 @@ fn timeline_movement(
     time: Res<Time>,
 ) -> Result {
     for (timeline, mut playback) in q_timelines.iter_mut() {
-        if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
-            let mut controller = timeline
-                .curr_sequence_id()
-                .and_then(|e| q_sequences.get_mut(e).ok())
-                .ok_or("Can't get sequence controller!")?;
+        let mut controller = timeline
+            .curr_sequence_id()
+            .and_then(|e| q_sequences.get_mut(e).ok())
+            .ok_or("Can't get sequence controller!")?;
 
+        if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
             controller.target_time += time.delta_secs();
         }
 
         if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
-            let mut controller = timeline
-                .curr_sequence_id()
-                .and_then(|e| q_sequences.get_mut(e).ok())
-                .ok_or("Can't get sequence controller!")?;
-
             controller.target_time -= time.delta_secs();
         }
 

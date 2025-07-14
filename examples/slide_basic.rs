@@ -1,5 +1,4 @@
-use bevy::core_pipeline::tonemapping::Tonemapping;
-use bevy::pbr::NotShadowCaster;
+use bevy::color::palettes;
 use bevy::prelude::*;
 use motiongfx::prelude::*;
 
@@ -9,32 +8,27 @@ fn main() {
         .add_plugins(DefaultPlugins)
         // Custom plugins
         .add_plugins(motiongfx::MotionGfxPlugin)
-        .add_systems(Startup, (setup, slide_basic))
+        .add_systems(Startup, (setup, spawn_timeline))
         .add_systems(Update, slide_movement)
         .run();
 }
 
-fn slide_basic(
+fn spawn_timeline(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Color.
-    let green = Srgba::hex("A9DC76").unwrap().into();
-    let blue = Srgba::hex("78DCE8").unwrap().into();
-    let base0 = Srgba::hex("19181A").unwrap().into();
+    const X_OFFSET: f32 = 2.0;
 
     // Cube.
-    let x_offset = 2.0;
     let transform = Transform::default().with_scale(Vec3::splat(0.0));
     let material = StandardMaterial {
-        base_color: green,
+        base_color: palettes::tailwind::LIME_200.into(),
         ..default()
     };
     let material_handle = materials.add(material.clone());
     let cube = commands
         .spawn((
-            NotShadowCaster,
             Mesh3d(meshes.add(Cuboid::default())),
             transform,
             MeshMaterial3d(material_handle.clone()),
@@ -43,16 +37,15 @@ fn slide_basic(
 
     // Sphere.
     let transform = Transform::default()
-        .with_translation(Vec3::X * x_offset)
+        .with_translation(Vec3::X * X_OFFSET)
         .with_scale(Vec3::splat(0.0));
     let material = StandardMaterial {
-        base_color: blue,
+        base_color: palettes::tailwind::CYAN_300.into(),
         ..default()
     };
     let material_handle = materials.add(material.clone());
     let sphere = commands
         .spawn((
-            NotShadowCaster,
             Mesh3d(meshes.add(Sphere::default())),
             transform,
             MeshMaterial3d(material_handle.clone()),
@@ -71,7 +64,7 @@ fn slide_basic(
             commands
                 .entity(cube)
                 .act(field!(<Transform>::translation::x), move |_| {
-                    -x_offset
+                    -X_OFFSET
                 })
                 .with_ease(ease::cubic::ease_out)
                 .play(1.0),
@@ -79,7 +72,7 @@ fn slide_basic(
                 .entity(cube)
                 .act(
                     field!(<StandardMaterial>::base_color),
-                    move |_| base0,
+                    move |_| palettes::tailwind::ZINC_700.into(),
                 )
                 .with_ease(ease::cubic::ease_out)
                 .play(1.0),
@@ -100,12 +93,11 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         Camera {
             hdr: true,
+            clear_color: Color::BLACK.into(),
             ..default()
         },
         Camera3d::default(),
         Transform::from_xyz(0.0, 0.0, 15.0),
-        Tonemapping::AcesFitted,
-        bevy::core_pipeline::bloom::Bloom::default(),
     ));
 
     commands.spawn((
@@ -122,50 +114,55 @@ fn slide_movement(
 ) -> Result {
     for (mut timeline, mut playback) in q_timelines.iter_mut() {
         if keys.just_pressed(KeyCode::ArrowRight) {
-            timeline.insert_command(TimelineCommand::Next(
-                SequencePoint::Start,
-            ));
+            // Move to the start of the next sequence in
+            // normal circumstances.
+            //
+            // However, if we're already at the last
+            // sequence, move towards the end.
+
+            if timeline.is_last_sequence() {
+                timeline.insert_command(TimelineCommand::Current(
+                    SequencePoint::End,
+                ));
+            } else {
+                timeline.insert_command(TimelineCommand::Next(
+                    SequencePoint::Start,
+                ));
+            }
 
             playback.pause();
         } else if keys.just_pressed(KeyCode::ArrowLeft) {
+            // Move to the start of the previous sequence.
             timeline.insert_command(TimelineCommand::Previous(
                 SequencePoint::Start,
             ));
 
             playback.pause();
-        } else if keys.just_pressed(KeyCode::Space)
-            && keys.pressed(KeyCode::ShiftLeft)
-        {
-            let (_, controller) = timeline
-                .curr_sequence_id()
-                .and_then(|e| q_sequences.get(e).ok())
-                .ok_or("Can't get sequence.")?;
-
-            // Already reached the start. Go to the previous sequence.
-            if controller.curr_time() <= 0.0 {
-                timeline.insert_command(TimelineCommand::Previous(
-                    SequencePoint::End,
-                ));
-            }
-
-            playback.backward();
         } else if keys.just_pressed(KeyCode::Space) {
             let (sequence, controller) = timeline
                 .curr_sequence_id()
                 .and_then(|e| q_sequences.get(e).ok())
                 .ok_or("Can't get sequence.")?;
 
-            // Already reached the end. Go to the next sequence.
-            if controller.curr_time() >= sequence.duration() {
-                timeline.insert_command(TimelineCommand::Next(
-                    SequencePoint::Start,
-                ));
+            if keys.pressed(KeyCode::ShiftLeft) {
+                // Already reached the start. Go to the previous sequence.
+                if controller.curr_time() <= 0.0 {
+                    timeline.insert_command(
+                        TimelineCommand::Previous(SequencePoint::End),
+                    );
+                }
+                playback.backward();
+            } else {
+                // Already reached the end. Go to the next sequence.
+                if controller.curr_time() >= sequence.duration() {
+                    timeline.insert_command(TimelineCommand::Next(
+                        SequencePoint::Start,
+                    ));
+                }
+
+                playback.forward();
             }
-
-            playback.forward();
-        }
-
-        if keys.just_pressed(KeyCode::Escape) {
+        } else if keys.just_pressed(KeyCode::Escape) {
             playback.pause();
         }
     }
