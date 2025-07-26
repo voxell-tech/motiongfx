@@ -47,7 +47,7 @@ fn update_curr_time(
 ///
 /// A [`SequenceController`] will also be automatically inserted
 /// through the `on_insert` hook.
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Sequence {
     /// Stores the [`ActionSpan`]s that makes up the sequence.
     pub(crate) spans: SmallVec<[ActionSpan; 1]>,
@@ -56,13 +56,15 @@ pub struct Sequence {
 }
 
 impl Sequence {
+    #[must_use]
     pub fn single(span: ActionSpan) -> Self {
         Self {
             duration: span.duration(),
-            spans: [span].into(),
+            spans: SmallVec::from_buf([span]),
         }
     }
 
+    #[must_use]
     pub fn empty(duration: f32) -> Self {
         Self {
             duration,
@@ -71,8 +73,23 @@ impl Sequence {
     }
 
     #[inline(always)]
+    #[must_use]
     pub fn duration(&self) -> f32 {
         self.duration
+    }
+
+    pub fn chain(&mut self, sequence: Self) -> &mut Self {
+        for span in sequence.spans {
+            self.spans.push(
+                span.with_start_time(
+                    span.start_time() + self.duration,
+                ),
+            );
+        }
+
+        self.duration += sequence.duration;
+
+        self
     }
 }
 

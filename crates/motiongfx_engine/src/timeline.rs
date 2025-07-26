@@ -1,6 +1,7 @@
-use std::num::NonZeroUsize;
+use core::num::NonZeroUsize;
 
 use bevy::prelude::*;
+use nonempty::NonEmpty;
 use smallvec::SmallVec;
 
 use crate::sequence::{Sequence, SequenceController};
@@ -15,6 +16,23 @@ impl Plugin for TimelinePlugin {
             (apply_timeline_commands, update_target_time)
                 .chain()
                 .in_set(MotionGfxSet::TargetTime),
+        );
+
+        app.configure_sets(
+            PostUpdate,
+            (
+                TimelineSet::Advance,
+                TimelineSet::MarkAction,
+                TimelineSet::Sample,
+                TimelineSet::Sync,
+            )
+                .chain(),
+        );
+
+        app.add_systems(
+            PostUpdate,
+            (sync_target_index, sync_target_time)
+                .in_set(TimelineSet::Sync),
         );
     }
 }
@@ -258,8 +276,103 @@ pub enum TimelineCommand {
     Exact(usize, SequencePoint),
 }
 
-#[derive(Deref, Default, Debug)]
-pub struct TimelineCommandChain(SmallVec<[TimelineCommand; 1]>);
+fn sync_target_time(
+    mut q_timeline_time: Query<
+        &mut TimelineTime,
+        Changed<TimelineTime>,
+    >,
+) {
+    for mut timeline_time in q_timeline_time.iter_mut() {
+        let timeline_time = timeline_time.bypass_change_detection();
+        timeline_time.time = timeline_time.target_time;
+    }
+}
+
+fn sync_target_index(
+    mut q_timeline_index: Query<
+        &mut TimelineIndex,
+        Changed<TimelineIndex>,
+    >,
+) {
+    for mut timeline_index in q_timeline_index.iter_mut() {
+        let timeline_index = timeline_index.bypass_change_detection();
+        timeline_index.index = timeline_index.target_index;
+    }
+}
+
+/// The time controller for the [`Sequence`]s in the [`Timeline`].
+///
+/// The [`Sequence`] that will be controlled depends on [`TimelineIndex`].
+#[derive(Component, Default, Debug, Clone, Copy)]
+pub struct TimelineTime {
+    /// The current time of the current [`Sequence`] in the [`Timeline`].
+    ///
+    /// The current [`Sequence`] is based on [`TimelineIndex::index()`].
+    time: f32,
+    /// The target time of the target [`Sequence`] in the [`Timeline`].
+    ///
+    /// The target [`Sequence`] is based on [`TimelineIndex::target_index()`].
+    target_time: f32,
+}
+
+#[derive(Component, Default, Debug, Clone, Copy)]
+pub struct TimelineIndex {
+    /// The current sequence index in the [`Timeline`].
+    index: u32,
+    /// The target sequence index in the [`Timeline`].
+    target_index: u32,
+}
+
+impl TimelineIndex {
+    pub fn index(&self) -> u32 {
+        self.index
+    }
+
+    pub fn target_index(&self) -> u32 {
+        self.target_index
+    }
+}
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TimelineSet {
+    Advance,
+    MarkAction,
+    Sample,
+    Sync,
+}
+
+#[derive(Component, Debug, Clone)]
+#[component(immutable)]
+#[require(TimelineTime, TimelineIndex, TimelinePlayback, TimeScale)]
+pub struct _Timeline {
+    sequences: NonEmpty<Sequence>,
+}
+
+impl _Timeline {
+    pub fn new() -> Self {
+        Self {
+            sequences: NonEmpty::new(Sequence::default()),
+        }
+    }
+}
+
+impl Default for _Timeline {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl _Timeline {
+    pub fn chain(&mut self, sequence: Sequence) -> &mut Self {
+        self.sequences.last_mut().chain(sequence);
+        self
+    }
+
+    pub fn add_checkpoint(&mut self) -> &mut Self {
+        self.sequences.push(Sequence::default());
+        self
+    }
+}
 
 /// Manipulates [`SequenceController::target_time`].
 #[derive(Component, Debug)]
@@ -393,9 +506,17 @@ impl TimeScale {
         self.0 = time_scale.abs();
     }
 
+    /// Returns the inner `f32` value.
+    #[inline(always)]
+    #[must_use]
+    pub fn get(&self) -> f32 {
+        self.0
+    }
+
     /// Consumes itself and returns the inner `f32` value.
     #[inline(always)]
-    pub fn get(self) -> f32 {
+    #[must_use]
+    pub fn consume_get(self) -> f32 {
         self.0
     }
 }
