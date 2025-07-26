@@ -1,4 +1,4 @@
-use std::f32::consts::FRAC_PI_2;
+use core::f32::consts::FRAC_PI_2;
 
 use bevy::color::palettes;
 use bevy::prelude::*;

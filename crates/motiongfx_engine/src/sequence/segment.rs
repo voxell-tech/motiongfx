@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 use bevy::asset::AsAssetId;
 use bevy::ecs::component::Mutable;
