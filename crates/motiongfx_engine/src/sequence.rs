@@ -16,10 +16,7 @@ pub(super) struct SequencePlugin;
 
 impl Plugin for SequencePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            track::TrackPlugin,
-            segment::KeyframePlugin,
-        ));
+        app.add_plugins((track::TrackPlugin, segment::SegmentPlugin));
 
         app.add_systems(
             PostUpdate,
