@@ -51,15 +51,9 @@ impl ActionSpan {
     pub(crate) fn new(action_id: Entity, duration: f32) -> Self {
         Self {
             action_id,
-            duration,
             start_time: 0.0,
+            duration,
         }
-    }
-
-    #[inline]
-    pub(crate) fn with_start_time(mut self, start_time: f32) -> Self {
-        self.start_time = start_time;
-        self
     }
 
     /// Target [`Entity`] with the [`Action`] component.
@@ -85,6 +79,20 @@ impl ActionSpan {
     #[must_use]
     pub fn end_time(&self) -> f32 {
         self.start_time + self.duration
+    }
+}
+
+impl ActionSpan {
+    #[inline]
+    pub(crate) fn with_start_time(mut self, start_time: f32) -> Self {
+        self.start_time = start_time;
+        self
+    }
+
+    #[inline]
+    pub(crate) fn delay(&mut self, delay: f32) -> &mut Self {
+        self.start_time += delay;
+        self
     }
 }
 
