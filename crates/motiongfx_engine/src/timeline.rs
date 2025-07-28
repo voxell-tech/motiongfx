@@ -4,6 +4,8 @@ use bevy::prelude::*;
 use nonempty::NonEmpty;
 use smallvec::SmallVec;
 
+use crate::action::ActionSpan;
+use crate::prelude::track::Tracks;
 use crate::sequence::{Sequence, SequenceController};
 use crate::MotionGfxSet;
 
@@ -313,12 +315,8 @@ fn setup_timeline_relations(
     let entity = trigger.target();
     let timeline = q_timelines.get(entity)?;
 
-    for span_id in timeline
-        .sequences
-        .iter()
-        .flat_map(|seq| seq.spans.iter().map(|span| span.action_id()))
-    {
-        commands.entity(span_id).insert(ActionOf(entity));
+    for span in timeline.spans() {
+        commands.entity(span.action_id()).insert(ActionOf(entity));
     }
 
     Ok(())
@@ -383,6 +381,10 @@ pub struct TimelineActions(Vec<Entity>);
 #[relationship(relationship_target = TimelineActions)]
 pub struct ActionOf(Entity);
 
+pub struct TimelineTracks {
+    tracks: NonEmpty<Tracks>,
+}
+
 #[derive(Component, Debug, Clone)]
 #[component(immutable)]
 #[require(TimelineTime, TimelineIndex, TimelinePlayback, TimeScale)]
@@ -395,6 +397,10 @@ impl _Timeline {
         Self {
             sequences: NonEmpty::new(Sequence::default()),
         }
+    }
+
+    pub fn spans(&self) -> impl Iterator<Item = &ActionSpan> {
+        self.sequences.iter().flat_map(|seq| seq.spans.iter())
     }
 }
 
