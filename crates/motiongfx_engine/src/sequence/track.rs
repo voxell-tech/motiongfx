@@ -4,6 +4,7 @@ use nonempty::NonEmpty;
 
 use crate::action::ActionTarget;
 use crate::field::FieldHash;
+use crate::prelude::_Timeline;
 
 // For docs.
 #[allow(unused_imports)]
@@ -21,6 +22,42 @@ impl Plugin for TrackPlugin {
     }
 }
 
+fn _generate_tracks(
+    trigger: Trigger<OnInsert, _Timeline>,
+    mut commands: Commands,
+    q_timelines: Query<&_Timeline>,
+    q_actions: Query<(&FieldHash, &ActionTarget)>,
+) -> Result {
+    let timeline_id = trigger.target();
+    let timeline = q_timelines.get(timeline_id)?;
+
+    let mut tracks = Tracks::default();
+
+    for (i, span) in timeline.spans().enumerate() {
+        let action_id = span.action_id();
+        let (&field_hash, &action_target) =
+            q_actions.get(action_id)?;
+
+        let track_key = TrackKey {
+            action_target,
+            field_hash,
+        };
+
+        match tracks.get_mut(&track_key) {
+            Some(track) => {
+                track.push_span(i, span);
+            }
+            None => {
+                tracks.insert(track_key, Track::new(i, span));
+            }
+        }
+    }
+
+    commands.entity(timeline_id).insert(tracks);
+
+    Ok(())
+}
+
 fn generate_tracks(
     trigger: Trigger<OnInsert, Sequence>,
     mut commands: Commands,
@@ -30,7 +67,7 @@ fn generate_tracks(
     let sequence_id = trigger.target();
     let sequence = q_sequences.get(sequence_id)?;
 
-    let mut tracks = Tracks::default();
+    let mut tracks = Tracks::new();
 
     for (i, span) in sequence.spans.iter().enumerate() {
         let action_id = span.action_id();
@@ -59,9 +96,21 @@ fn generate_tracks(
 
 /// Stores all uniquely identified tracks in the [`Sequence`],
 /// mapped by a unique [`TrackKey`].
-#[derive(Component, Deref, DerefMut, Default, Debug, Clone)]
+#[derive(Component, Deref, DerefMut, Debug, Clone)]
 #[component(immutable)]
 pub struct Tracks(HashMap<TrackKey, Track>);
+
+impl Tracks {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+}
+
+impl Default for Tracks {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// Stores the keys required to uniquely identify a track.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
