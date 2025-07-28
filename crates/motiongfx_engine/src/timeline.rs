@@ -33,7 +33,9 @@ impl Plugin for TimelinePlugin {
             PostUpdate,
             (sync_target_index, sync_target_time)
                 .in_set(TimelineSet::Sync),
-        );
+        )
+        .add_observer(setup_timeline_relations)
+        .add_observer(despawn_timeline_relations);
     }
 }
 
@@ -276,6 +278,7 @@ pub enum TimelineCommand {
     Exact(usize, SequencePoint),
 }
 
+/// Sync [`TimelineTime::time`] with [`TimelineTime::target_time`].
 fn sync_target_time(
     mut q_timeline_time: Query<
         &mut TimelineTime,
@@ -288,6 +291,7 @@ fn sync_target_time(
     }
 }
 
+/// Sync [`TimelineIndex::index`] with [`TimelineIndex::target_index`].
 fn sync_target_index(
     mut q_timeline_index: Query<
         &mut TimelineIndex,
@@ -298,6 +302,36 @@ fn sync_target_index(
         let timeline_index = timeline_index.bypass_change_detection();
         timeline_index.index = timeline_index.target_index;
     }
+}
+
+/// Setup [`TimelineActions`] relations on [`Timeline`] [insertion](OnInsert).
+fn setup_timeline_relations(
+    trigger: Trigger<OnInsert, _Timeline>,
+    mut commands: Commands,
+    q_timelines: Query<&_Timeline>,
+) -> Result {
+    let entity = trigger.target();
+    let timeline = q_timelines.get(entity)?;
+
+    for span_id in timeline
+        .sequences
+        .iter()
+        .flat_map(|seq| seq.spans.iter().map(|span| span.action_id()))
+    {
+        commands.entity(span_id).insert(ActionOf(entity));
+    }
+
+    Ok(())
+}
+
+/// Despawn all related [`TimelineActions`] on [`Timeline`] [replacement](OnReplace).
+fn despawn_timeline_relations(
+    trigger: Trigger<OnReplace, _Timeline>,
+    mut commands: Commands,
+) {
+    commands
+        .entity(trigger.target())
+        .despawn_related::<TimelineActions>();
 }
 
 /// The time controller for the [`Sequence`]s in the [`Timeline`].
@@ -341,6 +375,14 @@ pub enum TimelineSet {
     Sync,
 }
 
+#[derive(Component)]
+#[relationship_target(relationship = ActionOf)]
+pub struct TimelineActions(Vec<Entity>);
+
+#[derive(Component)]
+#[relationship(relationship_target = TimelineActions)]
+pub struct ActionOf(Entity);
+
 #[derive(Component, Debug, Clone)]
 #[component(immutable)]
 #[require(TimelineTime, TimelineIndex, TimelinePlayback, TimeScale)]
@@ -356,12 +398,6 @@ impl _Timeline {
     }
 }
 
-impl Default for _Timeline {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl _Timeline {
     pub fn chain(&mut self, sequence: Sequence) -> &mut Self {
         self.sequences.last_mut().chain(sequence);
@@ -371,6 +407,12 @@ impl _Timeline {
     pub fn add_checkpoint(&mut self) -> &mut Self {
         self.sequences.push(Sequence::default());
         self
+    }
+}
+
+impl Default for _Timeline {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
