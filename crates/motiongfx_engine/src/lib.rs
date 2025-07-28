@@ -12,6 +12,8 @@ pub mod interpolation;
 pub mod sequence;
 pub mod timeline;
 
+mod timeline_v2;
+
 pub mod prelude {
     pub use crate::action::*;
     pub use crate::animate::AnimateAppExt;
