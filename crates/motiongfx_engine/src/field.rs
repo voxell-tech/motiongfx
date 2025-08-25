@@ -306,15 +306,25 @@ pub use field_hash;
 ///
 /// Allows access to the `Target` type from
 /// the `Source` type both immutably and mutably.
-#[derive(Component, Reflect, Debug, PartialEq, Eq)]
+#[derive(Component, Reflect, Debug)]
 #[reflect(Component)]
 #[component(immutable)]
 pub struct FieldAccessor<Source, Target> {
-    pub field_ref: FieldRefFn<Source, Target>,
-    pub field_mut: FieldMutFn<Source, Target>,
+    field_ref: FieldRefFn<Source, Target>,
+    field_mut: FieldMutFn<Source, Target>,
 }
 
 impl<Source, Target> FieldAccessor<Source, Target> {
+    pub fn new(
+        field_ref: FieldRefFn<Source, Target>,
+        field_mut: FieldMutFn<Source, Target>,
+    ) -> Self {
+        Self {
+            field_ref,
+            field_mut,
+        }
+    }
+
     /// Get a immutable reference of the `Target` from the `Source`.
     pub fn get_ref<'a>(&self, source: &'a Source) -> &'a Target {
         (self.field_ref)(source)
@@ -340,16 +350,16 @@ impl<Source, Target> Clone for FieldAccessor<Source, Target> {
 #[macro_export]
 macro_rules! accessor {
     (<$source:ty>$(::$field:tt)+) => {
-        $crate::field::FieldAccessor {
-            field_ref: |source: &$source| &source$(.$field)+,
-            field_mut: |source: &mut $source| &mut source$(.$field)+,
-        }
+        $crate::field::FieldAccessor::new(
+            |source: &$source| &source$(.$field)+,
+            |source: &mut $source| &mut source$(.$field)+,
+        )
     };
     (<$source:ty>) => {
-        $crate::field::FieldAccessor {
-            field_ref: |source: &$source| source,
-            field_mut: |source: &mut $source| source,
-        }
+        $crate::field::FieldAccessor::new(
+            |source: &$source| source,
+            |source: &mut $source| source,
+        )
     };
 }
 pub use accessor;
