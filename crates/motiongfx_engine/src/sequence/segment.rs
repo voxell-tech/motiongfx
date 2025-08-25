@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 use bevy::asset::AsAssetId;
 use bevy::ecs::component::Mutable;
@@ -16,9 +16,9 @@ use crate::{MotionGfxSet, ThreadSafe};
 use super::track::Tracks;
 use super::{Sequence, SequenceController};
 
-pub(super) struct KeyframePlugin;
+pub(super) struct SegmentPlugin;
 
-impl Plugin for KeyframePlugin {
+impl Plugin for SegmentPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,

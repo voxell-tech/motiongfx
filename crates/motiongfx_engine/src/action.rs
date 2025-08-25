@@ -1,5 +1,4 @@
-use std::marker::PhantomData;
-use std::sync::Arc;
+use core::marker::PhantomData;
 
 use bevy::prelude::*;
 
@@ -18,15 +17,13 @@ pub trait ActionFn<T>: Fn(&T) -> T + ThreadSafe {}
 
 impl<T, U> ActionFn<T> for U where U: Fn(&T) -> T + ThreadSafe {}
 
-// TODO: Add special action entity to repeat other actions...
-
-#[derive(Component, Reflect, Deref, DerefMut, Clone)]
+#[derive(Component, Reflect, Deref, DerefMut)]
 #[reflect(Component)]
-pub struct Action<Target>(pub Arc<dyn ActionFn<Target>>);
+pub struct Action<Target>(pub Box<dyn ActionFn<Target>>);
 
 impl<Target> Action<Target> {
     pub fn new(target: impl ActionFn<Target>) -> Self {
-        Self(Arc::new(target))
+        Self(Box::new(target))
     }
 }
 
@@ -40,7 +37,7 @@ pub struct Interp<Target>(pub InterpFn<Target>);
 #[component(immutable)]
 pub struct Ease(pub EaseFn);
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct ActionSpan {
     /// Target [`Entity`] with the [`Action`] component.
     action_id: Entity,
@@ -54,36 +51,48 @@ impl ActionSpan {
     pub(crate) fn new(action_id: Entity, duration: f32) -> Self {
         Self {
             action_id,
-            duration,
             start_time: 0.0,
+            duration,
         }
     }
 
+    /// Target [`Entity`] with the [`Action`] component.
+    #[inline(always)]
+    #[must_use]
+    pub fn action_id(&self) -> Entity {
+        self.action_id
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn duration(&self) -> f32 {
+        self.duration
+    }
+
+    #[inline(always)]
+    #[must_use]
+    pub fn start_time(&self) -> f32 {
+        self.start_time
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn end_time(&self) -> f32 {
+        self.start_time + self.duration
+    }
+}
+
+impl ActionSpan {
     #[inline]
     pub(crate) fn with_start_time(mut self, start_time: f32) -> Self {
         self.start_time = start_time;
         self
     }
 
-    /// Target [`Entity`] with the [`Action`] component.
-    #[inline(always)]
-    pub fn action_id(&self) -> Entity {
-        self.action_id
-    }
-
-    #[inline(always)]
-    pub fn duration(&self) -> f32 {
-        self.duration
-    }
-
-    #[inline(always)]
-    pub fn start_time(&self) -> f32 {
-        self.start_time
-    }
-
     #[inline]
-    pub fn end_time(&self) -> f32 {
-        self.start_time + self.duration
+    pub(crate) fn delay(&mut self, delay: f32) -> &mut Self {
+        self.start_time += delay;
+        self
     }
 }
 
