@@ -633,108 +633,98 @@ mod tests {
 
     #[test]
     fn track_key_uniqueness() {
-        const DUMMY_SEQ: Sequence = Sequence::new(span(1.0));
+        // Sequence with 0 duration to prevent overlaps.
+        const DUMMY_SEQ: Sequence = Sequence::new(span(0.0));
 
         let entity1 = Entity::from_raw(1);
         let entity2 = Entity::from_raw(2);
         let field_u32_a = FieldHash::new::<u32>("a");
         let field_u32_b = FieldHash::new::<u32>("b");
 
-        let track1 = Track::new_with_sequence(
-            TrackKey {
-                target: entity1,
-                field_hash: field_u32_a,
-            },
-            DUMMY_SEQ.clone(),
-        );
-        let track2 = Track::new_with_sequence(
-            TrackKey {
-                target: entity2,
-                field_hash: field_u32_a,
-            },
-            DUMMY_SEQ.clone(),
-        );
-        let track3 = Track::new_with_sequence(
-            TrackKey {
-                target: entity1,
-                field_hash: field_u32_b,
-            },
-            DUMMY_SEQ.clone(),
-        );
-        // Similar key with `track1`.
-        let track4 = Track::new_with_sequence(
-            TrackKey {
-                target: entity1,
-                field_hash: field_u32_a,
-            },
-            DUMMY_SEQ.clone(),
-        );
+        let k1 = TrackKey {
+            target: entity1,
+            field_hash: field_u32_a,
+        };
+        let k2 = TrackKey {
+            target: entity2,
+            field_hash: field_u32_a,
+        };
+        let k3 = TrackKey {
+            target: entity1,
+            field_hash: field_u32_b,
+        };
 
-        let track = [track1, track2, track3, track4].chain();
+        let track = Track::new()
+            .upsert_sequence(k1, DUMMY_SEQ.clone())
+            .upsert_sequence(k2, DUMMY_SEQ.clone())
+            .upsert_sequence(k3, DUMMY_SEQ.clone())
+            // Similar key with the first sequence.
+            .upsert_sequence(k1, DUMMY_SEQ.clone());
+
         assert_eq!(track.sequences.len(), 3);
     }
 
     #[test]
     fn chain_duration_and_delay() {
-        let track0 = Track::new_with_sequence(
+        let track1 = Track::new_with_sequence(
             key("a"),
             Sequence::new(span(1.0)),
         );
-        let track1 = Track::new_with_sequence(
+        let track2 = Track::new_with_sequence(
             key("b"),
             Sequence::new(span(2.0)),
         );
 
-        let track = [track0, track1].chain();
+        let track = [track1, track2].chain();
 
         assert_eq!(track.duration, 3.0);
         let seq_b = &track.sequences[&key("b")];
-        // `seq_b` should be delayed by 1.0 (duration of `track0`).
+        // `seq_b` should be delayed by 1.0 (duration of `track1`).
         assert_eq!(seq_b.start_time(), 1.0);
     }
 
     #[test]
     fn all_duration_max() {
-        let track0 = Track::new_with_sequence(
+        let track1 = Track::new_with_sequence(
             key("a"),
             Sequence::new(span(1.0)),
         );
-        let track1 = Track::new_with_sequence(
+        let track2 = Track::new_with_sequence(
             key("b"),
             Sequence::new(span(3.0)),
         );
 
-        let track = [track0, track1].all();
+        let track = [track1, track2].all();
         assert_eq!(track.duration, 3.0);
     }
 
     #[test]
     fn any_duration_min() {
-        let track0 = Track::new_with_sequence(
+        let track1 = Track::new_with_sequence(
             key("a"),
             Sequence::new(span(1.0)),
         );
-        let track1 = Track::new_with_sequence(
+        let track2 = Track::new_with_sequence(
             key("b"),
             Sequence::new(span(3.0)),
         );
 
-        let track = [track0, track1].any();
+        let track = [track1, track2].any();
         assert_eq!(track.duration, 1.0);
     }
 
     #[test]
     fn flow_with_delay() {
-        let track0 = Track::new_with_sequence(
+        let track1 = Track::new_with_sequence(
             key("a"),
             Sequence::new(span(1.0)),
         );
-        let track1 = Track::new_with_sequence(
+        let track2 = Track::new_with_sequence(
             key("b"),
             Sequence::new(span(1.0)),
         );
 
-        let track = [track0, track1].flow(0.5);
+        let track = [track1, track2].flow(0.5);
 
         assert_eq!(track.duration, 1.5); // 0.5 delay + 1.0 duration
         let seq_b = &track.sequences[&key("b")];
@@ -785,11 +775,11 @@ mod timeline_tests {
         const T1: f32 = 1.0;
         const T2: f32 = 2.0;
 
-        let t1 = dummy_track(T1);
-        let t2 = dummy_track(T2);
+        let track1 = dummy_track(T1);
+        let track2 = dummy_track(T2);
 
         let mut builder = TimelineBuilder::new();
-        builder.chain(t1).chain(t2);
+        builder.chain(track1).chain(track2);
 
         let timeline = builder.build();
 
@@ -815,7 +805,7 @@ mod timeline_tests {
         assert_eq!(timeline.tracks[1].duration, T2);
     }
 
-    // --- Systems: advance_timeline ---
+    // --- Systems: `advance_timeline` ---
 
     /// Create [`Time`] with a given delta seconds.
     fn time_with_delta(delta_secs: u64) -> Time {
@@ -889,7 +879,7 @@ mod timeline_tests {
         assert_eq!(timeline.target_time, 4.0);
     }
 
-    // --- Systems: sync_timeline ---
+    // --- Systems: `sync_timeline` ---
 
     #[test]
     fn sync_timeline_copies_target_to_current() {
