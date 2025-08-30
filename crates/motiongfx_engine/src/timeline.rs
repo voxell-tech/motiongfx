@@ -1,4 +1,4 @@
-use core::num::NonZeroUsize;
+use std::num::NonZeroUsize;
 
 use bevy::prelude::*;
 use nonempty::NonEmpty;

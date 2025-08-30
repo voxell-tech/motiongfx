@@ -1,5 +1,5 @@
-use core::any::TypeId;
-use core::marker::PhantomData;
+use std::any::TypeId;
+use std::marker::PhantomData;
 
 use bevy::ecs::component::{ComponentHooks, Immutable, StorageType};
 use bevy::platform::collections::HashMap;

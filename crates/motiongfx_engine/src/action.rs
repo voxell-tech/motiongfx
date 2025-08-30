@@ -1,4 +1,4 @@
-use core::marker::PhantomData;
+use std::marker::PhantomData;
 
 use bevy::prelude::*;
 
@@ -41,14 +41,17 @@ pub struct Ease(pub EaseFn);
 pub struct ActionSpan {
     /// Target [`Entity`] with the [`Action`] component.
     action_id: Entity,
-    /// Time at which animation should begin.
+    /// Time at which action should begin in seconds.
     start_time: f32,
-    /// Duration of animation in seconds.
+    /// Duration of action in seconds.
     duration: f32,
 }
 
 impl ActionSpan {
-    pub(crate) fn new(action_id: Entity, duration: f32) -> Self {
+    pub(crate) const fn new(
+        action_id: Entity,
+        duration: f32,
+    ) -> Self {
         Self {
             action_id,
             start_time: 0.0,
@@ -63,18 +66,23 @@ impl ActionSpan {
         self.action_id
     }
 
+    /// Duration of the action in seconds.
     #[inline(always)]
     #[must_use]
     pub fn duration(&self) -> f32 {
         self.duration
     }
 
+    /// Time at which the action should begin in seconds.
     #[inline(always)]
     #[must_use]
     pub fn start_time(&self) -> f32 {
         self.start_time
     }
 
+    /// Time at which the action should end in seconds.
+    ///
+    /// Calculated using start time and duration.
     #[inline]
     #[must_use]
     pub fn end_time(&self) -> f32 {
