@@ -7,7 +7,6 @@
 //! track. This design allows for manual control over the flow of
 //! the timeline.
 
-use bevy::ecs::query::QueryData;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use nonempty::NonEmpty;
@@ -44,20 +43,20 @@ pub enum TimelineSet {
 ///
 /// This system should run before the sampling starts.
 fn advance_timeline(
-    mut q_states: Query<(&Timeline, &mut TimelineState)>,
+    mut q_timelines: Query<&mut Timeline>,
     time: Res<Time>,
 ) {
-    for (timeline, mut state) in q_states.iter_mut() {
-        if !state.is_playing {
+    for mut timeline in q_timelines.iter_mut() {
+        if !timeline.is_playing() {
             continue;
         }
 
-        let increment = time.delta_secs() * state.time_scale;
-        let target_time = state.target_time + increment;
-        let duration = timeline.tracks[state.curr_index].duration;
+        let increment = time.delta_secs() * timeline.time_scale;
+        let target_time = timeline.target_time + increment;
+        let duration = timeline.tracks[timeline.curr_index].duration;
 
         // Prevent time overshooting.
-        state.target_time = target_time.clamp(0.0, duration);
+        timeline.target_time = target_time.clamp(0.0, duration);
     }
 }
 
@@ -65,79 +64,134 @@ fn advance_timeline(
 ///
 /// This system should run after the sampling is completed.
 fn sync_timeline(
-    mut q_states: Query<&mut TimelineState, Changed<TimelineState>>,
+    mut q_timeline: Query<&mut Timeline, Changed<Timeline>>,
 ) {
-    for mut state in q_states.iter_mut() {
-        let state = state.bypass_change_detection();
-        state.curr_time = state.target_time;
-        state.curr_index = state.target_index;
+    for mut timeline in q_timeline.iter_mut() {
+        let timeline = timeline.bypass_change_detection();
+        timeline.curr_time = timeline.target_time;
+        timeline.curr_index = timeline.target_index;
     }
 }
 
+/// A compact series of track.
 #[derive(Component, Debug)]
-#[component(immutable)]
-#[require(TimelineState)]
 pub struct Timeline {
     tracks: Box<[Track]>,
-}
-
-#[derive(Component, Debug, Clone, Copy)]
-pub struct TimelineState {
+    /// Determines if the timeline is currently playing.
     is_playing: bool,
+    /// The time scale of the timeline. Set this to negative
+    /// to play backwards.
     time_scale: f32,
+    /// The current time of the current track.
     curr_time: f32,
+    /// The target time of the target track.
     target_time: f32,
+    /// The index of the current track.
     curr_index: usize,
+    /// The index of the target track.
     target_index: usize,
 }
 
-impl TimelineState {
-    pub const fn new() -> Self {
-        Self {
-            is_playing: false,
-            time_scale: 1.0,
-            curr_time: 0.0,
-            target_time: 0.0,
-            curr_index: 0,
-            target_index: 0,
-        }
-    }
-}
-
-impl TimelineState {
+// Getter methods.
+impl Timeline {
+    /// Returns whether the timeline is currently playing.
+    #[inline]
     pub fn is_playing(&self) -> bool {
         self.is_playing
     }
 
+    /// Returns the current time scaling factor.
+    #[inline]
     pub fn time_scale(&self) -> f32 {
         self.time_scale
     }
 
+    /// Returns the current playback time.
+    #[inline]
     pub fn curr_time(&self) -> f32 {
         self.curr_time
     }
 
+    /// Returns the target playback time.
+    #[inline]
     pub fn target_time(&self) -> f32 {
         self.target_time
     }
 
+    /// Returns the current track index.
+    #[inline]
     pub fn curr_index(&self) -> usize {
         self.curr_index
     }
 
+    /// Returns the target track index.
+    #[inline]
     pub fn target_index(&self) -> usize {
         self.target_index
     }
-}
 
-impl Default for TimelineState {
-    fn default() -> Self {
-        Self::new()
+    /// Returns a reference slice to all tracks in this timeline.
+    #[inline]
+    pub fn tracks(&self) -> &[Track] {
+        &self.tracks
+    }
+
+    /// Returns a reference to the current track.
+    #[inline]
+    pub fn curr_track(&self) -> &Track {
+        &self.tracks[self.curr_index]
+    }
+
+    /// Returns a reference to the target track.
+    #[inline]
+    pub fn target_track(&self) -> &Track {
+        &self.tracks[self.target_index]
+    }
+
+    /// Returns `true` if the current track is the last track.
+    #[inline]
+    pub fn is_last_track(&self) -> bool {
+        self.curr_index == self.last_track_index()
+    }
+
+    /// Get the index of the last track. This is essentially the largest
+    /// index you can provide in [`TimelineCtx::set_target_track`].
+    #[inline]
+    pub fn last_track_index(&self) -> usize {
+        self.tracks.len().saturating_sub(1)
     }
 }
 
-impl TimelineState {
-    pub fn set_play(&mut self, play: bool) -> &mut Self {
+// Builder methods.
+impl Timeline {
+    #[inline]
+    pub fn with_playing(mut self, play: bool) -> Self {
+        self.is_playing = play;
+        self
+    }
+
+    #[inline]
+    pub fn with_time_scale(mut self, time_scale: f32) -> Self {
+        self.time_scale = time_scale;
+        self
+    }
+
+    #[inline]
+    pub fn with_target_time(mut self, target_time: f32) -> Self {
+        self.set_target_time(target_time);
+        self
+    }
+
+    #[inline]
+    pub fn with_target_track(mut self, target_index: usize) -> Self {
+        self.set_target_track(target_index);
+        self
+    }
+}
+
+// Setter methods.
+impl Timeline {
+    pub fn set_playing(&mut self, play: bool) -> &mut Self {
         self.is_playing = play;
         self
     }
@@ -146,55 +200,40 @@ impl TimelineState {
         self.time_scale = time_scale;
         self
     }
-}
-
-#[derive(QueryData)]
-#[query_data(mutable)]
-pub struct TimelineCtx<'w> {
-    pub timeline: &'w Timeline,
-    pub state: Mut<'w, TimelineState>,
-}
-
-impl<'w> TimelineCtx<'w> {
-    pub fn current_track(&self) -> &Track {
-        &self.timeline.tracks[self.state.curr_index]
-    }
 
     /// Set the target time of the current track, clamping the value
     /// within \[0.0..=track.duration\]
+    ///
+    /// Warns if out of bounds in `debug_assertions`.
     pub fn set_target_time(&mut self, target_time: f32) -> &mut Self {
-        let duration = self.current_track().duration;
+        let duration = self.target_track().duration;
 
         #[cfg(debug_assertions)]
         if target_time < 0.0 || target_time > duration {
             warn!("Target time ({target_time}) is out of bound [0.0..={duration}].");
         }
 
-        self.state.target_time = target_time.clamp(0.0, duration);
+        self.target_time = target_time.clamp(0.0, duration);
         self
     }
 
     /// Set the target track index, clamping the value within
     /// \[0..=track_count - 1\].
-    pub fn set_target_index(
+    ///
+    /// Warns if out of bounds in `debug_assertions`.
+    pub fn set_target_track(
         &mut self,
         target_index: usize,
     ) -> &mut Self {
-        let max_index = self.timeline.tracks.len().saturating_sub(1);
+        let max_index = self.last_track_index();
 
         #[cfg(debug_assertions)]
         if target_index > max_index {
             warn!("Target index ({target_index}) is out of bound [0..={max_index}].");
         }
 
-        self.state.target_index = target_index.clamp(0, max_index);
+        self.target_index = target_index.clamp(0, max_index);
         self
-    }
-}
-
-fn test(mut q_test: Query<(&Name, TimelineCtx)>) {
-    for (name, mut query) in q_test.iter_mut() {
-        query.state.bypass_change_detection().is_playing = false;
     }
 }
 
@@ -227,6 +266,12 @@ impl TimelineBuilder {
     pub fn build(self) -> Timeline {
         Timeline {
             tracks: self.tracks.into_iter().collect(),
+            is_playing: false,
+            time_scale: 1.0,
+            curr_time: 0.0,
+            target_time: 0.0,
+            curr_index: 0,
+            target_index: 0,
         }
     }
 }
@@ -538,6 +583,38 @@ pub fn delay(delay: f32, mut track: Track) -> Track {
     track
 }
 
+mod animate {
+    // TODO: Add a macro or something* to register multiple
+    // animatable fields from a single struct at once.
+
+    use bevy::asset::AsAssetId;
+    use bevy::ecs::component::Mutable;
+    use bevy::prelude::*;
+
+    use crate::field::FieldBundle;
+    use crate::prelude::Interpolation;
+    use crate::ThreadSafe;
+
+    pub trait AnimateAppExt {
+        fn animate_component<Source, Target>(
+            &mut self,
+            field_bundle: FieldBundle<Source, Target>,
+        ) -> &mut Self
+        where
+            Source: Component<Mutability = Mutable>,
+            Target: Interpolation + Clone + ThreadSafe;
+
+        #[cfg(feature = "asset")]
+        fn animate_asset<Source, Target>(
+            &mut self,
+            field_bundle: FieldBundle<Source::Asset, Target>,
+        ) -> &mut Self
+        where
+            Source: AsAssetId,
+            Target: Interpolation + Clone + ThreadSafe;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -741,7 +818,7 @@ mod timeline_tests {
     // --- Systems: advance_timeline ---
 
     /// Create [`Time`] with a given delta seconds.
-    fn time_with_delta(delta_secs: u64) -> Time<()> {
+    fn time_with_delta(delta_secs: u64) -> Time {
         let mut time = Time::default();
         time.advance_by(Duration::from_secs(delta_secs));
 
@@ -758,17 +835,14 @@ mod timeline_tests {
         let mut builder = TimelineBuilder::new();
         builder.chain(dummy_track(5.0));
 
-        let timeline = builder.build();
+        let timeline = builder.build().with_playing(true);
 
-        let mut state = TimelineState::new();
-        state.set_play(true);
-
-        let entity = world.spawn((timeline, state)).id();
+        let entity = world.spawn(timeline).id();
 
         world.run_system_once(advance_timeline).unwrap();
 
-        let state = world.get::<TimelineState>(entity).unwrap();
-        assert_eq!(state.target_time, 1.0);
+        let timeline = world.get::<Timeline>(entity).unwrap();
+        assert_eq!(timeline.target_time, 1.0);
     }
 
     #[test]
@@ -781,17 +855,14 @@ mod timeline_tests {
         let mut builder = TimelineBuilder::new();
         builder.chain(dummy_track(1.5));
 
-        let timeline = builder.build();
+        let timeline = builder.build().with_playing(true);
 
-        let mut state = TimelineState::new();
-        state.set_play(true);
-
-        let entity = world.spawn((timeline, state)).id();
+        let entity = world.spawn(timeline).id();
 
         world.run_system_once(advance_timeline).unwrap();
 
-        let state = world.get::<TimelineState>(entity).unwrap();
-        assert_eq!(state.target_time, 1.5);
+        let timeline = world.get::<Timeline>(entity).unwrap();
+        assert_eq!(timeline.target_time, 1.5);
     }
 
     #[test]
@@ -804,20 +875,18 @@ mod timeline_tests {
         let mut builder = TimelineBuilder::new();
         builder.chain(dummy_track(5.0));
 
-        let timeline = builder.build();
-
-        let mut state = TimelineState::new();
-        state
-            .set_play(true)
+        let timeline = builder
+            .build()
+            .with_playing(true)
             // Double speed.
-            .set_time_scale(2.0);
+            .with_time_scale(2.0);
 
-        let entity = world.spawn((timeline, state)).id();
+        let entity = world.spawn(timeline).id();
 
         world.run_system_once(advance_timeline).unwrap();
 
-        let state = world.get::<TimelineState>(entity).unwrap();
-        assert_eq!(state.target_time, 4.0);
+        let timeline = world.get::<Timeline>(entity).unwrap();
+        assert_eq!(timeline.target_time, 4.0);
     }
 
     // --- Systems: sync_timeline ---
@@ -826,16 +895,25 @@ mod timeline_tests {
     fn sync_timeline_copies_target_to_current() {
         let mut world = World::new();
 
-        let mut state = TimelineState::new();
-        state.target_time = 1.5;
-        state.target_index = 2;
+        let mut builder = TimelineBuilder::new();
+        builder
+            .chain(dummy_track(1.0))
+            .add_checkpoint()
+            .chain(dummy_track(2.0))
+            .add_checkpoint()
+            .chain(dummy_track(3.0));
 
-        let entity = world.spawn(state).id();
+        let timeline = builder
+            .build()
+            .with_target_track(2)
+            .with_target_time(1.5);
+
+        let entity = world.spawn(timeline).id();
 
         world.run_system_once(sync_timeline).unwrap();
 
-        let state = world.get::<TimelineState>(entity).unwrap();
-        assert_eq!(state.curr_time, 1.5);
-        assert_eq!(state.curr_index, 2);
+        let timeline = world.get::<Timeline>(entity).unwrap();
+        assert_eq!(timeline.curr_time, 1.5);
+        assert_eq!(timeline.curr_index, 2);
     }
 }
