@@ -1,22 +1,23 @@
 use bevy::prelude::*;
 
-// For docs.
-#[allow(unused_imports)]
-use crate::sequence::SequenceController;
-
+pub mod accessor;
 pub mod action;
-pub mod animate;
 pub mod ease;
 pub mod field;
 pub mod interpolation;
+pub mod pipeline;
 pub mod sequence;
 pub mod timeline;
+pub mod track;
 
-mod timeline_v2;
+// pub mod animate;
+// pub mod arena;
+// pub mod bake;
+// pub mod cleanup;
+// pub mod sample;
 
 pub mod prelude {
     pub use crate::action::*;
-    pub use crate::animate::AnimateAppExt;
     pub use crate::field::*;
     pub use crate::interpolation::Interpolation;
     pub use crate::sequence::*;
@@ -28,11 +29,7 @@ pub struct MotionGfxEnginePlugin;
 
 impl Plugin for MotionGfxEnginePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            field::FieldPlugin,
-            sequence::SequencePlugin,
-            timeline::TimelinePlugin,
-        ));
+        // app.add_plugins(());
 
         app.configure_sets(
             PostUpdate,

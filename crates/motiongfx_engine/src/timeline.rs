@@ -1,570 +1,368 @@
-use std::num::NonZeroUsize;
+use core::cmp::Ordering;
 
 use bevy::prelude::*;
-use nonempty::NonEmpty;
-use smallvec::SmallVec;
 
-use crate::action::ActionSpan;
-use crate::prelude::track::Tracks;
-use crate::sequence::{Sequence, SequenceController};
-use crate::MotionGfxSet;
+use crate::action::*;
+use crate::pipeline::*;
+use crate::track::*;
 
-pub(super) struct TimelinePlugin;
-
-impl Plugin for TimelinePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(
-            PostUpdate,
-            (apply_timeline_commands, update_target_time)
-                .chain()
-                .in_set(MotionGfxSet::TargetTime),
-        );
-
-        app.configure_sets(
-            PostUpdate,
-            (
-                TimelineSet::Advance,
-                TimelineSet::MarkAction,
-                TimelineSet::Sample,
-                TimelineSet::Sync,
-            )
-                .chain(),
-        );
-
-        app.add_systems(
-            PostUpdate,
-            (sync_target_index, sync_target_time)
-                .in_set(TimelineSet::Sync),
-        )
-        .add_observer(setup_timeline_relations)
-        .add_observer(despawn_timeline_relations);
-    }
+#[derive(Component)]
+pub struct Timeline {
+    action_world: ActionWorld,
+    tracks: Box<[Track]>,
+    /// Determines if the timeline is currently playing.
+    is_playing: bool,
+    /// The time scale of the timeline. Set this to negative
+    /// to play backwards.
+    time_scale: f32,
+    /// The current time of the current track.
+    curr_time: f32,
+    /// The target time of the target track.
+    target_time: f32,
+    /// The index of the current track.
+    curr_index: usize,
+    /// The index of the target track.
+    target_index: usize,
 }
 
-pub trait CreateTimelineAppExt {
-    fn create_timeline(
-        &mut self,
-        sequences: impl IntoIterator<Item = Sequence>,
-    ) -> EntityCommands<'_>;
-}
+impl Timeline {
+    pub fn mark_sample_actions(&mut self) {
+        // Current time will change if the track index changes.
+        let mut curr_time = self.curr_time();
 
-impl CreateTimelineAppExt for Commands<'_, '_> {
-    /// Helper method to create timeline.
-    fn create_timeline(
-        &mut self,
-        sequences: impl IntoIterator<Item = Sequence>,
-    ) -> EntityCommands<'_> {
-        let timeline_id = self.spawn_empty().id();
-
-        for sequence in sequences {
-            self.spawn((sequence, TargetTimeline(timeline_id)));
-        }
-
-        self.entity(timeline_id)
-    }
-}
-
-fn apply_timeline_commands(
-    mut q_timelines: Query<&mut Timeline, Changed<Timeline>>,
-    mut q_sequences: Query<(&Sequence, &mut SequenceController)>,
-) -> Result {
-    for mut timeline in q_timelines.iter_mut() {
-        // Prevent infinite change to `Timeline`.
-        let timeline = timeline.bypass_change_detection();
-
-        let Some(command) = core::mem::take(&mut timeline.command)
-        else {
-            continue;
-        };
-
-        /// The index range affected by the sequence change.
-        struct AffectedRange {
-            /// The starting index.
-            pub start: usize,
-            /// The length after the starting index.
-            pub len: NonZeroUsize,
-            /// Determines if the affected range
-            /// should move forward or backward.
-            pub is_forward: bool,
-        }
-
-        struct GenericCommand {
-            pub affected_range: Option<AffectedRange>,
-            pub target_index: usize,
-            pub sequence_point: SequencePoint,
-        }
-
-        let generic_command = match command {
-            TimelineCommand::Next(sequence_point)
-                if timeline.is_last_sequence() == false =>
-            // No next sequence if we are already at the last one.
+        // Handle index changes.
+        if self.target_index() != self.curr_index() {
+            let (sample_mode, track_range) = if self.target_index()
+                > self.curr_index()
             {
-                GenericCommand {
-                    affected_range: Some(AffectedRange {
-                        start: timeline.sequence_index(),
-                        len: NonZeroUsize::MIN,
-                        is_forward: true,
-                    }),
-                    target_index: timeline.sequence_index() + 1,
-                    sequence_point,
-                }
-            }
-            TimelineCommand::Previous(sequence_point)
-                if timeline.is_first_sequence() == false =>
-            // No previous sequence if we are already at the first one.
-            {
-                GenericCommand {
-                    affected_range: Some(AffectedRange {
-                        start: timeline.sequence_index(),
-                        len: NonZeroUsize::MIN,
-                        is_forward: false,
-                    }),
-                    target_index: timeline.sequence_index() - 1,
-                    sequence_point,
-                }
-            }
-            TimelineCommand::Current(sequence_point) => {
-                GenericCommand {
-                    affected_range: None,
-                    target_index: timeline.sequence_index(),
-                    sequence_point,
-                }
-            }
-            TimelineCommand::Exact(index, sequence_point)
-                if index < timeline.sequence_len() =>
-            // Make sure the index is valid.
-            {
-                // No affected range if the target index is
-                // equal to the current index.
-                let affected_range = NonZeroUsize::new(
-                    index.abs_diff(timeline.sequence_index()),
+                // From the start.
+                curr_time = 0.0;
+                (
+                    SampleMode::End,
+                    self.curr_index()..self.target_index(),
                 )
-                .map(|len| {
-                    let is_forward =
-                        index > timeline.sequence_index();
-                    let mut start =
-                        index.min(timeline.sequence_index);
-
-                    if is_forward == false {
-                        // Shift indices forward to prevent altering
-                        // the target sequence.
-                        start += 1;
-                    }
-                    AffectedRange {
-                        start,
-                        len,
-                        is_forward,
-                    }
-                });
-
-                GenericCommand {
-                    affected_range,
-                    target_index: timeline.sequence_index(),
-                    sequence_point,
-                }
-            }
-            _ => continue,
-        };
-
-        // Handle the affected range.
-        if let Some(affected_range) = generic_command.affected_range {
-            let set_target_time = if affected_range.is_forward {
-                // Set to the end if moving forward.
-                |sequence: &Sequence,
-                 controller: &mut SequenceController| {
-                    controller.target_time = sequence.duration();
-                }
             } else {
-                // Set to the start if moving backward.
-                |_: &Sequence, controller: &mut SequenceController| {
-                    controller.target_time = 0.0;
-                }
+                // From the end.
+                curr_time = self.tracks[self.target_index].duration();
+                (
+                    SampleMode::Start,
+                    (self.target_index() + 1)
+                        ..(self.curr_index() + 1),
+                )
             };
 
-            for i in affected_range.start
-                ..affected_range.start + affected_range.len.get()
-            {
-                let sequence_id = timeline.sequence_ids[i];
-                let (sequence, mut controller) =
-                    q_sequences.get_mut(sequence_id)?;
+            for i in track_range {
+                for clips in self.tracks[i].iter_clips() {
+                    if clips.is_empty() {
+                        continue;
+                    }
 
-                // Set the target time based on the conditioned closure.
-                set_target_time(sequence, &mut controller);
+                    // SAFETY: `clips` is not empty.
+                    let clip = match sample_mode {
+                        SampleMode::Start => clips.first().unwrap(),
+                        SampleMode::End => clips.last().unwrap(),
+                        SampleMode::Interp(_) => unreachable!(),
+                    };
+
+                    if let Some(mut action_cmd) =
+                        self.action_world.with_action(clip.id)
+                    {
+                        action_cmd.insert(sample_mode);
+                    }
+                }
             }
+
+            self.curr_index = self.target_index;
         }
 
-        // Apply command to the timeline.
-        timeline.sequence_index = generic_command.target_index;
-
-        let sequence_id = timeline
-            .curr_sequence_id()
-            .ok_or("No sequence in timeline!")?;
-
-        // Apply the `SequencePoint` to the target sequence.
-        let (sequence, mut controller) =
-            q_sequences.get_mut(sequence_id)?;
-
-        match generic_command.sequence_point {
-            SequencePoint::Start => controller.target_time = 0.0,
-            SequencePoint::End => {
-                controller.target_time = sequence.duration()
-            }
-            SequencePoint::Exact(time) => {
-                controller.target_time = time
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Update [`SequenceController::target_time`] based on [`Timeline`].
-fn update_target_time(
-    q_timelines: Query<(&Timeline, &TimelinePlayback, &TimeScale)>,
-    mut q_sequences: Query<(&Sequence, &mut SequenceController)>,
-    time: Res<Time>,
-) -> Result {
-    for (timeline, playback, time_scale) in q_timelines.iter() {
-        let Some(sequence_id) = timeline.curr_sequence_id() else {
-            continue;
+        let time_range = Range {
+            start: curr_time.min(self.target_time()),
+            end: curr_time.max(self.target_time()),
         };
 
-        let (sequence, mut controller) =
-            q_sequences.get_mut(sequence_id)?;
+        for clips in self.tracks[self.curr_index].iter_clips() {
+            if clips.is_empty() {
+                continue;
+            }
 
-        let time_diff = time_scale.get() * time.delta_secs();
-        match playback {
-            TimelinePlayback::Forward
-                if controller.curr_time() < sequence.duration() =>
-            {
-                controller.target_time += time_diff;
+            // SAFETY: `clips` is not empty.
+            let clips_range = Range {
+                start: clips.first().unwrap().start,
+                end: clips.last().unwrap().end(),
+            };
+
+            if !time_range.overlap(&clips_range) {
+                continue;
             }
-            TimelinePlayback::Backward
-                if controller.curr_time() > 0.0 =>
-            {
-                controller.target_time -= time_diff;
+
+            // If the returned `index` is `Ok`, the target time is
+            // within `span[index]`.
+            //
+            // If the returned `index` is `Err`, the target time is
+            // before the sequence if `index == 0`, otherwise,
+            // after `span[index - 1]`
+            let index = clips.binary_search_by(|clip| {
+                if self.target_time() < clip.start {
+                    Ordering::Greater
+                } else if self.target_time() > clip.end() {
+                    Ordering::Less
+                } else {
+                    Ordering::Equal
+                }
+            });
+
+            match index {
+                // `target_time` is within a segment.
+                Ok(index) => {
+                    let clip = &clips[index];
+
+                    if let Some(mut action_cmd) =
+                        self.action_world.with_action(clip.id)
+                    {
+                        let t = (self.target_time - clip.start)
+                            / (clip.end() - clip.start);
+
+                        action_cmd.insert(SampleMode::Interp(t));
+                    }
+                }
+                // `target_time` is out of bounds.
+                Err(index) => {
+                    let clip = &clips[index.saturating_sub(1)];
+
+                    let clip_range = Range {
+                        start: clip.start,
+                        end: clip.end(),
+                    };
+                    // Skip if the the animation range does not
+                    // overlap with the span range.
+                    if time_range.overlap(&clip_range) == false {
+                        continue;
+                    }
+
+                    let Some(mut action_cmd) =
+                        self.action_world.with_action(clip.id)
+                    else {
+                        continue;
+                    };
+
+                    if index == 0 {
+                        // Target time is before the entire sequence.
+                        action_cmd.insert(SampleMode::Start);
+                    } else {
+                        // Target time is after `index - 1`.
+                        // Indexing taken care by the saturating sub
+                        // above.
+                        action_cmd.insert(SampleMode::End);
+                    }
+                }
             }
-            _ => continue,
         }
-    }
 
-    Ok(())
-}
-
-/// A command to control the [`Timeline`].
-#[derive(Debug)]
-pub enum TimelineCommand {
-    /// Move to the next [`Sequence`] in the [`Timeline`]
-    /// with a starting [`SequencePoint`].
-    ///
-    /// # Note
-    ///
-    /// This command has no effect if the current sequence is the last one.
-    Next(SequencePoint),
-    /// Move to the previous [`Sequence`] in the [`Timeline`]
-    /// with a starting [`SequencePoint`].
-    ///
-    /// # Note
-    ///
-    /// This command has no effect if the current sequence is the first one.
-    Previous(SequencePoint),
-    /// Move to the [`SequencePoint`] in the current [`Sequence`]
-    /// in the [`Timeline`].
-    Current(SequencePoint),
-    /// Move to an exact [`Sequence`] in the [`Timeline`]
-    /// with a starting [`SequencePoint`].
-    ///
-    /// # Note
-    ///
-    /// This command has no effect if the target sequence does not exists.
-    Exact(usize, SequencePoint),
-}
-
-/// Sync [`TimelineTime::time`] with [`TimelineTime::target_time`].
-fn sync_target_time(
-    mut q_timeline_time: Query<
-        &mut TimelineTime,
-        Changed<TimelineTime>,
-    >,
-) {
-    for mut timeline_time in q_timeline_time.iter_mut() {
-        let timeline_time = timeline_time.bypass_change_detection();
-        timeline_time.time = timeline_time.target_time;
+        self.curr_time = self.target_time;
     }
 }
 
-/// Sync [`TimelineIndex::index`] with [`TimelineIndex::target_index`].
-fn sync_target_index(
-    mut q_timeline_index: Query<
-        &mut TimelineIndex,
-        Changed<TimelineIndex>,
-    >,
-) {
-    for mut timeline_index in q_timeline_index.iter_mut() {
-        let timeline_index = timeline_index.bypass_change_detection();
-        timeline_index.index = timeline_index.target_index;
-    }
-}
-
-/// Setup [`TimelineActions`] relations on [`Timeline`] [insertion](OnInsert).
-fn setup_timeline_relations(
-    trigger: Trigger<OnInsert, _Timeline>,
-    mut commands: Commands,
-    q_timelines: Query<&_Timeline>,
-) -> Result {
-    let entity = trigger.target();
-    let timeline = q_timelines.get(entity)?;
-
-    for span in timeline.spans() {
-        commands.entity(span.action_id()).insert(ActionOf(entity));
+// Getter methods.
+impl Timeline {
+    /// Returns whether the timeline is currently playing.
+    #[inline]
+    pub fn is_playing(&self) -> bool {
+        self.is_playing
     }
 
-    Ok(())
-}
-
-/// Despawn all related [`TimelineActions`] on [`Timeline`] [replacement](OnReplace).
-fn despawn_timeline_relations(
-    trigger: Trigger<OnReplace, _Timeline>,
-    mut commands: Commands,
-) {
-    commands
-        .entity(trigger.target())
-        .despawn_related::<TimelineActions>();
-}
-
-/// The time controller for the [`Sequence`]s in the [`Timeline`].
-///
-/// The [`Sequence`] that will be controlled depends on [`TimelineIndex`].
-#[derive(Component, Default, Debug, Clone, Copy)]
-pub struct TimelineTime {
-    /// The current time of the current [`Sequence`] in the [`Timeline`].
-    ///
-    /// The current [`Sequence`] is based on [`TimelineIndex::index()`].
-    time: f32,
-    /// The target time of the target [`Sequence`] in the [`Timeline`].
-    ///
-    /// The target [`Sequence`] is based on [`TimelineIndex::target_index()`].
-    target_time: f32,
-}
-
-#[derive(Component, Default, Debug, Clone, Copy)]
-pub struct TimelineIndex {
-    /// The current sequence index in the [`Timeline`].
-    index: u32,
-    /// The target sequence index in the [`Timeline`].
-    target_index: u32,
-}
-
-impl TimelineIndex {
-    pub fn index(&self) -> u32 {
-        self.index
+    /// Returns the current time scaling factor.
+    #[inline]
+    pub fn time_scale(&self) -> f32 {
+        self.time_scale
     }
 
-    pub fn target_index(&self) -> u32 {
+    /// Returns the current playback time.
+    #[inline]
+    pub fn curr_time(&self) -> f32 {
+        self.curr_time
+    }
+
+    /// Returns the target playback time.
+    #[inline]
+    pub fn target_time(&self) -> f32 {
+        self.target_time
+    }
+
+    /// Returns the current track index.
+    #[inline]
+    pub fn curr_index(&self) -> usize {
+        self.curr_index
+    }
+
+    /// Returns the target track index.
+    #[inline]
+    pub fn target_index(&self) -> usize {
         self.target_index
     }
+
+    /// Returns a reference slice to all tracks in this timeline.
+    #[inline]
+    pub fn tracks(&self) -> &[Track] {
+        &self.tracks
+    }
+
+    /// Returns `true` if the current track is the last track.
+    #[inline]
+    pub fn is_last_track(&self) -> bool {
+        self.curr_index == self.last_track_index()
+    }
+
+    /// Get the index of the last track. This is essentially the largest
+    /// index you can provide in [`Timeline::set_target_track`].
+    #[inline]
+    pub fn last_track_index(&self) -> usize {
+        self.tracks.len().saturating_sub(1)
+    }
 }
 
-#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TimelineSet {
-    Advance,
-    MarkAction,
-    Sample,
-    Sync,
-}
+// Setter methods.
+impl Timeline {
+    pub fn set_playing(&mut self, play: bool) -> &mut Self {
+        self.is_playing = play;
+        self
+    }
 
-#[derive(Component)]
-#[relationship_target(relationship = ActionOf)]
-pub struct TimelineActions(Vec<Entity>);
+    pub fn set_time_scale(&mut self, time_scale: f32) -> &mut Self {
+        self.time_scale = time_scale;
+        self
+    }
 
-#[derive(Component)]
-#[relationship(relationship_target = TimelineActions)]
-pub struct ActionOf(Entity);
+    /// Set the target time of the current track, clamping the value
+    /// within \[0.0..=track.duration\]
+    ///
+    /// Warns if out of bounds in `debug_assertions`.
+    pub fn set_target_time(&mut self, target_time: f32) -> &mut Self {
+        let duration = self.tracks[self.target_index].duration();
 
-pub struct TimelineTracks {
-    tracks: NonEmpty<Tracks>,
-}
-
-#[derive(Component, Debug, Clone)]
-#[component(immutable)]
-#[require(TimelineTime, TimelineIndex, TimelinePlayback, TimeScale)]
-pub struct _Timeline {
-    sequences: NonEmpty<Sequence>,
-}
-
-impl _Timeline {
-    pub fn new() -> Self {
-        Self {
-            sequences: NonEmpty::new(Sequence::default()),
+        #[cfg(debug_assertions)]
+        if target_time < 0.0 || target_time > duration {
+            warn!(
+                "Target time ({}) is out of bounds [0.0..={}].",
+                target_time, duration
+            );
         }
-    }
 
-    pub fn spans(&self) -> impl Iterator<Item = &ActionSpan> {
-        self.sequences.iter().flat_map(|seq| seq.spans.iter())
-    }
-}
-
-impl _Timeline {
-    pub fn chain(&mut self, sequence: Sequence) -> &mut Self {
-        self.sequences.last_mut().chain(sequence);
+        self.target_time = target_time.clamp(0.0, duration);
         self
     }
 
-    pub fn add_checkpoint(&mut self) -> &mut Self {
-        self.sequences.push(Sequence::default());
+    /// Set the target track index, clamping the value within
+    /// \[0..=track_count - 1\].
+    ///
+    /// Warns if out of bounds in `debug_assertions`.
+    pub fn set_target_track(
+        &mut self,
+        target_index: usize,
+    ) -> &mut Self {
+        let max_index = self.last_track_index();
+
+        #[cfg(debug_assertions)]
+        if target_index > max_index {
+            warn!(
+                "Target index ({}) is out of bounds [0..={}].",
+                target_index, max_index
+            );
+        }
+
+        self.target_index = target_index.clamp(0, max_index);
         self
     }
 }
 
-impl Default for _Timeline {
-    fn default() -> Self {
-        Self::new()
-    }
+#[derive(Default)]
+pub struct TimelineBuilder {
+    world: ActionWorld,
+    tracks: Vec<Track>,
 }
 
-/// Manipulates [`SequenceController::target_time`].
-#[derive(Component, Debug)]
-#[relationship_target(relationship = TargetTimeline, linked_spawn)]
-#[require(TimelinePlayback, TimeScale)]
-pub struct Timeline {
-    /// The [`Sequence`]s that are related to this timeline.
-    #[relationship]
-    sequence_ids: SmallVec<[Entity; 1]>,
-    /// The index in `sequence_ids`.
-    sequence_index: usize,
-    /// A deferred command that runs in the [`PostUpdate`] schedule.
-    ///
-    /// This will reset to [None] every frame after the command
-    /// is being applied.
-    command: Option<TimelineCommand>,
+impl TimelineBuilder {
+    pub fn add_tracks(
+        &mut self,
+        tracks: impl Iterator<Item = Track>,
+    ) {
+        self.tracks.extend(tracks);
+    }
+
+    pub fn act() {}
 }
 
-impl Timeline {
-    /// Get the current sequence id based on `sequence_index`.
-    ///
-    /// Returns an optional entity as `sequence_ids` might be empty.
-    pub fn curr_sequence_id(&self) -> Option<Entity> {
-        self.sequence_ids.get(self.sequence_index).copied()
-    }
+// Redirection plan:
+// Entity referencing should be possible
 
-    /// Get the current sequence index.
-    #[inline(always)]
-    pub fn sequence_index(&self) -> usize {
-        self.sequence_index
-    }
+// TODO: Do we want to support recursive entity referencing?
 
-    /// Get the number of sequences in the timeline.
-    #[inline]
-    pub fn sequence_len(&self) -> usize {
-        self.sequence_ids.len()
-    }
+/// A redirection from an entity to another when dealing with
+/// action baking/sampling. The user is responsible for the
+/// existance of the referenced entity the target component.
+#[derive(Component, Deref)]
+pub struct TargetRef(pub Entity);
 
-    /// Check if the current sequence is the last one.
-    #[inline]
-    pub fn is_last_sequence(&self) -> bool {
-        self.sequence_index() == self.sequence_len() - 1
-    }
-
-    /// Check if the current sequence is the first one.
-    #[inline]
-    pub fn is_first_sequence(&self) -> bool {
-        self.sequence_index() == 0
-    }
+#[cfg(test)]
+mod tests {
+    // use super::*;
 }
 
-impl Timeline {
-    /// Inserts a [`TimelineCommand`] that will run during [`PostUpdate`].
-    ///
-    /// This action will replace the previous the command if there's any.
-    pub fn insert_command(&mut self, command: TimelineCommand) {
-        self.command = Some(command);
-    }
-}
+// fn style_1() {
+//     let mut b = TimelineBuilder::new();
 
-/// The target [`Timeline`] that this [`Sequence`] belongs to.
-#[derive(
-    Component, Reflect, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash,
-)]
-#[reflect(Component)]
-#[relationship(relationship_target = Timeline)]
-pub struct TargetTimeline(Entity);
+//     let track_0 = [
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//     ]
+//     .flow(1.0);
 
-/// The point in time at the current [`Sequence`] of the [`Timeline`].
-#[derive(Default, Debug, Clone, Copy, PartialEq)]
-pub enum SequencePoint {
-    /// The start of the [`Sequence`], normally at `0.0`.
-    #[default]
-    Start,
-    /// The end of the [`Sequence`], normally at [`Sequence::duration()`].
-    End,
-    /// An exact time in the [`Sequence`].
-    Exact(f32),
-}
+//     let track_1 = [
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//     ]
+//     .all();
 
-/// The playback state of the [`Timeline`].
-#[derive(Component, Default, Debug, Clone, Copy)]
-pub enum TimelinePlayback {
-    /// Playing in the forward direction with a time scale.
-    Forward,
-    /// Playing in the backward direction with a time scale.
-    Backward,
-    /// Not playing at the moment.
-    #[default]
-    Pause,
-}
+//     let track_2 = [
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//     ]
+//     .chain();
 
-impl TimelinePlayback {
-    #[inline]
-    pub fn forward(&mut self) {
-        *self = TimelinePlayback::Forward;
-    }
+//     b.add_tracks([track_0, track_1, track_2]);
+//     let timeline = b.compile();
+// }
 
-    #[inline]
-    pub fn backward(&mut self) {
-        *self = TimelinePlayback::Backward;
-    }
+// fn style_1() {
+//     let mut b = TimelineBuilder::new();
 
-    #[inline]
-    pub fn pause(&mut self) {
-        *self = TimelinePlayback::Pause;
-    }
-}
+//     let track = [
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//     ]
+//     .flow(1.0);
 
-/// Determines the speed of the [`Timeline`] playback.
-/// Consists of a correct-by-construction positive `f32` value .
-#[derive(Component, Debug, Deref, Clone, Copy)]
-pub struct TimeScale(f32);
+//     b.chain(track).set_checkpoint();
 
-impl Default for TimeScale {
-    fn default() -> Self {
-        Self::new(1.0)
-    }
-}
+//     let track = [
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//     ]
+//     .all();
 
-impl TimeScale {
-    /// The provided value will be passed through
-    /// [`f32::abs`] to ensure it is positive.
-    pub const fn new(time_scale: f32) -> Self {
-        Self(time_scale.abs())
-    }
+//     b.chain(track).set_checkpoint();
 
-    /// The provided value will be passed through
-    /// [`f32::abs`] to ensure it is positive.
-    pub fn set(&mut self, time_scale: f32) {
-        self.0 = time_scale.abs();
-    }
+//     let track_2 = [
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//         t.track_fragment(..),
+//     ]
+//     .chain();
 
-    /// Returns the inner `f32` value.
-    #[inline(always)]
-    #[must_use]
-    pub fn get(&self) -> f32 {
-        self.0
-    }
-
-    /// Consumes itself and returns the inner `f32` value.
-    #[inline(always)]
-    #[must_use]
-    pub fn consume_get(self) -> f32 {
-        self.0
-    }
-}
+//     b.chain(track);
+//     let timeline = b.compile();
+// }

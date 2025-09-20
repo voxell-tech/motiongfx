@@ -1,0 +1,441 @@
+use core::any::TypeId;
+
+#[cfg(feature = "asset")]
+use bevy::asset::AsAssetId;
+use bevy::ecs::component::Mutable;
+use bevy::platform::collections::HashMap;
+use bevy::prelude::*;
+
+use crate::accessor::{Accessor, AccessorRegistry};
+use crate::action::{
+    ActionClip, ActionWorld, EaseStorage, InterpStorage, Segment,
+};
+use crate::field::UntypedField;
+use crate::prelude::Interpolation;
+use crate::timeline::TargetRef;
+use crate::track::{ActionKey, Track};
+use crate::ThreadSafe;
+
+pub type BakeFn = fn(BakeCtx);
+pub type SampleFn = fn(SampleCtx);
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
+pub struct PipelineKey {
+    /// The [`TypeId`] of the source type.
+    source_id: TypeId,
+    /// The [`TypeId`] of the target type.
+    target_id: TypeId,
+}
+
+impl PipelineKey {
+    pub fn new<S: 'static, T: 'static>() -> Self {
+        Self {
+            source_id: TypeId::of::<S>(),
+            target_id: TypeId::of::<T>(),
+        }
+    }
+
+    pub fn from_field(field: impl Into<UntypedField>) -> Self {
+        let field = field.into();
+        Self {
+            source_id: field.source_id(),
+            target_id: field.target_id(),
+        }
+    }
+}
+
+impl From<UntypedField> for PipelineKey {
+    fn from(field: UntypedField) -> Self {
+        Self::from_field(field)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Pipeline {
+    bake: BakeFn,
+    sample: SampleFn,
+}
+
+impl Pipeline {
+    pub fn new_component<S, T>() -> Self
+    where
+        S: Component<Mutability = Mutable>,
+        T: Interpolation + Clone + ThreadSafe,
+    {
+        Self {
+            bake: bake_component_actions::<S, T>,
+            sample: sample_component_actions::<S, T>,
+        }
+    }
+
+    #[cfg(feature = "asset")]
+    pub fn new_asset<S, T>() -> Self
+    where
+        S: AsAssetId,
+        T: Interpolation + Clone + ThreadSafe,
+    {
+        Self {
+            bake: bake_asset_actions::<S, T>,
+            sample: sample_asset_actions::<S, T>,
+        }
+    }
+
+    pub fn bake(&self, ctx: BakeCtx) {
+        (self.bake)(ctx)
+    }
+
+    pub fn sample(&self, ctx: SampleCtx) {
+        (self.sample)(ctx)
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct PipelineRegistry {
+    pipelines: HashMap<PipelineKey, Pipeline>,
+}
+
+impl PipelineRegistry {
+    #[must_use]
+    pub fn register_comp<S, T>(&mut self) -> PipelineKey
+    where
+        S: Component<Mutability = Mutable>,
+        T: Interpolation + Clone + ThreadSafe,
+    {
+        let key = PipelineKey::new::<S, T>();
+        unsafe {
+            self.register_unchecked(
+                key,
+                Pipeline::new_component::<S, T>(),
+            );
+        }
+
+        key
+    }
+
+    #[cfg(feature = "asset")]
+    #[must_use]
+    pub fn register_asset<S, T>(&mut self) -> PipelineKey
+    where
+        S: AsAssetId,
+        T: Interpolation + Clone + ThreadSafe,
+    {
+        let key = PipelineKey::new::<S, T>();
+        unsafe {
+            self.register_unchecked(
+                key,
+                Pipeline::new_asset::<S, T>(),
+            );
+        }
+
+        key
+    }
+}
+
+impl PipelineRegistry {
+    pub fn get(&self, key: &PipelineKey) -> Option<&Pipeline> {
+        self.pipelines.get(key)
+    }
+
+    /// Register a pipeline function.
+    ///
+    /// # Safety
+    ///
+    /// This function assumes that the baker function matches
+    /// the field that it points towards. Failure to do so will
+    /// result in a useless baker registry.
+    pub unsafe fn register_unchecked(
+        &mut self,
+        key: PipelineKey,
+        pipeline: Pipeline,
+    ) -> &mut Self {
+        self.pipelines.insert(key, pipeline);
+        self
+    }
+}
+
+pub struct BakeCtx<'a> {
+    pub track: &'a Track,
+    pub action_world: &'a mut ActionWorld,
+    pub target_world: &'a World,
+    pub accessor_registry: &'a AccessorRegistry<UntypedField>,
+}
+
+impl<'a> BakeCtx<'a> {
+    pub fn bake<S, T>(
+        self,
+        get_target: impl Fn(
+            Entity,
+            &'a World,
+            Accessor<S, T>,
+        ) -> Option<&'a T>,
+    ) where
+        S: 'static,
+        T: Clone + ThreadSafe,
+    {
+        for (key, span) in self.track.clip_spans() {
+            let Ok(accessor) =
+                self.accessor_registry.get::<S, T>(&key.field)
+            else {
+                continue;
+            };
+
+            let mut target_entity = key.target.entity();
+
+            // Fetch target reference if any.
+            target_entity = self
+                .target_world
+                .get::<TargetRef>(target_entity)
+                .map(|r| r.entity())
+                .unwrap_or(target_entity);
+
+            // Get the target value from the target world.
+            let Some(mut start) = get_target(
+                target_entity,
+                self.target_world,
+                accessor,
+            )
+            .cloned() else {
+                continue;
+            };
+
+            for ActionClip { id, .. } in self.track.clips(*span) {
+                let Some(action) =
+                    self.action_world.get_action::<T>(*id)
+                else {
+                    continue;
+                };
+
+                let end = action(&start);
+                let segment =
+                    Segment::new(start.clone(), end.clone());
+
+                // SAFETY: Action already exists from the
+                // `get_action()` call above.
+                self.action_world
+                    .with_action(*id)
+                    .unwrap()
+                    .insert(segment);
+
+                start = end;
+            }
+        }
+    }
+}
+
+pub fn bake_component_actions<S, T>(ctx: BakeCtx)
+where
+    S: Component,
+    T: Clone + ThreadSafe,
+{
+    ctx.bake::<S, T>(|target_entity, target_world, accessor| {
+        target_world
+            .get::<S>(target_entity)
+            .map(|s| (accessor.ref_fn)(s))
+    });
+}
+
+#[cfg(feature = "asset")]
+pub fn bake_asset_actions<S, T>(ctx: BakeCtx)
+where
+    S: AsAssetId,
+    T: Clone + ThreadSafe,
+{
+    let Some(assets) =
+        ctx.target_world.get_resource::<Assets<S::Asset>>()
+    else {
+        return;
+    };
+
+    ctx.bake::<S::Asset, T>(
+        |target_entity, target_world, accessor| {
+            target_world
+                .get::<S>(target_entity)
+                .and_then(|s| assets.get(s.as_asset_id()))
+                .map(|s| (accessor.ref_fn)(s))
+        },
+    );
+}
+
+pub struct SampleCtx<'a> {
+    action_world: &'a ActionWorld,
+    target_world: &'a mut World,
+    accessor_registry: &'a AccessorRegistry<UntypedField>,
+}
+
+impl<'a> SampleCtx<'a> {
+    pub fn sample<S, T>(
+        mut self,
+        set_target: impl Fn(
+            T,
+            Entity,
+            &'a mut World,
+            Accessor<S, T>,
+        ) -> &'a mut World,
+    ) where
+        S: 'static,
+        T: Interpolation + Clone + ThreadSafe,
+    {
+        let Some(mut q) = self.action_world.world().try_query::<(
+            &ActionKey,
+            &SampleMode,
+            &Segment<T>,
+            Option<&EaseStorage>,
+            Option<&InterpStorage<T>>,
+        )>() else {
+            return;
+        };
+
+        for (key, sample_mode, segment, ease, interp) in
+            q.iter(self.action_world.world())
+        {
+            let Ok(accessor) =
+                self.accessor_registry.get::<S, T>(&key.field)
+            else {
+                continue;
+            };
+
+            let target = match sample_mode {
+                SampleMode::Start => segment.start.clone(),
+                SampleMode::End => segment.end.clone(),
+                SampleMode::Interp(t) => {
+                    let t = match ease {
+                        Some(ease) => ease(*t),
+                        None => *t,
+                    };
+
+                    match interp {
+                        Some(interp) => {
+                            interp(&segment.start, &segment.end, t)
+                        }
+                        None => {
+                            T::interp(&segment.start, &segment.end, t)
+                        }
+                    }
+                }
+            };
+
+            self.target_world = set_target(
+                target,
+                key.target.entity(),
+                self.target_world,
+                accessor,
+            );
+        }
+    }
+}
+
+pub fn sample_component_actions<S, T>(ctx: SampleCtx)
+where
+    S: Component<Mutability = Mutable>,
+    T: Interpolation + Clone + ThreadSafe,
+{
+    ctx.sample::<S, T>(
+        |target, target_entity, target_world, accessor| {
+            if let Some(mut source) =
+                target_world.get_mut::<S>(target_entity)
+            {
+                *(accessor.mut_fn)(&mut source) = target;
+            }
+
+            target_world
+        },
+    );
+}
+
+pub fn sample_asset_actions<S, T>(ctx: SampleCtx)
+where
+    S: AsAssetId,
+    T: Interpolation + Clone + ThreadSafe,
+{
+    ctx.sample::<S::Asset, T>(
+        |target, target_entity, target_world, accessor| {
+            // Get asset id.
+            let Some(id) = target_world
+                .get::<S>(target_entity)
+                .map(|c| c.as_asset_id())
+            else {
+                return target_world;
+            };
+
+            // Get assets resource.
+            let Some(mut assets) =
+                target_world.get_resource_mut::<Assets<S::Asset>>()
+            else {
+                return target_world;
+            };
+
+            // Writes target value.
+            if let Some(source) = assets.get_mut(id) {
+                *(accessor.mut_fn)(source) = target;
+            }
+
+            target_world
+        },
+    );
+}
+
+/// Determines how a [`Segment`] should be sampled.
+#[derive(Component, Debug, Clone, Copy)]
+#[component(storage = "SparseSet", immutable)]
+pub enum SampleMode {
+    Start,
+    End,
+    Interp(f32),
+}
+
+#[derive(Default, Debug, PartialEq, Clone, Copy)]
+pub struct Range {
+    pub start: f32,
+    pub end: f32,
+}
+
+impl Range {
+    /// Calculate if 2 [`Range`]s overlap.
+    pub fn overlap(&self, other: &Self) -> bool {
+        self.start <= other.end && other.start <= self.end
+    }
+}
+
+/*
+#[cfg(test)]
+mod tests {
+    use crate::timeline_v3::track::TrackBuilder;
+
+    use super::*;
+
+    #[test]
+    fn new_pipeline() {
+        let mut pipeline = PipelineRegistry::default();
+
+        let _key0 = pipeline.register_comp::<Transform, f32>();
+        let _key1 = pipeline
+            .register_asset::<MeshMaterial3d<StandardMaterial>, f32>(
+            );
+
+        let transform_pipeline = pipeline.get(&_key0).unwrap();
+
+        let mut action_world = ActionWorld::new();
+        let mut target_world = World::new();
+        let field_registry = FieldRegistry::new();
+        let track = TrackBuilder::default().compile();
+
+        transform_pipeline.bake(BakeCtx {
+            action_world: &mut action_world,
+            target_world: &mut target_world,
+            field_registry: &field_registry,
+            track: &track,
+        });
+
+        transform_pipeline.sample(SampleCtx {
+            action_world: &action_world,
+            target_world: &mut target_world,
+            field_registry: &field_registry,
+        });
+
+        let mut world = World::new();
+        world.insert_resource(pipeline);
+    }
+}
+*/

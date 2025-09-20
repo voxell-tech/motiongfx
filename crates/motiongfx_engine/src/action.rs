@@ -1,225 +1,280 @@
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
-use crate::field::Field;
-use crate::sequence::Sequence;
+use crate::field::UntypedField;
+use crate::pipeline::PipelineKey;
+use crate::track::{ActionKey, TrackFragment};
 use crate::ThreadSafe;
+
+#[allow(clippy::type_complexity)]
+#[derive(Default)]
+pub struct ActionWorld {
+    world: World,
+    pipeline_counts: HashMap<PipelineKey, u32>,
+}
+
+impl ActionWorld {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl ActionWorld {
+    pub fn add<T>(
+        &mut self,
+        action: impl Action<T>,
+        target: impl Into<ActionTarget>,
+        field: impl Into<UntypedField>,
+    ) -> ActionBuilder<'_, T>
+    where
+        T: ThreadSafe,
+    {
+        let field = field.into();
+        let key = PipelineKey::from_field(field);
+
+        match self.pipeline_counts.get_mut(&key) {
+            Some(count) => *count += 1,
+            None => {
+                self.pipeline_counts.insert(key, 1);
+            }
+        }
+
+        let key = ActionKey {
+            target: target.into(),
+            field,
+        };
+        let world =
+            self.world.spawn((key, ActionStorage::new(action)));
+
+        ActionBuilder {
+            world,
+            key,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn remove(&mut self, id: ActionId) -> bool {
+        let entity = id.entity();
+
+        // Early check if the action exists.
+        if self.world.get_entity(entity).is_err() {
+            return false;
+        }
+
+        let field = self
+            .world
+            .get::<ActionKey>(entity)
+            .expect("All actions should have an `ActionKey`!")
+            .field;
+
+        let key = PipelineKey::from_field(field);
+
+        let count =
+            self.pipeline_counts.get_mut(&key).unwrap_or_else(|| {
+                panic!("Field counts not registered for {field:?}!")
+            });
+
+        *count -= 1;
+        if *count == 0 {
+            self.pipeline_counts.remove(&key);
+        }
+
+        self.world.despawn(id.entity())
+    }
+
+    pub fn get_action<T>(
+        &self,
+        id: ActionId,
+    ) -> Option<&impl Action<T>>
+    where
+        T: ThreadSafe,
+    {
+        self.world
+            .get::<ActionStorage<T>>(id.entity())
+            .map(|a| &a.action)
+    }
+
+    pub fn get_segment<T>(&self, id: ActionId) -> Option<&Segment<T>>
+    where
+        T: ThreadSafe,
+    {
+        self.world.get::<Segment<T>>(id.entity())
+    }
+}
+
+impl ActionWorld {
+    pub(crate) fn world(&self) -> &World {
+        &self.world
+    }
+
+    pub(crate) fn with_action(
+        &mut self,
+        id: ActionId,
+    ) -> Option<EntityWorldMut<'_>> {
+        self.world.get_entity_mut(id.entity()).ok()
+    }
+}
+
+pub struct ActionCommand<'w> {
+    world: EntityWorldMut<'w>,
+}
+
+impl ActionCommand<'_> {
+    // pub fn mark(
+    //     &mut self,
+    //     sample_mode: SampleMode,
+    // ) -> &mut Self {
+    //     self.world.insert(sample_mode);
+    //     self
+    // }
+
+    // pub fn clear_mark(&mut self) -> &mut Self {
+    //     self.world.remove::<SampleMode>();
+    //     self
+    // }
+}
+
+pub struct ActionBuilder<'w, T> {
+    world: EntityWorldMut<'w>,
+    key: ActionKey,
+    _phantom: PhantomData<T>,
+}
+
+impl<'w, T> ActionBuilder<'w, T> {
+    /// Get the [`ActionId`] of the containing action.
+    pub fn id(&self) -> ActionId {
+        ActionId::new(self.world.id())
+    }
+}
+
+impl<T> ActionBuilder<'_, T>
+where
+    T: 'static,
+{
+    pub fn with_ease(mut self, ease: EaseFn) -> Self {
+        self.world.insert(EaseStorage(ease));
+        self
+    }
+
+    pub fn with_interp(mut self, interp: InterpFn<T>) -> Self {
+        self.world.insert(InterpStorage(interp));
+        self
+    }
+
+    pub fn play(self, duration: f32) -> TrackFragment {
+        TrackFragment::single(
+            self.key,
+            ActionClip::new(self.id(), duration),
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ActionId(Entity);
+
+impl ActionId {
+    pub const PLACEHOLDER: Self = ActionId(Entity::PLACEHOLDER);
+
+    #[inline(always)]
+    pub(crate) fn new(entity: Entity) -> Self {
+        Self(entity)
+    }
+
+    #[inline(always)]
+    pub(crate) fn entity(&self) -> Entity {
+        self.0
+    }
+}
+
+/// An action trait which consists of a function for getting
+/// the target value based on an intial value.
+pub trait Action<T>: ThreadSafe + Fn(&T) -> T {}
+
+impl<T, U> Action<T> for U where U: ThreadSafe + Fn(&T) -> T {}
+
+/// A storage component for an [`Action`].
+#[derive(Component)]
+#[component(immutable)]
+pub struct ActionStorage<T> {
+    pub action: Box<dyn Action<T>>,
+}
+
+impl<T> ActionStorage<T> {
+    pub fn new(action: impl Action<T>) -> Self {
+        Self {
+            action: Box::new(action),
+        }
+    }
+}
 
 /// Function for interpolating a type based on a [`f32`] time.
 pub type InterpFn<T> = fn(start: &T, end: &T, t: f32) -> T;
 
-/// Easing function.
-pub type EaseFn = fn(t: f32) -> f32;
-
-/// Function for getting the target value based on an intial value.
-pub trait ActionFn<T>: Fn(&T) -> T + ThreadSafe {}
-
-impl<T, U> ActionFn<T> for U where U: Fn(&T) -> T + ThreadSafe {}
-
-#[derive(Component, Reflect, Deref, DerefMut)]
-#[reflect(Component)]
-pub struct Action<Target>(pub Box<dyn ActionFn<Target>>);
-
-impl<Target> Action<Target> {
-    pub fn new(target: impl ActionFn<Target>) -> Self {
-        Self(Box::new(target))
-    }
-}
-
-/// A custom interpolation function for the [`Action`].
-#[derive(Component, Reflect, Deref, Debug, Clone, Copy)]
-#[component(immutable)]
-#[reflect(Component)]
-pub struct Interp<Target>(pub InterpFn<Target>);
-
+/// A storage component for a custom [`InterpFn`].
+///
+/// This can be optionally inserted alongside [`ActionStorage`]
+/// to customize the action.
 #[derive(Component, Deref, Debug, Clone, Copy)]
 #[component(immutable)]
-pub struct Ease(pub EaseFn);
+pub struct InterpStorage<T>(pub InterpFn<T>);
 
-#[derive(Debug, Clone, Copy)]
-pub struct ActionSpan {
-    /// Target [`Entity`] with the [`Action`] component.
-    action_id: Entity,
-    /// Time at which action should begin in seconds.
-    start_time: f32,
-    /// Duration of action in seconds.
-    duration: f32,
-}
+/// Easing function on a [`f32`] time.
+pub type EaseFn = fn(t: f32) -> f32;
 
-impl ActionSpan {
-    pub(crate) const fn new(
-        action_id: Entity,
-        duration: f32,
-    ) -> Self {
-        Self {
-            action_id,
-            start_time: 0.0,
-            duration,
-        }
-    }
-
-    /// Target [`Entity`] with the [`Action`] component.
-    #[inline(always)]
-    #[must_use]
-    pub fn action_id(&self) -> Entity {
-        self.action_id
-    }
-
-    /// Duration of the action in seconds.
-    #[inline(always)]
-    #[must_use]
-    pub fn duration(&self) -> f32 {
-        self.duration
-    }
-
-    /// Time at which the action should begin in seconds.
-    #[inline(always)]
-    #[must_use]
-    pub fn start_time(&self) -> f32 {
-        self.start_time
-    }
-
-    /// Time at which the action should end in seconds.
-    ///
-    /// Calculated using start time and duration.
-    #[inline]
-    #[must_use]
-    pub fn end_time(&self) -> f32 {
-        self.start_time + self.duration
-    }
-}
-
-impl ActionSpan {
-    #[inline]
-    pub(crate) fn with_start_time(mut self, start_time: f32) -> Self {
-        self.start_time = start_time;
-        self
-    }
-
-    #[inline]
-    pub(crate) fn delay(&mut self, delay: f32) -> &mut Self {
-        self.start_time += delay;
-        self
-    }
-}
-
-/// A wrapper around [`EntityCommands`] with additional methods
-/// to customize the action and generate a [`Sequence`].
-pub struct ActionBuilder<'w, Target> {
-    action_cmd: EntityCommands<'w>,
-    _marker: PhantomData<Target>,
-}
-
-impl<'w, Target> ActionBuilder<'w, Target>
-where
-    Target: ThreadSafe,
-{
-    pub fn new(action_cmd: EntityCommands<'w>) -> Self {
-        Self {
-            action_cmd,
-            _marker: PhantomData,
-        }
-    }
-    pub fn with_ease(&'w mut self, ease: EaseFn) -> Self {
-        Self::new(self.action_cmd.insert(Ease(ease)).reborrow())
-    }
-
-    pub fn with_interp(
-        &'w mut self,
-        interp: InterpFn<Target>,
-    ) -> Self {
-        Self::new(self.action_cmd.insert(Interp(interp)).reborrow())
-    }
-
-    pub fn play(&mut self, duration: f32) -> Sequence {
-        Sequence::single(ActionSpan::new(
-            self.action_cmd.id(),
-            duration,
-        ))
-    }
-}
-
-pub trait ActionBuilderExt<'w> {
-    fn act<Source, Target>(
-        &'w mut self,
-        field: Field<Source, Target>,
-        action: impl ActionFn<Target>,
-    ) -> ActionBuilder<'w, Target>
-    where
-        Source: ThreadSafe,
-        Target: ThreadSafe;
-}
-
-impl<'w> ActionBuilderExt<'w> for EntityCommands<'w> {
-    fn act<Source, Target>(
-        &'w mut self,
-        field: Field<Source, Target>,
-        action: impl ActionFn<Target>,
-    ) -> ActionBuilder<'w, Target>
-    where
-        Source: ThreadSafe,
-        Target: ThreadSafe,
-    {
-        let action_target = ActionTarget(self.id());
-        ActionBuilder::new(self.commands_mut().spawn((
-            action_target,
-            field,
-            Action::new(action),
-        )))
-    }
-}
-
-/// [`Action`]s that are related to this entity.
-#[derive(Component, Reflect, Deref, Clone)]
-#[reflect(Component)]
-#[relationship_target(relationship = ActionTarget, linked_spawn)]
-pub struct RelatedActions(Vec<Entity>);
-
-/// The target entity that this [`Action`] belongs to.
+/// A storage component for a custom [`EaseFn`].
 ///
-/// In other words, the entity that is going to be animated
-/// by this [`Action`].
+/// This can be optionally inserted alongside [`ActionStorage`]
+/// to customize the action.
+#[derive(Component, Deref, Debug, Clone, Copy)]
+#[component(immutable)]
+pub struct EaseStorage(pub EaseFn);
+
 #[derive(
-    Component, Reflect, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash,
+    Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
-#[reflect(Component)]
-#[relationship(relationship_target = RelatedActions)]
-pub struct ActionTarget(Entity);
+pub struct ActionTarget(pub Entity);
 
-#[cfg(test)]
-mod test {
-    use crate::field::field;
+impl From<Entity> for ActionTarget {
+    fn from(entity: Entity) -> Self {
+        Self(entity)
+    }
+}
 
-    use super::*;
+#[derive(Component)]
+#[component(immutable)]
+pub struct Segment<T> {
+    /// The starting value.
+    pub start: T,
+    /// The ending value.
+    pub end: T,
+}
 
-    #[test]
-    fn test_action_builder() {
-        const DURATION: f32 = 2.0;
+impl<T> Segment<T> {
+    pub fn new(start: T, end: T) -> Self {
+        Self { start, end }
+    }
+}
 
-        let action_fn = |x: &f32| x + 3.0;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ActionClip {
+    pub id: ActionId,
+    pub start: f32,
+    pub duration: f32,
+}
 
-        let mut world = World::new();
+impl ActionClip {
+    pub const fn new(id: ActionId, duration: f32) -> Self {
+        Self {
+            id,
+            start: 0.0,
+            duration,
+        }
+    }
 
-        let seq = world
-            .commands()
-            .spawn(Transform::default())
-            .act(field!(<Transform>::translation::x), action_fn)
-            .with_ease(|t| t * t)
-            .play(DURATION);
-
-        world.flush();
-
-        assert_eq!(seq.spans.len(), 1);
-        assert_eq!(seq.spans[0].duration, DURATION);
-        assert_eq!(seq.duration(), DURATION);
-        // 1 for the action entity, 1 for the original entity.
-        assert_eq!(world.entities().len(), 2);
-
-        // Only 1 action is being created.
-        let action =
-            world.query::<&Action<f32>>().single(&world).unwrap();
-
-        assert_eq!(action(&2.0), action_fn(&2.0));
+    #[inline]
+    pub fn end(&self) -> f32 {
+        self.start + self.duration
     }
 }

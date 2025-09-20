@@ -138,6 +138,7 @@ impl<S, T> From<Accessor<S, T>> for UntypedAccessor {
 /// *(accessor.mut_fn)(&mut foo) = 999;
 /// assert_eq!(foo.value, 999);
 /// ```
+#[derive(Resource, Debug)]
 pub struct AccessorRegistry<K> {
     accessors: HashMap<K, UntypedAccessor>,
 }

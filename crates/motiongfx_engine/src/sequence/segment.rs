@@ -10,7 +10,7 @@ use bevy::prelude::*;
 
 use crate::action::{Action, ActionTarget, Ease, Interp};
 use crate::field::{Field, FieldAccessor, FieldMap};
-use crate::prelude::{FieldHash, Interpolation};
+use crate::prelude::{Interpolation, UntypedField};
 use crate::{MotionGfxSet, ThreadSafe};
 
 use super::track::Tracks;
@@ -119,7 +119,7 @@ where
     Source: Component<Mutability = Mutable>,
     Target: Interpolation + Clone + ThreadSafe,
 {
-    let field_hash = field.to_hash();
+    let field_hash = field.untyped();
 
     let system =
         move |mut sampler: SegmentSampler<Source, Target>,
@@ -150,7 +150,7 @@ where
     Source: AsAssetId,
     Target: Interpolation + Clone + ThreadSafe,
 {
-    let field_hash = field.to_hash();
+    let field_hash = field.untyped();
 
     let system =
         move |mut sampler: SegmentSampler<Source::Asset, Target>,
@@ -188,7 +188,7 @@ type SegmentSamplerQuery<'w, 's, Target> = Query<
         Option<&'static Ease>,
         &'static ActionTarget,
         &'static SampleType,
-        &'static FieldHash,
+        &'static UntypedField,
         Entity,
     ),
 >;
@@ -214,7 +214,7 @@ where
     /// Sample [`Segment`]s with the [`SampleType`] component.
     pub(crate) fn sample_keyframes(
         &mut self,
-        target_field_hash: FieldHash,
+        target_field: UntypedField,
         mut apply_sample: impl FnMut(
             Target,
             &ActionTarget,
@@ -227,12 +227,12 @@ where
             ease,
             action_target,
             sample_type,
-            field_hash,
+            field,
             entity,
         ) in self.q_segments.iter()
         {
             // Check for field hash eligibility.
-            if field_hash != &target_field_hash {
+            if field != &target_field {
                 continue;
             }
 
@@ -241,11 +241,9 @@ where
             self.commands.entity(entity).remove::<SampleType>();
 
             let accessor = self.q_accessors.get(
-                *self.field_map.get(&target_field_hash).ok_or(
-                    format!(
-                        "No FieldAccessor for {target_field_hash:?}"
-                    ),
-                )?,
+                *self.field_map.get(&target_field).ok_or(format!(
+                    "No FieldAccessor for {target_field:?}"
+                ))?,
             )?;
 
             let target = match sample_type {
@@ -284,7 +282,7 @@ where
     Source: Component,
     Target: ThreadSafe + Clone,
 {
-    let field_hash = field.to_hash();
+    let field_hash = field.untyped();
 
     let system = move |trigger: Trigger<OnInsert, Tracks>,
                        mut baker: ActionBaker<Source, Target>,
@@ -316,7 +314,7 @@ where
     Source: AsAssetId,
     Target: ThreadSafe + Clone,
 {
-    let field_hash = field.to_hash();
+    let field_hash = field.untyped();
 
     let system =
         move |trigger: Trigger<OnInsert, Tracks>,
@@ -373,22 +371,23 @@ where
     pub(crate) fn bake_actions<'a>(
         &mut self,
         sequence_id: Entity,
-        field_hash: FieldHash,
+        field: UntypedField,
         source_ref: impl Fn(Entity) -> Result<&'a Source>,
     ) -> Result {
         let (sequence, tracks) = self.q_sequences.get(sequence_id)?;
 
         for (track_key, track) in tracks.iter() {
             // Make sure that the field hash is the same.
-            if track_key.field_hash() != &field_hash {
+            if track_key.field() != &field {
                 // Safely skip if it's not the same.
                 continue;
             }
 
             let accessor = self.q_accessors.get(
-                *self.field_map.get(&field_hash).ok_or(format!(
-                    "No FieldRef for {field_hash:?}"
-                ))?,
+                *self
+                    .field_map
+                    .get(&field)
+                    .ok_or(format!("No FieldRef for {field:?}"))?,
             )?;
 
             let mut value = accessor

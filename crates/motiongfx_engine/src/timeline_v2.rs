@@ -7,36 +7,43 @@
 //! track. This design allows for manual control over the flow of
 //! the timeline.
 
-use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use nonempty::NonEmpty;
 
-use crate::action::ActionSpan;
-use crate::field::FieldHash;
+use crate::track::{Track, TrackBuilder};
 
 pub struct TimelinePlugin;
 
 impl Plugin for TimelinePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.configure_sets(
             PostUpdate,
             (
-                advance_timeline.before(TimelineSet::Advance),
-                sync_timeline.after(TimelineSet::Sync),
-            ),
+                TimelineSet::Advance,
+                TimelineSet::Mark,
+                TimelineSet::Sample,
+            )
+                .chain(),
+        );
+
+        app.add_systems(
+            PostUpdate,
+            advance_timeline.before(TimelineSet::Advance),
         );
     }
 }
 
+/// Systems set for managing [`Timeline`] states.
+/// Runs in the [`PostUpdate`] schedule.
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TimelineSet {
     /// Advance the target time/index in [`Timeline`].
     Advance,
+    /// Mark the segments that are going to be sampled this frame.
+    Mark,
     /// Sample keyframes and applies the value.
     /// This happens before [`TransformSystem::TransformPropagate`].
     Sample,
-    /// Sync the current time/index with the target in [`Timeline`].
-    Sync,
 }
 
 /// Advance the [`Timeline`]'s current time if it's playing.
@@ -53,23 +60,10 @@ fn advance_timeline(
 
         let increment = time.delta_secs() * timeline.time_scale;
         let target_time = timeline.target_time + increment;
-        let duration = timeline.tracks[timeline.curr_index].duration;
+        let duration = timeline.curr_track().duration();
 
         // Prevent time overshooting.
         timeline.target_time = target_time.clamp(0.0, duration);
-    }
-}
-
-/// Sync [`Timeline`]'s current time and index with the target.
-///
-/// This system should run after the sampling is completed.
-fn sync_timeline(
-    mut q_timeline: Query<&mut Timeline, Changed<Timeline>>,
-) {
-    for mut timeline in q_timeline.iter_mut() {
-        let timeline = timeline.bypass_change_detection();
-        timeline.curr_time = timeline.target_time;
-        timeline.curr_index = timeline.target_index;
     }
 }
 
@@ -155,7 +149,7 @@ impl Timeline {
     }
 
     /// Get the index of the last track. This is essentially the largest
-    /// index you can provide in [`TimelineCtx::set_target_track`].
+    /// index you can provide in [`Timeline::set_target_track`].
     #[inline]
     pub fn last_track_index(&self) -> usize {
         self.tracks.len().saturating_sub(1)
@@ -206,11 +200,14 @@ impl Timeline {
     ///
     /// Warns if out of bounds in `debug_assertions`.
     pub fn set_target_time(&mut self, target_time: f32) -> &mut Self {
-        let duration = self.target_track().duration;
+        let duration = self.target_track().duration();
 
         #[cfg(debug_assertions)]
         if target_time < 0.0 || target_time > duration {
-            warn!("Target time ({target_time}) is out of bound [0.0..={duration}].");
+            warn!(
+                "Target time ({}) is out of bounds [0.0..={}].",
+                target_time, duration
+            );
         }
 
         self.target_time = target_time.clamp(0.0, duration);
@@ -229,29 +226,42 @@ impl Timeline {
 
         #[cfg(debug_assertions)]
         if target_index > max_index {
-            warn!("Target index ({target_index}) is out of bound [0..={max_index}].");
+            warn!(
+                "Target index ({}) is out of bounds [0..={}].",
+                target_index, max_index
+            );
         }
 
         self.target_index = target_index.clamp(0, max_index);
         self
     }
+
+    pub(crate) fn sync_curr_time(&mut self) -> &mut Self {
+        self.curr_time = self.target_time;
+        self
+    }
+
+    pub(crate) fn sync_curr_track(&mut self) -> &mut Self {
+        self.curr_index = self.target_index;
+        self
+    }
 }
 
 pub struct TimelineBuilder {
-    tracks: NonEmpty<Track>,
+    tracks: NonEmpty<TrackBuilder>,
 }
 
 impl TimelineBuilder {
     pub fn new() -> Self {
         Self {
-            tracks: NonEmpty::new(Track::new()),
+            tracks: NonEmpty::new(TrackBuilder::new()),
         }
     }
 }
 
 impl TimelineBuilder {
     /// Chain a track into the tail track in the timeline.
-    pub fn chain(&mut self, track: Track) -> &mut Self {
+    pub fn chain(&mut self, track: TrackBuilder) -> &mut Self {
         let last_track = core::mem::take(self.tracks.last_mut());
         *self.tracks.last_mut() = last_track.chain(track);
         self
@@ -259,13 +269,17 @@ impl TimelineBuilder {
 
     /// Creates the next track.
     pub fn add_checkpoint(&mut self) -> &mut Self {
-        self.tracks.push(Track::new());
+        self.tracks.push(TrackBuilder::new());
         self
     }
 
     pub fn build(self) -> Timeline {
         Timeline {
-            tracks: self.tracks.into_iter().collect(),
+            tracks: self
+                .tracks
+                .into_iter()
+                .map(TrackBuilder::build)
+                .collect(),
             is_playing: false,
             time_scale: 1.0,
             curr_time: 0.0,
@@ -282,487 +296,22 @@ impl Default for TimelineBuilder {
     }
 }
 
-/// Responsible for storing all identified
-/// [`Sequence`]s, mapped by a unique [`TrackKey`].
-#[derive(Debug, Clone)]
-pub struct Track {
-    sequences: HashMap<TrackKey, Sequence>,
-    duration: f32,
-}
-
-impl Track {
-    pub fn new() -> Self {
-        Self {
-            sequences: HashMap::new(),
-            duration: 0.0,
-        }
-    }
-
-    pub fn new_with_sequence(
-        key: TrackKey,
-        sequence: Sequence,
-    ) -> Self {
-        Self {
-            duration: sequence.duration(),
-            sequences: [(key, sequence)].into(),
-        }
-    }
-}
-
-impl Track {
-    #[inline]
-    pub fn duration(&self) -> f32 {
-        self.duration
-    }
-
-    /// Updates or inserts a [`Sequence`] in a track.
-    ///
-    /// If the [`TrackKey`] already exists, this method appends the spans
-    /// of the `new_sequence` to the existing sequence. If the [`TrackKey`]
-    /// does not exist, a new entry is created for the `new_sequence`.
-    ///
-    /// This method consumes `self` and returns a modified instance,
-    /// following a builder pattern.
-    ///
-    /// # Parameters
-    ///
-    /// * `key`: The unique identifier for the track.
-    /// * `new_sequence`: The sequence to be added or extended.
-    pub fn upsert_sequence(
-        mut self,
-        key: TrackKey,
-        new_sequence: Sequence,
-    ) -> Self {
-        match self.sequences.get_mut(&key) {
-            Some(sequence) => {
-                sequence.extend(new_sequence.spans);
-            }
-            None => {
-                self.sequences.insert(key, new_sequence);
-            }
-        }
-
-        self
-    }
-
-    #[inline]
-    pub fn delay(mut self, duration: f32) -> Self {
-        delay(duration, self)
-    }
-
-    #[inline]
-    pub fn chain(self, other: Self) -> Self {
-        chain([self, other])
-    }
-}
-
-impl Default for Track {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// A non-overlapping sequence of [`ActionSpan`]s.
-#[derive(Debug, Clone)]
-pub struct Sequence {
-    spans: NonEmpty<ActionSpan>,
-}
-
-impl Sequence {
-    pub const fn new(span: ActionSpan) -> Self {
-        Self {
-            spans: NonEmpty::new(span),
-        }
-    }
-
-    /// Get the start time of the span track.
-    #[inline]
-    #[must_use]
-    pub fn start_time(&self) -> f32 {
-        self.spans.first().start_time()
-    }
-
-    /// Get the end time of the span track.
-    #[inline]
-    #[must_use]
-    pub fn end_time(&self) -> f32 {
-        self.spans.last().end_time()
-    }
-
-    /// Get the duration of the track.
-    #[inline]
-    #[must_use]
-    pub fn duration(&self) -> f32 {
-        self.end_time() - self.start_time()
-    }
-}
-
-impl Sequence {
-    pub fn delay(&mut self, delay: f32) {
-        for span in self.spans.iter_mut() {
-            span.delay(delay);
-        }
-    }
-
-    #[inline]
-    pub fn push(&mut self, span: ActionSpan) {
-        debug_assert!(
-            span.start_time() >= self.end_time(),
-            "({} >= {}) `ActionSpan`s inside a `Sequence` shouldn't overlap!",
-            span.start_time(),
-            self.end_time(),
-        );
-
-        self.spans.push(span);
-    }
-}
-
-impl Extend<ActionSpan> for Sequence {
-    fn extend<T: IntoIterator<Item = ActionSpan>>(
-        &mut self,
-        iter: T,
-    ) {
-        #[cfg(debug_assertions)]
-        {
-            for span in iter.into_iter() {
-                self.push(span);
-            }
-        }
-        #[cfg(not(debug_assertions))]
-        self.spans.extend(iter);
-    }
-}
-
-/// Key that uniquely identifies a track.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TrackKey {
-    /// The target entity that will be animated.
-    target: Entity,
-    /// The target field of the entity that will be animated.
-    field_hash: FieldHash,
-}
-
-impl TrackKey {
-    /// Get the target entity that will be animated.
-    pub fn target(&self) -> Entity {
-        self.target
-    }
-
-    /// Get the target field of the entity that will be animated.
-    pub fn field_hash(&self) -> &FieldHash {
-        &self.field_hash
-    }
-}
-
-mod track {}
-
-pub trait TrackOrdering {
-    fn chain(self) -> Track;
-    fn all(self) -> Track;
-    fn any(self) -> Track;
-    fn flow(self, delay: f32) -> Track;
-}
-
-impl<T> TrackOrdering for T
-where
-    T: IntoIterator<Item = Track>,
-{
-    fn chain(self) -> Track {
-        chain(self)
-    }
-
-    fn all(self) -> Track {
-        all(self)
-    }
-
-    fn any(self) -> Track {
-        any(self)
-    }
-
-    fn flow(self, delay: f32) -> Track {
-        flow(delay, self)
-    }
-}
-
-/// Run all [`Track`]s concurrently and wait for all of them to finish.
-#[must_use = "This function consumes all the given tracks and returns a modified one."]
-pub fn chain(tracks: impl IntoIterator<Item = Track>) -> Track {
-    let mut tracks_iter = tracks.into_iter();
-    let mut track = tracks_iter.next().unwrap_or_default();
-
-    let mut chain_duration = track.duration;
-
-    for mut other_track in tracks_iter {
-        for (key, mut other_sequence) in other_track.sequences.drain()
-        {
-            other_sequence.delay(chain_duration);
-            track = track.upsert_sequence(key, other_sequence);
-        }
-
-        chain_duration += other_track.duration;
-    }
-
-    track.duration = chain_duration;
-    track
-}
-
-/// Run all [`Track`]s concurrently and wait for all of them to finish.
-#[must_use = "This function consumes all the given tracks and returns a modified one."]
-pub fn all(tracks: impl IntoIterator<Item = Track>) -> Track {
-    let mut tracks_iter = tracks.into_iter();
-    let mut track = tracks_iter.next().unwrap_or_default();
-
-    let mut max_duration = track.duration;
-
-    for mut other_track in tracks_iter {
-        max_duration = max_duration.max(other_track.duration);
-
-        for (key, other_sequence) in other_track.sequences.drain() {
-            track = track.upsert_sequence(key, other_sequence);
-        }
-    }
-
-    track.duration = max_duration;
-    track
-}
-
-/// Run all [`Track`]s concurrently and wait for any of them to finish.
-#[must_use = "This function consumes all the given tracks and returns a modified one."]
-pub fn any(tracks: impl IntoIterator<Item = Track>) -> Track {
-    let mut tracks_iter = tracks.into_iter();
-    let mut track = tracks_iter.next().unwrap_or_default();
-
-    let mut min_duration = track.duration;
-
-    for mut other_track in tracks_iter {
-        min_duration = min_duration.min(other_track.duration);
-
-        for (key, other_sequence) in other_track.sequences.drain() {
-            track = track.upsert_sequence(key, other_sequence);
-        }
-    }
-
-    track.duration = min_duration;
-    track
-}
-
-/// Run one [`Track`] after another with a fixed delay time.
-#[must_use = "This function consumes all the given tracks and returns a modified one."]
-pub fn flow(
-    delay: f32,
-    tracks: impl IntoIterator<Item = Track>,
-) -> Track {
-    let mut tracks_iter = tracks.into_iter();
-    let mut track = tracks_iter.next().unwrap_or_default();
-
-    let mut flow_delay = 0.0;
-    let mut final_duration = track.duration;
-
-    for other_track in tracks_iter {
-        flow_delay += delay;
-        final_duration =
-            (flow_delay + other_track.duration).max(final_duration);
-
-        for (key, mut sequence) in other_track.sequences {
-            sequence.delay(flow_delay);
-            track = track.upsert_sequence(key, sequence);
-        }
-    }
-
-    track.duration = final_duration;
-    track
-}
-
-/// Run a [`Track`] after a fixed delay time.
-#[must_use = "This function consumes the given track and returns a modified one."]
-pub fn delay(delay: f32, mut track: Track) -> Track {
-    for sequence in track.sequences.values_mut() {
-        sequence.delay(delay);
-    }
-
-    track
-}
-
-mod animate {
-    // TODO: Add a macro or something* to register multiple
-    // animatable fields from a single struct at once.
-
-    use bevy::asset::AsAssetId;
-    use bevy::ecs::component::Mutable;
-    use bevy::prelude::*;
-
-    use crate::field::FieldBundle;
-    use crate::prelude::Interpolation;
-    use crate::ThreadSafe;
-
-    pub trait AnimateAppExt {
-        fn animate_component<Source, Target>(
-            &mut self,
-            field_bundle: FieldBundle<Source, Target>,
-        ) -> &mut Self
-        where
-            Source: Component<Mutability = Mutable>,
-            Target: Interpolation + Clone + ThreadSafe;
-
-        #[cfg(feature = "asset")]
-        fn animate_asset<Source, Target>(
-            &mut self,
-            field_bundle: FieldBundle<Source::Asset, Target>,
-        ) -> &mut Self
-        where
-            Source: AsAssetId,
-            Target: Interpolation + Clone + ThreadSafe;
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use bevy::ecs::entity::Entity;
-
-    fn key(name: &'static str) -> TrackKey {
-        TrackKey {
-            target: Entity::PLACEHOLDER,
-            field_hash: FieldHash::new::<u32>(name),
-        }
-    }
-
-    const fn span(duration: f32) -> ActionSpan {
-        ActionSpan::new(Entity::PLACEHOLDER, duration)
-    }
-
-    #[test]
-    fn track_key_uniqueness() {
-        // Sequence with 0 duration to prevent overlaps.
-        const DUMMY_SEQ: Sequence = Sequence::new(span(0.0));
-
-        let entity1 = Entity::from_raw(1);
-        let entity2 = Entity::from_raw(2);
-        let field_u32_a = FieldHash::new::<u32>("a");
-        let field_u32_b = FieldHash::new::<u32>("b");
-
-        let k1 = TrackKey {
-            target: entity1,
-            field_hash: field_u32_a,
-        };
-        let k2 = TrackKey {
-            target: entity2,
-            field_hash: field_u32_a,
-        };
-        let k3 = TrackKey {
-            target: entity1,
-            field_hash: field_u32_b,
-        };
-
-        let track = Track::new()
-            .upsert_sequence(k1, DUMMY_SEQ.clone())
-            .upsert_sequence(k2, DUMMY_SEQ.clone())
-            .upsert_sequence(k3, DUMMY_SEQ.clone())
-            // Similar key with the first sequence.
-            .upsert_sequence(k1, DUMMY_SEQ.clone());
-
-        assert_eq!(track.sequences.len(), 3);
-    }
-
-    #[test]
-    fn chain_duration_and_delay() {
-        let track1 = Track::new_with_sequence(
-            key("a"),
-            Sequence::new(span(1.0)),
-        );
-        let track2 = Track::new_with_sequence(
-            key("b"),
-            Sequence::new(span(2.0)),
-        );
-
-        let track = [track1, track2].chain();
-
-        assert_eq!(track.duration, 3.0);
-        let seq_b = &track.sequences[&key("b")];
-        // `seq_b` should be delayed by 1.0 (duration of `track1`).
-        assert_eq!(seq_b.start_time(), 1.0);
-    }
-
-    #[test]
-    fn all_duration_max() {
-        let track1 = Track::new_with_sequence(
-            key("a"),
-            Sequence::new(span(1.0)),
-        );
-        let track2 = Track::new_with_sequence(
-            key("b"),
-            Sequence::new(span(3.0)),
-        );
-
-        let track = [track1, track2].all();
-        assert_eq!(track.duration, 3.0);
-    }
-
-    #[test]
-    fn any_duration_min() {
-        let track1 = Track::new_with_sequence(
-            key("a"),
-            Sequence::new(span(1.0)),
-        );
-        let track2 = Track::new_with_sequence(
-            key("b"),
-            Sequence::new(span(3.0)),
-        );
-
-        let track = [track1, track2].any();
-        assert_eq!(track.duration, 1.0);
-    }
-
-    #[test]
-    fn flow_with_delay() {
-        let track1 = Track::new_with_sequence(
-            key("a"),
-            Sequence::new(span(1.0)),
-        );
-        let track2 = Track::new_with_sequence(
-            key("b"),
-            Sequence::new(span(1.0)),
-        );
-
-        let track = [track1, track2].flow(0.5);
-
-        assert_eq!(track.duration, 1.5); // 0.5 delay + 1.0 duration
-        let seq_b = &track.sequences[&key("b")];
-        // `seq_b` should be delayed by 0.5
-        assert_eq!(seq_b.start_time(), 0.5);
-    }
-
-    #[test]
-    fn delay_applies_offset() {
-        let track = Track::new_with_sequence(
-            key("a"),
-            Sequence::new(span(2.0)),
-        );
-
-        let track = delay(1.5, track);
-        let seq_a = &track.sequences[&key("a")];
-
-        assert_eq!(seq_a.start_time(), 1.5);
-        assert_eq!(seq_a.end_time(), 3.5);
-        assert_eq!(track.duration, 2.0);
-    }
-}
-
-#[cfg(test)]
-mod timeline_tests {
     use core::time::Duration;
 
     use bevy::ecs::system::RunSystemOnce;
 
+    use crate::action::ActionSpan;
+    use crate::sequence_v2::Sequence;
+    use crate::track::{SequenceKey, TrackBuilder};
+
     use super::*;
 
     /// Creates a track with one dummy sequence with a given duration
-    fn dummy_track(duration: f32) -> Track {
-        Track::new_with_sequence(
-            TrackKey {
-                target: Entity::PLACEHOLDER,
-                field_hash: FieldHash::new::<u32>("dummy"),
-            },
+    fn dummy_track(duration: f32) -> TrackBuilder {
+        TrackBuilder::new_with_sequence(
+            SequenceKey::placeholder(),
             Sequence::new(ActionSpan::new(
                 Entity::PLACEHOLDER,
                 duration,
@@ -784,7 +333,7 @@ mod timeline_tests {
         let timeline = builder.build();
 
         assert_eq!(timeline.tracks.len(), 1);
-        assert_eq!(timeline.tracks[0].duration, T1 + T2);
+        assert_eq!(timeline.tracks[0].duration(), T1 + T2);
     }
 
     #[test]
@@ -801,8 +350,8 @@ mod timeline_tests {
         let timeline = builder.build();
 
         assert_eq!(timeline.tracks.len(), 2);
-        assert_eq!(timeline.tracks[0].duration, T1);
-        assert_eq!(timeline.tracks[1].duration, T2);
+        assert_eq!(timeline.tracks[0].duration(), T1);
+        assert_eq!(timeline.tracks[1].duration(), T2);
     }
 
     // --- Systems: `advance_timeline` ---
@@ -877,33 +426,5 @@ mod timeline_tests {
 
         let timeline = world.get::<Timeline>(entity).unwrap();
         assert_eq!(timeline.target_time, 4.0);
-    }
-
-    // --- Systems: `sync_timeline` ---
-
-    #[test]
-    fn sync_timeline_copies_target_to_current() {
-        let mut world = World::new();
-
-        let mut builder = TimelineBuilder::new();
-        builder
-            .chain(dummy_track(1.0))
-            .add_checkpoint()
-            .chain(dummy_track(2.0))
-            .add_checkpoint()
-            .chain(dummy_track(3.0));
-
-        let timeline = builder
-            .build()
-            .with_target_track(2)
-            .with_target_time(1.5);
-
-        let entity = world.spawn(timeline).id();
-
-        world.run_system_once(sync_timeline).unwrap();
-
-        let timeline = world.get::<Timeline>(entity).unwrap();
-        assert_eq!(timeline.curr_time, 1.5);
-        assert_eq!(timeline.curr_index, 2);
     }
 }

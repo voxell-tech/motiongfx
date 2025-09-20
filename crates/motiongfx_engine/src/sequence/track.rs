@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use nonempty::NonEmpty;
 
 use crate::action::ActionTarget;
-use crate::field::FieldHash;
+use crate::field::UntypedField;
 use crate::prelude::_Timeline;
 
 // For docs.
@@ -26,7 +26,7 @@ fn _generate_tracks(
     trigger: Trigger<OnInsert, _Timeline>,
     mut commands: Commands,
     q_timelines: Query<&_Timeline>,
-    q_actions: Query<(&FieldHash, &ActionTarget)>,
+    q_actions: Query<(&UntypedField, &ActionTarget)>,
 ) -> Result {
     let timeline_id = trigger.target();
     let timeline = q_timelines.get(timeline_id)?;
@@ -35,12 +35,11 @@ fn _generate_tracks(
 
     for (i, span) in timeline.spans().enumerate() {
         let action_id = span.action_id();
-        let (&field_hash, &action_target) =
-            q_actions.get(action_id)?;
+        let (&field, &action_target) = q_actions.get(action_id)?;
 
         let track_key = TrackKey {
             action_target,
-            field_hash,
+            field,
         };
 
         match tracks.get_mut(&track_key) {
@@ -62,7 +61,7 @@ fn generate_tracks(
     trigger: Trigger<OnInsert, Sequence>,
     mut commands: Commands,
     q_sequences: Query<&Sequence>,
-    q_actions: Query<(&FieldHash, &ActionTarget)>,
+    q_actions: Query<(&UntypedField, &ActionTarget)>,
 ) -> Result {
     let sequence_id = trigger.target();
     let sequence = q_sequences.get(sequence_id)?;
@@ -71,12 +70,11 @@ fn generate_tracks(
 
     for (i, span) in sequence.spans.iter().enumerate() {
         let action_id = span.action_id();
-        let (&field_hash, &action_target) =
-            q_actions.get(action_id)?;
+        let (&field, &action_target) = q_actions.get(action_id)?;
 
         let track_key = TrackKey {
             action_target,
-            field_hash,
+            field,
         };
 
         match tracks.get_mut(&track_key) {
@@ -118,7 +116,7 @@ pub struct TrackKey {
     /// The target entity that will be animated.
     action_target: ActionTarget,
     /// The target field of the entity that will be animated.
-    field_hash: FieldHash,
+    field: UntypedField,
 }
 
 impl TrackKey {
@@ -128,8 +126,8 @@ impl TrackKey {
     }
 
     /// Get the target field of the entity that will be animated.
-    pub fn field_hash(&self) -> &FieldHash {
-        &self.field_hash
+    pub fn field(&self) -> &UntypedField {
+        &self.field
     }
 }
 
