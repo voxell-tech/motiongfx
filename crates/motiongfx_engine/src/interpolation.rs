@@ -1,10 +1,35 @@
-use bevy::math::*;
-use bevy::prelude::*;
+use bevy_color::prelude::*;
+use bevy_math::*;
+use bevy_transform::components::Transform;
 
 /// Trait for interpolating between 2 values based on a f32 `t` value.
 pub trait Interpolation<T = Self, U = Self> {
     /// Linearly interpolate between 2 values based on a f32 `t` value.
     fn interp(&self, rhs: &T, t: f32) -> U;
+}
+
+macro_rules! impl_animatable {
+    ($ty:ty) => {
+        impl Interpolation for $ty {
+            #[inline]
+            fn interp(&self, rhs: &Self, t: f32) -> Self {
+                ::bevy::animation::animatable::Animatable::interpolate(
+                    self, rhs, t,
+                )
+            }
+        }
+    };
+}
+
+macro_rules! impl_stable_interpolate {
+    ($ty:ty) => {
+        impl Interpolation for $ty {
+            #[inline]
+            fn interp(&self, rhs: &Self, t: f32) -> Self {
+                ::bevy_math::common_traits::StableInterpolate::interpolate_stable(self, rhs, t)
+            }
+        }
+    };
 }
 
 // Maths.
@@ -45,7 +70,7 @@ impl_stable_interpolate!(Dir3A);
 impl_animatable!(LinearRgba);
 impl_animatable!(Laba);
 impl_animatable!(Oklaba);
-impl_animatable!(Srgba);
+// impl_animatable!(Srgba);
 impl_animatable!(Xyza);
 
 impl Interpolation for Color {
@@ -55,31 +80,19 @@ impl Interpolation for Color {
     }
 }
 
+impl Interpolation for Srgba {
+    fn interp(&self, rhs: &Self, t: f32) -> Self {
+        self.lerp(*rhs, t)
+    }
+}
+
 // Components.
-impl_animatable!(Transform);
-
-macro_rules! impl_animatable {
-    ($ty:ty) => {
-        impl Interpolation for $ty {
-            #[inline]
-            fn interp(&self, rhs: &Self, t: f32) -> Self {
-                ::bevy::animation::animatable::Animatable::interpolate(
-                    self, rhs, t,
-                )
-            }
+impl Interpolation for Transform {
+    fn interp(&self, rhs: &Self, t: f32) -> Self {
+        Self {
+            translation: self.translation.interp(&rhs.translation, t),
+            rotation: self.rotation.interp(&rhs.rotation, t),
+            scale: self.scale.interp(&rhs.scale, t),
         }
-    };
+    }
 }
-pub(crate) use impl_animatable;
-
-macro_rules! impl_stable_interpolate {
-    ($ty:ty) => {
-        impl Interpolation for $ty {
-            #[inline]
-            fn interp(&self, rhs: &Self, t: f32) -> Self {
-                ::bevy::math::common_traits::StableInterpolate::interpolate_stable(self, rhs, t)
-            }
-        }
-    };
-}
-pub(crate) use impl_stable_interpolate;

@@ -6,13 +6,20 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-bevy = { workspace = true, features = ["animation", "bevy_asset", "bevy_log"] }
-smallvec = { workspace = true }
-nonempty = "0.11.0"
+bevy_ecs = { workspace = true }
+bevy_app = { workspace = true }
+bevy_platform = { workspace = true }
+bevy_math = { workspace = true }
+bevy_transform = { workspace = true, optional = true }
+bevy_asset = { workspace = true, optional = true }
+bevy_animation = { workspace = true, optional = true }
+nonempty = { version = "0.12.0", default-features = false }
 
 [lints]
 workspace = true
 
 [features]
-default = ["asset"]
-asset = []
+default = ["transform", "asset", "animation"]
+transform = ["dep:bevy_transform"]
+asset = ["dep:bevy_asset"]
+animation = ["dep:bevy_animation"]

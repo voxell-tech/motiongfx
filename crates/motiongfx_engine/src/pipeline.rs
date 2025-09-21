@@ -1,18 +1,17 @@
 use core::any::TypeId;
 
 #[cfg(feature = "asset")]
-use bevy::asset::AsAssetId;
-use bevy::ecs::component::Mutable;
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
+use bevy_asset::{AsAssetId, Assets};
+use bevy_ecs::component::Mutable;
+use bevy_ecs::prelude::*;
+use bevy_platform::collections::HashMap;
 
 use crate::accessor::{Accessor, AccessorRegistry};
 use crate::action::{
-    ActionClip, ActionWorld, EaseStorage, InterpStorage, Segment,
+    ActionClip, ActionWorld, EaseStorage, InterpStorage, SampleMode,
+    Segment,
 };
 use crate::field::UntypedField;
-use crate::prelude::Interpolation;
-use crate::timeline::TargetRef;
 use crate::track::{ActionKey, Track};
 use crate::ThreadSafe;
 
@@ -62,7 +61,7 @@ impl Pipeline {
     pub fn new_component<S, T>() -> Self
     where
         S: Component<Mutability = Mutable>,
-        T: Interpolation + Clone + ThreadSafe,
+        T: Clone + ThreadSafe,
     {
         Self {
             bake: bake_component_actions::<S, T>,
@@ -74,7 +73,7 @@ impl Pipeline {
     pub fn new_asset<S, T>() -> Self
     where
         S: AsAssetId,
-        T: Interpolation + Clone + ThreadSafe,
+        T: Clone + ThreadSafe,
     {
         Self {
             bake: bake_asset_actions::<S, T>,
@@ -101,7 +100,7 @@ impl PipelineRegistry {
     pub fn register_comp<S, T>(&mut self) -> PipelineKey
     where
         S: Component<Mutability = Mutable>,
-        T: Interpolation + Clone + ThreadSafe,
+        T: Clone + ThreadSafe,
     {
         let key = PipelineKey::new::<S, T>();
         unsafe {
@@ -119,7 +118,7 @@ impl PipelineRegistry {
     pub fn register_asset<S, T>(&mut self) -> PipelineKey
     where
         S: AsAssetId,
-        T: Interpolation + Clone + ThreadSafe,
+        T: Clone + ThreadSafe,
     {
         let key = PipelineKey::new::<S, T>();
         unsafe {
@@ -174,20 +173,20 @@ impl<'a> BakeCtx<'a> {
         S: 'static,
         T: Clone + ThreadSafe,
     {
-        for (key, span) in self.track.clip_spans() {
+        for (key, span) in self.track.sequences_spans() {
             let Ok(accessor) =
                 self.accessor_registry.get::<S, T>(&key.field)
             else {
                 continue;
             };
 
-            let mut target_entity = key.target.entity();
+            let mut target_entity = key.target.0;
 
             // Fetch target reference if any.
             target_entity = self
                 .target_world
                 .get::<TargetRef>(target_entity)
-                .map(|r| r.entity())
+                .map(|r| r.0)
                 .unwrap_or(target_entity);
 
             // Get the target value from the target world.
@@ -214,9 +213,9 @@ impl<'a> BakeCtx<'a> {
                 // SAFETY: Action already exists from the
                 // `get_action()` call above.
                 self.action_world
-                    .with_action(*id)
+                    .edit_action(*id)
                     .unwrap()
-                    .insert(segment);
+                    .set_segment(segment);
 
                 start = end;
             }
@@ -275,19 +274,19 @@ impl<'a> SampleCtx<'a> {
         ) -> &'a mut World,
     ) where
         S: 'static,
-        T: Interpolation + Clone + ThreadSafe,
+        T: Clone + ThreadSafe,
     {
         let Some(mut q) = self.action_world.world().try_query::<(
             &ActionKey,
             &SampleMode,
             &Segment<T>,
+            &InterpStorage<T>,
             Option<&EaseStorage>,
-            Option<&InterpStorage<T>>,
         )>() else {
             return;
         };
 
-        for (key, sample_mode, segment, ease, interp) in
+        for (key, sample_mode, segment, interp, ease) in
             q.iter(self.action_world.world())
         {
             let Ok(accessor) =
@@ -301,24 +300,26 @@ impl<'a> SampleCtx<'a> {
                 SampleMode::End => segment.end.clone(),
                 SampleMode::Interp(t) => {
                     let t = match ease {
-                        Some(ease) => ease(*t),
+                        Some(ease) => ease.0(*t),
                         None => *t,
                     };
 
-                    match interp {
-                        Some(interp) => {
-                            interp(&segment.start, &segment.end, t)
-                        }
-                        None => {
-                            T::interp(&segment.start, &segment.end, t)
-                        }
-                    }
+                    interp.0(&segment.start, &segment.end, t)
                 }
             };
 
+            let mut target_entity = key.target.0;
+
+            // Fetch target reference if any.
+            target_entity = self
+                .target_world
+                .get::<TargetRef>(target_entity)
+                .map(|r| r.0)
+                .unwrap_or(target_entity);
+
             self.target_world = set_target(
                 target,
-                key.target.entity(),
+                target_entity,
                 self.target_world,
                 accessor,
             );
@@ -329,7 +330,7 @@ impl<'a> SampleCtx<'a> {
 pub fn sample_component_actions<S, T>(ctx: SampleCtx)
 where
     S: Component<Mutability = Mutable>,
-    T: Interpolation + Clone + ThreadSafe,
+    T: Clone + ThreadSafe,
 {
     ctx.sample::<S, T>(
         |target, target_entity, target_world, accessor| {
@@ -347,7 +348,7 @@ where
 pub fn sample_asset_actions<S, T>(ctx: SampleCtx)
 where
     S: AsAssetId,
-    T: Interpolation + Clone + ThreadSafe,
+    T: Clone + ThreadSafe,
 {
     ctx.sample::<S::Asset, T>(
         |target, target_entity, target_world, accessor| {
@@ -376,14 +377,13 @@ where
     );
 }
 
-/// Determines how a [`Segment`] should be sampled.
-#[derive(Component, Debug, Clone, Copy)]
-#[component(storage = "SparseSet", immutable)]
-pub enum SampleMode {
-    Start,
-    End,
-    Interp(f32),
-}
+// TODO: Should we support recursive re-direction?
+
+/// A re-direction from an entity to another when dealing with
+/// action baking/sampling. The user is responsible for the
+/// existance of the referenced entity.
+#[derive(Component)]
+pub struct TargetRef(pub Entity);
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub struct Range {

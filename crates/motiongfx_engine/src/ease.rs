@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use core::f32::consts::PI;
 
 pub fn linear(t: f32) -> f32 {
     t
@@ -13,7 +13,7 @@ const C4: f32 = PI * 2.0 / 3.0;
 const C5: f32 = PI * 2.0 / 4.5;
 
 pub mod sine {
-    use std::f32::consts::PI;
+    use core::f32::consts::PI;
 
     #[inline]
     pub fn ease_in(t: f32) -> f32 {

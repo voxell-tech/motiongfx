@@ -1,10 +1,18 @@
 use core::cmp::Ordering;
 
-use bevy::prelude::*;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+#[cfg(feature = "animation")]
+use bevy_animation::animatable::Animatable;
+use bevy_ecs::prelude::*;
+use bevy_math::StableInterpolate;
+use bevy_math::VectorSpace;
 
 use crate::action::*;
+use crate::field::UntypedField;
 use crate::pipeline::*;
 use crate::track::*;
+use crate::ThreadSafe;
 
 #[derive(Component)]
 pub struct Timeline {
@@ -65,9 +73,9 @@ impl Timeline {
                     };
 
                     if let Some(mut action_cmd) =
-                        self.action_world.with_action(clip.id)
+                        self.action_world.edit_action(clip.id)
                     {
-                        action_cmd.insert(sample_mode);
+                        action_cmd.mark(sample_mode);
                     }
                 }
             }
@@ -117,12 +125,12 @@ impl Timeline {
                     let clip = &clips[index];
 
                     if let Some(mut action_cmd) =
-                        self.action_world.with_action(clip.id)
+                        self.action_world.edit_action(clip.id)
                     {
                         let t = (self.target_time - clip.start)
                             / (clip.end() - clip.start);
 
-                        action_cmd.insert(SampleMode::Interp(t));
+                        action_cmd.mark(SampleMode::Interp(t));
                     }
                 }
                 // `target_time` is out of bounds.
@@ -140,19 +148,19 @@ impl Timeline {
                     }
 
                     let Some(mut action_cmd) =
-                        self.action_world.with_action(clip.id)
+                        self.action_world.edit_action(clip.id)
                     else {
                         continue;
                     };
 
                     if index == 0 {
                         // Target time is before the entire sequence.
-                        action_cmd.insert(SampleMode::Start);
+                        action_cmd.mark(SampleMode::Start);
                     } else {
                         // Target time is after `index - 1`.
                         // Indexing taken care by the saturating sub
                         // above.
-                        action_cmd.insert(SampleMode::End);
+                        action_cmd.mark(SampleMode::End);
                     }
                 }
             }
@@ -235,17 +243,13 @@ impl Timeline {
     /// Set the target time of the current track, clamping the value
     /// within \[0.0..=track.duration\]
     ///
-    /// Warns if out of bounds in `debug_assertions`.
+    /// # Panics
+    ///
+    /// Panics if out of bounds in `debug_assertions`.
     pub fn set_target_time(&mut self, target_time: f32) -> &mut Self {
         let duration = self.tracks[self.target_index].duration();
 
-        #[cfg(debug_assertions)]
-        if target_time < 0.0 || target_time > duration {
-            warn!(
-                "Target time ({}) is out of bounds [0.0..={}].",
-                target_time, duration
-            );
-        }
+        debug_assert!(target_time < 0.0 || target_time > duration);
 
         self.target_time = target_time.clamp(0.0, duration);
         self
@@ -254,20 +258,16 @@ impl Timeline {
     /// Set the target track index, clamping the value within
     /// \[0..=track_count - 1\].
     ///
-    /// Warns if out of bounds in `debug_assertions`.
+    /// # Panics
+    ///
+    /// Panics if out of bounds in `debug_assertions`.
     pub fn set_target_track(
         &mut self,
         target_index: usize,
     ) -> &mut Self {
         let max_index = self.last_track_index();
 
-        #[cfg(debug_assertions)]
-        if target_index > max_index {
-            warn!(
-                "Target index ({}) is out of bounds [0..={}].",
-                target_index, max_index
-            );
-        }
+        debug_assert!(target_index > max_index);
 
         self.target_index = target_index.clamp(0, max_index);
         self
@@ -276,31 +276,81 @@ impl Timeline {
 
 #[derive(Default)]
 pub struct TimelineBuilder {
-    world: ActionWorld,
+    action_world: ActionWorld,
     tracks: Vec<Track>,
 }
 
 impl TimelineBuilder {
+    /// Add an [`Action`] without interpolation.
+    pub fn act<T>(
+        &mut self,
+        action: impl Action<T>,
+        target: impl Into<ActionTarget>,
+        field: impl Into<UntypedField>,
+    ) -> ActionBuilder<'_, T>
+    where
+        T: ThreadSafe,
+    {
+        self.action_world.add(action, target, field)
+    }
+
+    /// Add an [`Action`] with stable interpolation using
+    /// [`StableInterpolate::interpolate_stable`] from `bevy_math`.
+    pub fn act_stable<T>(
+        &mut self,
+        action: impl Action<T>,
+        target: impl Into<ActionTarget>,
+        field: impl Into<UntypedField>,
+    ) -> InterpolatedActionBuilder<'_, T>
+    where
+        T: StableInterpolate + ThreadSafe,
+    {
+        self.action_world
+            .add(action, target, field)
+            .with_interp(T::interpolate_stable)
+    }
+
+    /// Add an [`Action`] with vector interpolation using
+    /// [`VectorSpace::lerp`] from `bevy_math`.
+    pub fn act_vector<T>(
+        &mut self,
+        action: impl Action<T>,
+        target: impl Into<ActionTarget>,
+        field: impl Into<UntypedField>,
+    ) -> InterpolatedActionBuilder<'_, T>
+    where
+        T: VectorSpace + ThreadSafe,
+    {
+        self.action_world
+            .add(action, target, field)
+            .with_interp(|a, b, t| a.lerp(*b, t))
+    }
+
+    /// Add an [`Action`] with animation-style interpolation
+    /// using [`Animatable::interpolate`] from `bevy_animation`.
+    #[cfg(feature = "animation")]
+    pub fn act_anim<T>(
+        &mut self,
+        action: impl Action<T>,
+        target: impl Into<ActionTarget>,
+        field: impl Into<UntypedField>,
+    ) -> InterpolatedActionBuilder<'_, T>
+    where
+        T: Animatable + ThreadSafe,
+    {
+        self.action_world
+            .add(action, target, field)
+            .with_interp(T::interpolate)
+    }
+
+    /// Add [`Track`]\(s\) to the timeline.
     pub fn add_tracks(
         &mut self,
         tracks: impl Iterator<Item = Track>,
     ) {
         self.tracks.extend(tracks);
     }
-
-    pub fn act() {}
 }
-
-// Redirection plan:
-// Entity referencing should be possible
-
-// TODO: Do we want to support recursive entity referencing?
-
-/// A redirection from an entity to another when dealing with
-/// action baking/sampling. The user is responsible for the
-/// existance of the referenced entity the target component.
-#[derive(Component, Deref)]
-pub struct TargetRef(pub Entity);
 
 #[cfg(test)]
 mod tests {

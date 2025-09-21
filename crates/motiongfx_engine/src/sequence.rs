@@ -15,6 +15,7 @@ impl Sequence {
         }
     }
 
+    #[allow(clippy::len_without_is_empty)] // It is non empty!
     #[inline]
     pub fn len(&self) -> usize {
         self.clips.len()
@@ -70,7 +71,7 @@ impl Extend<ActionClip> for Sequence {
         let mut end = self.end();
         #[cfg(debug_assertions)]
         let iter = {
-            iter.into_iter().map(|clip| {
+            iter.into_iter().inspect(|clip| {
                 debug_assert!(
                     clip.start >= end,
                     "({} >= {}) `ActionClip`s shouldn't overlap!",
@@ -79,7 +80,6 @@ impl Extend<ActionClip> for Sequence {
                 );
 
                 end = clip.end();
-                clip
             })
         };
 

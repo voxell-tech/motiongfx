@@ -9,8 +9,8 @@
 use core::any::TypeId;
 use core::hash::Hash;
 
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
+use bevy_ecs::prelude::*;
+use bevy_platform::collections::HashMap;
 
 /// A typed accessor to a field of type `T` within a source type `S`.
 ///
@@ -21,7 +21,6 @@ use bevy::prelude::*;
 /// ```
 /// use motiongfx_engine::accessor::Accessor;
 ///
-/// #[derive(Default)]
 /// struct Foo { value: i32 }
 ///
 /// fn ref_fn(s: &Foo) -> &i32 { &s.value }
@@ -122,7 +121,6 @@ impl<S, T> From<Accessor<S, T>> for UntypedAccessor {
 /// ```
 /// use motiongfx_engine::accessor::{Accessor, AccessorRegistry};
 ///
-/// #[derive(Default)]
 /// struct Foo { value: i32 }
 ///
 /// fn ref_fn(s: &Foo) -> &i32 { &s.value }
@@ -183,6 +181,9 @@ impl<K> Default for AccessorRegistry<K> {
         }
     }
 }
+
+unsafe impl<K> Send for AccessorRegistry<K> {}
+unsafe impl<K> Sync for AccessorRegistry<K> {}
 
 /// Possible error variants when getting an [`Accessor`]
 /// from the [`AccessorRegistry`].

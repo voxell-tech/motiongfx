@@ -1,5 +1,7 @@
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use bevy_ecs::prelude::*;
+use bevy_platform::collections::HashMap;
 
 use crate::action::*;
 use crate::field::UntypedField;
@@ -180,25 +182,50 @@ impl TrackFragment {
     pub fn compile(self) -> Track {
         let mut sequences =
             self.sequences.into_iter().collect::<Vec<_>>();
-        sequences.sort_unstable_by_key(|(key, _)| key.field);
+        sequences.sort_by_key(|(key, _)| key.field);
 
-        let mut offset = 0;
+        let mut seq_offset = 0;
+        let mut sequence_spans = Vec::with_capacity(sequences.len());
 
-        let sequence_spans = sequences
-            .iter()
-            .map(|(key, sequence)| {
-                let sequence_span = (
-                    *key,
+        let mut field = sequences[0].0.field;
+        let mut field_offset = 0;
+        let mut field_len = 0;
+        let mut field_lookups = Vec::new();
+
+        for (key, seq) in sequences.iter() {
+            sequence_spans.push((
+                *key,
+                Span {
+                    offset: seq_offset,
+                    len: seq.len(),
+                },
+            ));
+            seq_offset += seq.len();
+
+            if key.field != field {
+                field_lookups.push((
+                    field,
                     Span {
-                        offset,
-                        len: sequence.len(),
+                        offset: field_offset,
+                        len: field_len,
                     },
-                );
+                ));
 
-                offset += sequence.len();
-                sequence_span
-            })
-            .collect();
+                field = key.field;
+                field_offset = field_len;
+                field_len = 0;
+            }
+            field_len += 1;
+        }
+
+        // Final field.
+        field_lookups.push((
+            field,
+            Span {
+                offset: field_offset,
+                len: field_len,
+            },
+        ));
 
         let clip_arena = sequences
             .into_iter()
@@ -206,8 +233,8 @@ impl TrackFragment {
             .collect();
 
         Track {
-            field_lookup: Box::new([]),
-            sequence_spans,
+            field_lookups: field_lookups.into_boxed_slice(),
+            sequence_spans: sequence_spans.into_boxed_slice(),
             clip_arena,
             duration: self.duration,
         }
@@ -247,7 +274,7 @@ impl TrackFragment {
     }
 }
 
-/// A compiled timeline of actions, optimized for playback and
+/// A compiled dense action sequences, optimized for playback and
 /// queries.
 ///
 /// A `Track` is created from a [`TrackBuilder`] and provides an
@@ -258,7 +285,7 @@ pub struct Track {
     ///
     /// Each entry holds an [`UntypedField`] and a [`Span`] into
     /// `clip_spans`.
-    field_lookup: Box<[(UntypedField, Span)]>,
+    field_lookups: Box<[(UntypedField, Span)]>,
 
     /// [`ActionClip`]s grouped by [`ActionKey`] in sorted order.
     ///
@@ -279,11 +306,11 @@ impl Track {
         field: impl Into<UntypedField>,
     ) -> Option<&[(ActionKey, Span)]> {
         let index = self
-            .field_lookup
+            .field_lookups
             .binary_search_by_key(&field.into(), |(f, _)| *f)
             .ok()?;
 
-        let (_, span) = &self.field_lookup[index];
+        let (_, span) = &self.field_lookups[index];
 
         Some(
             &self.sequence_spans[span.offset..span.offset + span.len],
@@ -291,7 +318,12 @@ impl Track {
     }
 
     #[inline]
-    pub fn clip_spans(&self) -> &[(ActionKey, Span)] {
+    pub fn field_lookups(&self) -> &[(UntypedField, Span)] {
+        &self.field_lookups
+    }
+
+    #[inline]
+    pub fn sequences_spans(&self) -> &[(ActionKey, Span)] {
         &self.sequence_spans
     }
 
@@ -301,12 +333,22 @@ impl Track {
     }
 
     pub fn iter_clips(&self) -> impl Iterator<Item = &[ActionClip]> {
-        self.clip_spans().iter().map(|(_, s)| self.clips(*s))
+        self.sequences_spans().iter().map(|(_, s)| self.clips(*s))
     }
 
     #[inline]
     pub fn duration(&self) -> f32 {
         self.duration
+    }
+}
+
+impl IntoIterator for Track {
+    type Item = Self;
+
+    type IntoIter = core::array::IntoIter<Self::Item, 1>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        [self].into_iter()
     }
 }
 
@@ -318,10 +360,6 @@ pub struct Span {
 
 #[cfg(test)]
 mod tests {
-    use bevy::ecs::entity::Entity;
-
-    use crate::action::{ActionClip, ActionId};
-
     use super::*;
 
     fn key(path: &'static str) -> ActionKey {

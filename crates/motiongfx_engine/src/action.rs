@@ -1,7 +1,8 @@
 use core::marker::PhantomData;
 
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
+use alloc::boxed::Box;
+use bevy_ecs::prelude::*;
+use bevy_platform::collections::HashMap;
 
 use crate::field::UntypedField;
 use crate::pipeline::PipelineKey;
@@ -19,9 +20,7 @@ impl ActionWorld {
     pub fn new() -> Self {
         Self::default()
     }
-}
 
-impl ActionWorld {
     pub fn add<T>(
         &mut self,
         action: impl Action<T>,
@@ -109,31 +108,44 @@ impl ActionWorld {
         &self.world
     }
 
-    pub(crate) fn with_action(
-        &mut self,
+    pub(crate) fn edit_action(
+        &'_ mut self,
         id: ActionId,
-    ) -> Option<EntityWorldMut<'_>> {
-        self.world.get_entity_mut(id.entity()).ok()
+    ) -> Option<ActionCommand<'_>> {
+        Some(ActionCommand {
+            world: self.world.get_entity_mut(id.entity()).ok()?,
+        })
     }
 }
 
-pub struct ActionCommand<'w> {
+pub(crate) struct ActionCommand<'w> {
     world: EntityWorldMut<'w>,
 }
-
 impl ActionCommand<'_> {
-    // pub fn mark(
-    //     &mut self,
-    //     sample_mode: SampleMode,
-    // ) -> &mut Self {
-    //     self.world.insert(sample_mode);
-    //     self
-    // }
+    pub(crate) fn mark(
+        &mut self,
+        sample_mode: SampleMode,
+    ) -> &mut Self {
+        self.world.insert(sample_mode);
+        self
+    }
 
-    // pub fn clear_mark(&mut self) -> &mut Self {
+    // pub(crate) fn clear_mark(&mut self) -> &mut Self {
     //     self.world.remove::<SampleMode>();
     //     self
     // }
+
+    /// Add or replace the segment of the action.
+    pub(crate) fn set_segment<T>(
+        &mut self,
+        segment: Segment<T>,
+    ) -> &mut Self
+    where
+        T: ThreadSafe,
+    {
+        self.world.insert(segment);
+        self
+    }
 }
 
 pub struct ActionBuilder<'w, T> {
@@ -142,30 +154,48 @@ pub struct ActionBuilder<'w, T> {
     _phantom: PhantomData<T>,
 }
 
-impl<'w, T> ActionBuilder<'w, T> {
+impl<T> ActionBuilder<'_, T> {
     /// Get the [`ActionId`] of the containing action.
     pub fn id(&self) -> ActionId {
         ActionId::new(self.world.id())
     }
 }
 
-impl<T> ActionBuilder<'_, T>
+impl<'w, T> ActionBuilder<'w, T>
 where
     T: 'static,
 {
-    pub fn with_ease(mut self, ease: EaseFn) -> Self {
-        self.world.insert(EaseStorage(ease));
-        self
-    }
-
-    pub fn with_interp(mut self, interp: InterpFn<T>) -> Self {
+    /// Set the interpolation method of the action.
+    pub fn with_interp(
+        mut self,
+        interp: InterpFn<T>,
+    ) -> InterpolatedActionBuilder<'w, T> {
         self.world.insert(InterpStorage(interp));
+        InterpolatedActionBuilder { inner: self }
+    }
+}
+
+pub struct InterpolatedActionBuilder<'w, T> {
+    inner: ActionBuilder<'w, T>,
+}
+
+impl<T> InterpolatedActionBuilder<'_, T> {
+    /// Set the easing method of the action.
+    pub fn with_ease(mut self, ease: EaseFn) -> Self {
+        self.inner.world.insert(EaseStorage(ease));
         self
     }
 
+    /// Get the [`ActionId`] of the containing action.
+    pub fn id(&self) -> ActionId {
+        self.inner.id()
+    }
+
+    /// Confirms the configuration of the action and creates a
+    /// [`TrackFragment`].
     pub fn play(self, duration: f32) -> TrackFragment {
         TrackFragment::single(
-            self.key,
+            self.inner.key,
             ActionClip::new(self.id(), duration),
         )
     }
@@ -216,7 +246,7 @@ pub type InterpFn<T> = fn(start: &T, end: &T, t: f32) -> T;
 ///
 /// This can be optionally inserted alongside [`ActionStorage`]
 /// to customize the action.
-#[derive(Component, Deref, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy)]
 #[component(immutable)]
 pub struct InterpStorage<T>(pub InterpFn<T>);
 
@@ -227,33 +257,18 @@ pub type EaseFn = fn(t: f32) -> f32;
 ///
 /// This can be optionally inserted alongside [`ActionStorage`]
 /// to customize the action.
-#[derive(Component, Deref, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy)]
 #[component(immutable)]
 pub struct EaseStorage(pub EaseFn);
 
 #[derive(
-    Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
 pub struct ActionTarget(pub Entity);
 
 impl From<Entity> for ActionTarget {
     fn from(entity: Entity) -> Self {
         Self(entity)
-    }
-}
-
-#[derive(Component)]
-#[component(immutable)]
-pub struct Segment<T> {
-    /// The starting value.
-    pub start: T,
-    /// The ending value.
-    pub end: T,
-}
-
-impl<T> Segment<T> {
-    pub fn new(start: T, end: T) -> Self {
-        Self { start, end }
     }
 }
 
@@ -277,4 +292,28 @@ impl ActionClip {
     pub fn end(&self) -> f32 {
         self.start + self.duration
     }
+}
+
+#[derive(Component)]
+#[component(immutable)]
+pub struct Segment<T> {
+    /// The starting value.
+    pub start: T,
+    /// The ending value.
+    pub end: T,
+}
+
+impl<T> Segment<T> {
+    pub fn new(start: T, end: T) -> Self {
+        Self { start, end }
+    }
+}
+
+/// Determines how a [`Segment`] should be sampled.
+#[derive(Component, Debug, Clone, Copy)]
+#[component(storage = "SparseSet", immutable)]
+pub enum SampleMode {
+    Start,
+    End,
+    Interp(f32),
 }

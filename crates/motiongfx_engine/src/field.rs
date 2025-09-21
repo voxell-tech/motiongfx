@@ -11,7 +11,7 @@
 use core::any::TypeId;
 use core::marker::PhantomData;
 
-use bevy::prelude::*;
+use bevy_ecs::prelude::*;
 
 /// A statically typed field path from a source type `S` to a target
 /// type `T`.
@@ -41,14 +41,15 @@ use bevy::prelude::*;
 /// let age: Field<Player, u32> = field!(<Player>::age);
 ///
 /// assert_ne!(name.untyped(), age.untyped());
+/// assert_eq!(name.field_path(), "::name");
+/// assert_eq!(age.field_path(), "::age");
 /// ```
 #[derive(Component, Debug, Hash, PartialEq, Eq)]
 pub struct Field<S, T> {
     /// The path of the target field in the source.
-    /// (e.g. `Transform::translation::x` will have
-    /// a field path of `"::translation::x"`).
     ///
-    /// This can be achieved using [`stringify_field!`].
+    /// Example: `Transform::translation::x` will have a field path
+    /// of `"::translation::x"`.
     field_path: &'static str,
     _marker: PhantomData<(S, T)>,
 }
@@ -60,9 +61,6 @@ impl<S, T> Field<S, T> {
 
     /// Construct a new [`Field`] from a raw field path string.
     ///
-    /// The field path can be constructed via the [`stringify_field!`]
-    /// macro for convenience.
-    ///
     /// Prefer the [`field!`] macro for type safety!
     pub const fn new(field_path: &'static str) -> Self {
         Self {
@@ -72,11 +70,6 @@ impl<S, T> Field<S, T> {
     }
 
     /// Returns the raw field path string.
-    ///
-    /// Example: `Transform::translation::x` will have a field path
-    /// of `"::translation::x"`.
-    ///
-    /// This can be achieved using [`stringify_field!`].
     pub fn field_path(&self) -> &'static str {
         self.field_path
     }
@@ -95,7 +88,7 @@ where
 
 impl<S, T> Copy for Field<S, T> {}
 
-impl<Source, Target> Clone for Field<Source, Target> {
+impl<S, T> Clone for Field<S, T> {
     fn clone(&self) -> Self {
         *self
     }
@@ -108,7 +101,7 @@ impl<Source, Target> Clone for Field<Source, Target> {
 pub struct _FieldBuilder<S, T> {
     /// A marker function to identify the validity of the path
     /// in the [`field!`] macro.
-    field_marker: fn(source: S) -> T,
+    _field_marker: fn(source: S) -> T,
     /// See [`Field::field_path`]
     field_path: &'static str,
 }
@@ -121,7 +114,7 @@ impl<S, T> _FieldBuilder<S, T> {
     ) -> Self {
         Self {
             field_path,
-            field_marker,
+            _field_marker: field_marker,
         }
     }
 
@@ -194,12 +187,12 @@ pub struct UntypedField {
 }
 
 impl UntypedField {
-    pub fn new<Source: 'static, Target: 'static>(
+    pub fn new<S: 'static, T: 'static>(
         field_path: &'static str,
     ) -> Self {
         Self {
-            source_id: TypeId::of::<Source>(),
-            target_id: TypeId::of::<Target>(),
+            source_id: TypeId::of::<S>(),
+            target_id: TypeId::of::<T>(),
             field_path,
         }
     }
@@ -227,13 +220,18 @@ impl UntypedField {
         self.field_path
     }
 
-    pub fn typed<Source: 'static, Target>(
-        self,
-    ) -> Field<Source, Target> {
-        assert_eq!(TypeId::of::<Source>(), self.source_id);
+    /// Converts into a typed [`Field<S, T>`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the type does not match.
+    pub fn typed<S: 'static, T: 'static>(self) -> Field<S, T> {
+        assert_eq!(TypeId::of::<S>(), self.source_id);
+        assert_eq!(TypeId::of::<T>(), self.target_id);
         self.typed_unchecked()
     }
 
+    /// Converts into a typed [`Field<S, T>`] without type checks.
     pub fn typed_unchecked<S: 'static, T>(self) -> Field<S, T> {
         Field::new(self.field_path)
     }
@@ -259,6 +257,20 @@ where
     }
 }
 
+/// Stringify a field path into its canonical string form.
+///
+/// This macro is used within the [`field!`] macro for supporting
+/// auto-completion of nested fields while still being able to generate
+/// "stringify" field paths from raw tokens!
+///
+/// # Example
+///
+/// ```
+/// use motiongfx_engine::field::stringify_field;
+///
+/// let stringify = stringify_field!(::translation::x);
+/// assert_eq!(stringify, "::translation::x");
+/// ```
 #[macro_export]
 macro_rules! stringify_field {
     ($(::$field:tt)*) => {
@@ -267,47 +279,27 @@ macro_rules! stringify_field {
 }
 pub use stringify_field;
 
-/// Function for getting a immutable reference of `Target` from `Source`.
-/// The `Target` type can be similar to `Source` as well.
-pub type FieldRefFn<Source, Target> = fn(source: &Source) -> &Target;
-
-/// Function for getting a mutable reference of `Target` from `Source`.
-/// The `Target` type can be similar to `Source` as well.
-pub type FieldMutFn<Source, Target> =
-    fn(source: &mut Source) -> &mut Target;
-
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[derive(PartialEq, Debug, Clone)]
-    struct Index(u32);
+    struct Foo(u32);
 
     #[derive(PartialEq, Debug, Clone)]
-    struct Name(String);
-
-    #[derive(PartialEq, Debug, Clone)]
-    struct NestedName {
-        name: Name,
-    }
-
-    impl NestedName {
-        pub fn new(name: &str) -> Self {
-            Self {
-                name: Name(name.to_string()),
-            }
-        }
+    struct NestedFoo {
+        inner: Foo,
     }
 
     #[test]
     fn test_field() {
-        let field = field!(<Index>);
+        let field = field!(<Foo>);
         assert_eq!(field.field_path, "");
 
-        let field = field!(<Index>::0);
+        let field = field!(<Foo>::0);
         assert_eq!(field.field_path, stringify_field!(::0));
 
-        let field = field!(<NestedName>::name::0);
-        assert_eq!(field.field_path, stringify_field!(::name::0));
+        let field = field!(<NestedFoo>::inner::0);
+        assert_eq!(field.field_path, stringify_field!(::inner::0));
     }
 }

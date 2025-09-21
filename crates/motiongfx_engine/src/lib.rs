@@ -1,41 +1,50 @@
-use bevy::prelude::*;
+#![no_std]
+
+extern crate alloc;
+
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
+#[cfg(feature = "transform")]
+use bevy_transform::TransformSystem;
+
+use crate::accessor::AccessorRegistry;
+use crate::field::UntypedField;
+use crate::pipeline::PipelineRegistry;
 
 pub mod accessor;
 pub mod action;
 pub mod ease;
 pub mod field;
-pub mod interpolation;
+// pub mod interpolation;
 pub mod pipeline;
 pub mod sequence;
 pub mod timeline;
 pub mod track;
 
-// pub mod animate;
-// pub mod arena;
-// pub mod bake;
-// pub mod cleanup;
-// pub mod sample;
-
 pub mod prelude {
     pub use crate::action::*;
+    pub use crate::ease;
     pub use crate::field::*;
-    pub use crate::interpolation::Interpolation;
+    // pub use crate::interpolation::Interpolation;
     pub use crate::sequence::*;
     pub use crate::timeline::*;
-    pub use crate::{ease, MotionGfxSet};
 }
 
 pub struct MotionGfxEnginePlugin;
 
 impl Plugin for MotionGfxEnginePlugin {
     fn build(&self, app: &mut App) {
-        // app.add_plugins(());
+        app.init_resource::<AccessorRegistry<UntypedField>>()
+            .init_resource::<PipelineRegistry>();
 
         app.configure_sets(
             PostUpdate,
             (
                 MotionGfxSet::TargetTime,
                 MotionGfxSet::MarkAction,
+                #[cfg(not(feature = "transform"))]
+                MotionGfxSet::Sample,
+                #[cfg(feature = "transform")]
                 MotionGfxSet::Sample
                     .before(TransformSystem::TransformPropagate),
                 MotionGfxSet::CurrentTime,
@@ -43,6 +52,10 @@ impl Plugin for MotionGfxEnginePlugin {
                 .chain(),
         );
     }
+}
+
+pub trait FieldPathRegisterAppExt {
+    fn register_field_path(&mut self);
 }
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
