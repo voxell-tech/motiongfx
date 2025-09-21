@@ -2752,9 +2752,9 @@ dependencies = [
 name = "motiongfx_engine"
 version = "0.1.0"
 dependencies = [
- "bevy_animation",
  "bevy_app",
  "bevy_asset",
+ "bevy_color",
  "bevy_ecs",
  "bevy_math",
  "bevy_platform",

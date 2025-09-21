@@ -2,14 +2,11 @@ use core::cmp::Ordering;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-#[cfg(feature = "animation")]
-use bevy_animation::animatable::Animatable;
 use bevy_ecs::prelude::*;
-use bevy_math::StableInterpolate;
-use bevy_math::VectorSpace;
 
 use crate::action::*;
 use crate::field::UntypedField;
+use crate::interpolation::Interpolation;
 use crate::pipeline::*;
 use crate::track::*;
 use crate::ThreadSafe;
@@ -294,53 +291,20 @@ impl TimelineBuilder {
         self.action_world.add(action, target, field)
     }
 
-    /// Add an [`Action`] with stable interpolation using
-    /// [`StableInterpolate::interpolate_stable`] from `bevy_math`.
-    pub fn act_stable<T>(
+    /// Add an [`Action`] with interpolation using
+    /// [`Interpolation::interp`].
+    pub fn act_interp<T>(
         &mut self,
         action: impl Action<T>,
         target: impl Into<ActionTarget>,
         field: impl Into<UntypedField>,
     ) -> InterpolatedActionBuilder<'_, T>
     where
-        T: StableInterpolate + ThreadSafe,
+        T: Interpolation + ThreadSafe,
     {
         self.action_world
             .add(action, target, field)
-            .with_interp(T::interpolate_stable)
-    }
-
-    /// Add an [`Action`] with vector interpolation using
-    /// [`VectorSpace::lerp`] from `bevy_math`.
-    pub fn act_vector<T>(
-        &mut self,
-        action: impl Action<T>,
-        target: impl Into<ActionTarget>,
-        field: impl Into<UntypedField>,
-    ) -> InterpolatedActionBuilder<'_, T>
-    where
-        T: VectorSpace + ThreadSafe,
-    {
-        self.action_world
-            .add(action, target, field)
-            .with_interp(|a, b, t| a.lerp(*b, t))
-    }
-
-    /// Add an [`Action`] with animation-style interpolation
-    /// using [`Animatable::interpolate`] from `bevy_animation`.
-    #[cfg(feature = "animation")]
-    pub fn act_anim<T>(
-        &mut self,
-        action: impl Action<T>,
-        target: impl Into<ActionTarget>,
-        field: impl Into<UntypedField>,
-    ) -> InterpolatedActionBuilder<'_, T>
-    where
-        T: Animatable + ThreadSafe,
-    {
-        self.action_world
-            .add(action, target, field)
-            .with_interp(T::interpolate)
+            .with_interp(T::interp)
     }
 
     /// Add [`Track`]\(s\) to the timeline.

@@ -6,20 +6,24 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+# bevy
 bevy_ecs = { workspace = true }
 bevy_app = { workspace = true }
 bevy_platform = { workspace = true }
 bevy_math = { workspace = true }
 bevy_transform = { workspace = true, optional = true }
+bevy_color = { workspace = true, optional = true }
 bevy_asset = { workspace = true, optional = true }
-bevy_animation = { workspace = true, optional = true }
+
+# other
 nonempty = { version = "0.12.0", default-features = false }
 
 [lints]
 workspace = true
 
 [features]
-default = ["transform", "asset", "animation"]
+# default = []
+default = ["transform", "color", "asset"]
 transform = ["dep:bevy_transform"]
+color = ["dep:bevy_color"]
 asset = ["dep:bevy_asset"]
-animation = ["dep:bevy_animation"]

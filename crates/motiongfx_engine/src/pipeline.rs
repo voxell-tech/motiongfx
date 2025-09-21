@@ -345,6 +345,7 @@ where
     );
 }
 
+#[cfg(feature = "asset")]
 pub fn sample_asset_actions<S, T>(ctx: SampleCtx)
 where
     S: AsAssetId,

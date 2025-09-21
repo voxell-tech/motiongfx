@@ -15,7 +15,7 @@ pub mod accessor;
 pub mod action;
 pub mod ease;
 pub mod field;
-// pub mod interpolation;
+pub mod interpolation;
 pub mod pipeline;
 pub mod sequence;
 pub mod timeline;
@@ -25,7 +25,7 @@ pub mod prelude {
     pub use crate::action::*;
     pub use crate::ease;
     pub use crate::field::*;
-    // pub use crate::interpolation::Interpolation;
+    pub use crate::interpolation::Interpolation;
     pub use crate::sequence::*;
     pub use crate::timeline::*;
 }

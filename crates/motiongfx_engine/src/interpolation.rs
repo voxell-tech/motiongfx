@@ -1,98 +1,139 @@
-use bevy_color::prelude::*;
 use bevy_math::*;
-use bevy_transform::components::Transform;
 
 /// Trait for interpolating between 2 values based on a f32 `t` value.
 pub trait Interpolation<T = Self, U = Self> {
     /// Linearly interpolate between 2 values based on a f32 `t` value.
-    fn interp(&self, rhs: &T, t: f32) -> U;
+    fn interp(a: &Self, b: &T, t: f32) -> U;
 }
 
-macro_rules! impl_animatable {
-    ($ty:ty) => {
-        impl Interpolation for $ty {
+#[macro_export]
+macro_rules! impl_float_interpolation {
+    ($ty:ty, $base:ty) => {
+        impl $crate::interpolation::Interpolation for $ty {
             #[inline]
-            fn interp(&self, rhs: &Self, t: f32) -> Self {
-                ::bevy::animation::animatable::Animatable::interpolate(
-                    self, rhs, t,
-                )
+            fn interp(a: &Self, b: &Self, t: f32) -> Self {
+                let t = <$base>::from(t);
+                (*a) * (1.0 - t) + (*b) * t
             }
         }
     };
 }
 
-macro_rules! impl_stable_interpolate {
-    ($ty:ty) => {
-        impl Interpolation for $ty {
+macro_rules! impl_slerp_interpolation {
+    ($ty: ty, $base: ty) => {
+        impl $crate::interpolation::Interpolation for $ty {
             #[inline]
-            fn interp(&self, rhs: &Self, t: f32) -> Self {
-                ::bevy_math::common_traits::StableInterpolate::interpolate_stable(self, rhs, t)
+            fn interp(a: &Self, b: &Self, t: f32) -> Self {
+                let t = <$base>::from(t);
+                a.slerp(*b, t)
             }
         }
     };
 }
 
-// Maths.
-impl_animatable!(bool);
-impl_animatable!(f32);
-impl_animatable!(Vec2);
-impl_animatable!(Vec3);
-impl_animatable!(Vec3A);
-impl_animatable!(Vec4);
-impl_animatable!(Quat);
-impl_animatable!(f64);
-impl_animatable!(DVec2);
-impl_animatable!(DVec3);
-impl_animatable!(DVec4);
-
-impl Interpolation for DQuat {
-    fn interp(&self, rhs: &Self, t: f32) -> Self {
-        self.slerp(*rhs, t as f64)
-    }
+macro_rules! impl_step_interpolation {
+    ($ty: ty) => {
+        impl $crate::interpolation::Interpolation for $ty {
+            #[inline]
+            fn interp(a: &Self, b: &Self, t: f32) -> Self {
+                $crate::interpolation::step(*a, *b, t)
+            }
+        }
+    };
 }
+
+impl_step_interpolation!(bool);
+
+impl_float_interpolation!(f32, f32);
+impl_float_interpolation!(Vec2, f32);
+impl_float_interpolation!(Vec3, f32);
+impl_float_interpolation!(Vec3A, f32);
+impl_float_interpolation!(Vec4, f32);
+
+impl_float_interpolation!(f64, f64);
+impl_float_interpolation!(DVec2, f64);
+impl_float_interpolation!(DVec3, f64);
+impl_float_interpolation!(DVec4, f64);
+
+impl_slerp_interpolation!(Quat, f32);
+impl_slerp_interpolation!(DQuat, f64);
+impl_slerp_interpolation!(Rot2, f32);
+impl_slerp_interpolation!(Dir2, f32);
+impl_slerp_interpolation!(Dir3, f32);
+impl_slerp_interpolation!(Dir3A, f32);
 
 impl Interpolation for u8 {
-    fn interp(&self, rhs: &Self, t: f32) -> Self {
-        let other = *rhs as f32;
-        let self_ = *self as f32;
+    fn interp(a: &Self, b: &Self, t: f32) -> Self {
+        let a = *a as f32;
+        let b = *b as f32;
 
-        ((other - self_) * t + self_) as u8
+        ((b - a) * t + a) as u8
     }
 }
 
-// Directions
-impl_stable_interpolate!(Rot2);
-impl_stable_interpolate!(Dir2);
-impl_stable_interpolate!(Dir3);
-impl_stable_interpolate!(Dir3A);
+#[cfg(feature = "color")]
+pub mod color {
+    use bevy_color::prelude::*;
 
-// Colors.
-impl_animatable!(LinearRgba);
-impl_animatable!(Laba);
-impl_animatable!(Oklaba);
-// impl_animatable!(Srgba);
-impl_animatable!(Xyza);
+    use super::Interpolation;
 
-impl Interpolation for Color {
-    #[inline]
-    fn interp(&self, rhs: &Self, t: f32) -> Self {
-        Color::mix(self, rhs, t)
+    macro_rules! impl_color_interpolation {
+        ($ty:ty) => {
+            impl $crate::interpolation::Interpolation for $ty {
+                #[inline]
+                fn interp(a: &Self, b: &Self, t: f32) -> Self {
+                    (*a) * (1.0 - t) + (*b) * t
+                }
+            }
+        };
     }
-}
 
-impl Interpolation for Srgba {
-    fn interp(&self, rhs: &Self, t: f32) -> Self {
-        self.lerp(*rhs, t)
-    }
-}
+    impl_color_interpolation!(LinearRgba);
+    impl_color_interpolation!(Laba);
+    impl_color_interpolation!(Oklaba);
+    impl_color_interpolation!(Srgba);
+    impl_color_interpolation!(Xyza);
 
-// Components.
-impl Interpolation for Transform {
-    fn interp(&self, rhs: &Self, t: f32) -> Self {
-        Self {
-            translation: self.translation.interp(&rhs.translation, t),
-            rotation: self.rotation.interp(&rhs.rotation, t),
-            scale: self.scale.interp(&rhs.scale, t),
+    impl Interpolation for Color {
+        #[inline]
+        fn interp(a: &Self, b: &Self, t: f32) -> Self {
+            Color::mix(a, b, t)
         }
+    }
+}
+
+#[cfg(feature = "transform")]
+pub mod transform {
+    use bevy_transform::components::Transform;
+
+    use super::Interpolation;
+
+    impl Interpolation for Transform {
+        fn interp(a: &Self, b: &Self, t: f32) -> Self {
+            Self {
+                translation: Interpolation::interp(
+                    &a.translation,
+                    &b.translation,
+                    t,
+                ),
+                rotation: Interpolation::interp(
+                    &a.rotation,
+                    &b.rotation,
+                    t,
+                ),
+                scale: Interpolation::interp(&a.scale, &b.scale, t),
+            }
+        }
+    }
+}
+
+/// Steps between two different discrete values of any type.
+/// Returns `a` if `t < 1.0`, otherwise returns `b`.
+#[inline]
+pub fn step<T>(a: T, b: T, t: f32) -> T {
+    if t < 1.0 {
+        a
+    } else {
+        b
     }
 }
