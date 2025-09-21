@@ -3,12 +3,13 @@
 extern crate alloc;
 
 use bevy_app::prelude::*;
+use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 #[cfg(feature = "transform")]
 use bevy_transform::TransformSystem;
 
-use crate::accessor::AccessorRegistry;
-use crate::field::UntypedField;
+use crate::accessor::{Accessor, FieldAccessorRegistry};
+use crate::field::Field;
 use crate::pipeline::PipelineRegistry;
 
 pub mod accessor;
@@ -34,7 +35,7 @@ pub struct MotionGfxEnginePlugin;
 
 impl Plugin for MotionGfxEnginePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AccessorRegistry<UntypedField>>()
+        app.init_resource::<FieldAccessorRegistry>()
             .init_resource::<PipelineRegistry>();
 
         app.configure_sets(
@@ -55,7 +56,33 @@ impl Plugin for MotionGfxEnginePlugin {
 }
 
 pub trait FieldPathRegisterAppExt {
-    fn register_field_path(&mut self);
+    fn register_component_field<S, T>(
+        &mut self,
+        field: Field<S, T>,
+        accesor: Accessor<S, T>,
+    ) where
+        S: Component<Mutability = Mutable>,
+        T: Clone + ThreadSafe;
+}
+
+impl FieldPathRegisterAppExt for App {
+    fn register_component_field<S, T>(
+        &mut self,
+        field: Field<S, T>,
+        accesor: Accessor<S, T>,
+    ) where
+        S: Component<Mutability = Mutable>,
+        T: Clone + ThreadSafe,
+    {
+        self.world_mut()
+            .resource_mut::<FieldAccessorRegistry>()
+            .register(field.untyped(), accesor);
+
+        let pipeline_key = self
+            .world_mut()
+            .resource_mut::<PipelineRegistry>()
+            .register_component::<S, T>();
+    }
 }
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]

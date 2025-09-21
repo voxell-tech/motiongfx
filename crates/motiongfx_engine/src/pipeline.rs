@@ -96,8 +96,12 @@ pub struct PipelineRegistry {
 }
 
 impl PipelineRegistry {
+    /// Registers a pipeline for a given component and the
+    /// target field.
+    ///
+    /// Will overwrite existing accessor.
     #[must_use]
-    pub fn register_comp<S, T>(&mut self) -> PipelineKey
+    pub fn register_component<S, T>(&mut self) -> PipelineKey
     where
         S: Component<Mutability = Mutable>,
         T: Clone + ThreadSafe,
@@ -113,6 +117,10 @@ impl PipelineRegistry {
         key
     }
 
+    /// Registers a pipeline for a given asset and the
+    /// target field.
+    ///
+    /// Will overwrite existing accessor.
     #[cfg(feature = "asset")]
     #[must_use]
     pub fn register_asset<S, T>(&mut self) -> PipelineKey

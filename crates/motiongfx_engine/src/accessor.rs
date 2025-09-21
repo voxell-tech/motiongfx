@@ -12,6 +12,8 @@ use core::hash::Hash;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
+use crate::field::UntypedField;
+
 /// A typed accessor to a field of type `T` within a source type `S`.
 ///
 /// This holds both immutable and mutable function pointers, which
@@ -112,6 +114,8 @@ impl<S, T> From<Accessor<S, T>> for UntypedAccessor {
     }
 }
 
+pub type FieldAccessorRegistry = AccessorRegistry<UntypedField>;
+
 /// A registry mapping keys to [`UntypedAccessor`]s.
 ///
 /// Provides convenient insertion of typed accessors and
@@ -149,8 +153,10 @@ impl<K> AccessorRegistry<K> {
 }
 
 impl<K: Eq + Hash> AccessorRegistry<K> {
-    /// Insert an [`UntypedAccessor`] for a given key.
-    pub fn insert(
+    /// Registers an [`UntypedAccessor`] for a given key.
+    ///
+    /// Will overwrite existing accessor.
+    pub fn register(
         &mut self,
         key: K,
         accessor: impl Into<UntypedAccessor>,
@@ -259,7 +265,7 @@ mod tests {
         let mut registry: AccessorRegistry<&'static str> =
             AccessorRegistry::new();
 
-        registry.insert(
+        registry.register(
             "foo_x",
             Accessor {
                 ref_fn: foo_x_ref,
@@ -267,7 +273,7 @@ mod tests {
             },
         );
 
-        registry.insert(
+        registry.register(
             "foo_y",
             Accessor {
                 ref_fn: foo_y_ref,
@@ -305,7 +311,7 @@ mod tests {
         let mut registry: AccessorRegistry<&'static str> =
             AccessorRegistry::new();
 
-        registry.insert(
+        registry.register(
             "foo_x",
             Accessor {
                 ref_fn: foo_x_ref,
