@@ -3,6 +3,7 @@ use core::cmp::Ordering;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_ecs::prelude::*;
+use bevy_platform::collections::HashMap;
 
 use crate::action::*;
 use crate::field::UntypedField;
@@ -15,6 +16,11 @@ use crate::ThreadSafe;
 pub struct Timeline {
     action_world: ActionWorld,
     tracks: Box<[Track]>,
+    /// Cached actions that are queued to be sampled.
+    ///
+    /// This cache will be cleared everytime [`Timeline::queue_actions`]
+    /// is called.
+    queue_cahce: QueueCache,
     /// Determines if the timeline is currently playing.
     is_playing: bool,
     /// The time scale of the timeline. Set this to negative
@@ -31,7 +37,8 @@ pub struct Timeline {
 }
 
 impl Timeline {
-    pub fn mark_sample_actions(&mut self) {
+    pub fn queue_actions(&mut self) {
+        self.reset_actions();
         // Current time will change if the track index changes.
         let mut curr_time = self.curr_time();
 
@@ -57,10 +64,12 @@ impl Timeline {
             };
 
             for i in track_range {
-                for clips in self.tracks[i].iter_clips() {
-                    if clips.is_empty() {
+                for (key, span) in self.tracks[i].sequences_spans() {
+                    if span.len == 0 {
                         continue;
                     }
+
+                    let clips = self.tracks[i].clips(*span);
 
                     // SAFETY: `clips` is not empty.
                     let clip = match sample_mode {
@@ -69,11 +78,15 @@ impl Timeline {
                         SampleMode::Interp(_) => unreachable!(),
                     };
 
-                    if let Some(mut action_cmd) =
-                        self.action_world.edit_action(clip.id)
-                    {
-                        action_cmd.mark(sample_mode);
-                    }
+                    self.queue_cahce.cache(
+                        *key,
+                        clip.id,
+                        &mut self.action_world,
+                    );
+
+                    self.action_world
+                        .edit_action(clip.id)
+                        .mark(sample_mode);
                 }
             }
 
@@ -85,10 +98,14 @@ impl Timeline {
             end: curr_time.max(self.target_time()),
         };
 
-        for clips in self.tracks[self.curr_index].iter_clips() {
-            if clips.is_empty() {
+        for (key, span) in
+            self.tracks[self.curr_index].sequences_spans()
+        {
+            if span.len == 0 {
                 continue;
             }
+
+            let clips = self.tracks[self.curr_index].clips(*span);
 
             // SAFETY: `clips` is not empty.
             let clips_range = Range {
@@ -121,14 +138,18 @@ impl Timeline {
                 Ok(index) => {
                     let clip = &clips[index];
 
-                    if let Some(mut action_cmd) =
-                        self.action_world.edit_action(clip.id)
-                    {
-                        let t = (self.target_time - clip.start)
-                            / (clip.end() - clip.start);
+                    let t = (self.target_time - clip.start)
+                        / (clip.end() - clip.start);
 
-                        action_cmd.mark(SampleMode::Interp(t));
-                    }
+                    self.queue_cahce.cache(
+                        *key,
+                        clip.id,
+                        &mut self.action_world,
+                    );
+
+                    self.action_world
+                        .edit_action(clip.id)
+                        .mark(SampleMode::Interp(t));
                 }
                 // `target_time` is out of bounds.
                 Err(index) => {
@@ -144,11 +165,13 @@ impl Timeline {
                         continue;
                     }
 
-                    let Some(mut action_cmd) =
-                        self.action_world.edit_action(clip.id)
-                    else {
-                        continue;
-                    };
+                    self.queue_cahce.cache(
+                        *key,
+                        clip.id,
+                        &mut self.action_world,
+                    );
+                    let mut action_cmd =
+                        self.action_world.edit_action(clip.id);
 
                     if index == 0 {
                         // Target time is before the entire sequence.
@@ -164,6 +187,11 @@ impl Timeline {
         }
 
         self.curr_time = self.target_time;
+    }
+
+    fn reset_actions(&mut self) {
+        self.queue_cahce.clear();
+        self.action_world.clear_all_marks();
     }
 }
 
@@ -268,6 +296,36 @@ impl Timeline {
 
         self.target_index = target_index.clamp(0, max_index);
         self
+    }
+}
+
+/// Cached actions that are queued to be sampled.
+///
+/// This cache prevents duplicated samples on the same [`ActionKey`]
+/// which result in sampling the same target field on the same entity
+/// more than once. This is crucial as the sampling pipeline happens
+/// in an unordered manner.
+pub struct QueueCache {
+    cache: HashMap<ActionKey, ActionId>,
+}
+
+impl QueueCache {
+    /// Clear all the cached contents.
+    pub fn clear(&mut self) {
+        self.cache.clear();
+    }
+
+    /// Cache an [`ActionKey`] while deduplicating the old cache if
+    /// it exists.
+    pub fn cache(
+        &mut self,
+        key: ActionKey,
+        id: ActionId,
+        action_world: &mut ActionWorld,
+    ) {
+        if let Some(prev_id) = self.cache.insert(key, id) {
+            action_world.edit_action(prev_id).clear_mark();
+        }
     }
 }
 

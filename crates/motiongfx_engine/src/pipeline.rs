@@ -208,8 +208,7 @@ impl<'a> BakeCtx<'a> {
             };
 
             for ActionClip { id, .. } in self.track.clips(*span) {
-                let Some(action) =
-                    self.action_world.get_action::<T>(*id)
+                let Some(action) = self.action_world.get::<T>(*id)
                 else {
                     continue;
                 };
@@ -218,11 +217,8 @@ impl<'a> BakeCtx<'a> {
                 let segment =
                     Segment::new(start.clone(), end.clone());
 
-                // SAFETY: Action already exists from the
-                // `get_action()` call above.
                 self.action_world
                     .edit_action(*id)
-                    .unwrap()
                     .set_segment(segment);
 
                 start = end;

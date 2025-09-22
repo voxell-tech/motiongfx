@@ -1,6 +1,7 @@
 use core::marker::PhantomData;
 
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
@@ -83,10 +84,7 @@ impl ActionWorld {
         self.world.despawn(id.entity())
     }
 
-    pub fn get_action<T>(
-        &self,
-        id: ActionId,
-    ) -> Option<&impl Action<T>>
+    pub fn get<T>(&self, id: ActionId) -> Option<&impl Action<T>>
     where
         T: ThreadSafe,
     {
@@ -94,33 +92,51 @@ impl ActionWorld {
             .get::<ActionStorage<T>>(id.entity())
             .map(|a| &a.action)
     }
-
-    pub fn get_segment<T>(&self, id: ActionId) -> Option<&Segment<T>>
-    where
-        T: ThreadSafe,
-    {
-        self.world.get::<Segment<T>>(id.entity())
-    }
 }
 
 impl ActionWorld {
+    /// Returns a immutable reference to the underlying world.
     pub(crate) fn world(&self) -> &World {
         &self.world
     }
 
+    /// Create an [`ActionCommand`] from an [`ActionId`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the action does not exists in the world.
+    ///
+    /// In general, this should not be an issue as this is only used
+    /// internally within the crate.
     pub(crate) fn edit_action(
         &'_ mut self,
         id: ActionId,
-    ) -> Option<ActionCommand<'_>> {
-        Some(ActionCommand {
-            world: self.world.get_entity_mut(id.entity()).ok()?,
-        })
+    ) -> ActionCommand<'_> {
+        ActionCommand {
+            world: self.world.entity_mut(id.entity()),
+        }
+    }
+
+    /// Remove [`SampleMode`] component from all marked actions.
+    pub(crate) fn clear_all_marks(&mut self) {
+        let Some(mut q) = self
+            .world
+            .try_query_filtered::<Entity, With<SampleMode>>()
+        else {
+            return;
+        };
+
+        let entities = q.iter(&self.world).collect::<Vec<_>>();
+        for entity in entities {
+            self.world.entity_mut(entity).remove::<SampleMode>();
+        }
     }
 }
 
 pub(crate) struct ActionCommand<'w> {
     world: EntityWorldMut<'w>,
 }
+
 impl ActionCommand<'_> {
     pub(crate) fn mark(
         &mut self,
@@ -130,10 +146,10 @@ impl ActionCommand<'_> {
         self
     }
 
-    // pub(crate) fn clear_mark(&mut self) -> &mut Self {
-    //     self.world.remove::<SampleMode>();
-    //     self
-    // }
+    pub(crate) fn clear_mark(&mut self) -> &mut Self {
+        self.world.remove::<SampleMode>();
+        self
+    }
 
     /// Add or replace the segment of the action.
     pub(crate) fn set_segment<T>(
