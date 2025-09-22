@@ -100,7 +100,6 @@ impl PipelineRegistry {
     /// target field.
     ///
     /// Will overwrite existing accessor.
-    #[must_use]
     pub fn register_component<S, T>(&mut self) -> PipelineKey
     where
         S: Component<Mutability = Mutable>,
@@ -122,7 +121,6 @@ impl PipelineRegistry {
     ///
     /// Will overwrite existing accessor.
     #[cfg(feature = "asset")]
-    #[must_use]
     pub fn register_asset<S, T>(&mut self) -> PipelineKey
     where
         S: AsAssetId,

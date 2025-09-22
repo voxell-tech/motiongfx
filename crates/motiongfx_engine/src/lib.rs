@@ -3,6 +3,7 @@
 extern crate alloc;
 
 use bevy_app::prelude::*;
+use bevy_asset::AsAssetId;
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 #[cfg(feature = "transform")]
@@ -63,6 +64,15 @@ pub trait FieldPathRegisterAppExt {
     ) where
         S: Component<Mutability = Mutable>,
         T: Clone + ThreadSafe;
+
+    #[cfg(feature = "asset")]
+    fn register_asset_field<S, T>(
+        &mut self,
+        field: Field<S, T>,
+        accesor: Accessor<S, T>,
+    ) where
+        S: AsAssetId,
+        T: Clone + ThreadSafe;
 }
 
 impl FieldPathRegisterAppExt for App {
@@ -78,10 +88,27 @@ impl FieldPathRegisterAppExt for App {
             .resource_mut::<FieldAccessorRegistry>()
             .register(field.untyped(), accesor);
 
-        let pipeline_key = self
-            .world_mut()
+        self.world_mut()
             .resource_mut::<PipelineRegistry>()
             .register_component::<S, T>();
+    }
+
+    #[cfg(feature = "asset")]
+    fn register_asset_field<S, T>(
+        &mut self,
+        field: Field<S, T>,
+        accesor: Accessor<S, T>,
+    ) where
+        S: AsAssetId,
+        T: Clone + ThreadSafe,
+    {
+        self.world_mut()
+            .resource_mut::<FieldAccessorRegistry>()
+            .register(field.untyped(), accesor);
+
+        self.world_mut()
+            .resource_mut::<PipelineRegistry>()
+            .register_asset::<S, T>();
     }
 }
 
