@@ -5,6 +5,7 @@ use alloc::vec::Vec;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
+use crate::accessor::FieldAccessorRegistry;
 use crate::action::*;
 use crate::field::UntypedField;
 use crate::interpolation::Interpolation;
@@ -15,6 +16,7 @@ use crate::ThreadSafe;
 #[derive(Component)]
 pub struct Timeline {
     action_world: ActionWorld,
+    pipeline_counts: Box<[(PipelineKey, u32)]>,
     tracks: Box<[Track]>,
     /// Cached actions that are queued to be sampled.
     ///
@@ -37,8 +39,30 @@ pub struct Timeline {
 }
 
 impl Timeline {
+    pub fn bake_actions(
+        &mut self,
+        pipeline_registry: &PipelineRegistry,
+        target_world: &World,
+        accessor_registry: &FieldAccessorRegistry,
+    ) {
+        for key in self.pipeline_counts.iter().map(|(key, _)| key) {
+            let Some(pipeline) = pipeline_registry.get(key) else {
+                continue;
+            };
+
+            for track in self.tracks.iter() {
+                pipeline.bake(BakeCtx {
+                    track,
+                    action_world: &mut self.action_world,
+                    target_world,
+                    accessor_registry,
+                })
+            }
+        }
+    }
+
     pub fn queue_actions(&mut self) {
-        self.reset_actions();
+        self.reset_queues();
         // Current time will change if the track index changes.
         let mut curr_time = self.curr_time();
 
@@ -189,7 +213,26 @@ impl Timeline {
         self.curr_time = self.target_time;
     }
 
-    fn reset_actions(&mut self) {
+    pub fn sample_queued_actions(
+        &self,
+        pipeline_registry: &PipelineRegistry,
+        target_world: &mut World,
+        accessor_registry: &FieldAccessorRegistry,
+    ) {
+        for key in self.pipeline_counts.iter().map(|(key, _)| key) {
+            let Some(pipeline) = pipeline_registry.get(key) else {
+                continue;
+            };
+
+            pipeline.sample(SampleCtx {
+                action_world: &self.action_world,
+                target_world,
+                accessor_registry,
+            });
+        }
+    }
+
+    fn reset_queues(&mut self) {
         self.queue_cahce.clear();
         self.action_world.clear_all_marks();
     }
@@ -305,6 +348,7 @@ impl Timeline {
 /// which result in sampling the same target field on the same entity
 /// more than once. This is crucial as the sampling pipeline happens
 /// in an unordered manner.
+#[derive(Default)]
 pub struct QueueCache {
     cache: HashMap<ActionKey, ActionId>,
 }
@@ -332,6 +376,7 @@ impl QueueCache {
 #[derive(Default)]
 pub struct TimelineBuilder {
     action_world: ActionWorld,
+    pipeline_counts: HashMap<PipelineKey, u32>,
     tracks: Vec<Track>,
 }
 
@@ -346,6 +391,16 @@ impl TimelineBuilder {
     where
         T: ThreadSafe,
     {
+        let field = field.into();
+        let key = PipelineKey::from_field(field);
+
+        match self.pipeline_counts.get_mut(&key) {
+            Some(count) => *count += 1,
+            None => {
+                self.pipeline_counts.insert(key, 1);
+            }
+        }
+
         self.action_world.add(action, target, field)
     }
 
@@ -360,9 +415,34 @@ impl TimelineBuilder {
     where
         T: Interpolation + ThreadSafe,
     {
-        self.action_world
-            .add(action, target, field)
-            .with_interp(T::interp)
+        self.act(action, target, field).with_interp(T::interp)
+    }
+
+    /// Remove an [`Action`].
+    pub fn unact(&mut self, id: ActionId) -> bool {
+        if let Some(ActionKey { field, .. }) =
+            self.action_world.remove(id)
+        {
+            let key = PipelineKey::from_field(field);
+
+            let count = self
+                .pipeline_counts
+                .get_mut(&key)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Field counts not registered for {field:?}!"
+                    )
+                });
+
+            *count -= 1;
+            if *count == 0 {
+                self.pipeline_counts.remove(&key);
+            }
+
+            return true;
+        }
+
+        false
     }
 
     /// Add [`Track`]\(s\) to the timeline.
@@ -371,6 +451,24 @@ impl TimelineBuilder {
         tracks: impl Iterator<Item = Track>,
     ) {
         self.tracks.extend(tracks);
+    }
+
+    pub fn compile(self) -> Timeline {
+        Timeline {
+            action_world: self.action_world,
+            pipeline_counts: self
+                .pipeline_counts
+                .into_iter()
+                .collect(),
+            tracks: self.tracks.into_boxed_slice(),
+            queue_cahce: QueueCache::default(),
+            is_playing: false,
+            time_scale: 1.0,
+            curr_time: 0.0,
+            target_time: 0.0,
+            curr_index: 0,
+            target_index: 0,
+        }
     }
 }
 

@@ -6,7 +6,7 @@ use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
-use crate::accessor::{Accessor, AccessorRegistry};
+use crate::accessor::{Accessor, FieldAccessorRegistry};
 use crate::action::{
     ActionClip, ActionWorld, EaseStorage, InterpStorage, SampleMode,
     Segment,
@@ -166,7 +166,7 @@ pub struct BakeCtx<'a> {
     pub track: &'a Track,
     pub action_world: &'a mut ActionWorld,
     pub target_world: &'a World,
-    pub accessor_registry: &'a AccessorRegistry<UntypedField>,
+    pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
 impl<'a> BakeCtx<'a> {
@@ -262,9 +262,9 @@ where
 }
 
 pub struct SampleCtx<'a> {
-    action_world: &'a ActionWorld,
-    target_world: &'a mut World,
-    accessor_registry: &'a AccessorRegistry<UntypedField>,
+    pub action_world: &'a ActionWorld,
+    pub target_world: &'a mut World,
+    pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
 impl<'a> SampleCtx<'a> {

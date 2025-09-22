@@ -3,10 +3,8 @@ use core::marker::PhantomData;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_ecs::prelude::*;
-use bevy_platform::collections::HashMap;
 
 use crate::field::UntypedField;
-use crate::pipeline::PipelineKey;
 use crate::track::{ActionKey, TrackFragment};
 use crate::ThreadSafe;
 
@@ -14,7 +12,6 @@ use crate::ThreadSafe;
 #[derive(Default)]
 pub struct ActionWorld {
     world: World,
-    pipeline_counts: HashMap<PipelineKey, u32>,
 }
 
 impl ActionWorld {
@@ -32,14 +29,6 @@ impl ActionWorld {
         T: ThreadSafe,
     {
         let field = field.into();
-        let key = PipelineKey::from_field(field);
-
-        match self.pipeline_counts.get_mut(&key) {
-            Some(count) => *count += 1,
-            None => {
-                self.pipeline_counts.insert(key, 1);
-            }
-        }
 
         let key = ActionKey {
             target: target.into(),
@@ -55,33 +44,19 @@ impl ActionWorld {
         }
     }
 
-    pub fn remove(&mut self, id: ActionId) -> bool {
+    pub fn remove(&mut self, id: ActionId) -> Option<ActionKey> {
         let entity = id.entity();
 
-        // Early check if the action exists.
-        if self.world.get_entity(entity).is_err() {
-            return false;
-        }
-
-        let field = self
+        let key = *self
             .world
-            .get::<ActionKey>(entity)
-            .expect("All actions should have an `ActionKey`!")
-            .field;
+            .get_entity(entity)
+            .ok()?
+            .get::<ActionKey>()
+            .expect("All actions should have an `ActionKey`!");
 
-        let key = PipelineKey::from_field(field);
+        self.world.despawn(id.entity());
 
-        let count =
-            self.pipeline_counts.get_mut(&key).unwrap_or_else(|| {
-                panic!("Field counts not registered for {field:?}!")
-            });
-
-        *count -= 1;
-        if *count == 0 {
-            self.pipeline_counts.remove(&key);
-        }
-
-        self.world.despawn(id.entity())
+        Some(key)
     }
 
     pub fn get<T>(&self, id: ActionId) -> Option<&impl Action<T>>
