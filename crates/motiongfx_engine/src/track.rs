@@ -281,6 +281,8 @@ impl TrackFragment {
 /// immutable, space-efficient layout. [`ActionClip`]s are stored
 /// in a flat array with spans for quick access.
 pub struct Track {
+    // TODO: Use this to optimized baking/sampling? (There are no
+    // use case for the lookups atm!)
     /// Lookup from each field to the range of actions affecting it.
     ///
     /// Each entry holds an [`UntypedField`] and a [`Span`] into
@@ -301,7 +303,7 @@ pub struct Track {
 }
 
 impl Track {
-    pub fn get_field_spans(
+    pub fn lookup_field_spans(
         &self,
         field: impl Into<UntypedField>,
     ) -> Option<&[(ActionKey, Span)]> {
@@ -332,10 +334,6 @@ impl Track {
         &self.clip_arena[span.offset..span.offset + span.len]
     }
 
-    pub fn iter_clips(&self) -> impl Iterator<Item = &[ActionClip]> {
-        self.sequences_spans().iter().map(|(_, s)| self.clips(*s))
-    }
-
     #[inline]
     pub fn duration(&self) -> f32 {
         self.duration
@@ -354,8 +352,8 @@ impl IntoIterator for Track {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
-    offset: usize,
-    len: usize,
+    pub offset: usize,
+    pub len: usize,
 }
 
 #[cfg(test)]
