@@ -96,7 +96,7 @@ impl Plugin for MotionGfxEnginePlugin {
 /// app.add_plugins(MotionGfxEnginePlugin);
 ///
 /// register_fields!(
-///     app.register_component_field,
+///     app.register_component_field(),
 ///     Foo,
 ///     (
 ///         bar_x(cho_a(bo_c(0, 1), bo_d(0, 1))),
