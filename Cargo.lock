@@ -2736,6 +2736,8 @@ name = "motiongfx"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_app",
+ "bevy_ecs",
  "motiongfx_common",
  "motiongfx_engine",
 ]
@@ -2744,7 +2746,14 @@ dependencies = [
 name = "motiongfx_common"
 version = "0.1.0"
 dependencies = [
- "bevy",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_color",
+ "bevy_ecs",
+ "bevy_math",
+ "bevy_pbr",
+ "bevy_sprite",
+ "bevy_transform",
  "motiongfx_engine",
 ]
 

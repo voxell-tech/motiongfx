@@ -100,7 +100,7 @@ impl Plugin for MotionGfxEnginePlugin {
 ///     Foo,
 ///     (
 ///         bar_x(cho_a(bo_c(0, 1), bo_d(0, 1))),
-///         bar_y(cho_b(bo_c(0, 1), bo_d(0, 1)))
+///         bar_y(cho_b(bo_c(0, 1), bo_d(0, 1))),
 ///     )
 /// );
 ///
@@ -128,7 +128,10 @@ impl Plugin for MotionGfxEnginePlugin {
 /// ```
 #[macro_export]
 macro_rules! register_fields {
-    ($app:ident.$reg_func:ident, $root:ty $(, $($rest:tt)*)?) => {
+    (
+        $app:ident.$reg_func:ident(),
+        $root:ty $(, $($rest:tt)*)?
+    ) => {
         $app.$reg_func(
             field!(<$root>),
             Accessor {
@@ -138,21 +141,42 @@ macro_rules! register_fields {
         );
 
         register_fields!(
-            @fields $app.$reg_func, $root, []
+            @fields $app.$reg_func::<$root>,
+            $root, []
             $(, $($rest)*)?
         );
     };
 
     (
-        @fields $app:ident.$reg_func:ident, $root:ty, [$(::$path:tt)*],
+        $app:ident.$reg_func:ident::<$source:ty>(),
+        $root:ty $(, $($rest:tt)*)?
+    ) => {
+        $app.$reg_func::<$source, _>(
+            field!(<$root>),
+            Accessor {
+                ref_fn: |v| v,
+                mut_fn: |v| v,
+            }
+        );
+
+        register_fields!(
+            @fields $app.$reg_func::<$source>, $root, []
+            $(, $($rest)*)?
+        );
+    };
+
+    // Recursively register all the nested fields!
+    (
+        @fields $app:ident.$reg_func:ident::<$source:ty>,
+        $root:ty, [$(::$path:tt)*],
         (
-            $field:tt $(,)? $(( $($sub_field:tt)+ ))?
-            $(,$($rest:tt)+)?
+            $field:tt $(( $($sub_field:tt)+ ))?
+            $(,$($rest:tt)*)?
         )
     ) => {
         // Register the current field.
         // (translation(x, y, z), rotation, scale) => translation
-        $app.$reg_func(
+        $app.$reg_func::<$source, _>(
             field!(<$root>$(::$path)*::$field),
             Accessor {
                 ref_fn: |v| &v$(.$path)*.$field,
@@ -163,22 +187,25 @@ macro_rules! register_fields {
         // Register sub fields.
         // (translation(x, y, z), rotation, scale) => (x, y, z)
         register_fields!(
-            @fields $app.$reg_func, $root, [$(::$path)*::$field],
+            @fields $app.$reg_func::<$source>,
+            $root, [$(::$path)*::$field],
             $(( $($sub_field)+ ))?
         );
 
         // Register the rest of the fields.
         // (translation(x, y, z), rotation, scale) => (rotation, scale)
         register_fields!(
-            @fields $app.$reg_func, $root, [$(::$path)*],
-            $(( $($rest)+ ))?
+            @fields $app.$reg_func::<$source>,
+            $root, [$(::$path)*],
+            $(( $($rest)* ))?
         );
     };
 
-    // Gibberish match (when no fields are left!).
+    // There are no fields left!
     (
-        @fields $app:ident.$reg_func:ident, $root:ty, [$(::$path:tt)*]
-        $(,)?
+        @fields $app:ident.$reg_func:ident::<$source:ty>,
+        $root:ty, [$(::$path:tt)*]
+        $(,)? $(,())?
     ) => {};
 }
 
@@ -195,8 +222,8 @@ pub trait FieldPathRegisterAppExt {
     #[cfg(feature = "asset")]
     fn register_asset_field<S, T>(
         &mut self,
-        field: Field<S, T>,
-        accessor: Accessor<S, T>,
+        field: Field<S::Asset, T>,
+        accessor: Accessor<S::Asset, T>,
     ) -> &mut Self
     where
         S: AsAssetId,
@@ -227,8 +254,8 @@ impl FieldPathRegisterAppExt for App {
     #[cfg(feature = "asset")]
     fn register_asset_field<S, T>(
         &mut self,
-        field: Field<S, T>,
-        accessor: Accessor<S, T>,
+        field: Field<S::Asset, T>,
+        accessor: Accessor<S::Asset, T>,
     ) -> &mut Self
     where
         S: AsAssetId,

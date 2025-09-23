@@ -1,71 +1,74 @@
-use bevy::prelude::*;
+#![no_std]
+
+use bevy_app::prelude::*;
 use motiongfx_engine::prelude::*;
 
 pub struct MotionGfxCommonPlugin;
 
 impl Plugin for MotionGfxCommonPlugin {
     fn build(&self, app: &mut App) {
-        app.animate_component(field_bundle!(<Transform>))
-            .animate_component(field_bundle!(
-                <Transform>::translation
-            ))
-            .animate_component(field_bundle!(<Transform>::scale))
-            .animate_component(field_bundle!(<Transform>::rotation))
-            .animate_component(field_bundle!(
-                <Transform>::translation::x
-            ))
-            .animate_component(field_bundle!(
-                <Transform>::translation::y
-            ))
-            .animate_component(field_bundle!(
-                <Transform>::translation::z
-            ))
-            .animate_component(field_bundle!(<Transform>::scale::x))
-            .animate_component(field_bundle!(<Transform>::scale::y))
-            .animate_component(field_bundle!(<Transform>::scale::z));
+        #[cfg(feature = "transform")]
+        {
+            use bevy_transform::components::Transform;
 
-        #[cfg(feature = "bevy_sprite")]
-        app.animate_component(field_bundle!(<Sprite>::color))
-            .animate_asset::<MeshMaterial2d<_>, _>(field_bundle!(
-            <ColorMaterial>::color
-        ));
+            register_fields!(
+                app.register_component_field(),
+                Transform,
+                (
+                    translation(x, y, z),
+                    scale(x, y, z),
+                    rotation(x, y, z, w),
+                )
+            );
+        }
 
-        #[cfg(feature = "bevy_pbr")]
-        app.animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::base_color
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::emissive
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::perceptual_roughness
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::metallic
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::reflectance
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::specular_tint
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::diffuse_transmission
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::specular_transmission
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::thickness
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::ior
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(field_bundle!(
-            <StandardMaterial>::attenuation_distance
-        ))
-        .animate_asset::<MeshMaterial3d<_>, _>(
-            field_bundle!(<StandardMaterial>::attenuation_color),
-        );
+        #[cfg(feature = "sprite")]
+        {
+            use bevy_sprite::prelude::*;
+
+            register_fields!(
+                app.register_component_field(),
+                Sprite,
+                (
+                    image,
+                    color,
+                    flip_x,
+                    flip_y,
+                    custom_size,
+                    rect,
+                    anchor,
+                    image_mode,
+                )
+            );
+            register_fields!(
+                app.register_asset_field::<MeshMaterial2d<_>>(),
+                ColorMaterial,
+                (color, alpha_mode, uv_transform, texture,)
+            );
+        }
+
+        #[cfg(feature = "pbr")]
+        {
+            use bevy_pbr::prelude::*;
+
+            register_fields!(
+                app.register_asset_field::<MeshMaterial3d<_>>(),
+                StandardMaterial,
+                (
+                    base_color,
+                    emissive,
+                    perceptual_roughness,
+                    metallic,
+                    reflectance,
+                    specular_tint,
+                    diffuse_transmission,
+                    specular_transmission,
+                    thickness,
+                    ior,
+                    attenuation_distance,
+                    attenuation_color,
+                )
+            );
+        }
     }
 }

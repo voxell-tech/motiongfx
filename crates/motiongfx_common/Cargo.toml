@@ -6,13 +6,26 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-bevy = { workspace = true }
+# motiongfx
 motiongfx_engine = { version = "0.1.0", path = "../motiongfx_engine" }
+
+# bevy
+bevy_ecs = { workspace = true }
+bevy_app = { workspace = true }
+bevy_math = { workspace = true }
+bevy_asset = { workspace = true, optional = true }
+bevy_transform = { workspace = true, optional = true }
+bevy_color = { workspace = true, optional = true }
+bevy_sprite = { workspace = true, optional = true }
+bevy_pbr = { workspace = true, optional = true }
 
 [lints]
 workspace = true
 
 [features]
-default = ["bevy_sprite", "bevy_pbr"]
-bevy_sprite = ["bevy/bevy_sprite"]
-bevy_pbr = ["bevy/bevy_pbr"]
+default = ["asset", "transform", "color", "sprite", "pbr"]
+asset = ["dep:bevy_asset"]
+transform = ["dep:bevy_transform"]
+color = ["dep:bevy_color"]
+sprite = ["dep:bevy_sprite", "asset"]
+pbr = ["dep:bevy_pbr", "asset"]

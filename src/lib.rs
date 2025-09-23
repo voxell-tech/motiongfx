@@ -6,7 +6,7 @@
 //! [`Action`]: motiongfx_engine::action::Action
 //! [`Sequence`]: motiongfx_engine::sequence::Sequence
 //!
-//! Bevy MotionGfx is a motion graphics creation tool. It is highly inspired by [Motion Canvas] & [Manim].
+//! MotionGfx is a motion graphics creation tool. It is highly inspired by [Motion Canvas] & [Manim].
 //! The core technologies that is being used are:
 //! - [Bevy]: Renderer, entity component system, etc.
 //! - [Vello]: Vector graphics rasterization.
@@ -24,7 +24,7 @@
 //! # Sequence
 //! A [`Sequence`] is made up of multiple [`Action`]s. You can think of it as a group of actions. A [`Sequence`] also defines the order of [`Action`]s through the use of [action ordering functions](motiongfx_engine::sequence).
 
-use bevy::prelude::*;
+use bevy_app::prelude::*;
 
 pub use motiongfx_engine;
 
