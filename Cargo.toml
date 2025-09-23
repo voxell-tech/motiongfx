@@ -44,15 +44,15 @@ readme.workspace = true
 [dependencies]
 # motiongfx
 motiongfx_engine = { version = "0.1.0", path = "crates/motiongfx_engine" }
-motiongfx_common = { version = "0.1.0", path = "crates/motiongfx_common", optional = true }
+bevy_motiongfx = { version = "0.1.0", path = "crates/bevy_motiongfx", optional = true }
 
 # bevy
 bevy_ecs = { workspace = true }
 bevy_app = { workspace = true }
 
 [features]
-default = ["common"]
-common = ["dep:motiongfx_common"]
+default = ["bevy"]
+bevy = ["dep:bevy_motiongfx"]
 
 [dev-dependencies]
 bevy = { version = "0.16.1", features = ["dynamic_linking"] }

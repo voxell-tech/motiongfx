@@ -26,10 +26,7 @@
 
 use bevy_app::prelude::*;
 
-pub use motiongfx_engine;
-
-#[cfg(feature = "common")]
-pub use motiongfx_common as common;
+pub use motiongfx_engine as engine;
 
 pub mod prelude {
     pub use motiongfx_engine::prelude::*;
@@ -40,7 +37,7 @@ pub struct MotionGfxPlugin;
 impl Plugin for MotionGfxPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(motiongfx_engine::MotionGfxEnginePlugin);
-        #[cfg(feature = "common")]
-        app.add_plugins(motiongfx_common::MotionGfxCommonPlugin);
+        #[cfg(feature = "bevy")]
+        app.add_plugins(bevy_motiongfx::BevyMotionGfxPlugin);
     }
 }

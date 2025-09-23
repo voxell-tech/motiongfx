@@ -3,9 +3,9 @@
 use bevy_app::prelude::*;
 use motiongfx_engine::prelude::*;
 
-pub struct MotionGfxCommonPlugin;
+pub struct BevyMotionGfxPlugin;
 
-impl Plugin for MotionGfxCommonPlugin {
+impl Plugin for BevyMotionGfxPlugin {
     fn build(&self, app: &mut App) {
         #[cfg(feature = "transform")]
         {

@@ -1,5 +1,5 @@
 [package]
-name = "motiongfx_common"
+name = "bevy_motiongfx"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
