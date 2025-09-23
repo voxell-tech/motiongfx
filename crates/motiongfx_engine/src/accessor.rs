@@ -118,7 +118,7 @@ pub type FieldAccessorRegistry = AccessorRegistry<UntypedField>;
 
 /// A registry mapping keys to [`UntypedAccessor`]s.
 ///
-/// Provides convenient insertion of typed accessors and
+/// Provides convenient registration of typed accessors and
 /// retrieval as typed [`Accessor`]s with runtime checking.
 ///
 /// # Example
@@ -131,7 +131,7 @@ pub type FieldAccessorRegistry = AccessorRegistry<UntypedField>;
 /// fn mut_fn(s: &mut Foo) -> &mut i32 { &mut s.value }
 ///
 /// let mut registry = AccessorRegistry::new();
-/// registry.insert("foo", Accessor { ref_fn, mut_fn });
+/// registry.register("foo", Accessor { ref_fn, mut_fn });
 ///
 /// let accessor = registry.get::<Foo, i32>(&"foo").unwrap();
 /// let mut foo = Foo { value: 123 };
@@ -261,7 +261,7 @@ mod tests {
     }
 
     #[test]
-    fn registry_insert_and_get_success() {
+    fn registry_register_and_get_success() {
         let mut registry: AccessorRegistry<&'static str> =
             AccessorRegistry::new();
 

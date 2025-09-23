@@ -24,12 +24,17 @@ pub mod timeline;
 pub mod track;
 
 pub mod prelude {
-    pub use crate::action::*;
+    pub use crate::accessor::{Accessor, FieldAccessorRegistry};
+    pub use crate::action::{ActionId, EaseFn, InterpFn};
     pub use crate::ease;
-    pub use crate::field::*;
+    pub use crate::field::{field, Field, UntypedField};
     pub use crate::interpolation::Interpolation;
-    pub use crate::sequence::*;
-    pub use crate::timeline::*;
+    pub use crate::pipeline::{
+        BakeCtx, PipelineKey, PipelineRegistry, SampleCtx,
+    };
+    pub use crate::register_fields;
+    pub use crate::timeline::{Timeline, TimelineBuilder};
+    pub use crate::FieldPathRegisterAppExt;
 }
 
 pub struct MotionGfxEnginePlugin;
@@ -43,7 +48,7 @@ impl Plugin for MotionGfxEnginePlugin {
             PostUpdate,
             (
                 MotionGfxSet::TargetTime,
-                MotionGfxSet::MarkAction,
+                MotionGfxSet::QueueAction,
                 #[cfg(not(feature = "transform"))]
                 MotionGfxSet::Sample,
                 #[cfg(feature = "transform")]
@@ -56,12 +61,134 @@ impl Plugin for MotionGfxEnginePlugin {
     }
 }
 
+/// Recursively register fields.
+///
+/// # Example
+///
+/// ```
+/// use bevy_app::App;
+/// use bevy_ecs::component::Component;
+/// use motiongfx_engine::MotionGfxEnginePlugin;
+/// use motiongfx_engine::prelude::*;
+///
+/// #[derive(Component, Default, Clone)]
+/// struct Foo {
+///     bar_x: Bar,
+///     bar_y: Bar,
+/// }
+///
+/// #[derive(Clone, Default)]
+/// struct Bar {
+///     cho_a: Cho,
+///     cho_b: Cho,
+/// }
+///
+/// #[derive(Clone, Default)]
+/// struct Cho {
+///     bo_c: Bo,
+///     bo_d: Bo,
+/// }
+///
+/// #[derive(Clone, Default)]
+/// struct Bo(f32, u32);
+///
+/// let mut app = App::new();
+/// app.add_plugins(MotionGfxEnginePlugin);
+///
+/// register_fields!(
+///     app.register_component_field,
+///     Foo,
+///     (
+///         bar_x(cho_a(bo_c(0, 1), bo_d(0, 1))),
+///         bar_y(cho_b(bo_c(0, 1), bo_d(0, 1)))
+///     )
+/// );
+///
+/// // Get accessor from the registry.
+/// let accessor_registry =
+///     app.world().resource::<FieldAccessorRegistry>();
+///
+/// let key = field!(<Foo>::bar_x::cho_a::bo_c::0).untyped();
+/// let accessor =
+///     accessor_registry.get::<Foo, f32>(&key).unwrap();
+///
+/// let mut foo = Foo::default();
+///
+/// assert_eq!((accessor.ref_fn)(&foo), &foo.bar_x.cho_a.bo_c.0,);
+///
+/// *(accessor.mut_fn)(&mut foo) = 2.0;
+/// assert_eq!((accessor.ref_fn)(&foo), &2.0);
+///
+/// // Get pipeline from the registry.
+/// let pipeline_registry =
+///     app.world().resource::<PipelineRegistry>();
+///
+/// let key = PipelineKey::new::<Foo, f32>();
+/// let pipeline = pipeline_registry.get(&key).unwrap();
+/// ```
+#[macro_export]
+macro_rules! register_fields {
+    ($app:ident.$reg_func:ident, $root:ty $(, $($rest:tt)*)?) => {
+        $app.$reg_func(
+            field!(<$root>),
+            Accessor {
+                ref_fn: |v| v,
+                mut_fn: |v| v,
+            }
+        );
+
+        register_fields!(
+            @fields $app.$reg_func, $root, []
+            $(, $($rest)*)?
+        );
+    };
+
+    (
+        @fields $app:ident.$reg_func:ident, $root:ty, [$(::$path:tt)*],
+        (
+            $field:tt $(,)? $(( $($sub_field:tt)+ ))?
+            $(,$($rest:tt)+)?
+        )
+    ) => {
+        // Register the current field.
+        // (translation(x, y, z), rotation, scale) => translation
+        $app.$reg_func(
+            field!(<$root>$(::$path)*::$field),
+            Accessor {
+                ref_fn: |v| &v$(.$path)*.$field,
+                mut_fn: |v| &mut v$(.$path)*.$field,
+            },
+        );
+
+        // Register sub fields.
+        // (translation(x, y, z), rotation, scale) => (x, y, z)
+        register_fields!(
+            @fields $app.$reg_func, $root, [$(::$path)*::$field],
+            $(( $($sub_field)+ ))?
+        );
+
+        // Register the rest of the fields.
+        // (translation(x, y, z), rotation, scale) => (rotation, scale)
+        register_fields!(
+            @fields $app.$reg_func, $root, [$(::$path)*],
+            $(( $($rest)+ ))?
+        );
+    };
+
+    // Gibberish match (when no fields are left!).
+    (
+        @fields $app:ident.$reg_func:ident, $root:ty, [$(::$path:tt)*]
+        $(,)?
+    ) => {};
+}
+
 pub trait FieldPathRegisterAppExt {
     fn register_component_field<S, T>(
         &mut self,
         field: Field<S, T>,
-        accesor: Accessor<S, T>,
-    ) where
+        accessor: Accessor<S, T>,
+    ) -> &mut Self
+    where
         S: Component<Mutability = Mutable>,
         T: Clone + ThreadSafe;
 
@@ -69,8 +196,9 @@ pub trait FieldPathRegisterAppExt {
     fn register_asset_field<S, T>(
         &mut self,
         field: Field<S, T>,
-        accesor: Accessor<S, T>,
-    ) where
+        accessor: Accessor<S, T>,
+    ) -> &mut Self
+    where
         S: AsAssetId,
         T: Clone + ThreadSafe;
 }
@@ -79,36 +207,42 @@ impl FieldPathRegisterAppExt for App {
     fn register_component_field<S, T>(
         &mut self,
         field: Field<S, T>,
-        accesor: Accessor<S, T>,
-    ) where
+        accessor: Accessor<S, T>,
+    ) -> &mut Self
+    where
         S: Component<Mutability = Mutable>,
         T: Clone + ThreadSafe,
     {
         self.world_mut()
             .resource_mut::<FieldAccessorRegistry>()
-            .register(field.untyped(), accesor);
+            .register(field.untyped(), accessor);
 
         self.world_mut()
             .resource_mut::<PipelineRegistry>()
             .register_component::<S, T>();
+
+        self
     }
 
     #[cfg(feature = "asset")]
     fn register_asset_field<S, T>(
         &mut self,
         field: Field<S, T>,
-        accesor: Accessor<S, T>,
-    ) where
+        accessor: Accessor<S, T>,
+    ) -> &mut Self
+    where
         S: AsAssetId,
         T: Clone + ThreadSafe,
     {
         self.world_mut()
             .resource_mut::<FieldAccessorRegistry>()
-            .register(field.untyped(), accesor);
+            .register(field.untyped(), accessor);
 
         self.world_mut()
             .resource_mut::<PipelineRegistry>()
             .register_asset::<S, T>();
+
+        self
     }
 }
 
@@ -118,7 +252,7 @@ pub enum MotionGfxSet {
     TargetTime,
     /// Mark actions that are affected by the `target_time`
     /// change in [`SequenceController`].
-    MarkAction,
+    QueueAction,
     /// Sample keyframes and applies the value.
     /// This happens before [`TransformSystem::TransformPropagate`].
     Sample,

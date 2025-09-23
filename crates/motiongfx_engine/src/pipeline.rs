@@ -106,6 +106,12 @@ impl PipelineRegistry {
         T: Clone + ThreadSafe,
     {
         let key = PipelineKey::new::<S, T>();
+
+        // Prevent registering the same key twice.
+        if self.pipelines.contains_key(&key) {
+            return key;
+        }
+
         unsafe {
             self.register_unchecked(
                 key,
@@ -127,6 +133,12 @@ impl PipelineRegistry {
         T: Clone + ThreadSafe,
     {
         let key = PipelineKey::new::<S, T>();
+
+        // Prevent registering the same key twice.
+        if self.pipelines.contains_key(&key) {
+            return key;
+        }
+
         unsafe {
             self.register_unchecked(
                 key,
@@ -144,6 +156,8 @@ impl PipelineRegistry {
     }
 
     /// Register a pipeline function.
+    ///
+    /// Registering the same key twice will result in a replacement.
     ///
     /// # Safety
     ///
