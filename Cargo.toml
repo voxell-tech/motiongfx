@@ -10,6 +10,10 @@ repository = "https://github.com/voxell-tech/motiongfx"
 readme = "README.md"
 
 [workspace.dependencies]
+# motiongfx
+motiongfx = { version = "0.1.0", path = "crates/motiongfx" }
+bevy_motiongfx = { version = "0.1.0", path = "crates/bevy_motiongfx" }
+
 # bevy
 bevy_ecs = { version = "0.16", default-features = false }
 bevy_app = { version = "0.16", default-features = false }
@@ -29,34 +33,6 @@ nonempty = { version = "0.12.0", default-features = false }
 redundant_type_annotations = "warn"
 bool_comparison = "allow"
 
-[package]
-name = "motiongfx"
-description = "Motion graphics creation tool in Bevy. (Highly inspired by Motion Canvas and Manim)"
-exclude = ["/assets/", "/.github/", "/examples/"]
-keywords = ["motion-graphics", "game", "gamedev", "graphics", "bevy"]
-categories = ["graphics", "gui", "rendering", "motion-graphics", "vector-graphics"]
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-readme.workspace = true
-
-[dependencies]
-# motiongfx
-motiongfx_engine = { version = "0.1.0", path = "crates/motiongfx_engine" }
-bevy_motiongfx = { version = "0.1.0", path = "crates/bevy_motiongfx", optional = true }
-
-# bevy
-bevy_ecs = { workspace = true }
-bevy_app = { workspace = true }
-
-[features]
-default = ["bevy"]
-bevy = ["dep:bevy_motiongfx"]
-
-[dev-dependencies]
-bevy = { version = "0.16.1", features = ["dynamic_linking"] }
-
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
 opt-level = 1
@@ -64,6 +40,3 @@ opt-level = 1
 # Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]
 opt-level = 3
-
-[lints]
-workspace = true

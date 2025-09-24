@@ -30,7 +30,7 @@ use bevy_ecs::prelude::*;
 ///
 /// # Example
 /// ```
-/// use motiongfx_engine::field::{Field, field};
+/// use motiongfx::field::{Field, field};
 ///
 /// struct Player {
 ///     name: String,
@@ -131,7 +131,7 @@ impl<S, T> _FieldBuilder<S, T> {
 /// # Example
 ///
 /// ```
-/// use motiongfx_engine::field::{Field, field};
+/// use motiongfx::field::{Field, field};
 ///
 /// struct Player {
 ///     name: String,
@@ -164,8 +164,7 @@ pub use field;
 /// # Validation
 ///
 /// The field path used must be valid. To prevent using the wrong
-/// path, use the [`field_hash!`] macro. Alternatively, you can
-/// also create one via [`Field::untyped`].
+/// path, create one via [`Field::untyped`].
 #[derive(
     Component,
     Debug,
@@ -266,7 +265,7 @@ where
 /// # Example
 ///
 /// ```
-/// use motiongfx_engine::field::stringify_field;
+/// use motiongfx::field::stringify_field;
 ///
 /// let stringify = stringify_field!(::translation::x);
 /// assert_eq!(stringify, "::translation::x");

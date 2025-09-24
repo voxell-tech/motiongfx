@@ -1,12 +1,15 @@
 #![no_std]
 
 use bevy_app::prelude::*;
-use motiongfx_engine::prelude::*;
+use motiongfx::prelude::*;
+use motiongfx::MotionGfxPlugin;
 
 pub struct BevyMotionGfxPlugin;
 
 impl Plugin for BevyMotionGfxPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(MotionGfxPlugin);
+
         #[cfg(feature = "transform")]
         {
             use bevy_transform::components::Transform;
@@ -43,7 +46,7 @@ impl Plugin for BevyMotionGfxPlugin {
             register_fields!(
                 app.register_asset_field::<MeshMaterial2d<_>>(),
                 ColorMaterial,
-                (color, alpha_mode, uv_transform, texture,)
+                (color, alpha_mode, uv_transform, texture)
             );
         }
 

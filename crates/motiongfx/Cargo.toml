@@ -1,5 +1,9 @@
 [package]
-name = "motiongfx_engine"
+name = "motiongfx"
+description = "Motion graphics creation tool. (Highly inspired by Motion Canvas and Manim)"
+exclude = ["/assets/", "/.github/", "/examples/"]
+keywords = ["motion", "animation", "procedural", "bevy"]
+categories = ["multimedia", "graphics", "gui", "rendering", "game-development", "no_std"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true

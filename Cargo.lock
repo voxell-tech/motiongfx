@@ -859,6 +859,7 @@ dependencies = [
 name = "bevy_motiongfx"
 version = "0.1.0"
 dependencies = [
+ "bevy",
  "bevy_app",
  "bevy_asset",
  "bevy_color",
@@ -867,7 +868,7 @@ dependencies = [
  "bevy_pbr",
  "bevy_sprite",
  "bevy_transform",
- "motiongfx_engine",
+ "motiongfx",
 ]
 
 [[package]]
@@ -2748,17 +2749,6 @@ dependencies = [
 
 [[package]]
 name = "motiongfx"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_app",
- "bevy_ecs",
- "bevy_motiongfx",
- "motiongfx_engine",
-]
-
-[[package]]
-name = "motiongfx_engine"
 version = "0.1.0"
 dependencies = [
  "bevy_app",

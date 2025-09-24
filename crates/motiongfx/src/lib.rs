@@ -1,4 +1,11 @@
-// TODO: Write docs!
+//! [Motion Canvas]: https://motioncanvas.io/
+//! [Manim]: https://www.manim.community/
+//! [Bevy]: https://bevyengine.org/
+//! [Vello]: https://github.com/linebender/vello
+//! [Typst]: https://typst.app
+//!
+//! MotionGfx is a motion graphics creation tool.
+//! It is highly inspired by [Motion Canvas] & [Manim].
 
 #![no_std]
 
@@ -39,9 +46,9 @@ pub mod prelude {
     pub use crate::FieldPathRegisterAppExt;
 }
 
-pub struct MotionGfxEnginePlugin;
+pub struct MotionGfxPlugin;
 
-impl Plugin for MotionGfxEnginePlugin {
+impl Plugin for MotionGfxPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FieldAccessorRegistry>()
             .init_resource::<PipelineRegistry>();
@@ -49,14 +56,12 @@ impl Plugin for MotionGfxEnginePlugin {
         app.configure_sets(
             PostUpdate,
             (
-                MotionGfxSet::TargetTime,
                 MotionGfxSet::QueueAction,
                 #[cfg(not(feature = "transform"))]
                 MotionGfxSet::Sample,
                 #[cfg(feature = "transform")]
                 MotionGfxSet::Sample
                     .before(TransformSystem::TransformPropagate),
-                MotionGfxSet::CurrentTime,
             )
                 .chain(),
         );
@@ -70,8 +75,8 @@ impl Plugin for MotionGfxEnginePlugin {
 /// ```
 /// use bevy_app::App;
 /// use bevy_ecs::component::Component;
-/// use motiongfx_engine::MotionGfxEnginePlugin;
-/// use motiongfx_engine::prelude::*;
+/// use motiongfx::MotionGfxPlugin;
+/// use motiongfx::prelude::*;
 ///
 /// #[derive(Component, Default, Clone)]
 /// struct Foo {
@@ -95,7 +100,7 @@ impl Plugin for MotionGfxEnginePlugin {
 /// struct Bo(f32, u32);
 ///
 /// let mut app = App::new();
-/// app.add_plugins(MotionGfxEnginePlugin);
+/// app.add_plugins(MotionGfxPlugin);
 ///
 /// register_fields!(
 ///     app.register_component_field(),
@@ -277,16 +282,10 @@ impl FieldPathRegisterAppExt for App {
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MotionGfxSet {
-    /// Advance the target time in the [`SequenceController`].
-    TargetTime,
-    /// Mark actions that are affected by the `target_time`
-    /// change in [`SequenceController`].
+    /// Queue actions that will be sampled by marking them.
     QueueAction,
     /// Sample keyframes and applies the value.
-    /// This happens before [`TransformSystem::TransformPropagate`].
     Sample,
-    /// Advance the current time in the [`SequenceController`].
-    CurrentTime,
 }
 
 /// Auto trait for types that implements [`Send`] + [`Sync`] + `'static`.

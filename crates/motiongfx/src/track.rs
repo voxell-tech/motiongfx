@@ -244,9 +244,9 @@ impl TrackFragment {
 impl TrackFragment {
     /// Updates or inserts a [`Sequence`] in a track.
     ///
-    /// If the [`TrackKey`] already exists, this method appends the
-    /// spans of the `new_sequence` to the existing sequence.
-    /// If the [`TrackKey`] does not exist, a new entry is created
+    /// If the [`ActionKey`] already exists, this method appends the
+    /// clips of the `new_sequence` to the existing sequence.
+    /// If the [`ActionKey`] does not exist, a new entry is created
     /// for the `new_sequence`.
     ///
     /// This method consumes `self` and returns a modified instance,
@@ -277,7 +277,7 @@ impl TrackFragment {
 /// A compiled dense action sequences, optimized for playback and
 /// queries.
 ///
-/// A `Track` is created from a [`TrackBuilder`] and provides an
+/// A `Track` is created from a [`TrackFragment`] and provides an
 /// immutable, space-efficient layout. [`ActionClip`]s are stored
 /// in a flat array with spans for quick access.
 pub struct Track {

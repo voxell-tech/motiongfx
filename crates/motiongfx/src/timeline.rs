@@ -8,7 +8,7 @@ use bevy_platform::collections::HashMap;
 use crate::accessor::FieldAccessorRegistry;
 use crate::action::*;
 use crate::field::UntypedField;
-use crate::interpolation::Interpolation;
+use crate::interpolation::{step, Interpolation};
 use crate::pipeline::*;
 use crate::track::*;
 use crate::ThreadSafe;
@@ -416,6 +416,20 @@ impl TimelineBuilder {
         T: Interpolation + ThreadSafe,
     {
         self.act(action, target, field).with_interp(T::interp)
+    }
+
+    /// Add an [`Action`] with interpolation using [`step`].
+    pub fn act_step<T>(
+        &mut self,
+        action: impl Action<T>,
+        target: impl Into<ActionTarget>,
+        field: impl Into<UntypedField>,
+    ) -> InterpolatedActionBuilder<'_, T>
+    where
+        T: Clone + ThreadSafe,
+    {
+        self.act(action, target, field)
+            .with_interp(|a, b, t| step(a.clone(), b.clone(), t))
     }
 
     /// Remove an [`Action`].

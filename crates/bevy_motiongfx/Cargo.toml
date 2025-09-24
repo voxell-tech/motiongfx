@@ -7,7 +7,7 @@ repository.workspace = true
 
 [dependencies]
 # motiongfx
-motiongfx_engine = { version = "0.1.0", path = "../motiongfx_engine" }
+motiongfx = { workspace = true }
 
 # bevy
 bevy_ecs = { workspace = true }
@@ -18,6 +18,9 @@ bevy_transform = { workspace = true, optional = true }
 bevy_color = { workspace = true, optional = true }
 bevy_sprite = { workspace = true, optional = true }
 bevy_pbr = { workspace = true, optional = true }
+
+[dev-dependencies]
+bevy = { version = "0.16", features = ["dynamic_linking"] }
 
 [lints]
 workspace = true

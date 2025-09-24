@@ -21,7 +21,7 @@ use crate::field::UntypedField;
 ///
 /// # Example
 /// ```
-/// use motiongfx_engine::accessor::Accessor;
+/// use motiongfx::accessor::Accessor;
 ///
 /// struct Foo { value: i32 }
 ///
@@ -123,7 +123,7 @@ pub type FieldAccessorRegistry = AccessorRegistry<UntypedField>;
 ///
 /// # Example
 /// ```
-/// use motiongfx_engine::accessor::{Accessor, AccessorRegistry};
+/// use motiongfx::accessor::{Accessor, AccessorRegistry};
 ///
 /// struct Foo { value: i32 }
 ///
