@@ -1,4 +1,36 @@
 use bevy_math::*;
+use motiongfx::action::{
+    Action, ActionTarget, InterpolatedActionBuilder,
+};
+use motiongfx::prelude::*;
+use motiongfx::ThreadSafe;
+
+pub trait ActionInterpTimelineExt {
+    fn act_interp<T>(
+        &mut self,
+        action: impl Action<T>,
+        target: impl Into<ActionTarget>,
+        field: impl Into<UntypedField>,
+    ) -> InterpolatedActionBuilder<'_, T>
+    where
+        T: Interpolation + ThreadSafe;
+}
+
+impl ActionInterpTimelineExt for TimelineBuilder {
+    /// Add an [`Action`] with interpolation using
+    /// [`Interpolation::interp`].
+    fn act_interp<T>(
+        &mut self,
+        action: impl Action<T>,
+        target: impl Into<ActionTarget>,
+        field: impl Into<UntypedField>,
+    ) -> InterpolatedActionBuilder<'_, T>
+    where
+        T: Interpolation + ThreadSafe,
+    {
+        self.act(action, target, field).with_interp(T::interp)
+    }
+}
 
 /// Trait for interpolating between 2 values based on a f32 `t` value.
 pub trait Interpolation<T = Self, U = Self> {

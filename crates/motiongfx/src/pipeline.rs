@@ -15,6 +15,15 @@ use crate::field::UntypedField;
 use crate::track::{ActionKey, Track};
 use crate::ThreadSafe;
 
+/*
+GOAL: Convert Pipeline to be independant of Bevy's `World` as the
+`target_world` for baking and sampling.
+
+As such:
+- `target_world` in Pipeline should be a trait/generic reference.
+- `TargetAction` should be a generic in the entire ecosystem.
+*/
+
 pub type BakeFn = fn(BakeCtx);
 pub type SampleFn = fn(SampleCtx);
 

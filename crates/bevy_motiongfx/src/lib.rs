@@ -1,14 +1,40 @@
 #![no_std]
 
 use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
-use motiongfx::MotionGfxPlugin;
+
+pub mod interpolation;
+pub mod registry;
+
+pub mod prelude {
+    pub use crate::interpolation::{
+        ActionInterpTimelineExt, Interpolation,
+    };
+    pub use crate::register_fields;
+    pub use crate::registry::FieldPathRegisterAppExt;
+    pub use motiongfx::prelude::*;
+}
 
 pub struct BevyMotionGfxPlugin;
 
 impl Plugin for BevyMotionGfxPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(MotionGfxPlugin);
+        app.init_resource::<FieldAccessorRegistry>()
+            .init_resource::<PipelineRegistry>();
+
+        app.configure_sets(
+            PostUpdate,
+            (
+                MotionGfxSet::QueueAction,
+                #[cfg(not(feature = "transform"))]
+                MotionGfxSet::Sample,
+                #[cfg(feature = "transform")]
+                MotionGfxSet::Sample
+                    .before(bevy_transform::TransformSystem::TransformPropagate),
+            )
+                .chain(),
+        );
 
         #[cfg(feature = "transform")]
         {
@@ -74,4 +100,12 @@ impl Plugin for BevyMotionGfxPlugin {
             );
         }
     }
+}
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MotionGfxSet {
+    /// Queue actions that will be sampled by marking them.
+    QueueAction,
+    /// Sample keyframes and applies the value.
+    Sample,
 }

@@ -2751,13 +2751,10 @@ dependencies = [
 name = "motiongfx"
 version = "0.1.0"
 dependencies = [
- "bevy_app",
  "bevy_asset",
- "bevy_color",
  "bevy_ecs",
  "bevy_math",
  "bevy_platform",
- "bevy_transform",
  "nonempty",
 ]
 
