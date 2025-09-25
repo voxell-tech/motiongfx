@@ -264,10 +264,16 @@ impl Timeline {
         self.target_index
     }
 
-    /// Returns a reference slice to all tracks in this timeline.
+    /// Returns a reference slice to all tracks.
     #[inline]
     pub fn tracks(&self) -> &[Track] {
         &self.tracks
+    }
+
+    /// Returns a reference the current playing track.
+    #[inline]
+    pub fn curr_track(&self) -> &Track {
+        &self.tracks[self.curr_index]
     }
 
     /// Returns `true` if the current track is the last track.
