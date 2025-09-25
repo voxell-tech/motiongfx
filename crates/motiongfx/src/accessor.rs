@@ -147,8 +147,10 @@ pub struct AccessorRegistry<K> {
 
 impl<K> AccessorRegistry<K> {
     /// Construct an empty [`AccessorRegistry`].
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        Self {
+            accessors: HashMap::new(),
+        }
     }
 }
 

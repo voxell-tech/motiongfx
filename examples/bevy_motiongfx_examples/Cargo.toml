@@ -1,0 +1,17 @@
+[package]
+name = "bevy_motiongfx_examples"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+bevy_motiongfx = { workspace = true }
+bevy = { version = "0.16" }
+
+[dev-dependencies]
+bevy = { version = "0.16", features = ["dynamic_linking"] }
+
+[lints]
+workspace = true

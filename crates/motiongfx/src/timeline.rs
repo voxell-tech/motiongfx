@@ -6,10 +6,16 @@ use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
 use crate::accessor::FieldAccessorRegistry;
-use crate::action::*;
-use crate::field::UntypedField;
-use crate::pipeline::*;
-use crate::track::*;
+use crate::action::{
+    Action, ActionBuilder, ActionId, ActionTarget, ActionWorld,
+    InterpolatedActionBuilder, SampleMode,
+};
+use crate::field::Field;
+use crate::pipeline::Range;
+use crate::prelude::{
+    BakeCtx, PipelineKey, PipelineRegistry, SampleCtx,
+};
+use crate::track::{ActionKey, Track};
 use crate::ThreadSafe;
 
 #[derive(Component)]
@@ -22,11 +28,6 @@ pub struct Timeline {
     /// This cache will be cleared everytime [`Timeline::queue_actions`]
     /// is called.
     queue_cahce: QueueCache,
-    /// Determines if the timeline is currently playing.
-    is_playing: bool,
-    /// The time scale of the timeline. Set this to negative
-    /// to play backwards.
-    time_scale: f32,
     /// The current time of the current track.
     curr_time: f32,
     /// The target time of the target track.
@@ -239,18 +240,6 @@ impl Timeline {
 
 // Getter methods.
 impl Timeline {
-    /// Returns whether the timeline is currently playing.
-    #[inline]
-    pub fn is_playing(&self) -> bool {
-        self.is_playing
-    }
-
-    /// Returns the current time scaling factor.
-    #[inline]
-    pub fn time_scale(&self) -> f32 {
-        self.time_scale
-    }
-
     /// Returns the current playback time.
     #[inline]
     pub fn curr_time(&self) -> f32 {
@@ -297,26 +286,10 @@ impl Timeline {
 
 // Setter methods.
 impl Timeline {
-    pub fn set_playing(&mut self, play: bool) -> &mut Self {
-        self.is_playing = play;
-        self
-    }
-
-    pub fn set_time_scale(&mut self, time_scale: f32) -> &mut Self {
-        self.time_scale = time_scale;
-        self
-    }
-
     /// Set the target time of the current track, clamping the value
     /// within \[0.0..=track.duration\]
-    ///
-    /// # Panics
-    ///
-    /// Panics if out of bounds in `debug_assertions`.
     pub fn set_target_time(&mut self, target_time: f32) -> &mut Self {
         let duration = self.tracks[self.target_index].duration();
-
-        debug_assert!(target_time < 0.0 || target_time > duration);
 
         self.target_time = target_time.clamp(0.0, duration);
         self
@@ -324,17 +297,11 @@ impl Timeline {
 
     /// Set the target track index, clamping the value within
     /// \[0..=track_count - 1\].
-    ///
-    /// # Panics
-    ///
-    /// Panics if out of bounds in `debug_assertions`.
     pub fn set_target_track(
         &mut self,
         target_index: usize,
     ) -> &mut Self {
         let max_index = self.last_track_index();
-
-        debug_assert!(target_index > max_index);
 
         self.target_index = target_index.clamp(0, max_index);
         self
@@ -380,17 +347,22 @@ pub struct TimelineBuilder {
 }
 
 impl TimelineBuilder {
+    /// Creates an empty timeline builder.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Add an [`Action`] without interpolation.
-    pub fn act<T>(
+    pub fn act<S, T>(
         &mut self,
-        action: impl Action<T>,
         target: impl Into<ActionTarget>,
-        field: impl Into<UntypedField>,
+        field: Field<S, T>,
+        action: impl Action<T>,
     ) -> ActionBuilder<'_, T>
     where
+        S: 'static,
         T: ThreadSafe,
     {
-        let field = field.into();
         let key = PipelineKey::from_field(field);
 
         match self.pipeline_counts.get_mut(&key) {
@@ -400,20 +372,21 @@ impl TimelineBuilder {
             }
         }
 
-        self.action_world.add(action, target, field)
+        self.action_world.add(target, field, action)
     }
 
     /// Add an [`Action`] using step interpolation.
-    pub fn act_step<T>(
+    pub fn act_step<S, T>(
         &mut self,
-        action: impl Action<T>,
         target: impl Into<ActionTarget>,
-        field: impl Into<UntypedField>,
+        field: Field<S, T>,
+        action: impl Action<T>,
     ) -> InterpolatedActionBuilder<'_, T>
     where
+        S: 'static,
         T: Clone + ThreadSafe,
     {
-        self.act(action, target, field).with_interp(|a, b, t| {
+        self.act(target, field, action).with_interp(|a, b, t| {
             if t < 1.0 {
                 a.clone()
             } else {
@@ -452,7 +425,7 @@ impl TimelineBuilder {
     /// Add [`Track`]\(s\) to the timeline.
     pub fn add_tracks(
         &mut self,
-        tracks: impl Iterator<Item = Track>,
+        tracks: impl IntoIterator<Item = Track>,
     ) {
         self.tracks.extend(tracks);
     }
@@ -466,8 +439,6 @@ impl TimelineBuilder {
                 .collect(),
             tracks: self.tracks.into_boxed_slice(),
             queue_cahce: QueueCache::default(),
-            is_playing: false,
-            time_scale: 1.0,
             curr_time: 0.0,
             target_time: 0.0,
             curr_index: 0,
@@ -477,66 +448,4 @@ impl TimelineBuilder {
 }
 
 #[cfg(test)]
-mod tests {
-    // use super::*;
-}
-
-// fn style_1() {
-//     let mut b = TimelineBuilder::new();
-
-//     let track_0 = [
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//     ]
-//     .flow(1.0);
-
-//     let track_1 = [
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//     ]
-//     .all();
-
-//     let track_2 = [
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//     ]
-//     .chain();
-
-//     b.add_tracks([track_0, track_1, track_2]);
-//     let timeline = b.compile();
-// }
-
-// fn style_1() {
-//     let mut b = TimelineBuilder::new();
-
-//     let track = [
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//     ]
-//     .flow(1.0);
-
-//     b.chain(track).set_checkpoint();
-
-//     let track = [
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//     ]
-//     .all();
-
-//     b.chain(track).set_checkpoint();
-
-//     let track_2 = [
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//         t.track_fragment(..),
-//     ]
-//     .chain();
-
-//     b.chain(track);
-//     let timeline = b.compile();
-// }
+mod tests {}

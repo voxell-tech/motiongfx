@@ -21,9 +21,9 @@ impl ActionWorld {
 
     pub fn add<T>(
         &mut self,
-        action: impl Action<T>,
         target: impl Into<ActionTarget>,
         field: impl Into<UntypedField>,
+        action: impl Action<T>,
     ) -> ActionBuilder<'_, T>
     where
         T: ThreadSafe,

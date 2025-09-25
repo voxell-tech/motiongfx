@@ -1,31 +1,39 @@
 #![no_std]
 
+// extern crate alloc;
+
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
+use crate::controller::ControllerPlugin;
+use crate::pipeline::PipelinePlugin;
+
+pub mod controller;
 pub mod interpolation;
 pub mod registry;
 
+mod pipeline;
+
 pub mod prelude {
+    pub use motiongfx::prelude::*;
+
+    pub use crate::controller::RealtimePlayer;
     pub use crate::interpolation::{
         ActionInterpTimelineExt, Interpolation,
     };
     pub use crate::register_fields;
     pub use crate::registry::FieldPathRegisterAppExt;
-    pub use motiongfx::prelude::*;
 }
 
 pub struct BevyMotionGfxPlugin;
 
 impl Plugin for BevyMotionGfxPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<FieldAccessorRegistry>()
-            .init_resource::<PipelineRegistry>();
-
         app.configure_sets(
             PostUpdate,
             (
+                MotionGfxSet::Controller,
                 MotionGfxSet::QueueAction,
                 #[cfg(not(feature = "transform"))]
                 MotionGfxSet::Sample,
@@ -35,6 +43,11 @@ impl Plugin for BevyMotionGfxPlugin {
             )
                 .chain(),
         );
+
+        app.init_resource::<FieldAccessorRegistry>()
+            .init_resource::<PipelineRegistry>();
+
+        app.add_plugins((PipelinePlugin, ControllerPlugin));
 
         #[cfg(feature = "transform")]
         {
@@ -104,6 +117,8 @@ impl Plugin for BevyMotionGfxPlugin {
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MotionGfxSet {
+    /// [Controller](controller) update to the timeline.
+    Controller,
     /// Queue actions that will be sampled by marking them.
     QueueAction,
     /// Sample keyframes and applies the value.

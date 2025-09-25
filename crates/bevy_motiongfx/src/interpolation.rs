@@ -6,29 +6,31 @@ use motiongfx::prelude::*;
 use motiongfx::ThreadSafe;
 
 pub trait ActionInterpTimelineExt {
-    fn act_interp<T>(
+    fn act_interp<S, T>(
         &mut self,
-        action: impl Action<T>,
         target: impl Into<ActionTarget>,
-        field: impl Into<UntypedField>,
+        field: Field<S, T>,
+        action: impl Action<T>,
     ) -> InterpolatedActionBuilder<'_, T>
     where
+        S: 'static,
         T: Interpolation + ThreadSafe;
 }
 
 impl ActionInterpTimelineExt for TimelineBuilder {
     /// Add an [`Action`] with interpolation using
     /// [`Interpolation::interp`].
-    fn act_interp<T>(
+    fn act_interp<S, T>(
         &mut self,
-        action: impl Action<T>,
         target: impl Into<ActionTarget>,
-        field: impl Into<UntypedField>,
+        field: Field<S, T>,
+        action: impl Action<T>,
     ) -> InterpolatedActionBuilder<'_, T>
     where
+        S: 'static,
         T: Interpolation + ThreadSafe,
     {
-        self.act(action, target, field).with_interp(T::interp)
+        self.act(target, field, action).with_interp(T::interp)
     }
 }
 

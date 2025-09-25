@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", ]
+members = ["crates/*", "examples/*", ]
 
 [workspace.package]
 version = "0.1.0"
@@ -20,6 +20,7 @@ bevy_app = { version = "0.16", default-features = false }
 bevy_platform = { version = "0.16", default-features = false }
 bevy_math = { version = "0.16", default-features = false, features = [ "libm" ] }
 bevy_asset = { version = "0.16", default-features = false }
+bevy_time = { version = "0.16", default-features = false }
 bevy_transform = { version = "0.16", default-features = false, features = ["bevy-support"] }
 bevy_color = { version = "0.16", default-features = false }
 bevy_sprite = { version = "0.16", default-features = false }

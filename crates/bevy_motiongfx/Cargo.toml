@@ -13,14 +13,12 @@ motiongfx = { workspace = true }
 bevy_ecs = { workspace = true }
 bevy_app = { workspace = true }
 bevy_math = { workspace = true }
+bevy_time = { workspace = true }
 bevy_asset = { workspace = true, optional = true }
 bevy_transform = { workspace = true, optional = true }
 bevy_color = { workspace = true, optional = true }
 bevy_sprite = { workspace = true, optional = true }
 bevy_pbr = { workspace = true, optional = true }
-
-[dev-dependencies]
-bevy = { version = "0.16", features = ["dynamic_linking"] }
 
 [lints]
 workspace = true

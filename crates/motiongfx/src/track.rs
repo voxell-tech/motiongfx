@@ -3,39 +3,40 @@ use alloc::vec::Vec;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
-use crate::action::*;
+use crate::action::{ActionClip, ActionTarget};
 use crate::field::UntypedField;
 use crate::sequence::Sequence;
 
 pub trait TrackOrdering {
-    fn chain(self) -> TrackFragment;
-    fn all(self) -> TrackFragment;
-    fn any(self) -> TrackFragment;
-    fn flow(self, delay: f32) -> TrackFragment;
+    /// Run all [`TrackFragment`]s one after another.
+    fn ord_chain(self) -> TrackFragment;
+    fn ord_all(self) -> TrackFragment;
+    fn ord_any(self) -> TrackFragment;
+    fn ord_flow(self, delay: f32) -> TrackFragment;
 }
 
 impl<T> TrackOrdering for T
 where
     T: IntoIterator<Item = TrackFragment>,
 {
-    fn chain(self) -> TrackFragment {
+    fn ord_chain(self) -> TrackFragment {
         chain(self)
     }
 
-    fn all(self) -> TrackFragment {
+    fn ord_all(self) -> TrackFragment {
         all(self)
     }
 
-    fn any(self) -> TrackFragment {
+    fn ord_any(self) -> TrackFragment {
         any(self)
     }
 
-    fn flow(self, delay: f32) -> TrackFragment {
+    fn ord_flow(self, delay: f32) -> TrackFragment {
         flow(delay, self)
     }
 }
 
-/// Run all [`Track`]s concurrently and wait for all of them to finish.
+/// Run all [`TrackFragment`]s one after another.
 #[must_use = "This function consumes all the given tracks and returns a modified one."]
 pub fn chain(
     tracks: impl IntoIterator<Item = TrackFragment>,
@@ -358,6 +359,8 @@ pub struct Span {
 
 #[cfg(test)]
 mod tests {
+    use crate::action::ActionId;
+
     use super::*;
 
     fn key(path: &'static str) -> ActionKey {
@@ -409,7 +412,7 @@ mod tests {
         let track1 = TrackFragment::single(key("a"), clip(1.0));
         let track2 = TrackFragment::single(key("b"), clip(2.0));
 
-        let track = [track1, track2].chain();
+        let track = [track1, track2].ord_chain();
 
         assert_eq!(track.duration, 3.0);
         let seq_b = &track.sequences[&key("b")];
@@ -422,7 +425,7 @@ mod tests {
         let track1 = TrackFragment::single(key("a"), clip(1.0));
         let track2 = TrackFragment::single(key("b"), clip(3.0));
 
-        let track = [track1, track2].all();
+        let track = [track1, track2].ord_all();
         assert_eq!(track.duration, 3.0);
     }
 
@@ -431,7 +434,7 @@ mod tests {
         let track1 = TrackFragment::single(key("a"), clip(1.0));
         let track2 = TrackFragment::single(key("b"), clip(3.0));
 
-        let track = [track1, track2].any();
+        let track = [track1, track2].ord_any();
         assert_eq!(track.duration, 1.0);
     }
 
@@ -440,7 +443,7 @@ mod tests {
         let track1 = TrackFragment::single(key("a"), clip(1.0));
         let track2 = TrackFragment::single(key("b"), clip(1.0));
 
-        let track = [track1, track2].flow(0.5);
+        let track = [track1, track2].ord_flow(0.5);
 
         assert_eq!(track.duration, 1.5); // 0.5 delay + 1.0 duration
         let seq_b = &track.sequences[&key("b")];

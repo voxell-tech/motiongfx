@@ -16,12 +16,14 @@ use crate::track::{ActionKey, Track};
 use crate::ThreadSafe;
 
 /*
-GOAL: Convert Pipeline to be independant of Bevy's `World` as the
+TODO: Convert Pipeline to be independant of Bevy's `World` as the
 `target_world` for baking and sampling.
 
 As such:
 - `target_world` in Pipeline should be a trait/generic reference.
 - `TargetAction` should be a generic in the entire ecosystem.
+- `BakeCtx`/`SampleCtx` should only take in `target_world` with trait
+  functions for getting the accessor or pipelines..?
 */
 
 pub type BakeFn = fn(BakeCtx);
@@ -105,6 +107,12 @@ pub struct PipelineRegistry {
 }
 
 impl PipelineRegistry {
+    pub const fn new() -> Self {
+        Self {
+            pipelines: HashMap::new(),
+        }
+    }
+
     /// Registers a pipeline for a given component and the
     /// target field.
     ///
@@ -141,7 +149,7 @@ impl PipelineRegistry {
         S: AsAssetId,
         T: Clone + ThreadSafe,
     {
-        let key = PipelineKey::new::<S, T>();
+        let key = PipelineKey::new::<S::Asset, T>();
 
         // Prevent registering the same key twice.
         if self.pipelines.contains_key(&key) {
@@ -427,7 +435,7 @@ impl Range {
 /*
 #[cfg(test)]
 mod tests {
-    use crate::timeline_v3::track::TrackBuilder;
+    use crate::track::TrackBuilder;
 
     use super::*;
 
@@ -435,7 +443,7 @@ mod tests {
     fn new_pipeline() {
         let mut pipeline = PipelineRegistry::default();
 
-        let _key0 = pipeline.register_comp::<Transform, f32>();
+        let _key0 = pipeline.register_component::<Transform, f32>();
         let _key1 = pipeline
             .register_asset::<MeshMaterial3d<StandardMaterial>, f32>(
             );
