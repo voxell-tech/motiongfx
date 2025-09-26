@@ -112,21 +112,15 @@ fn slide_movement(
 ) {
     for (mut timeline, mut player) in q_timelines.iter_mut() {
         if keys.just_pressed(KeyCode::ArrowRight) {
-            if timeline.is_last_track() {
-                // If we're already at the last track,
-                // move towards the end.
-
-                let target_time = timeline.curr_track().duration();
-                timeline.set_target_time(target_time);
-            } else {
-                // Move to the start of the next track.
-                let target_index = timeline.curr_index() + 1;
-                timeline.set_target_track(target_index);
-                timeline.set_target_time(0.0);
-            }
+            // Move to the start of the next track.
+            let target_index = timeline.curr_index() + 1;
+            timeline.set_target_track(target_index);
+            timeline.set_target_time(0.0);
 
             player.set_playing(false);
-        } else if keys.just_pressed(KeyCode::ArrowLeft) {
+        }
+
+        if keys.just_pressed(KeyCode::ArrowLeft) {
             // Move to the start of the previous track.
             let target_index =
                 timeline.curr_index().saturating_sub(1);
@@ -134,30 +128,34 @@ fn slide_movement(
             timeline.set_target_time(0.0);
 
             player.set_playing(false);
-        } else if keys.just_pressed(KeyCode::Space) {
+        }
+
+        if keys.just_pressed(KeyCode::Space) {
             if keys.pressed(KeyCode::ShiftLeft) {
-                // Already reached the start.
+                player.set_playing(true).set_time_scale(-1.0);
+
                 if timeline.curr_time() <= 0.0 {
-                    // Move to the start of the previous track.
+                    // Move to the end of the previous track.
                     let target_index =
                         timeline.curr_index().saturating_sub(1);
                     timeline.set_target_track(target_index);
-                    timeline.set_target_time(0.0);
+                    timeline.set_target_time(f32::MAX);
                 }
-                player.set_playing(true).set_time_scale(-1.0);
             } else {
-                // Already reached the end.
+                player.set_playing(true).set_time_scale(1.0);
+
                 if timeline.curr_time()
                     >= timeline.curr_track().duration()
                 {
+                    // Move to the start of the next track.
                     let target_index = timeline.curr_index() + 1;
                     timeline.set_target_track(target_index);
                     timeline.set_target_time(0.0);
                 }
-
-                player.set_playing(true).set_time_scale(1.0);
             }
-        } else if keys.just_pressed(KeyCode::Escape) {
+        }
+
+        if keys.just_pressed(KeyCode::Escape) {
             player.set_playing(false);
         }
     }

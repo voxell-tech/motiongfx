@@ -22,7 +22,7 @@ fn realtime_player_timing(
 ) {
     for (mut timeline, player) in q_timelines.iter_mut() {
         if player.is_playing {
-            let target_time = timeline.curr_time()
+            let target_time = timeline.target_time()
                 + player.time_scale * time.delta_secs();
 
             timeline.set_target_time(target_time);
