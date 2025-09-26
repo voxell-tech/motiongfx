@@ -19,6 +19,10 @@ impl Plugin for PipelinePlugin {
     }
 }
 
+// TODO: Optimize samplers into parallel operations.
+// This could be deferred into motiongfx::pipeline?
+// See also https://github.com/voxell-tech/motiongfx/issues/72
+
 /// # Panics
 ///
 /// Panics if the [`Timeline`] component is baking itself.

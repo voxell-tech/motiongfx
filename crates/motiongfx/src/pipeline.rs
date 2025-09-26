@@ -24,6 +24,8 @@ As such:
 - `TargetAction` should be a generic in the entire ecosystem.
 - `BakeCtx`/`SampleCtx` should only take in `target_world` with trait
   functions for getting the accessor or pipelines..?
+
+See also https://github.com/voxell-tech/motiongfx/issues/71
 */
 
 pub type BakeFn = fn(BakeCtx);
