@@ -44,25 +44,25 @@ impl RealtimePlayer {
         Self::default()
     }
 
-    /// Builder method for setting [`Timeline::is_playing`].
+    /// Builder method for setting [`RealtimePlayer::is_playing`].
     pub fn with_playing(mut self, playing: bool) -> Self {
         self.is_playing = playing;
         self
     }
 
-    /// Builder method for setting [`Timeline::time_scale`].
+    /// Builder method for setting [`RealtimePlayer::time_scale`].
     pub fn with_time_scale(mut self, time_scale: f32) -> Self {
         self.time_scale = time_scale;
         self
     }
 
-    /// Setter method for setting [`Timeline::is_playing`].
+    /// Setter method for setting [`RealtimePlayer::is_playing`].
     pub fn set_playing(&mut self, playing: bool) -> &mut Self {
         self.is_playing = playing;
         self
     }
 
-    /// Setter method for setting [`Timeline::time_scale`].
+    /// Setter method for setting [`RealtimePlayer::time_scale`].
     pub fn set_time_scale(&mut self, time_scale: f32) -> &mut Self {
         self.time_scale = time_scale;
         self
