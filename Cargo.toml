@@ -1,45 +1,39 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", ]
+members = ["crates/*", "examples/*", ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/nixon-voxell/motiongfx"
+repository = "https://github.com/voxell-tech/motiongfx"
 readme = "README.md"
 
 [workspace.dependencies]
-bevy = { version = "0.16.1", default-features = false }
+# motiongfx
+motiongfx = { version = "0.1.0", path = "crates/motiongfx" }
+bevy_motiongfx = { version = "0.1.0", path = "crates/bevy_motiongfx" }
+
+# bevy
+bevy = { version = "0.16", default-features = false }
+bevy_ecs = { version = "0.16", default-features = false }
+bevy_app = { version = "0.16", default-features = false }
+bevy_platform = { version = "0.16", default-features = false }
+bevy_math = { version = "0.16", default-features = false, features = [ "libm" ] }
+bevy_asset = { version = "0.16", default-features = false }
+bevy_time = { version = "0.16", default-features = false }
+bevy_transform = { version = "0.16", default-features = false, features = ["bevy-support"] }
+bevy_color = { version = "0.16", default-features = false }
+bevy_sprite = { version = "0.16", default-features = false }
+bevy_pbr = { version = "0.16", default-features = false }
+
+# other
 smallvec = "1"
+nonempty = { version = "0.12.0", default-features = false }
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
 bool_comparison = "allow"
-
-[package]
-name = "motiongfx"
-description = "Motion graphics creation tool in Bevy. (Highly inspired by Motion Canvas and Manim)"
-exclude = ["/assets/", "/.github/", "/examples/"]
-keywords = ["motion-graphics", "game", "gamedev", "graphics", "bevy"]
-categories = ["graphics", "gui", "rendering", "motion-graphics", "vector-graphics"]
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-readme.workspace = true
-
-[dependencies]
-motiongfx_engine = { version = "0.1.0", path = "crates/motiongfx_engine" }
-motiongfx_common = { version = "0.1.0", path = "crates/motiongfx_common", optional = true }
-bevy = { workspace = true }
-
-[features]
-default = ["common"]
-common = ["dep:motiongfx_common"]
-
-[dev-dependencies]
-bevy = { version = "0.16.1", features = ["dynamic_linking"] }
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
@@ -48,6 +42,3 @@ opt-level = 1
 # Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]
 opt-level = 3
-
-[lints]
-workspace = true

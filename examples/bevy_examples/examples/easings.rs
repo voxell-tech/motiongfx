@@ -2,14 +2,13 @@ use bevy::color::palettes;
 use bevy::core_pipeline::bloom::Bloom;
 use bevy::pbr::NotShadowCaster;
 use bevy::prelude::*;
-use motiongfx::prelude::*;
+use bevy_examples::timeline_movement;
+use bevy_motiongfx::prelude::*;
+use bevy_motiongfx::BevyMotionGfxPlugin;
 
 fn main() {
     App::new()
-        // Bevy plugins
-        .add_plugins(DefaultPlugins)
-        // Custom plugins
-        .add_plugins(motiongfx::MotionGfxPlugin)
+        .add_plugins((DefaultPlugins, BevyMotionGfxPlugin))
         .add_systems(Startup, (setup, spawn_timeline))
         .add_systems(Update, timeline_movement)
         .run();
@@ -66,36 +65,39 @@ fn spawn_timeline(
         spheres.push(sphere);
     }
 
-    // Generate sequence.
-    let sequence = spheres
-        .iter()
-        .zip(easings)
-        .map(|(&sphere, ease_fn)| {
-            [
-                commands
-                    .entity(sphere)
-                    .act(field!(<Transform>::translation::x), |x| {
-                        x + 10.0
-                    })
-                    .with_ease(ease_fn)
-                    .play(1.0),
-                commands
-                    .entity(sphere)
-                    .act(
-                        field!(<StandardMaterial>::emissive),
-                        move |_| red,
-                    )
-                    .with_ease(ease_fn)
-                    .play(1.0),
-            ]
-            .all()
-        })
-        .collect::<Vec<_>>()
-        .chain();
+    // Build the timeline.
+    let mut b = TimelineBuilder::new();
 
-    commands
-        .create_timeline(sequence)
-        .insert(TimelinePlayback::Forward);
+    let track = spheres
+        .into_iter()
+        .zip(easings)
+        .map(|(sphere, ease_fn)| {
+            [
+                b.act_interp(
+                    sphere,
+                    field!(<Transform>::translation::x),
+                    |x| x + 10.0,
+                )
+                .with_ease(ease_fn)
+                .play(1.0),
+                b.act_interp(
+                    sphere,
+                    field!(<StandardMaterial>::emissive),
+                    move |_| red,
+                )
+                .with_ease(ease_fn)
+                .play(1.0),
+            ]
+            .ord_all()
+        })
+        .ord_chain();
+
+    b.add_tracks(track.compile());
+
+    commands.spawn((
+        b.compile(),
+        RealtimePlayer::new().with_playing(true),
+    ));
 }
 
 fn setup(mut commands: Commands) {
@@ -109,40 +111,4 @@ fn setup(mut commands: Commands) {
         Transform::from_xyz(0.0, 0.0, 15.0),
         Bloom::default(),
     ));
-}
-
-fn timeline_movement(
-    mut q_timelines: Query<(&Timeline, &mut TimelinePlayback)>,
-    mut q_sequences: Query<&mut SequenceController>,
-    keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-) -> Result {
-    for (timeline, mut playback) in q_timelines.iter_mut() {
-        let mut controller = timeline
-            .curr_sequence_id()
-            .and_then(|e| q_sequences.get_mut(e).ok())
-            .ok_or("Can't get sequence controller!")?;
-
-        if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
-            controller.target_time += time.delta_secs();
-        }
-
-        if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
-            controller.target_time -= time.delta_secs();
-        }
-
-        if keys.just_pressed(KeyCode::Space) {
-            if keys.pressed(KeyCode::ShiftLeft) {
-                playback.backward();
-            } else {
-                playback.forward();
-            }
-        }
-
-        if keys.just_pressed(KeyCode::Escape) {
-            playback.pause();
-        }
-    }
-
-    Ok(())
 }
