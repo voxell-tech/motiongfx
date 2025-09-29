@@ -15,6 +15,7 @@ motiongfx = { version = "0.1.0", path = "crates/motiongfx" }
 bevy_motiongfx = { version = "0.1.0", path = "crates/bevy_motiongfx" }
 
 # bevy
+bevy = { version = "0.16", default-features = false }
 bevy_ecs = { version = "0.16", default-features = false }
 bevy_app = { version = "0.16", default-features = false }
 bevy_platform = { version = "0.16", default-features = false }

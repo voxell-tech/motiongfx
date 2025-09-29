@@ -1,6 +1,9 @@
-#![no_std]
+//! [Bevy]: https://bevyengine.org/
+//! [MotionGfx]: motiongfx
+//!
+//! A [Bevy] integration of  [MotionGfx].
 
-// extern crate alloc;
+#![no_std]
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;

@@ -8,10 +8,10 @@ readme.workspace = true
 
 [dependencies]
 bevy_motiongfx = { workspace = true }
-bevy = { version = "0.16" }
+bevy = { workspace = true }
 
 [dev-dependencies]
-bevy = { version = "0.16", features = ["dynamic_linking"] }
+bevy = { workspace = true, default-features = true, features = ["dynamic_linking"] }
 
 [lints]
 workspace = true
