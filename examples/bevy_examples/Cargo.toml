@@ -1,5 +1,5 @@
 [package]
-name = "bevy_motiongfx_examples"
+name = "bevy_examples"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

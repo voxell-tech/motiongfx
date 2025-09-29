@@ -578,6 +578,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_examples"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_motiongfx",
+]
+
+[[package]]
 name = "bevy_gilrs"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -869,14 +877,6 @@ dependencies = [
  "bevy_time",
  "bevy_transform",
  "motiongfx",
-]
-
-[[package]]
-name = "bevy_motiongfx_examples"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_motiongfx",
 ]
 
 [[package]]

@@ -2,9 +2,9 @@ use bevy::color::palettes;
 use bevy::core_pipeline::bloom::Bloom;
 use bevy::pbr::NotShadowCaster;
 use bevy::prelude::*;
+use bevy_examples::timeline_movement;
 use bevy_motiongfx::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
-use bevy_motiongfx_examples::timeline_movement;
 
 fn main() {
     App::new()
