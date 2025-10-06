@@ -27,7 +27,7 @@ impl Plugin for PipelinePlugin {
 ///
 /// Panics if the [`Timeline`] component is baking itself.
 fn bake_timeline(
-    trigger: Trigger<OnInsert, Timeline>,
+    trigger: On<Insert, Timeline>,
     main_world: &mut World,
 ) {
     let main_cell = main_world.as_unsafe_world_cell();
@@ -45,7 +45,7 @@ fn bake_timeline(
         );
 
         let mut timeline = main_cell
-            .get_entity(trigger.target())
+            .get_entity(trigger.event_target())
             .unwrap()
             .get_mut::<Timeline>()
             .unwrap();

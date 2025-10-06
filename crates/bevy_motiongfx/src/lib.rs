@@ -41,8 +41,9 @@ impl Plugin for BevyMotionGfxPlugin {
                 #[cfg(not(feature = "transform"))]
                 MotionGfxSet::Sample,
                 #[cfg(feature = "transform")]
-                MotionGfxSet::Sample
-                    .before(bevy_transform::TransformSystem::TransformPropagate),
+                MotionGfxSet::Sample.before(
+                    bevy_transform::TransformSystems::Propagate,
+                ),
             )
                 .chain(),
         );
@@ -76,19 +77,14 @@ impl Plugin for BevyMotionGfxPlugin {
                 Sprite,
                 (
                     image,
+                    texture_atlas,
                     color,
                     flip_x,
                     flip_y,
                     custom_size,
                     rect,
-                    anchor,
                     image_mode,
                 )
-            );
-            register_fields!(
-                app.register_asset_field::<MeshMaterial2d<_>>(),
-                ColorMaterial,
-                (color, alpha_mode, uv_transform, texture)
             );
         }
 

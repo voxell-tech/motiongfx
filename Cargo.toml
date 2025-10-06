@@ -15,21 +15,21 @@ motiongfx = { version = "0.1.0", path = "crates/motiongfx" }
 bevy_motiongfx = { version = "0.1.0", path = "crates/bevy_motiongfx" }
 
 # bevy
-bevy = { version = "0.16", default-features = false }
-bevy_ecs = { version = "0.16", default-features = false }
-bevy_app = { version = "0.16", default-features = false }
-bevy_platform = { version = "0.16", default-features = false }
-bevy_math = { version = "0.16", default-features = false, features = [ "libm" ] }
-bevy_asset = { version = "0.16", default-features = false }
-bevy_time = { version = "0.16", default-features = false }
-bevy_transform = { version = "0.16", default-features = false, features = ["bevy-support"] }
-bevy_color = { version = "0.16", default-features = false }
-bevy_sprite = { version = "0.16", default-features = false }
-bevy_pbr = { version = "0.16", default-features = false }
+bevy = { version = "0.17", default-features = false }
+bevy_ecs = { version = "0.17", default-features = false }
+bevy_app = { version = "0.17", default-features = false }
+bevy_platform = { version = "0.17", default-features = false }
+bevy_math = { version = "0.17", default-features = false, features = [ "libm" ] }
+bevy_asset = { version = "0.17", default-features = false }
+bevy_time = { version = "0.17", default-features = false }
+bevy_transform = { version = "0.17", default-features = false, features = ["bevy-support"] }
+bevy_color = { version = "0.17", default-features = false }
+bevy_sprite = { version = "0.17", default-features = false }
+bevy_pbr = { version = "0.17", default-features = false }
 
 # other
 smallvec = "1"
-nonempty = { version = "0.12.0", default-features = false }
+nonempty = { version = "0.12", default-features = false }
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
