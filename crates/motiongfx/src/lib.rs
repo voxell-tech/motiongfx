@@ -17,6 +17,7 @@ pub mod ease;
 pub mod field;
 pub mod pipeline;
 pub mod sequence;
+pub mod subject;
 pub mod timeline;
 pub mod track;
 

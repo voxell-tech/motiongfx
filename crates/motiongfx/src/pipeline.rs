@@ -219,14 +219,7 @@ impl<'a> BakeCtx<'a> {
                 continue;
             };
 
-            let mut target_entity = key.target.0;
-
-            // Fetch target reference if any.
-            target_entity = self
-                .target_world
-                .get::<TargetRef>(target_entity)
-                .map(|r| r.0)
-                .unwrap_or(target_entity);
+            let target_entity = key.target.0;
 
             // Get the target value from the target world.
             let Some(mut start) = get_target(
@@ -343,14 +336,7 @@ impl<'a> SampleCtx<'a> {
                 }
             };
 
-            let mut target_entity = key.target.0;
-
-            // Fetch target reference if any.
-            target_entity = self
-                .target_world
-                .get::<TargetRef>(target_entity)
-                .map(|r| r.0)
-                .unwrap_or(target_entity);
+            let target_entity = key.target.0;
 
             self.target_world = set_target(
                 target,
@@ -415,11 +401,11 @@ where
 
 // TODO: Should we support recursive re-direction?
 
-/// A re-direction from an entity to another when dealing with
-/// action baking/sampling. The user is responsible for the
-/// existance of the referenced entity.
-#[derive(Component)]
-pub struct TargetRef(pub Entity);
+// /// A re-direction from an entity to another when dealing with
+// /// action baking/sampling. The user is responsible for the
+// /// existance of the referenced entity.
+// #[derive(Component)]
+// pub struct TargetRef(pub Entity);
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub struct Range {
