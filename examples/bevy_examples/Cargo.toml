@@ -11,7 +11,17 @@ bevy_motiongfx = { workspace = true }
 bevy = { workspace = true }
 
 [dev-dependencies]
-bevy = { workspace = true, default-features = true, features = ["dynamic_linking"] }
+bevy = { workspace = true, features = [
+  "dynamic_linking",
+  "multi_threaded",
+  "bevy_log",
+  "bevy_color",
+  "bevy_pbr",
+  "bevy_post_process",
+  "hdr",
+  "tonemapping_luts",
+  "zstd_rust",
+] }
 
 [lints]
 workspace = true
