@@ -1,7 +1,8 @@
 use bevy::color::palettes;
-use bevy::core_pipeline::bloom::Bloom;
-use bevy::pbr::NotShadowCaster;
+use bevy::light::NotShadowCaster;
+use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
+use bevy::render::view::Hdr;
 use bevy_examples::timeline_movement;
 use bevy_motiongfx::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
@@ -103,11 +104,11 @@ fn spawn_timeline(
 fn setup(mut commands: Commands) {
     commands.spawn((
         Camera {
-            hdr: true,
             clear_color: Color::BLACK.into(),
             ..default()
         },
         Camera3d::default(),
+        Hdr,
         Transform::from_xyz(0.0, 0.0, 15.0),
         Bloom::default(),
     ));

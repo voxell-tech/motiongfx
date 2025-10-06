@@ -37,6 +37,7 @@ impl Plugin for BevyMotionGfxPlugin {
             PostUpdate,
             (
                 MotionGfxSet::Controller,
+                MotionGfxSet::Bake,
                 MotionGfxSet::QueueAction,
                 #[cfg(not(feature = "transform"))]
                 MotionGfxSet::Sample,
@@ -118,6 +119,8 @@ impl Plugin for BevyMotionGfxPlugin {
 pub enum MotionGfxSet {
     /// [Controller](controller) update to the timeline.
     Controller,
+    /// Bake actions into segments.
+    Bake,
     /// Queue actions that will be sampled by marking them.
     QueueAction,
     /// Sample keyframes and applies the value.
