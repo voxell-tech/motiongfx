@@ -1,5 +1,5 @@
 use bevy::color::palettes;
-use bevy::pbr::NotShadowCaster;
+use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 use bevy_examples::timeline_movement;
 use bevy_motiongfx::prelude::*;

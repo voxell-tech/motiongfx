@@ -11,11 +11,12 @@ impl Plugin for PipelinePlugin {
         app.add_systems(
             PostUpdate,
             (
+                bake_timeline.in_set(MotionGfxSet::Bake),
                 queue_timeline.in_set(MotionGfxSet::QueueAction),
                 sample_timeline.in_set(MotionGfxSet::Sample),
             ),
         )
-        .add_observer(bake_timeline);
+        .add_observer(mark_bake_timeline);
     }
 }
 
@@ -23,13 +24,19 @@ impl Plugin for PipelinePlugin {
 // This could be deferred into motiongfx::pipeline?
 // See also https://github.com/voxell-tech/motiongfx/issues/72
 
+fn mark_bake_timeline(
+    trigger: On<Insert, Timeline>,
+    mut commands: Commands,
+) {
+    commands.entity(trigger.entity).insert(BakeTimeline);
+}
+
 /// # Panics
 ///
 /// Panics if the [`Timeline`] component is baking itself.
-fn bake_timeline(
-    trigger: Trigger<OnInsert, Timeline>,
-    main_world: &mut World,
-) {
+fn bake_timeline(main_world: &mut World) {
+    let mut q_timelines = main_world
+        .query_filtered::<(&mut Timeline, Entity), Added<BakeTimeline>>();
     let main_cell = main_world.as_unsafe_world_cell();
 
     // SAFETY: Timeline should never bake timeline itself.
@@ -44,17 +51,19 @@ fn bake_timeline(
             "`FieldAccessorRegistry` resource should be inserted.",
         );
 
-        let mut timeline = main_cell
-            .get_entity(trigger.target())
-            .unwrap()
-            .get_mut::<Timeline>()
-            .unwrap();
+        let mut commands = main_cell.world_mut().commands();
 
-        timeline.bake_actions(
-            pipeline_registry,
-            main_cell.world(),
-            accessor_registry,
-        );
+        for (mut timeline, entity) in
+            q_timelines.iter_mut(main_cell.world_mut())
+        {
+            timeline.bake_actions(
+                pipeline_registry,
+                main_cell.world(),
+                accessor_registry,
+            );
+
+            commands.entity(entity).remove::<BakeTimeline>();
+        }
     }
 }
 
@@ -97,3 +106,9 @@ fn sample_timeline(main_world: &mut World) {
         }
     }
 }
+
+/// Marker component for timelines to be baked. This will be inserted
+/// automatically on [`Timeline`] insertion trigger and removed after
+/// the baking process is completed.
+#[derive(Component)]
+struct BakeTimeline;
