@@ -21,20 +21,6 @@ pub mod subject;
 pub mod timeline;
 pub mod track;
 
-pub mod prelude {
-    pub use crate::accessor::{
-        Accessor, AccessorRegistry, FieldAccessorRegistry,
-    };
-    pub use crate::action::{ActionId, EaseFn, InterpFn};
-    pub use crate::ease;
-    pub use crate::field::{field, Field, UntypedField};
-    pub use crate::pipeline::{
-        BakeCtx, PipelineKey, PipelineRegistry, SampleCtx,
-    };
-    pub use crate::timeline::{Timeline, TimelineBuilder};
-    pub use crate::track::{Track, TrackFragment, TrackOrdering};
-}
-
 /// Auto trait for types that implements [`Send`] + [`Sync`] + `'static`.
 pub trait ThreadSafe: Send + Sync + 'static {}
 

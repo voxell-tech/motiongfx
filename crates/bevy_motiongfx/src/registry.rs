@@ -3,8 +3,11 @@ use bevy_app::prelude::*;
 use bevy_asset::AsAssetId;
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
-use motiongfx::prelude::*;
+use motiongfx::accessor::{Accessor, FieldAccessorRegistry};
+use motiongfx::field::Field;
 use motiongfx::ThreadSafe;
+
+use crate::alias::PipelineRegistry;
 
 // TODO: Move purely the recursive logic back to motiongfx and keep
 // the registration logic here.
@@ -94,8 +97,8 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            field!(<$root>),
-            Accessor {
+            ::motiongfx::field::field!(<$root>),
+            ::motiongfx::accessor::Accessor {
                 ref_fn: |v| v,
                 mut_fn: |v| v,
             }
@@ -121,8 +124,8 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            field!(<$root>$(::$path)*::$field),
-            Accessor {
+            motiongfx::field::field!(<$root>$(::$path)*::$field),
+            ::motiongfx::accessor::Accessor {
                 ref_fn: |v| &v$(.$path)*.$field,
                 mut_fn: |v| &mut v$(.$path)*.$field,
             },

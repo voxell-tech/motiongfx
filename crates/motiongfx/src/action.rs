@@ -5,35 +5,37 @@ use alloc::vec::Vec;
 use bevy_ecs::prelude::*;
 
 use crate::field::UntypedField;
-use crate::track::{ActionKey, TrackFragment};
+use crate::subject::SubjectId;
+use crate::track::TrackFragment;
 use crate::ThreadSafe;
 
 #[allow(clippy::type_complexity)]
 #[derive(Default)]
-pub struct ActionWorld {
+pub struct ActionWorld<I: SubjectId> {
     world: World,
+    _marker: PhantomData<I>,
 }
 
-impl ActionWorld {
+impl<I: SubjectId> ActionWorld<I> {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            world: World::new(),
+            _marker: PhantomData,
+        }
     }
 
     pub fn add<T>(
         &mut self,
-        target: impl Into<ActionTarget>,
+        target: I,
         field: impl Into<UntypedField>,
         action: impl Action<T>,
-    ) -> ActionBuilder<'_, T>
+    ) -> ActionBuilder<'_, I, T>
     where
         T: ThreadSafe,
     {
         let field = field.into();
 
-        let key = ActionKey {
-            target: target.into(),
-            field,
-        };
+        let key = ActionKey { target, field };
         let world =
             self.world.spawn((key, ActionStorage::new(action)));
 
@@ -44,14 +46,14 @@ impl ActionWorld {
         }
     }
 
-    pub fn remove(&mut self, id: ActionId) -> Option<ActionKey> {
+    pub fn remove(&mut self, id: ActionId) -> Option<ActionKey<I>> {
         let entity = id.entity();
 
         let key = *self
             .world
             .get_entity(entity)
             .ok()?
-            .get::<ActionKey>()
+            .get::<ActionKey<I>>()
             .expect("All actions should have an `ActionKey`!");
 
         self.world.despawn(id.entity());
@@ -69,7 +71,7 @@ impl ActionWorld {
     }
 }
 
-impl ActionWorld {
+impl<I: SubjectId> ActionWorld<I> {
     /// Returns a immutable reference to the underlying world.
     pub(crate) fn world(&self) -> &World {
         &self.world
@@ -139,38 +141,56 @@ impl ActionCommand<'_> {
     }
 }
 
-pub struct ActionBuilder<'w, T> {
+pub struct ActionBuilder<'w, I, T>
+where
+    I: SubjectId,
+{
     world: EntityWorldMut<'w>,
-    key: ActionKey,
+    key: ActionKey<I>,
     _phantom: PhantomData<T>,
 }
 
-impl<T> ActionBuilder<'_, T> {
+/// A builder struct to insert an interpolation method for the action
+/// before compiling into an [`InterpActionBuilder`].
+impl<I, T> ActionBuilder<'_, I, T>
+where
+    I: SubjectId,
+{
     /// Get the [`ActionId`] of the containing action.
     pub fn id(&self) -> ActionId {
         ActionId::new(self.world.id())
     }
 }
 
-impl<'w, T> ActionBuilder<'w, T>
+impl<'w, I, T> ActionBuilder<'w, I, T>
 where
+    I: SubjectId,
     T: 'static,
 {
     /// Set the interpolation method of the action.
     pub fn with_interp(
         mut self,
         interp: InterpFn<T>,
-    ) -> InterpolatedActionBuilder<'w, T> {
+    ) -> InterpActionBuilder<'w, I, T> {
         self.world.insert(InterpStorage(interp));
-        InterpolatedActionBuilder { inner: self }
+        InterpActionBuilder { inner: self }
     }
 }
 
-pub struct InterpolatedActionBuilder<'w, T> {
-    inner: ActionBuilder<'w, T>,
+/// An action builder that has interpolation added. This builder
+/// exposes more customizations for the action and allows it to be
+/// compiled into a [`TrackFragment`].
+pub struct InterpActionBuilder<'w, I, T>
+where
+    I: SubjectId,
+{
+    inner: ActionBuilder<'w, I, T>,
 }
 
-impl<T> InterpolatedActionBuilder<'_, T> {
+impl<I, T> InterpActionBuilder<'_, I, T>
+where
+    I: SubjectId,
+{
     /// Set the easing method of the action.
     pub fn with_ease(mut self, ease: EaseFn) -> Self {
         self.inner.world.insert(EaseStorage(ease));
@@ -184,7 +204,7 @@ impl<T> InterpolatedActionBuilder<'_, T> {
 
     /// Confirms the configuration of the action and creates a
     /// [`TrackFragment`].
-    pub fn play(self, duration: f32) -> TrackFragment {
+    pub fn play(self, duration: f32) -> TrackFragment<I> {
         TrackFragment::single(
             self.inner.key,
             ActionClip::new(self.id(), duration),
@@ -207,6 +227,27 @@ impl ActionId {
     pub(crate) fn entity(&self) -> Entity {
         self.0
     }
+}
+
+/// Key that uniquely identifies a sequence of non-overlapping
+/// actions.
+#[derive(
+    Component,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+)]
+#[component(immutable)]
+pub struct ActionKey<I: SubjectId> {
+    /// The target entity of the action.
+    pub target: I,
+    /// The source and target field related to the entity.
+    pub field: UntypedField,
 }
 
 /// An action trait which consists of a function for getting
@@ -251,17 +292,6 @@ pub type EaseFn = fn(t: f32) -> f32;
 #[derive(Component, Debug, Clone, Copy)]
 #[component(immutable)]
 pub struct EaseStorage(pub EaseFn);
-
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
-)]
-pub struct ActionTarget(pub Entity);
-
-impl From<Entity> for ActionTarget {
-    fn from(entity: Entity) -> Self {
-        Self(entity)
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ActionClip {

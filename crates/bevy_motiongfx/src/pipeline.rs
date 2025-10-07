@@ -1,7 +1,8 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use motiongfx::prelude::*;
+use motiongfx::accessor::FieldAccessorRegistry;
 
+use crate::alias::{PipelineRegistry, Timeline};
 use crate::MotionGfxSet;
 
 pub struct PipelinePlugin;

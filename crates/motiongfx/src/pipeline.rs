@@ -1,18 +1,19 @@
 use core::any::TypeId;
 
-#[cfg(feature = "asset")]
-use bevy_asset::{AsAssetId, Assets};
-use bevy_ecs::component::Mutable;
+// #[cfg(feature = "asset")]
+// use bevy_asset::{AsAssetId, Assets};
+// use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
 use crate::accessor::{Accessor, FieldAccessorRegistry};
 use crate::action::{
-    ActionClip, ActionWorld, EaseStorage, InterpStorage, SampleMode,
-    Segment,
+    ActionClip, ActionKey, ActionWorld, EaseStorage, InterpStorage,
+    SampleMode, Segment,
 };
 use crate::field::UntypedField;
-use crate::track::{ActionKey, Track};
+use crate::subject::SubjectId;
+use crate::track::Track;
 use crate::ThreadSafe;
 
 /*
@@ -21,15 +22,15 @@ TODO: Convert Pipeline to be independant of Bevy's `World` as the
 
 As such:
 - `target_world` in Pipeline should be a trait/generic reference.
-- `TargetAction` should be a generic in the entire ecosystem.
+- `TargetAction` should be a generic in the entire ecosystem. (Done)
 - `BakeCtx`/`SampleCtx` should only take in `target_world` with trait
   functions for getting the accessor or pipelines..?
 
 See also https://github.com/voxell-tech/motiongfx/issues/71
 */
 
-pub type BakeFn = fn(BakeCtx);
-pub type SampleFn = fn(SampleCtx);
+pub type BakeFn<I> = fn(BakeCtx<I>);
+pub type SampleFn<I> = fn(SampleCtx<I>);
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord,
@@ -65,112 +66,118 @@ impl From<UntypedField> for PipelineKey {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Pipeline {
-    bake: BakeFn,
-    sample: SampleFn,
+pub struct Pipeline<I: SubjectId> {
+    bake: BakeFn<I>,
+    sample: SampleFn<I>,
 }
 
-impl Pipeline {
-    pub fn new_component<S, T>() -> Self
-    where
-        S: Component<Mutability = Mutable>,
-        T: Clone + ThreadSafe,
-    {
-        Self {
-            bake: bake_component_actions::<S, T>,
-            sample: sample_component_actions::<S, T>,
-        }
-    }
+impl<I: SubjectId> Pipeline<I> {
+    // pub fn new_component<S, T>() -> Self
+    // where
+    //     S: Component<Mutability = Mutable>,
+    //     T: Clone + ThreadSafe,
+    // {
+    //     Self {
+    //         bake: bake_component_actions::<S, T>,
+    //         sample: sample_component_actions::<S, T>,
+    //     }
+    // }
 
-    #[cfg(feature = "asset")]
-    pub fn new_asset<S, T>() -> Self
-    where
-        S: AsAssetId,
-        T: Clone + ThreadSafe,
-    {
-        Self {
-            bake: bake_asset_actions::<S, T>,
-            sample: sample_asset_actions::<S, T>,
-        }
-    }
+    // #[cfg(feature = "asset")]
+    // pub fn new_asset<S, T>() -> Self
+    // where
+    //     S: AsAssetId,
+    //     T: Clone + ThreadSafe,
+    // {
+    //     Self {
+    //         bake: bake_asset_actions::<S, T>,
+    //         sample: sample_asset_actions::<S, T>,
+    //     }
+    // }
 
-    pub fn bake(&self, ctx: BakeCtx) {
+    pub fn bake(&self, ctx: BakeCtx<I>) {
         (self.bake)(ctx)
     }
 
-    pub fn sample(&self, ctx: SampleCtx) {
+    pub fn sample(&self, ctx: SampleCtx<I>) {
         (self.sample)(ctx)
     }
 }
 
-#[derive(Resource, Default)]
-pub struct PipelineRegistry {
-    pipelines: HashMap<PipelineKey, Pipeline>,
+#[derive(Resource)]
+pub struct PipelineRegistry<I: SubjectId> {
+    pipelines: HashMap<PipelineKey, Pipeline<I>>,
 }
 
-impl PipelineRegistry {
-    pub const fn new() -> Self {
+// impl<I: SubjectId> PipelineRegistry<I> {
+//     pub const fn new() -> Self {
+//         Self {
+//             pipelines: HashMap::new(),
+//         }
+//     }
+
+//     /// Registers a pipeline for a given component and the
+//     /// target field.
+//     ///
+//     /// Will overwrite existing accessor.
+//     pub fn register_component<S, T>(&mut self) -> PipelineKey
+//     where
+//         S: Component<Mutability = Mutable>,
+//         T: Clone + ThreadSafe,
+//     {
+//         let key = PipelineKey::new::<S, T>();
+
+//         // Prevent registering the same key twice.
+//         if self.pipelines.contains_key(&key) {
+//             return key;
+//         }
+
+//         unsafe {
+//             self.register_unchecked(
+//                 key,
+//                 Pipeline::new_component::<S, T>(),
+//             );
+//         }
+
+//         key
+//     }
+
+//     /// Registers a pipeline for a given asset and the
+//     /// target field.
+//     ///
+//     /// Will overwrite existing accessor.
+//     #[cfg(feature = "asset")]
+//     pub fn register_asset<S, T>(&mut self) -> PipelineKey
+//     where
+//         S: AsAssetId,
+//         T: Clone + ThreadSafe,
+//     {
+//         let key = PipelineKey::new::<S::Asset, T>();
+
+//         // Prevent registering the same key twice.
+//         if self.pipelines.contains_key(&key) {
+//             return key;
+//         }
+
+//         unsafe {
+//             self.register_unchecked(
+//                 key,
+//                 Pipeline::new_asset::<S, T>(),
+//             );
+//         }
+
+//         key
+//     }
+// }
+
+impl<I: SubjectId> PipelineRegistry<I> {
+    pub fn new() -> Self {
         Self {
             pipelines: HashMap::new(),
         }
     }
 
-    /// Registers a pipeline for a given component and the
-    /// target field.
-    ///
-    /// Will overwrite existing accessor.
-    pub fn register_component<S, T>(&mut self) -> PipelineKey
-    where
-        S: Component<Mutability = Mutable>,
-        T: Clone + ThreadSafe,
-    {
-        let key = PipelineKey::new::<S, T>();
-
-        // Prevent registering the same key twice.
-        if self.pipelines.contains_key(&key) {
-            return key;
-        }
-
-        unsafe {
-            self.register_unchecked(
-                key,
-                Pipeline::new_component::<S, T>(),
-            );
-        }
-
-        key
-    }
-
-    /// Registers a pipeline for a given asset and the
-    /// target field.
-    ///
-    /// Will overwrite existing accessor.
-    #[cfg(feature = "asset")]
-    pub fn register_asset<S, T>(&mut self) -> PipelineKey
-    where
-        S: AsAssetId,
-        T: Clone + ThreadSafe,
-    {
-        let key = PipelineKey::new::<S::Asset, T>();
-
-        // Prevent registering the same key twice.
-        if self.pipelines.contains_key(&key) {
-            return key;
-        }
-
-        unsafe {
-            self.register_unchecked(
-                key,
-                Pipeline::new_asset::<S, T>(),
-            );
-        }
-
-        key
-    }
-}
-
-impl PipelineRegistry {
-    pub fn get(&self, key: &PipelineKey) -> Option<&Pipeline> {
+    pub fn get(&self, key: &PipelineKey) -> Option<&Pipeline<I>> {
         self.pipelines.get(key)
     }
 
@@ -186,28 +193,30 @@ impl PipelineRegistry {
     pub unsafe fn register_unchecked(
         &mut self,
         key: PipelineKey,
-        pipeline: Pipeline,
+        pipeline: Pipeline<I>,
     ) -> &mut Self {
         self.pipelines.insert(key, pipeline);
         self
     }
 }
 
-pub struct BakeCtx<'a> {
-    pub track: &'a Track,
-    pub action_world: &'a mut ActionWorld,
+impl<I: SubjectId> Default for PipelineRegistry<I> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub struct BakeCtx<'a, I: SubjectId> {
+    pub track: &'a Track<I>,
+    pub action_world: &'a mut ActionWorld<I>,
     pub target_world: &'a World,
     pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
-impl<'a> BakeCtx<'a> {
+impl<'a, I: SubjectId> BakeCtx<'a, I> {
     pub fn bake<S, T>(
         self,
-        get_target: impl Fn(
-            Entity,
-            &'a World,
-            Accessor<S, T>,
-        ) -> Option<&'a T>,
+        get_target: impl Fn(I, &'a World, Accessor<S, T>) -> Option<&'a T>,
     ) where
         S: 'static,
         T: Clone + ThreadSafe,
@@ -219,15 +228,11 @@ impl<'a> BakeCtx<'a> {
                 continue;
             };
 
-            let target_entity = key.target.0;
-
             // Get the target value from the target world.
-            let Some(mut start) = get_target(
-                target_entity,
-                self.target_world,
-                accessor,
-            )
-            .cloned() else {
+            let Some(mut start) =
+                get_target(key.target, self.target_world, accessor)
+                    .cloned()
+            else {
                 continue;
             };
 
@@ -251,52 +256,52 @@ impl<'a> BakeCtx<'a> {
     }
 }
 
-pub fn bake_component_actions<S, T>(ctx: BakeCtx)
-where
-    S: Component,
-    T: Clone + ThreadSafe,
-{
-    ctx.bake::<S, T>(|target_entity, target_world, accessor| {
-        target_world
-            .get::<S>(target_entity)
-            .map(|s| (accessor.ref_fn)(s))
-    });
-}
+// pub fn bake_component_actions<S, T>(ctx: BakeCtx)
+// where
+//     S: Component,
+//     T: Clone + ThreadSafe,
+// {
+//     ctx.bake::<S, T>(|target_entity, target_world, accessor| {
+//         target_world
+//             .get::<S>(target_entity)
+//             .map(|s| (accessor.ref_fn)(s))
+//     });
+// }
 
-#[cfg(feature = "asset")]
-pub fn bake_asset_actions<S, T>(ctx: BakeCtx)
-where
-    S: AsAssetId,
-    T: Clone + ThreadSafe,
-{
-    let Some(assets) =
-        ctx.target_world.get_resource::<Assets<S::Asset>>()
-    else {
-        return;
-    };
+// #[cfg(feature = "asset")]
+// pub fn bake_asset_actions<S, T>(ctx: BakeCtx)
+// where
+//     S: AsAssetId,
+//     T: Clone + ThreadSafe,
+// {
+//     let Some(assets) =
+//         ctx.target_world.get_resource::<Assets<S::Asset>>()
+//     else {
+//         return;
+//     };
 
-    ctx.bake::<S::Asset, T>(
-        |target_entity, target_world, accessor| {
-            target_world
-                .get::<S>(target_entity)
-                .and_then(|s| assets.get(s.as_asset_id()))
-                .map(|s| (accessor.ref_fn)(s))
-        },
-    );
-}
+//     ctx.bake::<S::Asset, T>(
+//         |target_entity, target_world, accessor| {
+//             target_world
+//                 .get::<S>(target_entity)
+//                 .and_then(|s| assets.get(s.as_asset_id()))
+//                 .map(|s| (accessor.ref_fn)(s))
+//         },
+//     );
+// }
 
-pub struct SampleCtx<'a> {
-    pub action_world: &'a ActionWorld,
+pub struct SampleCtx<'a, I: SubjectId> {
+    pub action_world: &'a ActionWorld<I>,
     pub target_world: &'a mut World,
     pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
-impl<'a> SampleCtx<'a> {
+impl<'a, I: SubjectId> SampleCtx<'a, I> {
     pub fn sample<S, T>(
         mut self,
         set_target: impl Fn(
             T,
-            Entity,
+            I,
             &'a mut World,
             Accessor<S, T>,
         ) -> &'a mut World,
@@ -305,7 +310,7 @@ impl<'a> SampleCtx<'a> {
         T: Clone + ThreadSafe,
     {
         let Some(mut q) = self.action_world.world().try_query::<(
-            &ActionKey,
+            &ActionKey<I>,
             &SampleMode,
             &Segment<T>,
             &InterpStorage<T>,
@@ -336,11 +341,9 @@ impl<'a> SampleCtx<'a> {
                 }
             };
 
-            let target_entity = key.target.0;
-
             self.target_world = set_target(
                 target,
-                target_entity,
+                key.target,
                 self.target_world,
                 accessor,
             );
@@ -348,56 +351,56 @@ impl<'a> SampleCtx<'a> {
     }
 }
 
-pub fn sample_component_actions<S, T>(ctx: SampleCtx)
-where
-    S: Component<Mutability = Mutable>,
-    T: Clone + ThreadSafe,
-{
-    ctx.sample::<S, T>(
-        |target, target_entity, target_world, accessor| {
-            if let Some(mut source) =
-                target_world.get_mut::<S>(target_entity)
-            {
-                *(accessor.mut_fn)(&mut source) = target;
-            }
+// pub fn sample_component_actions<S, T>(ctx: SampleCtx)
+// where
+//     S: Component<Mutability = Mutable>,
+//     T: Clone + ThreadSafe,
+// {
+//     ctx.sample::<S, T>(
+//         |target, target_entity, target_world, accessor| {
+//             if let Some(mut source) =
+//                 target_world.get_mut::<S>(target_entity)
+//             {
+//                 *(accessor.mut_fn)(&mut source) = target;
+//             }
 
-            target_world
-        },
-    );
-}
+//             target_world
+//         },
+//     );
+// }
 
-#[cfg(feature = "asset")]
-pub fn sample_asset_actions<S, T>(ctx: SampleCtx)
-where
-    S: AsAssetId,
-    T: Clone + ThreadSafe,
-{
-    ctx.sample::<S::Asset, T>(
-        |target, target_entity, target_world, accessor| {
-            // Get asset id.
-            let Some(id) = target_world
-                .get::<S>(target_entity)
-                .map(|c| c.as_asset_id())
-            else {
-                return target_world;
-            };
+// #[cfg(feature = "asset")]
+// pub fn sample_asset_actions<S, T>(ctx: SampleCtx)
+// where
+//     S: AsAssetId,
+//     T: Clone + ThreadSafe,
+// {
+//     ctx.sample::<S::Asset, T>(
+//         |target, target_entity, target_world, accessor| {
+//             // Get asset id.
+//             let Some(id) = target_world
+//                 .get::<S>(target_entity)
+//                 .map(|c| c.as_asset_id())
+//             else {
+//                 return target_world;
+//             };
 
-            // Get assets resource.
-            let Some(mut assets) =
-                target_world.get_resource_mut::<Assets<S::Asset>>()
-            else {
-                return target_world;
-            };
+//             // Get assets resource.
+//             let Some(mut assets) =
+//                 target_world.get_resource_mut::<Assets<S::Asset>>()
+//             else {
+//                 return target_world;
+//             };
 
-            // Writes target value.
-            if let Some(source) = assets.get_mut(id) {
-                *(accessor.mut_fn)(source) = target;
-            }
+//             // Writes target value.
+//             if let Some(source) = assets.get_mut(id) {
+//                 *(accessor.mut_fn)(source) = target;
+//             }
 
-            target_world
-        },
-    );
-}
+//             target_world
+//         },
+//     );
+// }
 
 // TODO: Should we support recursive re-direction?
 

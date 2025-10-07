@@ -1,9 +1,8 @@
 //! The [`SubjectId`] trait represents an identifier for a "subject"
-//! within an animation or timeline system. A subject is the entity,
-//! object, or role that actions are applied to during playback.
-//! This abstraction allows MotionGfx to remain agnostic about what
-//! uniquely identifies a subject across different worlds or
-//! backends.
+//! within a timeline system. A subject is the entity, object, or role
+//! that actions are applied to during playback. This abstraction
+//! allows MotionGfx to remain agnostic about what uniquely identifies
+//! a subject across different backends.
 //!
 //! By standardizing on [`SubjectId`], actions can generically
 //! reference and manipulate their intended subjects without assuming
@@ -14,7 +13,10 @@ use core::hash::Hash;
 
 use crate::ThreadSafe;
 
-// TODO: Rename to something else? Like `ActorId`?
+/// An auto trait bound for the identifier of the subject.
+///
+/// The identifier should be thread safe, lightweight, and supports
+/// debug, copy, comparison, and hash.
 pub trait SubjectId:
     ThreadSafe
     + Debug

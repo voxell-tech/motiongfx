@@ -1,46 +1,47 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
-use crate::action::{ActionClip, ActionTarget};
+use crate::action::{ActionClip, ActionKey};
 use crate::field::UntypedField;
 use crate::sequence::Sequence;
+use crate::subject::SubjectId;
 
-pub trait TrackOrdering {
+pub trait TrackOrdering<I: SubjectId> {
     /// Run all [`TrackFragment`]s one after another.
-    fn ord_chain(self) -> TrackFragment;
-    fn ord_all(self) -> TrackFragment;
-    fn ord_any(self) -> TrackFragment;
-    fn ord_flow(self, delay: f32) -> TrackFragment;
+    fn ord_chain(self) -> TrackFragment<I>;
+    fn ord_all(self) -> TrackFragment<I>;
+    fn ord_any(self) -> TrackFragment<I>;
+    fn ord_flow(self, delay: f32) -> TrackFragment<I>;
 }
 
-impl<T> TrackOrdering for T
+impl<T, I> TrackOrdering<I> for T
 where
-    T: IntoIterator<Item = TrackFragment>,
+    T: IntoIterator<Item = TrackFragment<I>>,
+    I: SubjectId,
 {
-    fn ord_chain(self) -> TrackFragment {
+    fn ord_chain(self) -> TrackFragment<I> {
         chain(self)
     }
 
-    fn ord_all(self) -> TrackFragment {
+    fn ord_all(self) -> TrackFragment<I> {
         all(self)
     }
 
-    fn ord_any(self) -> TrackFragment {
+    fn ord_any(self) -> TrackFragment<I> {
         any(self)
     }
 
-    fn ord_flow(self, delay: f32) -> TrackFragment {
+    fn ord_flow(self, delay: f32) -> TrackFragment<I> {
         flow(delay, self)
     }
 }
 
 /// Run all [`TrackFragment`]s one after another.
 #[must_use = "This function consumes all the given tracks and returns a modified one."]
-pub fn chain(
-    tracks: impl IntoIterator<Item = TrackFragment>,
-) -> TrackFragment {
+pub fn chain<I: SubjectId>(
+    tracks: impl IntoIterator<Item = TrackFragment<I>>,
+) -> TrackFragment<I> {
     let mut tracks_iter = tracks.into_iter();
     let mut track = tracks_iter.next().unwrap_or_default();
 
@@ -62,9 +63,9 @@ pub fn chain(
 
 /// Run all [`Track`]s concurrently and wait for all of them to finish.
 #[must_use = "This function consumes all the given tracks and returns a modified one."]
-pub fn all(
-    tracks: impl IntoIterator<Item = TrackFragment>,
-) -> TrackFragment {
+pub fn all<I: SubjectId>(
+    tracks: impl IntoIterator<Item = TrackFragment<I>>,
+) -> TrackFragment<I> {
     let mut tracks_iter = tracks.into_iter();
     let mut track = tracks_iter.next().unwrap_or_default();
 
@@ -84,9 +85,9 @@ pub fn all(
 
 /// Run all [`Track`]s concurrently and wait for any of them to finish.
 #[must_use = "This function consumes all the given tracks and returns a modified one."]
-pub fn any(
-    tracks: impl IntoIterator<Item = TrackFragment>,
-) -> TrackFragment {
+pub fn any<I: SubjectId>(
+    tracks: impl IntoIterator<Item = TrackFragment<I>>,
+) -> TrackFragment<I> {
     let mut tracks_iter = tracks.into_iter();
     let mut track = tracks_iter.next().unwrap_or_default();
 
@@ -106,10 +107,10 @@ pub fn any(
 
 /// Run one [`Track`] after another with a fixed delay time.
 #[must_use = "This function consumes all the given tracks and returns a modified one."]
-pub fn flow(
+pub fn flow<I: SubjectId>(
     delay: f32,
-    tracks: impl IntoIterator<Item = TrackFragment>,
-) -> TrackFragment {
+    tracks: impl IntoIterator<Item = TrackFragment<I>>,
+) -> TrackFragment<I> {
     let mut tracks_iter = tracks.into_iter();
     let mut track = tracks_iter.next().unwrap_or_default();
 
@@ -133,7 +134,10 @@ pub fn flow(
 
 /// Run a [`Track`] after a fixed delay time.
 #[must_use = "This function consumes the given track and returns a modified one."]
-pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
+pub fn delay<I: SubjectId>(
+    delay: f32,
+    mut track: TrackFragment<I>,
+) -> TrackFragment<I> {
     for sequence in track.sequences.values_mut() {
         sequence.delay(delay);
     }
@@ -141,46 +145,58 @@ pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
     track
 }
 
-/// Key that uniquely identifies a sequence of non-overlapping
-/// actions.
-#[derive(
-    Component,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-)]
-#[component(immutable)]
-pub struct ActionKey {
-    /// The target entity of the action.
-    pub target: ActionTarget,
-    /// The source and target field related to the entity.
-    pub field: UntypedField,
-}
-
-#[derive(Default)]
-pub struct TrackFragment {
-    sequences: HashMap<ActionKey, Sequence>,
+pub struct TrackFragment<I: SubjectId> {
+    sequences: HashMap<ActionKey<I>, Sequence>,
     duration: f32,
 }
 
-impl TrackFragment {
+impl<I: SubjectId> TrackFragment<I> {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            sequences: HashMap::new(),
+            duration: 0.0,
+        }
     }
 
-    pub fn single(key: ActionKey, clip: ActionClip) -> Self {
+    pub fn single(key: ActionKey<I>, clip: ActionClip) -> Self {
         Self {
             duration: clip.duration,
             sequences: [(key, Sequence::new(clip))].into(),
         }
     }
 
-    pub fn compile(self) -> Track {
+    /// Updates or inserts a [`Sequence`] in a track.
+    ///
+    /// If the [`ActionKey`] already exists, this method appends the
+    /// clips of the `new_sequence` to the existing sequence.
+    /// If the [`ActionKey`] does not exist, a new entry is created
+    /// for the `new_sequence`.
+    ///
+    /// This method consumes `self` and returns a modified instance,
+    /// following a builder pattern.
+    ///
+    /// # Parameters
+    ///
+    /// * `key`: The unique identifier for the track.
+    /// * `new_sequence`: The sequence to be added or extended.
+    pub fn upsert_sequence(
+        mut self,
+        key: ActionKey<I>,
+        new_sequence: Sequence,
+    ) -> Self {
+        match self.sequences.get_mut(&key) {
+            Some(sequence) => {
+                sequence.extend(new_sequence);
+            }
+            None => {
+                self.sequences.insert(key, new_sequence);
+            }
+        }
+
+        self
+    }
+
+    pub fn compile(self) -> Track<I> {
         let mut sequences =
             self.sequences.into_iter().collect::<Vec<_>>();
         sequences.sort_by_key(|(key, _)| key.field);
@@ -242,36 +258,9 @@ impl TrackFragment {
     }
 }
 
-impl TrackFragment {
-    /// Updates or inserts a [`Sequence`] in a track.
-    ///
-    /// If the [`ActionKey`] already exists, this method appends the
-    /// clips of the `new_sequence` to the existing sequence.
-    /// If the [`ActionKey`] does not exist, a new entry is created
-    /// for the `new_sequence`.
-    ///
-    /// This method consumes `self` and returns a modified instance,
-    /// following a builder pattern.
-    ///
-    /// # Parameters
-    ///
-    /// * `key`: The unique identifier for the track.
-    /// * `new_sequence`: The sequence to be added or extended.
-    pub fn upsert_sequence(
-        mut self,
-        key: ActionKey,
-        new_sequence: Sequence,
-    ) -> Self {
-        match self.sequences.get_mut(&key) {
-            Some(sequence) => {
-                sequence.extend(new_sequence);
-            }
-            None => {
-                self.sequences.insert(key, new_sequence);
-            }
-        }
-
-        self
+impl<I: SubjectId> Default for TrackFragment<I> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -281,7 +270,7 @@ impl TrackFragment {
 /// A `Track` is created from a [`TrackFragment`] and provides an
 /// immutable, space-efficient layout. [`ActionClip`]s are stored
 /// in a flat array with spans for quick access.
-pub struct Track {
+pub struct Track<I: SubjectId> {
     // TODO: Use this to optimized baking/sampling? (There are no
     // use case for the lookups atm!)
     /// Lookup from each field to the range of actions affecting it.
@@ -294,7 +283,7 @@ pub struct Track {
     ///
     /// Each entry holds an [`ActionKey`] and a [`Span`] into
     /// `clip_arena`.
-    sequence_spans: Box<[(ActionKey, Span)]>,
+    sequence_spans: Box<[(ActionKey<I>, Span)]>,
 
     /// Contiguous storage of all action clips.
     clip_arena: Box<[ActionClip]>,
@@ -303,11 +292,11 @@ pub struct Track {
     duration: f32,
 }
 
-impl Track {
+impl<I: SubjectId> Track<I> {
     pub fn lookup_field_spans(
         &self,
         field: impl Into<UntypedField>,
-    ) -> Option<&[(ActionKey, Span)]> {
+    ) -> Option<&[(ActionKey<I>, Span)]> {
         let index = self
             .field_lookups
             .binary_search_by_key(&field.into(), |(f, _)| *f)
@@ -326,7 +315,7 @@ impl Track {
     }
 
     #[inline]
-    pub fn sequences_spans(&self) -> &[(ActionKey, Span)] {
+    pub fn sequences_spans(&self) -> &[(ActionKey<I>, Span)] {
         &self.sequence_spans
     }
 
@@ -341,7 +330,7 @@ impl Track {
     }
 }
 
-impl IntoIterator for Track {
+impl<I: SubjectId> IntoIterator for Track<I> {
     type Item = Self;
 
     type IntoIter = core::array::IntoIter<Self::Item, 1>;
@@ -359,11 +348,13 @@ pub struct Span {
 
 #[cfg(test)]
 mod tests {
+    use bevy_ecs::entity::Entity;
+
     use crate::action::ActionId;
 
     use super::*;
 
-    fn key(path: &'static str) -> ActionKey {
+    fn key(path: &'static str) -> ActionKey<Entity> {
         ActionKey {
             target: Entity::PLACEHOLDER.into(),
             field: UntypedField::placeholder_with_path(path),
@@ -385,15 +376,15 @@ mod tests {
         let field_u32_b = UntypedField::placeholder_with_path("b");
 
         let k1 = ActionKey {
-            target: entity1.into(),
+            target: entity1,
             field: field_u32_a,
         };
         let k2 = ActionKey {
-            target: entity2.into(),
+            target: entity2,
             field: field_u32_a,
         };
         let k3 = ActionKey {
-            target: entity1.into(),
+            target: entity1,
             field: field_u32_b,
         };
 

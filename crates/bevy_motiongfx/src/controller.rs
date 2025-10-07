@@ -1,8 +1,8 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_time::prelude::*;
-use motiongfx::prelude::*;
 
+use crate::alias::Timeline;
 use crate::MotionGfxSet;
 
 pub struct ControllerPlugin;
