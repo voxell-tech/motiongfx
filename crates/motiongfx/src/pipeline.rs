@@ -1,8 +1,5 @@
 use core::any::TypeId;
 
-// #[cfg(feature = "asset")]
-// use bevy_asset::{AsAssetId, Assets};
-// use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
@@ -22,7 +19,6 @@ TODO: Convert Pipeline to be independant of Bevy's `World` as the
 
 As such:
 - `target_world` in Pipeline should be a trait/generic reference.
-- `TargetAction` should be a generic in the entire ecosystem. (Done)
 - `BakeCtx`/`SampleCtx` should only take in `target_world` with trait
   functions for getting the accessor or pipelines..?
 
@@ -89,67 +85,6 @@ impl Pipeline {
 pub struct PipelineRegistry {
     pipelines: HashMap<PipelineKey, Pipeline>,
 }
-
-// impl<I: SubjectId> PipelineRegistry<I> {
-//     pub const fn new() -> Self {
-//         Self {
-//             pipelines: HashMap::new(),
-//         }
-//     }
-
-//     /// Registers a pipeline for a given component and the
-//     /// target field.
-//     ///
-//     /// Will overwrite existing accessor.
-//     pub fn register_component<S, T>(&mut self) -> PipelineKey
-//     where
-//         S: Component<Mutability = Mutable>,
-//         T: Clone + ThreadSafe,
-//     {
-//         let key = PipelineKey::new::<S, T>();
-
-//         // Prevent registering the same key twice.
-//         if self.pipelines.contains_key(&key) {
-//             return key;
-//         }
-
-//         unsafe {
-//             self.register_unchecked(
-//                 key,
-//                 Pipeline::new_component::<S, T>(),
-//             );
-//         }
-
-//         key
-//     }
-
-//     /// Registers a pipeline for a given asset and the
-//     /// target field.
-//     ///
-//     /// Will overwrite existing accessor.
-//     #[cfg(feature = "asset")]
-//     pub fn register_asset<S, T>(&mut self) -> PipelineKey
-//     where
-//         S: AsAssetId,
-//         T: Clone + ThreadSafe,
-//     {
-//         let key = PipelineKey::new::<S::Asset, T>();
-
-//         // Prevent registering the same key twice.
-//         if self.pipelines.contains_key(&key) {
-//             return key;
-//         }
-
-//         unsafe {
-//             self.register_unchecked(
-//                 key,
-//                 Pipeline::new_asset::<S, T>(),
-//             );
-//         }
-
-//         key
-//     }
-// }
 
 impl PipelineRegistry {
     pub fn new() -> Self {
@@ -307,65 +242,6 @@ impl<'a> SampleCtx<'a> {
         }
     }
 }
-
-// pub fn sample_component_actions<S, T>(ctx: SampleCtx)
-// where
-//     S: Component<Mutability = Mutable>,
-//     T: Clone + ThreadSafe,
-// {
-//     ctx.sample::<S, T>(
-//         |target, target_entity, target_world, accessor| {
-//             if let Some(mut source) =
-//                 target_world.get_mut::<S>(target_entity)
-//             {
-//                 *(accessor.mut_fn)(&mut source) = target;
-//             }
-
-//             target_world
-//         },
-//     );
-// }
-
-// #[cfg(feature = "asset")]
-// pub fn sample_asset_actions<S, T>(ctx: SampleCtx)
-// where
-//     S: AsAssetId,
-//     T: Clone + ThreadSafe,
-// {
-//     ctx.sample::<S::Asset, T>(
-//         |target, target_entity, target_world, accessor| {
-//             // Get asset id.
-//             let Some(id) = target_world
-//                 .get::<S>(target_entity)
-//                 .map(|c| c.as_asset_id())
-//             else {
-//                 return target_world;
-//             };
-
-//             // Get assets resource.
-//             let Some(mut assets) =
-//                 target_world.get_resource_mut::<Assets<S::Asset>>()
-//             else {
-//                 return target_world;
-//             };
-
-//             // Writes target value.
-//             if let Some(source) = assets.get_mut(id) {
-//                 *(accessor.mut_fn)(source) = target;
-//             }
-
-//             target_world
-//         },
-//     );
-// }
-
-// TODO: Should we support recursive re-direction?
-
-// /// A re-direction from an entity to another when dealing with
-// /// action baking/sampling. The user is responsible for the
-// /// existance of the referenced entity.
-// #[derive(Component)]
-// pub struct TargetRef(pub Entity);
 
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub struct Range {
