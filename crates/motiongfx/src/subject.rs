@@ -18,27 +18,11 @@ use crate::ThreadSafe;
 /// The identifier should be thread safe, lightweight, and supports
 /// debug, copy, comparison, and hash.
 pub trait SubjectId:
-    ThreadSafe
-    + Debug
-    + Copy
-    + Clone
-    + PartialEq
-    + Eq
-    + PartialOrd
-    + Ord
-    + Hash
+    ThreadSafe + Debug + Copy + Clone + Eq + Ord + Hash
 {
 }
 
 impl<T> SubjectId for T where
-    T: ThreadSafe
-        + Debug
-        + Copy
-        + Clone
-        + PartialEq
-        + Eq
-        + PartialOrd
-        + Ord
-        + Hash
+    T: ThreadSafe + Debug + Copy + Clone + Eq + Ord + Hash
 {
 }

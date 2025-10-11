@@ -1,19 +1,16 @@
-use bevy_ecs::entity::Entity;
 use bevy_math::*;
-use motiongfx::action::Action;
-use motiongfx::field::Field;
-use motiongfx::ThreadSafe;
-
-use crate::alias::{InterpActionBuilder, TimelineBuilder};
+use motiongfx::prelude::*;
+use motiongfx::subject::SubjectId;
 
 pub trait ActionInterpTimelineExt {
-    fn act_interp<S, T>(
+    fn act_interp<I, S, T>(
         &mut self,
-        target: Entity,
+        target: I,
         field: Field<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
+        I: SubjectId,
         S: 'static,
         T: Interpolation + ThreadSafe;
 }
@@ -21,13 +18,14 @@ pub trait ActionInterpTimelineExt {
 impl ActionInterpTimelineExt for TimelineBuilder {
     /// Add an [`Action`] with interpolation using
     /// [`Interpolation::interp`].
-    fn act_interp<S, T>(
+    fn act_interp<I, S, T>(
         &mut self,
-        target: Entity,
+        target: I,
         field: Field<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
+        I: SubjectId,
         S: 'static,
         T: Interpolation + ThreadSafe,
     {

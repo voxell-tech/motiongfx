@@ -1,43 +1,236 @@
+use core::any::TypeId;
 use core::marker::PhantomData;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::prelude::*;
+use bevy_ecs::world::DeferredWorld;
+use bevy_platform::collections::HashMap;
 
 use crate::field::UntypedField;
 use crate::subject::SubjectId;
 use crate::track::TrackFragment;
 use crate::ThreadSafe;
 
-#[allow(clippy::type_complexity)]
-#[derive(Default)]
-pub struct ActionWorld<I: SubjectId> {
-    world: World,
-    _marker: PhantomData<I>,
+/// A type-erased unique Id in the [`IdRegistry`].
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+pub struct UId(u64);
+
+/// A type-erased [`UId`] map and generator for each unique
+/// [`SubjectId`]s. It also performs book keeping for all id instances
+/// and remove them when there is none left.
+#[derive(Resource)]
+pub struct IdRegistry<I: SubjectId> {
+    /// Maps `SubjectId`s to [`UId`]s .
+    uid_map: HashMap<I, UId>,
+    /// Maps [`UId`]s to `SubjectId`s.
+    id_map: HashMap<UId, I>,
+    /// The number of instances using the same [`UId`].
+    instance_counts: HashMap<UId, u32>,
+    /// The next [`UId`], incremented on every new [`UId`] created.
+    next_uid: UId,
 }
 
-impl<I: SubjectId> ActionWorld<I> {
+impl<I: SubjectId> IdRegistry<I> {
     pub fn new() -> Self {
         Self {
-            world: World::new(),
-            _marker: PhantomData,
+            uid_map: HashMap::new(),
+            id_map: HashMap::new(),
+            instance_counts: HashMap::new(),
+            next_uid: UId(0),
         }
     }
 
-    pub fn add<T>(
+    /// Registers the [`SubjectId`] with an intial instance count of 1
+    /// if it doesn't exist yet, otherwise, increase the existing
+    /// instance count.
+    ///
+    /// Returns the [`UId`] of the associated [`SubjectId`].
+    pub fn register_instance(&mut self, id: I) -> UId {
+        let uid = *self.uid_map.entry(id).or_insert_with(|| {
+            self.next_uid.0 += 1;
+            self.id_map.insert(self.next_uid, id);
+            self.instance_counts.insert(self.next_uid, 1);
+            self.next_uid
+        });
+
+        // SAFETY: `uid_counts` is added for every new UId!
+        *self.instance_counts.get_mut(&uid).unwrap() += 1;
+
+        uid
+    }
+
+    /// Reduce the instance count of a [`SubjectId`] associated with
+    /// the provided [`UId`]. When the instance count reaches 0, the
+    /// entire registry will be erased.
+    ///
+    /// Returns `true` if the instance is being successfully removed,
+    /// `false` if the registry doesn't exist in the first place.
+    pub fn remove_instance(&mut self, uid: &UId) -> bool {
+        let Some(count) = self.instance_counts.get_mut(uid) else {
+            return false;
+        };
+
+        *count -= 1;
+
+        // Remove the underlying data when it's the last instance.
+        if *count == 0 {
+            let id = self.id_map.get(uid).unwrap();
+            self.uid_map.remove(id);
+            self.id_map.remove(uid);
+            self.instance_counts.remove(uid);
+        }
+
+        true
+    }
+
+    /// Checks if the registry is empty.
+    pub fn is_empty(&self) -> bool {
+        self.uid_map.is_empty()
+    }
+
+    pub fn get_uid(&self, id: &I) -> Option<&UId> {
+        self.uid_map.get(id)
+    }
+
+    pub fn get_id(&self, uid: &UId) -> Option<&I> {
+        self.id_map.get(uid)
+    }
+}
+
+impl<I: SubjectId> Default for IdRegistry<I> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+pub struct UntypedSubjectId {
+    pub type_id: TypeId,
+    pub uid: UId,
+}
+
+impl UntypedSubjectId {
+    pub fn placeholder() -> Self {
+        Self::placeholder_with_u64(0)
+    }
+
+    pub fn placeholder_with_u64(id: u64) -> Self {
+        Self {
+            type_id: TypeId::of::<()>(),
+            uid: UId(id),
+        }
+    }
+
+    pub fn new<I: SubjectId>(uid: UId) -> Self {
+        Self {
+            type_id: TypeId::of::<I>(),
+            uid,
+        }
+    }
+}
+
+/// Key that uniquely identifies a sequence of non-overlapping
+/// actions.
+#[derive(
+    Component,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+)]
+#[component(immutable)]
+pub struct ActionKey {
+    /// The subject Id of the action.
+    pub subject_id: UntypedSubjectId,
+    /// The source and target field related to the subject.
+    pub field: UntypedField,
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+#[component(immutable, on_remove = on_remove_id_type::<I>)]
+pub struct IdType<I: SubjectId>(PhantomData<I>);
+
+impl<I: SubjectId> IdType<I> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<I: SubjectId> Default for IdType<I> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Remove an instance of the target [`SubjectId`] when an action
+/// entity is being despawned.
+fn on_remove_id_type<I: SubjectId>(
+    mut world: DeferredWorld<'_>,
+    ctx: HookContext,
+) {
+    let uid = world
+        .entity(ctx.entity)
+        .get::<ActionKey>()
+        .expect("Should have an `ActionKey`!")
+        .subject_id
+        .uid;
+
+    let mut registry = world.resource_mut::<IdRegistry<I>>();
+    registry.remove_instance(&uid);
+
+    if registry.is_empty() {
+        world.commands().remove_resource::<IdRegistry<I>>();
+    }
+}
+
+#[derive(Default)]
+pub struct ActionWorld {
+    world: World,
+}
+
+impl ActionWorld {
+    pub fn new() -> Self {
+        Self {
+            world: World::new(),
+        }
+    }
+
+    pub fn add<I, T>(
         &mut self,
         target: I,
         field: impl Into<UntypedField>,
         action: impl Action<T>,
-    ) -> ActionBuilder<'_, I, T>
+    ) -> ActionBuilder<'_, T>
     where
+        I: SubjectId,
         T: ThreadSafe,
     {
         let field = field.into();
 
-        let key = ActionKey { target, field };
-        let world =
-            self.world.spawn((key, ActionStorage::new(action)));
+        let uid = self
+            .world
+            .get_resource_or_insert_with(|| IdRegistry::new())
+            .register_instance(target);
+
+        let key = ActionKey {
+            subject_id: UntypedSubjectId::new::<I>(uid),
+            field,
+        };
+        let world = self.world.spawn((
+            key,
+            IdType::<I>::new(),
+            ActionStorage::new(action),
+        ));
 
         ActionBuilder {
             world,
@@ -46,32 +239,39 @@ impl<I: SubjectId> ActionWorld<I> {
         }
     }
 
-    pub fn remove(&mut self, id: ActionId) -> Option<ActionKey<I>> {
+    pub fn remove(&mut self, id: ActionId) -> Option<ActionKey> {
         let entity = id.entity();
 
         let key = *self
             .world
             .get_entity(entity)
             .ok()?
-            .get::<ActionKey<I>>()
+            .get::<ActionKey>()
             .expect("All actions should have an `ActionKey`!");
 
         self.world.despawn(id.entity());
+        // Apply associated commands from hooks and observer when
+        // despawning.
+        self.world.flush();
 
         Some(key)
     }
 
-    pub fn get<T>(&self, id: ActionId) -> Option<&impl Action<T>>
-    where
-        T: ThreadSafe,
-    {
+    pub fn get_action<T: ThreadSafe>(
+        &self,
+        id: ActionId,
+    ) -> Option<&impl Action<T>> {
         self.world
             .get::<ActionStorage<T>>(id.entity())
             .map(|a| &a.action)
     }
+
+    pub fn get_id<I: SubjectId>(&self, uid: &UId) -> Option<&I> {
+        self.world.get_resource::<IdRegistry<I>>()?.get_id(uid)
+    }
 }
 
-impl<I: SubjectId> ActionWorld<I> {
+impl ActionWorld {
     /// Returns a immutable reference to the underlying world.
     pub(crate) fn world(&self) -> &World {
         &self.world
@@ -141,37 +341,30 @@ impl ActionCommand<'_> {
     }
 }
 
-pub struct ActionBuilder<'w, I, T>
-where
-    I: SubjectId,
-{
+pub struct ActionBuilder<'w, T> {
     world: EntityWorldMut<'w>,
-    key: ActionKey<I>,
+    key: ActionKey,
     _phantom: PhantomData<T>,
 }
 
 /// A builder struct to insert an interpolation method for the action
 /// before compiling into an [`InterpActionBuilder`].
-impl<I, T> ActionBuilder<'_, I, T>
-where
-    I: SubjectId,
-{
+impl<T> ActionBuilder<'_, T> {
     /// Get the [`ActionId`] of the containing action.
     pub fn id(&self) -> ActionId {
         ActionId::new(self.world.id())
     }
 }
 
-impl<'w, I, T> ActionBuilder<'w, I, T>
+impl<'w, T> ActionBuilder<'w, T>
 where
-    I: SubjectId,
     T: 'static,
 {
     /// Set the interpolation method of the action.
     pub fn with_interp(
         mut self,
         interp: InterpFn<T>,
-    ) -> InterpActionBuilder<'w, I, T> {
+    ) -> InterpActionBuilder<'w, T> {
         self.world.insert(InterpStorage(interp));
         InterpActionBuilder { inner: self }
     }
@@ -180,17 +373,11 @@ where
 /// An action builder that has interpolation added. This builder
 /// exposes more customizations for the action and allows it to be
 /// compiled into a [`TrackFragment`].
-pub struct InterpActionBuilder<'w, I, T>
-where
-    I: SubjectId,
-{
-    inner: ActionBuilder<'w, I, T>,
+pub struct InterpActionBuilder<'w, T> {
+    inner: ActionBuilder<'w, T>,
 }
 
-impl<I, T> InterpActionBuilder<'_, I, T>
-where
-    I: SubjectId,
-{
+impl<T> InterpActionBuilder<'_, T> {
     /// Set the easing method of the action.
     pub fn with_ease(mut self, ease: EaseFn) -> Self {
         self.inner.world.insert(EaseStorage(ease));
@@ -204,7 +391,7 @@ where
 
     /// Confirms the configuration of the action and creates a
     /// [`TrackFragment`].
-    pub fn play(self, duration: f32) -> TrackFragment<I> {
+    pub fn play(self, duration: f32) -> TrackFragment {
         TrackFragment::single(
             self.inner.key,
             ActionClip::new(self.id(), duration),
@@ -227,27 +414,6 @@ impl ActionId {
     pub(crate) fn entity(&self) -> Entity {
         self.0
     }
-}
-
-/// Key that uniquely identifies a sequence of non-overlapping
-/// actions.
-#[derive(
-    Component,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-)]
-#[component(immutable)]
-pub struct ActionKey<I: SubjectId> {
-    /// The target entity of the action.
-    pub target: I,
-    /// The source and target field related to the entity.
-    pub field: UntypedField,
 }
 
 /// An action trait which consists of a function for getting

@@ -20,15 +20,15 @@ use crate::track::Track;
 use crate::ThreadSafe;
 
 #[derive(Component)]
-pub struct Timeline<I: SubjectId> {
-    action_world: ActionWorld<I>,
+pub struct Timeline {
+    action_world: ActionWorld,
     pipeline_counts: Box<[(PipelineKey, u32)]>,
-    tracks: Box<[Track<I>]>,
+    tracks: Box<[Track]>,
     /// Cached actions that are queued to be sampled.
     ///
     /// This cache will be cleared everytime [`Timeline::queue_actions`]
     /// is called.
-    queue_cahce: QueueCache<I>,
+    queue_cahce: QueueCache,
     /// The current time of the current track.
     curr_time: f32,
     /// The target time of the target track.
@@ -39,10 +39,10 @@ pub struct Timeline<I: SubjectId> {
     target_index: usize,
 }
 
-impl<I: SubjectId> Timeline<I> {
+impl Timeline {
     pub fn bake_actions(
         &mut self,
-        pipeline_registry: &PipelineRegistry<I>,
+        pipeline_registry: &PipelineRegistry,
         target_world: &World,
         accessor_registry: &FieldAccessorRegistry,
     ) {
@@ -216,7 +216,7 @@ impl<I: SubjectId> Timeline<I> {
 
     pub fn sample_queued_actions(
         &self,
-        pipeline_registry: &PipelineRegistry<I>,
+        pipeline_registry: &PipelineRegistry,
         target_world: &mut World,
         accessor_registry: &FieldAccessorRegistry,
     ) {
@@ -240,7 +240,7 @@ impl<I: SubjectId> Timeline<I> {
 }
 
 // Getter methods.
-impl<I: SubjectId> Timeline<I> {
+impl Timeline {
     /// Returns the current playback time.
     #[inline]
     pub fn curr_time(&self) -> f32 {
@@ -267,13 +267,13 @@ impl<I: SubjectId> Timeline<I> {
 
     /// Returns a reference slice to all tracks.
     #[inline]
-    pub fn tracks(&self) -> &[Track<I>] {
+    pub fn tracks(&self) -> &[Track] {
         &self.tracks
     }
 
     /// Returns a reference the current playing track.
     #[inline]
-    pub fn curr_track(&self) -> &Track<I> {
+    pub fn curr_track(&self) -> &Track {
         &self.tracks[self.curr_index]
     }
 
@@ -292,7 +292,7 @@ impl<I: SubjectId> Timeline<I> {
 }
 
 // Setter methods.
-impl<I: SubjectId> Timeline<I> {
+impl Timeline {
     /// Set the target time of the current track, clamping the value
     /// within \[0.0..=track.duration\]
     pub fn set_target_time(&mut self, target_time: f32) -> &mut Self {
@@ -321,11 +321,11 @@ impl<I: SubjectId> Timeline<I> {
 /// which result in sampling the same target field on the same entity
 /// more than once. This is crucial as the sampling pipeline happens
 /// in an unordered manner.
-pub struct QueueCache<I: SubjectId> {
-    cache: HashMap<ActionKey<I>, ActionId>,
+pub struct QueueCache {
+    cache: HashMap<ActionKey, ActionId>,
 }
 
-impl<I: SubjectId> QueueCache<I> {
+impl QueueCache {
     pub fn new() -> Self {
         Self {
             cache: HashMap::new(),
@@ -341,9 +341,9 @@ impl<I: SubjectId> QueueCache<I> {
     /// it exists.
     pub fn cache(
         &mut self,
-        key: ActionKey<I>,
+        key: ActionKey,
         id: ActionId,
-        action_world: &mut ActionWorld<I>,
+        action_world: &mut ActionWorld,
     ) {
         if let Some(prev_id) = self.cache.insert(key, id) {
             action_world.edit_action(prev_id).clear_mark();
@@ -351,19 +351,19 @@ impl<I: SubjectId> QueueCache<I> {
     }
 }
 
-impl<I: SubjectId> Default for QueueCache<I> {
+impl Default for QueueCache {
     fn default() -> Self {
         Self::new()
     }
 }
 
-pub struct TimelineBuilder<I: SubjectId> {
-    action_world: ActionWorld<I>,
+pub struct TimelineBuilder {
+    action_world: ActionWorld,
     pipeline_counts: HashMap<PipelineKey, u32>,
-    tracks: Vec<Track<I>>,
+    tracks: Vec<Track>,
 }
 
-impl<I: SubjectId> TimelineBuilder<I> {
+impl TimelineBuilder {
     /// Creates an empty timeline builder.
     pub fn new() -> Self {
         Self {
@@ -374,13 +374,14 @@ impl<I: SubjectId> TimelineBuilder<I> {
     }
 
     /// Add an [`Action`] without interpolation.
-    pub fn act<S, T>(
+    pub fn act<I, S, T>(
         &mut self,
         target: I,
         field: Field<S, T>,
         action: impl Action<T>,
-    ) -> ActionBuilder<'_, I, T>
+    ) -> ActionBuilder<'_, T>
     where
+        I: SubjectId,
         S: 'static,
         T: ThreadSafe,
     {
@@ -397,13 +398,14 @@ impl<I: SubjectId> TimelineBuilder<I> {
     }
 
     /// Add an [`Action`] using step interpolation.
-    pub fn act_step<S, T>(
+    pub fn act_step<I, S, T>(
         &mut self,
         target: I,
         field: Field<S, T>,
         action: impl Action<T>,
-    ) -> InterpActionBuilder<'_, I, T>
+    ) -> InterpActionBuilder<'_, T>
     where
+        I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
@@ -446,12 +448,12 @@ impl<I: SubjectId> TimelineBuilder<I> {
     /// Add [`Track`]\(s\) to the timeline.
     pub fn add_tracks(
         &mut self,
-        tracks: impl IntoIterator<Item = Track<I>>,
+        tracks: impl IntoIterator<Item = Track>,
     ) {
         self.tracks.extend(tracks);
     }
 
-    pub fn compile(self) -> Timeline<I> {
+    pub fn compile(self) -> Timeline {
         Timeline {
             action_world: self.action_world,
             pipeline_counts: self
@@ -468,7 +470,7 @@ impl<I: SubjectId> TimelineBuilder<I> {
     }
 }
 
-impl<I: SubjectId> Default for TimelineBuilder<I> {
+impl Default for TimelineBuilder {
     fn default() -> Self {
         Self::new()
     }

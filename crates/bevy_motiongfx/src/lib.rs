@@ -7,20 +7,19 @@
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use motiongfx::accessor::FieldAccessorRegistry;
+use motiongfx::prelude::*;
 
-use crate::alias::PipelineRegistry;
 use crate::controller::ControllerPlugin;
 use crate::pipeline::PipelinePlugin;
 
 pub mod controller;
 pub mod interpolation;
+pub mod pipeline;
 pub mod registry;
 
-mod pipeline;
-
 pub mod prelude {
-    pub use crate::alias::*;
+    pub use motiongfx::prelude::*;
+
     pub use crate::controller::RealtimePlayer;
     pub use crate::interpolation::{
         ActionInterpTimelineExt, Interpolation,
@@ -29,20 +28,7 @@ pub mod prelude {
     pub use crate::registry::FieldPathRegisterAppExt;
 }
 
-pub mod alias {
-    //! Type aliases for Bevy compatible types.
-
-    use bevy_ecs::entity::Entity;
-    use motiongfx::*;
-
-    pub type PipelineRegistry = pipeline::PipelineRegistry<Entity>;
-    pub type Timeline = timeline::Timeline<Entity>;
-    pub type TimelineBuilder = timeline::TimelineBuilder<Entity>;
-    pub type ActionBuilder<'w, T> =
-        action::ActionBuilder<'w, Entity, T>;
-    pub type InterpActionBuilder<'w, T> =
-        action::InterpActionBuilder<'w, Entity, T>;
-}
+pub use motiongfx;
 
 pub struct BevyMotionGfxPlugin;
 
@@ -109,7 +95,7 @@ impl Plugin for BevyMotionGfxPlugin {
             use bevy_pbr::prelude::*;
 
             register_fields!(
-                app.register_asset_field::<MeshMaterial3d<_>>(),
+                app.register_asset_field(),
                 StandardMaterial,
                 (
                     base_color,

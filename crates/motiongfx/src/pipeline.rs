@@ -29,8 +29,8 @@ As such:
 See also https://github.com/voxell-tech/motiongfx/issues/71
 */
 
-pub type BakeFn<I> = fn(BakeCtx<I>);
-pub type SampleFn<I> = fn(SampleCtx<I>);
+pub type BakeFn = fn(BakeCtx);
+pub type SampleFn = fn(SampleCtx);
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord,
@@ -66,47 +66,28 @@ impl From<UntypedField> for PipelineKey {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Pipeline<I: SubjectId> {
-    bake: BakeFn<I>,
-    sample: SampleFn<I>,
+pub struct Pipeline {
+    bake: BakeFn,
+    sample: SampleFn,
 }
 
-impl<I: SubjectId> Pipeline<I> {
-    // pub fn new_component<S, T>() -> Self
-    // where
-    //     S: Component<Mutability = Mutable>,
-    //     T: Clone + ThreadSafe,
-    // {
-    //     Self {
-    //         bake: bake_component_actions::<S, T>,
-    //         sample: sample_component_actions::<S, T>,
-    //     }
-    // }
+impl Pipeline {
+    pub fn new(bake: BakeFn, sample: SampleFn) -> Self {
+        Self { bake, sample }
+    }
 
-    // #[cfg(feature = "asset")]
-    // pub fn new_asset<S, T>() -> Self
-    // where
-    //     S: AsAssetId,
-    //     T: Clone + ThreadSafe,
-    // {
-    //     Self {
-    //         bake: bake_asset_actions::<S, T>,
-    //         sample: sample_asset_actions::<S, T>,
-    //     }
-    // }
-
-    pub fn bake(&self, ctx: BakeCtx<I>) {
+    pub fn bake(&self, ctx: BakeCtx) {
         (self.bake)(ctx)
     }
 
-    pub fn sample(&self, ctx: SampleCtx<I>) {
+    pub fn sample(&self, ctx: SampleCtx) {
         (self.sample)(ctx)
     }
 }
 
 #[derive(Resource)]
-pub struct PipelineRegistry<I: SubjectId> {
-    pipelines: HashMap<PipelineKey, Pipeline<I>>,
+pub struct PipelineRegistry {
+    pipelines: HashMap<PipelineKey, Pipeline>,
 }
 
 // impl<I: SubjectId> PipelineRegistry<I> {
@@ -170,14 +151,14 @@ pub struct PipelineRegistry<I: SubjectId> {
 //     }
 // }
 
-impl<I: SubjectId> PipelineRegistry<I> {
+impl PipelineRegistry {
     pub fn new() -> Self {
         Self {
             pipelines: HashMap::new(),
         }
     }
 
-    pub fn get(&self, key: &PipelineKey) -> Option<&Pipeline<I>> {
+    pub fn get(&self, key: &PipelineKey) -> Option<&Pipeline> {
         self.pipelines.get(key)
     }
 
@@ -185,39 +166,40 @@ impl<I: SubjectId> PipelineRegistry<I> {
     ///
     /// Registering the same key twice will result in a replacement.
     ///
-    /// # Safety
+    /// # Note
     ///
     /// This function assumes that the baker function matches
     /// the field that it points towards. Failure to do so will
     /// result in a useless baker registry.
-    pub unsafe fn register_unchecked(
+    pub fn register_unchecked(
         &mut self,
         key: PipelineKey,
-        pipeline: Pipeline<I>,
+        pipeline: Pipeline,
     ) -> &mut Self {
         self.pipelines.insert(key, pipeline);
         self
     }
 }
 
-impl<I: SubjectId> Default for PipelineRegistry<I> {
+impl Default for PipelineRegistry {
     fn default() -> Self {
         Self::new()
     }
 }
 
-pub struct BakeCtx<'a, I: SubjectId> {
-    pub track: &'a Track<I>,
-    pub action_world: &'a mut ActionWorld<I>,
+pub struct BakeCtx<'a> {
+    pub track: &'a Track,
+    pub action_world: &'a mut ActionWorld,
     pub target_world: &'a World,
     pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
-impl<'a, I: SubjectId> BakeCtx<'a, I> {
-    pub fn bake<S, T>(
+impl<'a> BakeCtx<'a> {
+    pub fn bake<I, S, T>(
         self,
         get_target: impl Fn(I, &'a World, Accessor<S, T>) -> Option<&'a T>,
     ) where
+        I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
@@ -228,16 +210,22 @@ impl<'a, I: SubjectId> BakeCtx<'a, I> {
                 continue;
             };
 
+            let Some(&id) =
+                self.action_world.get_id(&key.subject_id.uid)
+            else {
+                continue;
+            };
+
             // Get the target value from the target world.
             let Some(mut start) =
-                get_target(key.target, self.target_world, accessor)
-                    .cloned()
+                get_target(id, self.target_world, accessor).cloned()
             else {
                 continue;
             };
 
             for ActionClip { id, .. } in self.track.clips(*span) {
-                let Some(action) = self.action_world.get::<T>(*id)
+                let Some(action) =
+                    self.action_world.get_action::<T>(*id)
                 else {
                     continue;
                 };
@@ -256,48 +244,14 @@ impl<'a, I: SubjectId> BakeCtx<'a, I> {
     }
 }
 
-// pub fn bake_component_actions<S, T>(ctx: BakeCtx)
-// where
-//     S: Component,
-//     T: Clone + ThreadSafe,
-// {
-//     ctx.bake::<S, T>(|target_entity, target_world, accessor| {
-//         target_world
-//             .get::<S>(target_entity)
-//             .map(|s| (accessor.ref_fn)(s))
-//     });
-// }
-
-// #[cfg(feature = "asset")]
-// pub fn bake_asset_actions<S, T>(ctx: BakeCtx)
-// where
-//     S: AsAssetId,
-//     T: Clone + ThreadSafe,
-// {
-//     let Some(assets) =
-//         ctx.target_world.get_resource::<Assets<S::Asset>>()
-//     else {
-//         return;
-//     };
-
-//     ctx.bake::<S::Asset, T>(
-//         |target_entity, target_world, accessor| {
-//             target_world
-//                 .get::<S>(target_entity)
-//                 .and_then(|s| assets.get(s.as_asset_id()))
-//                 .map(|s| (accessor.ref_fn)(s))
-//         },
-//     );
-// }
-
-pub struct SampleCtx<'a, I: SubjectId> {
-    pub action_world: &'a ActionWorld<I>,
+pub struct SampleCtx<'a> {
+    pub action_world: &'a ActionWorld,
     pub target_world: &'a mut World,
     pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
-impl<'a, I: SubjectId> SampleCtx<'a, I> {
-    pub fn sample<S, T>(
+impl<'a> SampleCtx<'a> {
+    pub fn sample<I, S, T>(
         mut self,
         set_target: impl Fn(
             T,
@@ -306,11 +260,12 @@ impl<'a, I: SubjectId> SampleCtx<'a, I> {
             Accessor<S, T>,
         ) -> &'a mut World,
     ) where
+        I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
         let Some(mut q) = self.action_world.world().try_query::<(
-            &ActionKey<I>,
+            &ActionKey,
             &SampleMode,
             &Segment<T>,
             &InterpStorage<T>,
@@ -328,6 +283,12 @@ impl<'a, I: SubjectId> SampleCtx<'a, I> {
                 continue;
             };
 
+            let Some(&id) =
+                self.action_world.get_id(&key.subject_id.uid)
+            else {
+                continue;
+            };
+
             let target = match sample_mode {
                 SampleMode::Start => segment.start.clone(),
                 SampleMode::End => segment.end.clone(),
@@ -341,12 +302,8 @@ impl<'a, I: SubjectId> SampleCtx<'a, I> {
                 }
             };
 
-            self.target_world = set_target(
-                target,
-                key.target,
-                self.target_world,
-                accessor,
-            );
+            self.target_world =
+                set_target(target, id, self.target_world, accessor);
         }
     }
 }
