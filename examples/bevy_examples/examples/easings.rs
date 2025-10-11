@@ -41,6 +41,7 @@ fn spawn_timeline(
 
     // Spawn spheres.
     let mut spheres = Vec::with_capacity(capacity);
+    let mut sphere_mats = Vec::with_capacity(capacity);
     let mesh_handle = meshes.add(Sphere::default());
     let material = StandardMaterial {
         base_color: Color::WHITE,
@@ -49,10 +50,11 @@ fn spawn_timeline(
     };
 
     for i in 0..capacity {
+        let sphere_mat = materials.add(material.clone());
         let sphere = commands
             .spawn((
                 Mesh3d(mesh_handle.clone()),
-                MeshMaterial3d(materials.add(material.clone())),
+                MeshMaterial3d(sphere_mat.clone()),
                 Transform::from_translation(Vec3::new(
                     -5.0,
                     (i as f32) - (capacity as f32) * 0.5,
@@ -64,25 +66,27 @@ fn spawn_timeline(
             .id();
 
         spheres.push(sphere);
+        sphere_mats.push(sphere_mat.untyped().id());
     }
 
     // Build the timeline.
     let mut b = TimelineBuilder::new();
 
-    let track = spheres
+    let track = easings
         .into_iter()
-        .zip(easings)
-        .map(|(sphere, ease_fn)| {
+        .enumerate()
+        // .zip(easings)
+        .map(|(i, ease_fn)| {
             [
                 b.act_interp(
-                    sphere,
+                    spheres[i],
                     field!(<Transform>::translation::x),
                     |x| x + 10.0,
                 )
                 .with_ease(ease_fn)
                 .play(1.0),
                 b.act_interp(
-                    sphere,
+                    sphere_mats[i],
                     field!(<StandardMaterial>::emissive),
                     move |_| red,
                 )

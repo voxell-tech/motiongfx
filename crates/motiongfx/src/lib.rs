@@ -17,6 +17,7 @@ pub mod ease;
 pub mod field;
 pub mod pipeline;
 pub mod sequence;
+pub mod subject;
 pub mod timeline;
 pub mod track;
 
@@ -24,14 +25,18 @@ pub mod prelude {
     pub use crate::accessor::{
         Accessor, AccessorRegistry, FieldAccessorRegistry,
     };
-    pub use crate::action::{ActionId, EaseFn, InterpFn};
+    pub use crate::action::{
+        Action, ActionBuilder, ActionId, EaseFn, InterpActionBuilder,
+        InterpFn,
+    };
     pub use crate::ease;
     pub use crate::field::{field, Field, UntypedField};
     pub use crate::pipeline::{
-        BakeCtx, PipelineKey, PipelineRegistry, SampleCtx,
+        BakeCtx, Pipeline, PipelineKey, PipelineRegistry, SampleCtx,
     };
     pub use crate::timeline::{Timeline, TimelineBuilder};
     pub use crate::track::{Track, TrackFragment, TrackOrdering};
+    pub use crate::ThreadSafe;
 }
 
 /// Auto trait for types that implements [`Send`] + [`Sync`] + `'static`.
