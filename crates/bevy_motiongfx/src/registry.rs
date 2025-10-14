@@ -5,7 +5,7 @@ use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
-use crate::pipeline::PipelineRegistryExt;
+use crate::pipeline::{PipelineRegistryExt, WorldPipelineRegistry};
 
 // TODO: Move purely the recursive logic back to motiongfx and keep
 // the registration logic here.
@@ -15,6 +15,7 @@ use crate::pipeline::PipelineRegistryExt;
 /// # Example
 ///
 /// ```
+/// use bevy_ecs::entity::Entity;
 /// use bevy_app::App;
 /// use bevy_ecs::component::Component;
 /// use bevy_motiongfx::BevyMotionGfxPlugin;
@@ -71,9 +72,9 @@ use crate::pipeline::PipelineRegistryExt;
 ///
 /// // Get pipeline from the registry.
 /// let pipeline_registry =
-///     app.world().resource::<PipelineRegistry>();
+///     app.world().resource::<WorldPipelineRegistry>();
 ///
-/// let key = PipelineKey::new::<Foo, f32>();
+/// let key = PipelineKey::new::<Entity, Foo, f32>();
 /// let pipeline = pipeline_registry.get(&key).unwrap();
 /// ```
 #[macro_export]
@@ -190,7 +191,7 @@ impl FieldPathRegisterAppExt for App {
             .register(field.untyped(), accessor);
 
         self.world_mut()
-            .resource_mut::<PipelineRegistry>()
+            .resource_mut::<WorldPipelineRegistry>()
             .register_component::<S, T>();
 
         self
@@ -211,7 +212,7 @@ impl FieldPathRegisterAppExt for App {
             .register(field.untyped(), accessor);
 
         self.world_mut()
-            .resource_mut::<PipelineRegistry>()
+            .resource_mut::<WorldPipelineRegistry>()
             .register_asset::<S, T>();
 
         self

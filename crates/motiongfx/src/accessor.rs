@@ -99,6 +99,7 @@ impl UntypedAccessor {
         if self.source_id == TypeId::of::<S>()
             && self.target_id == TypeId::of::<T>()
         {
+            // SAFETY: The types are checked beforehand.
             unsafe {
                 return Some(self.typed_unchecked());
             }
