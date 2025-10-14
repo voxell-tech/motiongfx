@@ -14,7 +14,7 @@ pub struct VelloRectBundle {
     pub rect: VelloRect,
     pub fill: FillStyle,
     pub stroke: StrokeStyle,
-    pub fragment_bundle: VelloFragmentBundle,
+    pub scene_bundle: VelloSceneBundle,
 }
 
 #[derive(Component, Clone, Default)]

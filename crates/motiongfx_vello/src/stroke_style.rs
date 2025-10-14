@@ -11,7 +11,7 @@ pub struct StrokeStyle {
     pub style: kurbo::Stroke,
     pub brush: peniko::Brush,
     pub transform: kurbo::Affine,
-    should_build: bool,
+    built: bool,
 }
 
 impl StrokeStyle {
@@ -49,8 +49,8 @@ impl StrokeStyle {
     }
 
     #[inline]
-    pub fn build(&self, builder: &mut vello::SceneBuilder, shape: &impl kurbo::Shape) {
-        builder.stroke(
+    pub fn build(&self, scene: &mut vello::Scene, shape: &impl kurbo::Shape) {
+        scene.stroke(
             &self.style,
             kurbo::Affine::IDENTITY,
             &self.brush,
@@ -63,12 +63,12 @@ impl StrokeStyle {
 impl VelloBuilder for StrokeStyle {
     #[inline]
     fn is_built(&self) -> bool {
-        self.should_build
+        self.built
     }
 
     #[inline]
-    fn set_built(&mut self, should_build: bool) {
-        self.should_build = should_build
+    fn set_built(&mut self, built: bool) {
+        self.built = built
     }
 }
 
@@ -78,7 +78,7 @@ impl Default for StrokeStyle {
             style: kurbo::Stroke::default(),
             brush: peniko::Brush::Solid(peniko::Color::WHITE_SMOKE),
             transform: kurbo::Affine::IDENTITY,
-            should_build: false,
+            built: false,
         }
     }
 }
@@ -153,6 +153,6 @@ impl StrokeStyleMotion {
         _: &mut ResMut<EmptyRes>,
     ) {
         stroke.style = kurbo::Stroke::lerp(begin, end, t);
-        stroke.set_built(true);
+        stroke.set_built(false);
     }
 }

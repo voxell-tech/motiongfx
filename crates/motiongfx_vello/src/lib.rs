@@ -5,7 +5,7 @@ use bevy_vello_renderer::{
     prelude::*,
     vello::{kurbo, peniko},
 };
-use motiongfx_core::{prelude::*, sequence::sequence_player_system};
+use motiongfx_core::{prelude::*, sequence::sequence_update_system};
 
 pub mod convert;
 pub mod fill_style;
@@ -41,6 +41,7 @@ impl Plugin for MotionGfxVello {
     fn build(&self, app: &mut App) {
         app.add_plugins(VelloRenderPlugin)
             .add_plugins((
+                // Motion plugins
                 vello_motion::circle_motion::VelloCircleMotionPlugin,
                 vello_motion::rect_motion::VelloRectMotionPlugin,
                 vello_motion::line_motion::VelloLineMotionPlugin,
@@ -49,14 +50,14 @@ impl Plugin for MotionGfxVello {
                 PostUpdate,
                 (
                     // Vector builders
-                    vello_vector::vector_builder::<vello_vector::rect::VelloRect>,
-                    vello_vector::vector_builder::<vello_vector::circle::VelloCircle>,
-                    vello_vector::vector_builder::<vello_vector::line::VelloLine>,
-                    vello_vector::vector_builder::<vello_vector::bezpath::VelloBezPath>,
+                    vello_vector::vector_builder_system::<vello_vector::rect::VelloRect>,
+                    vello_vector::vector_builder_system::<vello_vector::circle::VelloCircle>,
+                    vello_vector::vector_builder_system::<vello_vector::line::VelloLine>,
+                    vello_vector::vector_builder_system::<vello_vector::bezpath::VelloBezPath>,
                     // Sequences
-                    sequence_player_system::<fill_style::FillStyle, peniko::Brush, EmptyRes>,
-                    sequence_player_system::<stroke_style::StrokeStyle, peniko::Brush, EmptyRes>,
-                    sequence_player_system::<stroke_style::StrokeStyle, kurbo::Stroke, EmptyRes>,
+                    sequence_update_system::<fill_style::FillStyle, peniko::Brush, EmptyRes>,
+                    sequence_update_system::<stroke_style::StrokeStyle, peniko::Brush, EmptyRes>,
+                    sequence_update_system::<stroke_style::StrokeStyle, kurbo::Stroke, EmptyRes>,
                 ),
             );
     }

@@ -12,7 +12,7 @@ use crate::{
 pub struct VelloLineBundle {
     pub line: VelloLine,
     pub stroke: StrokeStyle,
-    pub fragment_bundle: VelloFragmentBundle,
+    pub scene_bundle: VelloSceneBundle,
 }
 
 #[derive(Component, Clone)]

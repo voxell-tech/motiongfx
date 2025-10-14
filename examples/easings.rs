@@ -14,12 +14,12 @@ fn main() {
         .add_plugins((DefaultPlugins, TemporalAntiAliasPlugin))
         // Custom plugins
         .add_plugins((MotionGfx, MotionGfxBevy))
-        .add_systems(Startup, (setup, easings))
+        .add_systems(Startup, (setup_system, easings_system))
         .add_systems(Update, timeline_movement_system)
         .run();
 }
 
-pub fn easings(
+fn easings_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -31,41 +31,39 @@ pub fn easings(
 
     let mut spheres: Vec<Entity> = Vec::with_capacity(CAPACITY);
     // States
-    let mut cube_transform_motions: Vec<TransformMotion> = Vec::with_capacity(CAPACITY);
-    let mut cube_material_motion: Vec<StandardMaterialMotion> = Vec::with_capacity(CAPACITY);
+    let mut transform_motions: Vec<TransformMotion> = Vec::with_capacity(CAPACITY);
+    let mut material_motions: Vec<StandardMaterialMotion> = Vec::with_capacity(CAPACITY);
 
-    // Create cube objects (Entity)
+    // Create sphere objects (Entity)
     let material: StandardMaterial = StandardMaterial {
-        emissive: *palette.get_or_default(&ColorKey::Blue) * 4.0,
+        base_color: Color::WHITE,
+        emissive: *palette.get_or_default(&ColorKey::Blue) * 100.0,
         ..default()
     };
 
     for i in 0..CAPACITY {
         let transform: Transform =
             Transform::from_translation(Vec3::new(-5.0, (i as f32) - (CAPACITY as f32) * 0.5, 0.0))
-                .with_scale(Vec3::ONE * 0.48);
+                .with_scale(Vec3::ONE);
 
-        let cube = commands
+        let sphere = commands
             .spawn(PbrBundle {
                 transform,
-                mesh: meshes.add(shape::UVSphere::default().into()),
+                mesh: meshes.add(Sphere::default()),
                 material: materials.add(material.clone()),
                 ..default()
             })
             .insert(NotShadowCaster)
             .id();
 
-        cube_transform_motions.push(TransformMotion::new(cube, transform));
-        cube_material_motion.push(StandardMaterialMotion::new(cube, material.clone()));
+        transform_motions.push(TransformMotion::new(sphere, transform));
+        material_motions.push(StandardMaterialMotion::new(sphere, material.clone()));
 
-        spheres.push(cube);
+        spheres.push(sphere);
     }
 
-    // Actions
-    let mut act: ActionBuilder = ActionBuilder::new(&mut commands);
-
-    // Generate cube animations
-    let mut cube_actions: Vec<Sequence> = Vec::with_capacity(CAPACITY);
+    // Generate easing animations
+    let mut easing_seqs: Vec<Sequence> = Vec::with_capacity(CAPACITY);
 
     let easings: [ease::EaseFn; CAPACITY] = [
         ease::linear,
@@ -81,12 +79,12 @@ pub fn easings(
     ];
 
     for i in 0..CAPACITY {
-        cube_actions.push(
+        easing_seqs.push(
             all(&[
-                act.play(cube_transform_motions[i].translate_add(Vec3::X * 10.0), 1.0),
-                act.play(
-                    cube_material_motion[i]
-                        .emissive_to(*palette.get_or_default(&ColorKey::Red) * 4.0),
+                commands.play(transform_motions[i].translate_add(Vec3::X * 10.0), 1.0),
+                commands.play(
+                    material_motions[i]
+                        .emissive_to(*palette.get_or_default(&ColorKey::Red) * 100.0),
                     1.0,
                 ),
             ])
@@ -94,13 +92,15 @@ pub fn easings(
         );
     }
 
-    let sequence: Sequence = chain(&cube_actions);
+    let sequence: Sequence = chain(&easing_seqs);
 
-    let sequence_id: Entity = commands.spawn(sequence).id();
-    commands.spawn(Timeline::new(sequence_id));
+    commands.spawn(SequencePlayerBundle {
+        sequence,
+        ..default()
+    });
 }
 
-fn setup(mut commands: Commands) {
+fn setup_system(mut commands: Commands) {
     // Camera
     commands
         .spawn(Camera3dBundle {
@@ -124,25 +124,29 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement_system(
-    mut q_timelines: Query<&mut Timeline>,
-    keys: Res<Input<KeyCode>>,
+    mut q_timelines: Query<(&mut SequencePlayer, &mut SequenceController)>,
+    keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
-    for mut timeline in q_timelines.iter_mut() {
-        if keys.pressed(KeyCode::D) {
-            timeline.target_time += time.delta_seconds();
+    for (mut sequence_player, mut sequence_time) in q_timelines.iter_mut() {
+        if keys.pressed(KeyCode::KeyD) {
+            sequence_time.target_time += time.delta_seconds();
         }
 
-        if keys.pressed(KeyCode::A) {
-            timeline.target_time -= time.delta_seconds();
+        if keys.pressed(KeyCode::KeyA) {
+            sequence_time.target_time -= time.delta_seconds();
         }
 
-        if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {
-            timeline.time_scale = -1.0;
-            timeline.is_playing = true;
-        } else if keys.pressed(KeyCode::Space) {
-            timeline.time_scale = 1.0;
-            timeline.is_playing = true;
+        if keys.just_pressed(KeyCode::Space) {
+            if keys.pressed(KeyCode::ShiftLeft) {
+                sequence_player.time_scale = -1.0;
+            } else {
+                sequence_player.time_scale = 1.0;
+            }
+        }
+
+        if keys.just_pressed(KeyCode::Escape) {
+            sequence_player.time_scale = 0.0;
         }
     }
 }

@@ -3,7 +3,7 @@ use bevy_ecs::prelude::*;
 use bevy_math::DVec2;
 use bevy_vello_renderer::vello::kurbo;
 use motiongfx_bevy::prelude::*;
-use motiongfx_core::{prelude::*, sequence::sequence_player_system};
+use motiongfx_core::{prelude::*, sequence::sequence_update_system};
 
 use crate::{
     fill_style::FillStyleMotion,
@@ -21,9 +21,9 @@ impl Plugin for VelloRectMotionPlugin {
         app.add_systems(
             PostUpdate,
             (
-                sequence_player_system::<VelloRect, kurbo::Rect, EmptyRes>,
-                sequence_player_system::<VelloRect, f64, EmptyRes>,
-                sequence_player_system::<VelloRect, kurbo::RoundedRectRadii, EmptyRes>,
+                sequence_update_system::<VelloRect, kurbo::Rect, EmptyRes>,
+                sequence_update_system::<VelloRect, f64, EmptyRes>,
+                sequence_update_system::<VelloRect, kurbo::RoundedRectRadii, EmptyRes>,
             ),
         );
     }
@@ -42,7 +42,7 @@ impl VelloRectBundleMotion {
             rect: VelloRectMotion::new(target_id, bundle.rect),
             fill: FillStyleMotion::new(target_id, bundle.fill),
             stroke: StrokeStyleMotion::new(target_id, bundle.stroke),
-            transform: TransformMotion::new(target_id, bundle.fragment_bundle.transform.local),
+            transform: TransformMotion::new(target_id, bundle.scene_bundle.transform),
         }
     }
 }

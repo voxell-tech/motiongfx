@@ -1,9 +1,9 @@
 use bevy_ecs::prelude::*;
-use bevy_utils::prelude::*;
 
 use crate::{
     ease::{quad, EaseFn},
-    sequence::Sequence,
+    sequence::{sequence_controller_interp, Sequence, SequenceController},
+    EmptyRes,
 };
 
 pub type InterpFn<CompType, InterpType, ResType> = fn(
@@ -53,7 +53,7 @@ where
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub(crate) struct ActionMeta {
     /// Target `Entity` for `Action`.
     action_id: Entity,
@@ -63,6 +63,8 @@ pub(crate) struct ActionMeta {
     pub(crate) duration: f32,
     /// Easing function to be used for animation.
     pub(crate) ease_fn: EaseFn,
+    /// Slide that this action belongs to.
+    pub(crate) slide_index: usize,
 }
 
 impl ActionMeta {
@@ -72,6 +74,7 @@ impl ActionMeta {
             start_time: 0.0,
             duration: 0.0,
             ease_fn: quad::ease_in_out,
+            slide_index: 0,
         }
     }
 
@@ -80,36 +83,71 @@ impl ActionMeta {
     }
 
     #[inline]
+    pub fn with_start_time(mut self, start_time: f32) -> Self {
+        self.start_time = start_time;
+        self
+    }
+
+    #[inline]
     pub fn end_time(&self) -> f32 {
         self.start_time + self.duration
     }
 }
 
-pub struct ActionBuilder<'a, 'w, 's> {
-    commands: &'a mut Commands<'w, 's>,
+pub trait ActionBuilder {
+    fn play(
+        &mut self,
+        action: Action<impl Component, impl Send + Sync + 'static, impl Resource>,
+        duration: f32,
+    ) -> Sequence;
+    fn play_sequence(
+        &mut self,
+        target_id: Entity,
+        begin: f32,
+        end: f32,
+        playback_speed: f32,
+    ) -> Sequence;
+    fn sleep(&mut self, duration: f32) -> Sequence;
 }
 
-impl<'a, 'w, 's> ActionBuilder<'a, 'w, 's> {
-    pub fn new(commands: &'a mut Commands<'w, 's>) -> Self {
-        Self { commands }
-    }
-
-    pub fn play(
+impl ActionBuilder for Commands<'_, '_> {
+    fn play(
         &mut self,
         action: Action<impl Component, impl Send + Sync + 'static, impl Resource>,
         duration: f32,
     ) -> Sequence {
-        let action_id: Entity = self.commands.spawn(action).id();
+        let action_id: Entity = self.spawn(action).id();
         let mut action_meta: ActionMeta = ActionMeta::new(action_id);
         action_meta.duration = duration;
+
+        // TODO: create single sequence
+        Sequence::single(action_meta)
+    }
+
+    fn play_sequence(
+        &mut self,
+        target_id: Entity,
+        begin: f32,
+        end: f32,
+        playback_speed: f32,
+    ) -> Sequence {
+        let action: Action<SequenceController, f32, EmptyRes> =
+            Action::new(target_id, begin, end, sequence_controller_interp);
+
+        let action_id: Entity = self.spawn(action).id();
+        let mut action_meta: ActionMeta = ActionMeta::new(action_id);
+
+        // Prevent division by 0.0
+        if f32::abs(playback_speed) <= f32::EPSILON {
+            action_meta.duration = 0.0;
+        } else {
+            action_meta.duration = f32::abs(end - begin) / playback_speed;
+        }
 
         Sequence::single(action_meta)
     }
 
-    pub fn sleep(&mut self, duration: f32) -> Sequence {
-        Sequence {
-            duration,
-            ..default()
-        }
+    fn sleep(&mut self, duration: f32) -> Sequence {
+        Sequence::empty(duration)
     }
 }

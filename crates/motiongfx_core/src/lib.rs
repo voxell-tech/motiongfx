@@ -7,7 +7,7 @@ pub mod cross_lerp;
 pub mod ease;
 pub mod lerp;
 pub mod sequence;
-pub mod timeline;
+pub mod slide;
 
 pub mod prelude {
     pub use crate::{
@@ -16,8 +16,11 @@ pub mod prelude {
         cross_lerp::*,
         ease,
         lerp::*,
-        sequence::{all, any, chain, delay, flow, Sequence},
-        timeline::Timeline,
+        sequence::{
+            all, any, chain, delay, flow, Sequence, SequenceBundle, SequenceController,
+            SequencePlayer, SequencePlayerBundle,
+        },
+        slide::{create_slide, SlideBundle, SlideController, SlideCurrState, SlideTargetState},
         EmptyComp, EmptyRes, MotionGfx,
     };
 }
@@ -27,7 +30,14 @@ pub struct MotionGfx;
 impl Plugin for MotionGfx {
     fn build(&self, app: &mut App) {
         app.insert_resource(EmptyRes)
-            .add_systems(PreUpdate, timeline::timeline_update_system);
+            .add_systems(PreUpdate, sequence::sequence_controller_system)
+            .add_systems(
+                Update,
+                (
+                    sequence::sequence_player_system,
+                    slide::slide_controller_system,
+                ),
+            );
     }
 }
 
@@ -36,3 +46,8 @@ pub struct EmptyRes;
 
 #[derive(Component)]
 pub struct EmptyComp;
+
+/// Calculate if 2 time range (in float) overlaps.
+pub(crate) fn time_range_overlap(a_begin: f32, a_end: f32, b_begin: f32, b_end: f32) -> bool {
+    a_begin <= b_end && b_begin <= a_end
+}

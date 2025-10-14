@@ -40,10 +40,15 @@ impl Plugin for TypstCompilerPlugin {
 ///
 /// This compiler can be accessed from the resource:
 /// ```
+/// use bevy_ecs::prelude::*;
+/// use bevy_asset::prelude::*;
+/// use motiongfx_vello::prelude::*;
+/// use motiongfx_typst::TypstCompiler;
+///
 /// pub fn compile_system(
 ///     mut commands: Commands,
 ///     mut typst_compiler: ResMut<TypstCompiler>,
-///     mut fragment_assets: ResMut<Assets<VelloFragment>>,
+///     mut scenes: ResMut<Assets<VelloScene>>,
 /// ) {
 ///     let content: String = String::from(
 ///         r###"
@@ -53,7 +58,7 @@ impl Plugin for TypstCompilerPlugin {
 ///         "###,
 ///     );
 ///
-///     match typst_compiler.compile_flatten(&mut commands, &mut fragment_assets, content) {
+///     match typst_compiler.compile_flatten(&mut commands, &mut scenes, content) {
 ///         Ok(tree) => {
 ///             println!("{:#?}", tree.size);
 ///         }
@@ -75,16 +80,16 @@ impl TypstCompiler {
         }
     }
 
-    pub fn compile(
-        &mut self,
-        commands: &mut Commands,
-        fragment_assets: &mut ResMut<Assets<VelloFragment>>,
-        text: String,
-    ) -> Result<Entity, EcoVec<SourceDiagnostic>> {
-        let tree: usvg::Tree = self.compile_text(text)?;
+    // pub fn compile(
+    //     &mut self,
+    //     commands: &mut Commands,
+    //     scenes: &mut ResMut<Assets<VelloScene>>,
+    //     text: String,
+    // ) -> Result<Entity, EcoVec<SourceDiagnostic>> {
+    //     let tree: usvg::Tree = self.compile_text(text)?;
 
-        Ok(svg::spawn_tree(commands, fragment_assets, &tree))
-    }
+    //     Ok(svg::spawn_tree(commands, scenes, &tree))
+    // }
 
     /// [`SvgTreeBundle`]: svg::SvgTreeBundle
     /// Compiles the Typst content into Svg and flatten the Svg hierarchy into a [`SvgTreeBundle`].
@@ -93,14 +98,15 @@ impl TypstCompiler {
     pub fn compile_flatten(
         &mut self,
         commands: &mut Commands,
-        fragment_assets: &mut ResMut<Assets<VelloFragment>>,
+        scenes: &mut ResMut<Assets<VelloScene>>,
         text: String,
     ) -> Result<svg::SvgTreeBundle, EcoVec<SourceDiagnostic>> {
         let tree: usvg::Tree = self.compile_text(text)?;
 
-        Ok(svg::spawn_tree_flatten(commands, fragment_assets, &tree))
+        Ok(svg::spawn_tree_flatten(commands, scenes, &tree))
     }
 
+    // TODO: take a look at typst_ide for getting FrameItem to svg output relation
     fn compile_text(&mut self, text: String) -> Result<usvg::Tree, EcoVec<SourceDiagnostic>> {
         self.world.set_source(text);
         let document: Document = typst::compile(&self.world, &mut self.tracer)?;

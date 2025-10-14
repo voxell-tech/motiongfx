@@ -4,17 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy_app = { version = "0.12", default-features = false }
-bevy_asset = { version = "0.12", default-features = false }
-bevy_ecs = { version = "0.12", default-features = false }
-bevy_log = { version = "0.12", default-features = false }
-bevy_math = { version = "0.12", default-features = false }
-bevy_pbr = { version = "0.12", default-features = false }
-bevy_reflect = { version = "0.12", default-features = false }
-bevy_render = { version = "0.12", default-features = false }
-bevy_transform = { version = "0.12", default-features = false }
-bevy_utils = { version = "0.12", default-features = false }
-bevy_hierarchy = { version = "0.12", default-features = false }
+bevy_app = { version = "0.13", default-features = false }
+bevy_asset = { version = "0.13", default-features = false }
+bevy_ecs = { version = "0.13", default-features = false }
+bevy_log = { version = "0.13", default-features = false }
+bevy_math = { version = "0.13", default-features = false }
+bevy_pbr = { version = "0.13", default-features = false }
+bevy_reflect = { version = "0.13", default-features = false }
+bevy_render = { version = "0.13", default-features = false }
+bevy_transform = { version = "0.13", default-features = false }
+bevy_utils = { version = "0.13", default-features = false }
+bevy_hierarchy = { version = "0.13", default-features = false }
 motiongfx_core = { path = "../motiongfx_core" }
 motiongfx_bevy = { path = "../motiongfx_bevy" }
-bevy_vello_renderer = { git = "https://github.com/nixon-voxell/bevy_vello_renderer", rev = "b9fb17a188c302047d7718fb606ba2b0b0ada8c7" }
+bevy_vello_renderer = { git = "https://github.com/nixon-voxell/bevy_vello_renderer", rev = "49ef841842b3170f225614c7d3ffffba31522150" }

@@ -4,7 +4,7 @@ use bevy_math::prelude::*;
 use bevy_pbr::prelude::*;
 use bevy_render::prelude::*;
 use bevy_transform::prelude::*;
-use motiongfx_core::{prelude::*, sequence::sequence_player_system};
+use motiongfx_core::{prelude::*, sequence::sequence_update_system};
 
 mod standard_material;
 mod transform;
@@ -22,9 +22,9 @@ impl Plugin for MotionGfxBevy {
         app.add_systems(
             PostUpdate,
             ((
-                sequence_player_system::<Transform, Vec3, EmptyRes>,
-                sequence_player_system::<Transform, Quat, EmptyRes>,
-                sequence_player_system::<Handle<StandardMaterial>, Color, Assets<StandardMaterial>>,
+                sequence_update_system::<Transform, Vec3, EmptyRes>,
+                sequence_update_system::<Transform, Quat, EmptyRes>,
+                sequence_update_system::<Handle<StandardMaterial>, Color, Assets<StandardMaterial>>,
             ),),
         );
     }

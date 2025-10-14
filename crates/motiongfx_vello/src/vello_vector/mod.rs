@@ -17,12 +17,12 @@ pub(crate) trait VelloVector {
         &kurbo::Rect::ZERO
     }
 
-    fn build_fill(&self, fill: &FillStyle, builder: &mut vello::SceneBuilder) {
-        fill.build(builder, self.shape());
+    fn build_fill(&self, fill: &FillStyle, scene: &mut vello::Scene) {
+        fill.build(scene, self.shape());
     }
 
-    fn build_stroke(&self, stroke: &StrokeStyle, builder: &mut vello::SceneBuilder) {
-        stroke.build(builder, self.shape());
+    fn build_stroke(&self, stroke: &StrokeStyle, scene: &mut vello::Scene) {
+        stroke.build(scene, self.shape());
     }
 }
 
@@ -32,86 +32,82 @@ pub(crate) trait VelloBuilder {
     fn set_built(&mut self, built: bool);
 }
 
-pub(crate) fn vector_builder<Vector: VelloVector + VelloBuilder + Component>(
+pub(crate) fn vector_builder_system<Vector: VelloVector + VelloBuilder + Component>(
     mut q_fill_only_vectors: Query<
-        (&mut Vector, &mut FillStyle, &Handle<VelloFragment>),
+        (&mut Vector, &mut FillStyle, &Handle<VelloScene>),
         Without<StrokeStyle>,
     >,
     mut q_stroke_only_vectors: Query<
-        (&mut Vector, &mut StrokeStyle, &Handle<VelloFragment>),
+        (&mut Vector, &mut StrokeStyle, &Handle<VelloScene>),
         Without<FillStyle>,
     >,
     mut q_fill_and_stroke_vectors: Query<(
         &mut Vector,
         &mut FillStyle,
         &mut StrokeStyle,
-        &Handle<VelloFragment>,
+        &Handle<VelloScene>,
     )>,
-    mut fragments: ResMut<Assets<VelloFragment>>,
+    mut scenes: ResMut<Assets<VelloScene>>,
 ) {
-    for (mut vector, mut fill, fragment_handle) in q_fill_only_vectors.iter_mut() {
-        if let Some(fragment) = fragments.get_mut(fragment_handle.id()) {
-            let mut frag: vello::SceneFragment = vello::SceneFragment::new();
-            let mut builder: vello::SceneBuilder = vello::SceneBuilder::for_fragment(&mut frag);
-
+    for (mut vector, mut fill, scene_handle) in q_fill_only_vectors.iter_mut() {
+        if let Some(vello_scene) = scenes.get_mut(scene_handle.id()) {
             if vector.is_built() && fill.is_built() {
                 continue;
             }
 
-            // Build the vector to the VelloFragment
-            vector.build_fill(&fill, &mut builder);
+            let mut scene: vello::Scene = vello::Scene::new();
+
+            // Build the vector to the VelloScene
+            vector.build_fill(&fill, &mut scene);
 
             // Set it to false after building
             fill.set_built(true);
             vector.set_built(true);
 
-            // Replace with new fragment
-            fragment.fragment = frag.into();
+            // Replace with new scene
+            vello_scene.scene = scene.into();
         }
     }
 
-    for (mut vector, mut stroke, fragment_handle) in q_stroke_only_vectors.iter_mut() {
-        if let Some(fragment) = fragments.get_mut(fragment_handle.id()) {
-            let mut frag: vello::SceneFragment = vello::SceneFragment::new();
-            let mut builder: vello::SceneBuilder = vello::SceneBuilder::for_fragment(&mut frag);
-
+    for (mut vector, mut stroke, scene_handle) in q_stroke_only_vectors.iter_mut() {
+        if let Some(vello_scene) = scenes.get_mut(scene_handle.id()) {
             if vector.is_built() && stroke.is_built() {
                 continue;
             }
 
-            // Build the vector to the VelloFragment
-            vector.build_stroke(&stroke, &mut builder);
+            let mut scene: vello::Scene = vello::Scene::new();
+
+            // Build the vector to the VelloScene
+            vector.build_stroke(&stroke, &mut scene);
 
             // Set it to false after building
             stroke.set_built(true);
             vector.set_built(true);
 
-            // Replace with new fragment
-            fragment.fragment = frag.into();
+            // Replace with new scene
+            vello_scene.scene = scene.into();
         }
     }
 
-    for (mut vector, mut fill, mut stroke, fragment_handle) in q_fill_and_stroke_vectors.iter_mut()
-    {
-        if let Some(fragment) = fragments.get_mut(fragment_handle.id()) {
-            let mut frag: vello::SceneFragment = vello::SceneFragment::new();
-            let mut builder: vello::SceneBuilder = vello::SceneBuilder::for_fragment(&mut frag);
-
+    for (mut vector, mut fill, mut stroke, scene_handle) in q_fill_and_stroke_vectors.iter_mut() {
+        if let Some(vello_scene) = scenes.get_mut(scene_handle.id()) {
             if vector.is_built() && fill.is_built() && stroke.is_built() {
                 continue;
             }
 
-            // Build the vector to the VelloFragment
-            vector.build_fill(&fill, &mut builder);
-            vector.build_stroke(&stroke, &mut builder);
+            let mut scene: vello::Scene = vello::Scene::new();
+
+            // Build the vector to the VelloScene
+            vector.build_fill(&fill, &mut scene);
+            vector.build_stroke(&stroke, &mut scene);
 
             // Set it to false after building
             fill.set_built(true);
             stroke.set_built(true);
             vector.set_built(true);
 
-            // Replace with new fragment
-            fragment.fragment = frag.into();
+            // Replace with new scene
+            vello_scene.scene = scene.into();
         }
     }
 }

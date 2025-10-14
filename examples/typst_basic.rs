@@ -14,19 +14,15 @@ fn main() {
             MotionGfxVello,
             TypstCompilerPlugin::new(Vec::new()),
         ))
-        .add_systems(Startup, (setup, typst_basic))
+        .add_systems(Startup, (setup_system, typst_basic_system))
         .add_systems(Update, timeline_movement_system)
         .run();
 }
 
-fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
-}
-
-fn typst_basic(
+fn typst_basic_system(
     mut commands: Commands,
     mut typst_compiler: ResMut<TypstCompiler>,
-    mut fragment_assets: ResMut<Assets<VelloFragment>>,
+    mut scenes: ResMut<Assets<VelloScene>>,
 ) {
     let content: String = String::from(
         r###"
@@ -53,7 +49,7 @@ fn typst_basic(
         "###,
     );
 
-    match typst_compiler.compile_flatten(&mut commands, &mut fragment_assets, content) {
+    match typst_compiler.compile_flatten(&mut commands, &mut scenes, content) {
         Ok(tree) => {
             commands
                 .entity(tree.root_entity)
@@ -84,11 +80,9 @@ fn typst_basic(
                 }
             }
 
-            // Actions
-            let mut act: ActionBuilder = ActionBuilder::new(&mut commands);
-
-            let mut setup_actions: Vec<Sequence> = Vec::with_capacity(path_len);
-            let mut animate_actions: Vec<Sequence> = Vec::with_capacity(path_len);
+            // Animations
+            let mut setup_seqs: Vec<Sequence> = Vec::with_capacity(path_len);
+            let mut animate_seqs: Vec<Sequence> = Vec::with_capacity(path_len);
 
             let transform_offset: Vec3 = Vec3::Y * 24.0;
 
@@ -96,38 +90,40 @@ fn typst_basic(
                 let path: &svg::SvgPathBundle = &tree.paths[p];
 
                 if let Some(motion) = &mut fill_motions[p] {
-                    setup_actions.push(act.play(motion.brush_to(Color::NONE), 0.0));
+                    setup_seqs.push(commands.play(motion.brush_to(Color::NONE), 0.0));
                 }
                 if let Some(motion) = &mut stroke_motions[p] {
-                    setup_actions.push(act.play(motion.brush_to(Color::NONE), 0.0));
+                    setup_seqs.push(commands.play(motion.brush_to(Color::NONE), 0.0));
                 }
 
-                animate_actions.push(all(&[
-                    act.play(transform_motions[p].translate_add(transform_offset), 1.0),
+                animate_seqs.push(all(&[
+                    commands.play(transform_motions[p].translate_add(transform_offset), 1.0),
                     {
                         if let Some(motion) = &mut fill_motions[p] {
                             let brush: peniko::Brush = path.fill.as_ref().unwrap().brush.clone();
-                            act.play(motion.brush_to(brush), 1.0)
+                            commands.play(motion.brush_to(brush), 1.0)
                         } else {
-                            act.sleep(1.0)
+                            commands.sleep(1.0)
                         }
                     },
                     {
                         if let Some(motion) = &mut stroke_motions[p] {
                             let brush: peniko::Brush = path.stroke.as_ref().unwrap().brush.clone();
-                            act.play(motion.brush_to(brush), 1.0)
+                            commands.play(motion.brush_to(brush), 1.0)
                         } else {
-                            act.sleep(1.0)
+                            commands.sleep(1.0)
                         }
                     },
                 ]));
             }
 
-            let sequence: Sequence = all(&[all(&setup_actions), flow(0.1, &animate_actions)])
+            let sequence: Sequence = all(&[all(&setup_seqs), flow(0.1, &animate_seqs)])
                 .with_ease(ease::expo::ease_in_out);
 
-            let sequence_id: Entity = commands.spawn(sequence).id();
-            commands.spawn(Timeline::new(sequence_id));
+            commands.spawn(SequencePlayerBundle {
+                sequence,
+                ..default()
+            });
         }
         Err(err) => {
             println!("{:#?}", err);
@@ -135,26 +131,34 @@ fn typst_basic(
     }
 }
 
+fn setup_system(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
+}
+
 fn timeline_movement_system(
-    mut q_timelines: Query<&mut Timeline>,
-    keys: Res<Input<KeyCode>>,
+    mut q_timelines: Query<(&mut SequencePlayer, &mut SequenceController)>,
+    keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
-    for mut timeline in q_timelines.iter_mut() {
-        if keys.pressed(KeyCode::D) {
-            timeline.target_time += time.delta_seconds();
+    for (mut sequence_player, mut sequence_time) in q_timelines.iter_mut() {
+        if keys.pressed(KeyCode::KeyD) {
+            sequence_time.target_time += time.delta_seconds();
         }
 
-        if keys.pressed(KeyCode::A) {
-            timeline.target_time -= time.delta_seconds();
+        if keys.pressed(KeyCode::KeyA) {
+            sequence_time.target_time -= time.delta_seconds();
         }
 
-        if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {
-            timeline.time_scale = -1.0;
-            timeline.is_playing = true;
-        } else if keys.pressed(KeyCode::Space) {
-            timeline.time_scale = 1.0;
-            timeline.is_playing = true;
+        if keys.just_pressed(KeyCode::Space) {
+            if keys.pressed(KeyCode::ShiftLeft) {
+                sequence_player.time_scale = -1.0;
+            } else {
+                sequence_player.time_scale = 1.0;
+            }
+        }
+
+        if keys.just_pressed(KeyCode::Escape) {
+            sequence_player.time_scale = 0.0;
         }
     }
 }

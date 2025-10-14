@@ -60,47 +60,25 @@ impl SvgPathBundle {
     }
 }
 
-pub fn spawn_tree(
-    commands: &mut Commands,
-    fragments: &mut ResMut<Assets<VelloFragment>>,
-    svg: &usvg::Tree,
-) -> Entity {
-    commands
-        .spawn((
-            TransformBundle::from_transform(svg_transform(svg.root.abs_transform())),
-            VisibilityBundle::default(),
-        ))
-        .with_children(|parent| {
-            if svg.root.has_children() {
-                for child in svg.root.children() {
-                    spawn_child_recursive(parent, fragments, child);
-                }
-            }
-        })
-        .id()
-}
-
 /// Flattens the Svg hierarchy into a [`SvgTreeBundle`] while spawning the associated entities with corresponding components attached to them.
 pub fn spawn_tree_flatten(
     commands: &mut Commands,
-    fragments: &mut ResMut<Assets<VelloFragment>>,
+    scenes: &mut ResMut<Assets<VelloScene>>,
     svg: &usvg::Tree,
 ) -> SvgTreeBundle {
     let root_entity: Entity = commands
         .spawn((TransformBundle::default(), VisibilityBundle::default()))
         .id();
 
-    let mut svg_tree_bundle = SvgTreeBundle::new(
-        root_entity,
-        Vec2::new(svg.size.width() as f32, svg.size.height() as f32),
-    );
+    let mut svg_tree_bundle =
+        SvgTreeBundle::new(root_entity, Vec2::new(svg.size.width(), svg.size.height()));
 
     for node in svg.root.descendants() {
         // Only create entity for paths
         match &*node.borrow() {
             usvg::NodeKind::Group(_) => {}
             usvg::NodeKind::Path(path) => {
-                let transform: Transform = svg_transform(node.abs_transform());
+                let transform: Transform = svg_to_bevy_transform(node.abs_transform());
                 let mut entity_commands: EntityCommands = commands.spawn((
                     TransformBundle::from_transform(transform),
                     VisibilityBundle::default(),
@@ -109,7 +87,7 @@ pub fn spawn_tree_flatten(
                 let mut svg_path_bundle: SvgPathBundle =
                     SvgPathBundle::new(entity_commands.id(), transform);
 
-                populate_with_path(&mut entity_commands, &mut svg_path_bundle, fragments, path);
+                populate_with_path(&mut entity_commands, &mut svg_path_bundle, scenes, path);
 
                 svg_tree_bundle.paths.push(svg_path_bundle);
             }
@@ -129,78 +107,52 @@ pub fn spawn_tree_flatten(
     svg_tree_bundle
 }
 
-fn spawn_child_recursive(
-    parent: &mut ChildBuilder,
-    fragments: &mut ResMut<Assets<VelloFragment>>,
-    node: usvg::Node,
-) {
-    let transform: Transform = svg_transform(node.transform());
-    let mut entity_commands: EntityCommands = parent.spawn((
-        TransformBundle::from_transform(transform),
-        VisibilityBundle::default(),
-    ));
-
-    match &*node.borrow() {
-        usvg::NodeKind::Group(_) => {}
-        usvg::NodeKind::Path(path) => {
-            let mut svg_path_bundle: SvgPathBundle =
-                SvgPathBundle::new(entity_commands.id(), transform);
-
-            populate_with_path(&mut entity_commands, &mut svg_path_bundle, fragments, path);
-        }
-        usvg::NodeKind::Image(_) => {}
-        usvg::NodeKind::Text(_) => {}
-    }
-
-    if node.has_children() {
-        for child_node in node.children() {
-            entity_commands.with_children(|child_parent| {
-                spawn_child_recursive(child_parent, fragments, child_node);
-            });
-        }
-    }
-}
-
 fn populate_with_path(
     entity_commands: &mut EntityCommands,
     svg_path_bundle: &mut SvgPathBundle,
-    fragments: &mut ResMut<Assets<VelloFragment>>,
+    scenes: &mut ResMut<Assets<VelloScene>>,
     path: &usvg::Path,
 ) {
     let mut local_path = kurbo::BezPath::new();
     // The semantics of SVG paths don't line up with `BezPath`; we must manually track initial points
     let mut just_closed: bool = false;
-    let mut most_recent_initial: kurbo::Point = kurbo::Point::default();
+    let mut most_recent_initial = (0.0, 0.0);
 
     for elt in path.data.segments() {
         match elt {
-            usvg::PathSegment::MoveTo { x, y } => {
+            usvg::tiny_skia_path::PathSegment::MoveTo(p) => {
                 if std::mem::take(&mut just_closed) {
                     local_path.move_to(most_recent_initial);
                 }
-                most_recent_initial = kurbo::Point::new(x, y);
+                most_recent_initial = (p.x.into(), p.y.into());
                 local_path.move_to(most_recent_initial)
             }
-            usvg::PathSegment::LineTo { x, y } => {
+            usvg::tiny_skia_path::PathSegment::LineTo(p) => {
                 if std::mem::take(&mut just_closed) {
                     local_path.move_to(most_recent_initial);
                 }
-                local_path.line_to((x, y))
+                local_path.line_to(kurbo::Point::new(p.x as f64, p.y as f64))
             }
-            usvg::PathSegment::CurveTo {
-                x1,
-                y1,
-                x2,
-                y2,
-                x,
-                y,
-            } => {
+            usvg::tiny_skia_path::PathSegment::QuadTo(p1, p2) => {
                 if std::mem::take(&mut just_closed) {
                     local_path.move_to(most_recent_initial);
                 }
-                local_path.curve_to((x1, y1), (x2, y2), (x, y))
+                local_path.quad_to(
+                    kurbo::Point::new(p1.x as f64, p1.y as f64),
+                    kurbo::Point::new(p2.x as f64, p2.y as f64),
+                )
             }
-            usvg::PathSegment::ClosePath => {
+            usvg::tiny_skia_path::PathSegment::CubicTo(p1, p2, p3) => {
+                if std::mem::take(&mut just_closed) {
+                    local_path.move_to(most_recent_initial);
+                }
+                local_path.curve_to(
+                    kurbo::Point::new(p1.x as f64, p1.y as f64),
+                    kurbo::Point::new(p2.x as f64, p2.y as f64),
+                    kurbo::Point::new(p3.x as f64, p3.y as f64),
+                )
+            }
+            usvg::tiny_skia_path::PathSegment::Close => {
                 just_closed = true;
                 local_path.close_path()
             }
@@ -214,8 +166,11 @@ fn populate_with_path(
 
     if let Some(fill) = &path.fill {
         if let Some((brush, transform)) = paint_to_brush(&fill.paint, fill.opacity) {
-            // FIXME: Set the fill rule
-            let fill_style: FillStyle = FillStyle::new(peniko::Fill::NonZero, brush, transform);
+            let fill_rule: peniko::Fill = match fill.rule {
+                usvg::FillRule::NonZero => peniko::Fill::NonZero,
+                usvg::FillRule::EvenOdd => peniko::Fill::EvenOdd,
+            };
+            let fill_style: FillStyle = FillStyle::new(fill_rule, brush, transform);
 
             entity_commands.insert(fill_style.clone());
             svg_path_bundle.fill = Some(fill_style);
@@ -226,8 +181,26 @@ fn populate_with_path(
 
     if let Some(stroke) = &path.stroke {
         if let Some((brush, transform)) = paint_to_brush(&stroke.paint, stroke.opacity) {
-            // FIXME: handle stroke options such as linecap, linejoin, etc.
-            let stroke_style: StrokeStyle = StrokeStyle::new(stroke.width.get(), brush, transform);
+            let mut conv_stroke: kurbo::Stroke = kurbo::Stroke::new(stroke.width.get() as f64)
+                .with_caps(match stroke.linecap {
+                    usvg::LineCap::Butt => kurbo::Cap::Butt,
+                    usvg::LineCap::Round => kurbo::Cap::Round,
+                    usvg::LineCap::Square => kurbo::Cap::Square,
+                })
+                .with_join(match stroke.linejoin {
+                    usvg::LineJoin::Miter | usvg::LineJoin::MiterClip => kurbo::Join::Miter,
+                    usvg::LineJoin::Round => kurbo::Join::Round,
+                    usvg::LineJoin::Bevel => kurbo::Join::Bevel,
+                })
+                .with_miter_limit(stroke.miterlimit.get() as f64);
+            if let Some(dash_array) = stroke.dasharray.as_ref() {
+                conv_stroke = conv_stroke.with_dashes(
+                    stroke.dashoffset as f64,
+                    dash_array.iter().map(|x| *x as f64),
+                );
+            }
+
+            let stroke_style: StrokeStyle = StrokeStyle::new(conv_stroke, brush, transform);
 
             entity_commands.insert(stroke_style.clone());
             svg_path_bundle.stroke = Some(stroke_style);
@@ -236,7 +209,7 @@ fn populate_with_path(
         }
     }
 
-    entity_commands.insert(fragments.add(VelloFragment::default()));
+    entity_commands.insert(scenes.add(VelloScene::default()));
 }
 
 fn paint_to_brush(
@@ -263,20 +236,22 @@ fn paint_to_brush(
                     cstop.color.g = stop.color.green;
                     cstop.color.b = stop.color.blue;
                     cstop.color.a = (stop.opacity * opacity).to_u8();
-                    cstop.offset = stop.offset.get() as f32;
+                    cstop.offset = stop.offset.get();
                     cstop
                 })
                 .collect();
-            let start: kurbo::Point = (gr.x1, gr.y1).into();
-            let end: kurbo::Point = (gr.x2, gr.y2).into();
-            let transform = kurbo::Affine::new([
-                gr.transform.a,
-                gr.transform.b,
-                gr.transform.c,
-                gr.transform.d,
-                gr.transform.e,
-                gr.transform.f,
-            ]);
+            let start = kurbo::Point::new(gr.x1 as f64, gr.y1 as f64);
+            let end = kurbo::Point::new(gr.x2 as f64, gr.y2 as f64);
+            let arr = [
+                gr.transform.sx,
+                gr.transform.ky,
+                gr.transform.kx,
+                gr.transform.sy,
+                gr.transform.tx,
+                gr.transform.ty,
+            ]
+            .map(f64::from);
+            let transform = kurbo::Affine::new(arr);
             let gradient = peniko::Gradient::new_linear(start, end).with_stops(stops.as_slice());
             Some((peniko::Brush::Gradient(gradient), transform))
         }
@@ -290,23 +265,25 @@ fn paint_to_brush(
                     cstop.color.g = stop.color.green;
                     cstop.color.b = stop.color.blue;
                     cstop.color.a = (stop.opacity * opacity).to_u8();
-                    cstop.offset = stop.offset.get() as f32;
+                    cstop.offset = stop.offset.get();
                     cstop
                 })
                 .collect();
 
-            let start_center: kurbo::Point = (gr.fx, gr.fy).into();
-            let end_center: kurbo::Point = (gr.cx, gr.cy).into();
+            let start_center = kurbo::Point::new(gr.cx as f64, gr.cy as f64);
+            let end_center = kurbo::Point::new(gr.fx as f64, gr.fy as f64);
             let start_radius = 0_f32;
-            let end_radius = gr.r.get() as f32;
-            let transform = kurbo::Affine::new([
-                gr.transform.a,
-                gr.transform.b,
-                gr.transform.c,
-                gr.transform.d,
-                gr.transform.e,
-                gr.transform.f,
-            ]);
+            let end_radius = gr.r.get();
+            let arr = [
+                gr.transform.sx,
+                gr.transform.ky,
+                gr.transform.kx,
+                gr.transform.sy,
+                gr.transform.tx,
+                gr.transform.ty,
+            ]
+            .map(f64::from);
+            let transform = kurbo::Affine::new(arr);
             let gradient = peniko::Gradient::new_two_point_radial(
                 start_center,
                 start_radius,
@@ -320,15 +297,22 @@ fn paint_to_brush(
     }
 }
 
-fn svg_transform(transform: usvg::Transform) -> Transform {
-    let usvg::Transform { a, b, c, d, e, f } = transform;
+fn svg_to_bevy_transform(transform: usvg::Transform) -> Transform {
+    let usvg::Transform {
+        sx,
+        kx,
+        ky,
+        sy,
+        tx,
+        ty,
+    } = transform;
 
     // https://stackoverflow.com/questions/39440369/how-to-convert-a-3x2-matrix-into-4x4-matrix
     let transform: [f32; 16] = [
-        a as f32, b as f32, 0.0, 0.0, // row 1
-        c as f32, d as f32, 0.0, 0.0, // row 2
+        sx, kx, 0.0, 0.0, // row 1
+        ky, sy, 0.0, 0.0, // row 2
         0.0, 0.0, 1.0, 0.0, // row 3
-        e as f32, -f as f32, 0.0, 1.0, // row 4
+        tx, -ty, 0.0, 1.0, // row 4
     ];
 
     Transform::from_matrix(Mat4::from_cols_array(&transform))

@@ -15,12 +15,12 @@ fn main() {
         .insert_resource(Msaa::Off)
         // Custom plugins
         .add_plugins((MotionGfx, MotionGfxBevy))
-        .add_systems(Startup, (setup, hello_world))
+        .add_systems(Startup, (setup_system, hello_world_system))
         .add_systems(Update, timeline_movement_system)
         .run();
 }
 
-pub fn hello_world(
+fn hello_world_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -35,7 +35,7 @@ pub fn hello_world(
 
     let mut cubes: Vec<Entity> = Vec::with_capacity(CAPACITY);
     // Motion
-    let mut cube_transform_motions: Vec<TransformMotion> = Vec::with_capacity(CAPACITY);
+    let mut transform_motions: Vec<TransformMotion> = Vec::with_capacity(CAPACITY);
 
     // Create cube objects (Entity)
     let material: StandardMaterial = StandardMaterial {
@@ -55,35 +55,32 @@ pub fn hello_world(
             let cube = commands
                 .spawn(PbrBundle {
                     transform,
-                    mesh: meshes.add(shape::Cube::default().into()),
+                    mesh: meshes.add(Cuboid::default()),
                     material: materials.add(material.clone()),
                     ..default()
                 })
                 .insert(NotShadowCaster)
                 .id();
 
-            cube_transform_motions.push(TransformMotion::new(cube, transform));
+            transform_motions.push(TransformMotion::new(cube, transform));
 
             cubes.push(cube);
         }
     }
 
-    // Actions
-    let mut act: ActionBuilder = ActionBuilder::new(&mut commands);
-
     // Generate cube animations
-    let mut cube_actions: Vec<Sequence> = Vec::with_capacity(CAPACITY);
+    let mut cube_seqs: Vec<Sequence> = Vec::with_capacity(CAPACITY);
 
     for w in 0..WIDTH {
         for h in 0..HEIGHT {
             let c = w * WIDTH + h;
 
-            cube_actions.push(
+            cube_seqs.push(
                 all(&[
-                    act.play(cube_transform_motions[c].translate_add(Vec3::X), 1.0),
-                    act.play(cube_transform_motions[c].scale_to(Vec3::splat(0.9)), 1.0),
-                    act.play(
-                        cube_transform_motions[c].rotate_to(Quat::from_euler(
+                    commands.play(transform_motions[c].translate_add(Vec3::X), 1.0),
+                    commands.play(transform_motions[c].scale_to(Vec3::splat(0.9)), 1.0),
+                    commands.play(
+                        transform_motions[c].rotate_to(Quat::from_euler(
                             EulerRot::XYZ,
                             0.0,
                             f32::to_radians(90.0),
@@ -97,13 +94,15 @@ pub fn hello_world(
         }
     }
 
-    let sequence: Sequence = flow(0.01, &cube_actions);
+    let sequence: Sequence = flow(0.01, &cube_seqs);
 
-    let sequence_id: Entity = commands.spawn(sequence).id();
-    commands.spawn(Timeline::new(sequence_id));
+    commands.spawn(SequencePlayerBundle {
+        sequence,
+        ..default()
+    });
 }
 
-fn setup(mut commands: Commands) {
+fn setup_system(mut commands: Commands) {
     // Camera
     commands
         .spawn(Camera3dBundle {
@@ -127,25 +126,29 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement_system(
-    mut q_timelines: Query<&mut Timeline>,
-    keys: Res<Input<KeyCode>>,
+    mut q_timelines: Query<(&mut SequencePlayer, &mut SequenceController)>,
+    keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
-    for mut timeline in q_timelines.iter_mut() {
-        if keys.pressed(KeyCode::D) {
-            timeline.target_time += time.delta_seconds();
+    for (mut sequence_player, mut sequence_time) in q_timelines.iter_mut() {
+        if keys.pressed(KeyCode::KeyD) {
+            sequence_time.target_time += time.delta_seconds();
         }
 
-        if keys.pressed(KeyCode::A) {
-            timeline.target_time -= time.delta_seconds();
+        if keys.pressed(KeyCode::KeyA) {
+            sequence_time.target_time -= time.delta_seconds();
         }
 
-        if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {
-            timeline.time_scale = -1.0;
-            timeline.is_playing = true;
-        } else if keys.pressed(KeyCode::Space) {
-            timeline.time_scale = 1.0;
-            timeline.is_playing = true;
+        if keys.just_pressed(KeyCode::Space) {
+            if keys.pressed(KeyCode::ShiftLeft) {
+                sequence_player.time_scale = -1.0;
+            } else {
+                sequence_player.time_scale = 1.0;
+            }
+        }
+
+        if keys.just_pressed(KeyCode::Escape) {
+            sequence_player.time_scale = 0.0;
         }
     }
 }

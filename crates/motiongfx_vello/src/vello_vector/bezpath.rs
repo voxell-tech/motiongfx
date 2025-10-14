@@ -14,7 +14,7 @@ pub struct VelloBezPathBundle {
     pub path: VelloBezPath,
     pub fill: FillStyle,
     pub stroke: StrokeStyle,
-    pub fragment_bundle: VelloFragmentBundle,
+    pub scene_bundle: VelloSceneBundle,
 }
 
 /// Vello Bézier path component.
