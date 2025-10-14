@@ -10,8 +10,8 @@ pub struct Timeline {
     pub target_time: f32,
 }
 
-impl Timeline {
-    pub fn new() -> Self {
+impl Default for Timeline {
+    fn default() -> Self {
         Self {
             is_playing: false,
             time_scale: 1.0,

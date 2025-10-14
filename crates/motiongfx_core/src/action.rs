@@ -1,34 +1,44 @@
 use crate::ease::{quad, EaseFn};
 use bevy_ecs::prelude::*;
 
-pub type InterpFn<C, T, R> =
-    fn(component: &mut C, begin: &T, end: &T, t: f32, resource: &mut ResMut<R>);
+pub type InterpFn<CompType, InterpType, ResType> = fn(
+    component: &mut CompType,
+    begin: &InterpType,
+    end: &InterpType,
+    t: f32,
+    resource: &mut ResMut<ResType>,
+);
 
 /// Basic data structure to describe an animation action.
 #[derive(Component, Clone, Copy)]
-pub struct Action<C, T, R>
+pub struct Action<CompType, InterpType, ResType>
 where
-    C: Component,
-    T: Send + Sync + 'static,
-    R: Resource,
+    CompType: Component,
+    InterpType: Send + Sync + 'static,
+    ResType: Resource,
 {
     /// Target `Entity` for `Component` manipulation.
     pub(crate) target_id: Entity,
     /// Initial state of the animation.
-    pub(crate) begin: T,
+    pub(crate) begin: InterpType,
     /// Final state of the animation.
-    pub(crate) end: T,
+    pub(crate) end: InterpType,
     /// Interpolation function to be used for animation.
-    pub(crate) interp_fn: InterpFn<C, T, R>,
+    pub(crate) interp_fn: InterpFn<CompType, InterpType, ResType>,
 }
 
-impl<C, T, R> Action<C, T, R>
+impl<CompType, InterpType, ResType> Action<CompType, InterpType, ResType>
 where
-    C: Component,
-    T: Send + Sync + 'static,
-    R: Resource,
+    CompType: Component,
+    InterpType: Send + Sync + 'static,
+    ResType: Resource,
 {
-    pub fn new(target_id: Entity, begin: T, end: T, interp_fn: InterpFn<C, T, R>) -> Self {
+    pub fn new(
+        target_id: Entity,
+        begin: InterpType,
+        end: InterpType,
+        interp_fn: InterpFn<CompType, InterpType, ResType>,
+    ) -> Self {
         Self {
             target_id,
             begin,
@@ -119,20 +129,13 @@ impl<'a, 'w, 's> ActionBuilder<'a, 'w, 's> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ActionMetaGroup {
     pub(crate) action_metas: Vec<ActionMeta>,
     pub(crate) duration: f32,
 }
 
 impl ActionMetaGroup {
-    pub fn new() -> Self {
-        Self {
-            action_metas: Vec::new(),
-            duration: 0.0,
-        }
-    }
-
     /// Create an `ActionMetaGroup` with only a single `ActionMeta` in it.
     pub fn single(action_meta: ActionMeta) -> Self {
         let duration: f32 = action_meta.duration();

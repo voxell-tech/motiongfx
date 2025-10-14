@@ -1027,7 +1027,7 @@ dependencies = [
 [[package]]
 name = "bevy_vello_renderer"
 version = "0.1.0"
-source = "git+https://github.com/nixon-voxell/bevy_vello_renderer?rev=4ebf312e55c32b8a5dbe51a16c4df781098dd222#4ebf312e55c32b8a5dbe51a16c4df781098dd222"
+source = "git+https://github.com/nixon-voxell/bevy_vello_renderer?rev=545d9f6b792e2bb067fa8ea660f08ba711ee563c#545d9f6b792e2bb067fa8ea660f08ba711ee563c"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -2324,6 +2324,7 @@ dependencies = [
  "bevy_ecs",
  "bevy_math",
  "bevy_pbr",
+ "bevy_render",
  "bevy_transform",
  "motiongfx_core",
 ]
@@ -2335,7 +2336,11 @@ dependencies = [
  "bevy_app",
  "bevy_ecs",
  "bevy_math",
+ "bevy_render",
  "bevy_time",
+ "bevy_utils",
+ "bevy_vello_renderer",
+ "smallvec",
 ]
 
 [[package]]
@@ -2349,6 +2354,7 @@ dependencies = [
  "bevy_math",
  "bevy_pbr",
  "bevy_reflect",
+ "bevy_render",
  "bevy_transform",
  "bevy_utils",
  "bevy_vello_renderer",
@@ -3562,7 +3568,7 @@ checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 [[package]]
 name = "vello"
 version = "0.0.1"
-source = "git+https://github.com/nixon-voxell/vello?rev=ec8867a8bbb1dffffc2e79223723193344284106#ec8867a8bbb1dffffc2e79223723193344284106"
+source = "git+https://github.com/nixon-voxell/vello?rev=78aa9e805d68288bc72c5f74dfe2159b7538bf30#78aa9e805d68288bc72c5f74dfe2159b7538bf30"
 dependencies = [
  "bytemuck",
  "fello",
@@ -3577,7 +3583,7 @@ dependencies = [
 [[package]]
 name = "vello_encoding"
 version = "0.1.0"
-source = "git+https://github.com/nixon-voxell/vello?rev=ec8867a8bbb1dffffc2e79223723193344284106#ec8867a8bbb1dffffc2e79223723193344284106"
+source = "git+https://github.com/nixon-voxell/vello?rev=78aa9e805d68288bc72c5f74dfe2159b7538bf30#78aa9e805d68288bc72c5f74dfe2159b7538bf30"
 dependencies = [
  "bytemuck",
  "fello",
@@ -3588,7 +3594,7 @@ dependencies = [
 [[package]]
 name = "vello_svg"
 version = "0.0.1"
-source = "git+https://github.com/nixon-voxell/vello?rev=ec8867a8bbb1dffffc2e79223723193344284106#ec8867a8bbb1dffffc2e79223723193344284106"
+source = "git+https://github.com/nixon-voxell/vello?rev=78aa9e805d68288bc72c5f74dfe2159b7538bf30#78aa9e805d68288bc72c5f74dfe2159b7538bf30"
 dependencies = [
  "usvg",
  "vello",

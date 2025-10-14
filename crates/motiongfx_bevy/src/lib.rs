@@ -2,6 +2,7 @@ use bevy_app::prelude::*;
 use bevy_asset::prelude::*;
 use bevy_math::prelude::*;
 use bevy_pbr::prelude::*;
+use bevy_render::prelude::*;
 use bevy_transform::prelude::*;
 use motiongfx_core::prelude::*;
 
@@ -10,9 +11,7 @@ pub mod transform;
 
 pub mod prelude {
     pub use crate::{
-        standard_material::{BaseColor, Emissive},
-        transform::{Rotation, Scale, Translation},
-        MotionGfxBevy,
+        standard_material::StandardMaterialMotion, transform::TransformMotion, MotionGfxBevy,
     };
 }
 
@@ -25,7 +24,7 @@ impl Plugin for MotionGfxBevy {
             ((
                 sequence_player_system::<Transform, Vec3, EmptyRes>,
                 sequence_player_system::<Transform, Quat, EmptyRes>,
-                sequence_player_system::<Handle<StandardMaterial>, Vec4, Assets<StandardMaterial>>,
+                sequence_player_system::<Handle<StandardMaterial>, Color, Assets<StandardMaterial>>,
             ),),
         );
     }

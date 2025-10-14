@@ -29,22 +29,19 @@ pub fn easings(
 
     let mut spheres: Vec<Entity> = Vec::with_capacity(CAPACITY);
     // States
-    let mut cube_translations: Vec<Translation> = Vec::with_capacity(CAPACITY);
-    let mut cube_colors: Vec<BaseColor> = Vec::with_capacity(CAPACITY);
+    let mut cube_transform_motions: Vec<TransformMotion> = Vec::with_capacity(CAPACITY);
+    let mut cube_material_motion: Vec<StandardMaterialMotion> = Vec::with_capacity(CAPACITY);
 
     // Create cube objects (Entity)
     let material: StandardMaterial = StandardMaterial {
-        base_color: style::BLUE.into(),
+        emissive: style::BLUE * 4.0,
         ..default()
     };
 
     for i in 0..CAPACITY {
-        let transform: Transform = Transform::from_translation(Vec3::new(
-            -10.0,
-            (i as f32) - (CAPACITY as f32) * 0.5,
-            0.0,
-        ))
-        .with_scale(Vec3::ONE * 0.48);
+        let transform: Transform =
+            Transform::from_translation(Vec3::new(-5.0, (i as f32) - (CAPACITY as f32) * 0.5, 0.0))
+                .with_scale(Vec3::ONE * 0.48);
 
         let cube = commands
             .spawn(PbrBundle {
@@ -56,8 +53,8 @@ pub fn easings(
             .insert(NotShadowCaster)
             .id();
 
-        cube_translations.push(Translation::from_transform(cube, &transform));
-        cube_colors.push(BaseColor::from_material(cube, &material));
+        cube_transform_motions.push(TransformMotion::new(cube, transform));
+        cube_material_motion.push(StandardMaterialMotion::new(cube, material.clone()));
 
         spheres.push(cube);
     }
@@ -84,8 +81,8 @@ pub fn easings(
     for i in 0..CAPACITY {
         cube_actions.push(
             all(&[
-                act.play(cube_translations[i].translate(Vec3::X * 20.0), 1.0),
-                act.play(cube_colors[i].color_to(style::RED), 1.0),
+                act.play(cube_transform_motions[i].translate_add(Vec3::X * 10.0), 1.0),
+                act.play(cube_material_motion[i].emissive_to(style::RED * 4.0), 1.0),
             ])
             .with_ease(easings[i]),
         );

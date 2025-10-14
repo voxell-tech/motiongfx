@@ -4,14 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy_ecs = { version = "0.12", default-features = false }
 bevy_app = { version = "0.12", default-features = false }
-bevy_math = { version = "0.12", default-features = false }
-bevy_transform = { version = "0.12", default-features = false }
-bevy_pbr = { version = "0.12", default-features = false }
 bevy_asset = { version = "0.12", default-features = false }
+bevy_ecs = { version = "0.12", default-features = false }
 bevy_log = { version = "0.12", default-features = false }
-bevy_utils = { version = "0.12", default-features = false }
+bevy_math = { version = "0.12", default-features = false }
+bevy_pbr = { version = "0.12", default-features = false }
 bevy_reflect = { version = "0.12", default-features = false }
+bevy_render = { version = "0.12", default-features = false }
+bevy_transform = { version = "0.12", default-features = false }
+bevy_utils = { version = "0.12", default-features = false }
 motiongfx_core = { version = "0.1.0", path = "../motiongfx_core" }
-bevy_vello_renderer = { git = "https://github.com/nixon-voxell/bevy_vello_renderer", rev = "edad3a50d1238ca9a0bf4a8c87b8574ed775be1d" }
+bevy_vello_renderer = { git = "https://github.com/nixon-voxell/bevy_vello_renderer", rev = "545d9f6b792e2bb067fa8ea660f08ba711ee563c" }
