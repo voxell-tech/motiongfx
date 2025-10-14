@@ -2,22 +2,23 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use prelude::*;
 
-pub mod action;
-pub mod cross_lerp;
 pub mod ease;
-pub mod lerp;
-pub mod sequence;
-pub mod style;
-pub mod timeline;
+
+mod action;
+mod color_palette;
+mod cross_lerp;
+mod lerp;
+mod sequence;
+mod timeline;
 
 pub mod prelude {
     pub use crate::{
         action::{Action, ActionBuilder, ActionMeta, ActionMetaGroup, InterpFn},
+        color_palette::{ColorKey, ColorPalette},
         cross_lerp::*,
         ease,
         lerp::*,
         sequence::{all, any, chain, delay, flow, sequence_player_system, Sequence},
-        style,
         timeline::Timeline,
         EmptyComp, EmptyRes, MotionGfx,
     };

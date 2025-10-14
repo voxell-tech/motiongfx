@@ -37,6 +37,10 @@ Bevy MotionGfx also comes with built-in easing functions which are crucial for a
 
 ![easings gif](./.github/assets/easings.gif)
 
+## Join the community!
+
+You can join us on the [Voxell discord server](https://discord.gg/WDBnuNH) or our project focused [VOS (Voxell Open Source) discord server](https://discord.gg/X3ZucbxXFc).
+
 ## License
 
 The `bevy_motiongfx` is dual-licensed under either:

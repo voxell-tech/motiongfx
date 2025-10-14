@@ -4,8 +4,7 @@ use bevy::{
 };
 use bevy_motiongfx::prelude::*;
 use motiongfx_vello::{
-    bevy_vello_renderer::{prelude::*, vello},
-    vector_style::FillStyle,
+    bevy_vello_renderer::prelude::*,
     vello_vector::rect::{VelloRect, VelloRectBundle, VelloRectMotion},
 };
 
@@ -33,6 +32,9 @@ fn vello_basic(
     const RECT_SIZE: f32 = 40.0;
     const SPACING: f32 = 5.0;
 
+    // Color palette
+    let palette: ColorPalette<ColorKey> = ColorPalette::default();
+
     let mut rect_motions: Vec<VelloRectMotion> = Vec::with_capacity(RECT_COUNT);
     let mut transform_motions: Vec<TransformMotion> = Vec::with_capacity(RECT_COUNT);
 
@@ -40,7 +42,9 @@ fn vello_basic(
 
     for r in 0..RECT_COUNT {
         let rect: VelloRect = VelloRect::anchor_center(DVec2::new(0.0, 0.0), DVec4::splat(10.0))
-            .with_fill(FillStyle::from_brush(Color::CRIMSON));
+            .with_fill_brush(*palette.get_or_default(&ColorKey::Red))
+            .with_stroke_brush(*palette.get_or_default(&ColorKey::Red) * 1.2)
+            .with_stroke_style(2.0);
 
         let transform: Transform = Transform::from_translation(Vec3::new(
             -500.0,
@@ -51,9 +55,7 @@ fn vello_basic(
         let rect_bundle: VelloRectBundle = VelloRectBundle {
             rect: rect.clone(),
             fragment_bundle: VelloFragmentBundle {
-                fragment: fragments.add(VelloFragment {
-                    fragment: vello::SceneFragment::new().into(),
-                }),
+                fragment: fragments.add(VelloFragment::default()),
                 transform: TransformBundle::from_transform(transform),
                 ..default()
             },
@@ -75,23 +77,19 @@ fn vello_basic(
     let mut fill_actions: Vec<ActionMetaGroup> = Vec::with_capacity(RECT_COUNT);
 
     for r in 0..RECT_COUNT {
+        let expansion: f64 = 900.0 * (r as f64) / (RECT_COUNT as f64) + 100.0;
+
         inflate_actions.push(
             act.play(rect_motions[r].inflate(Vec2::splat(RECT_SIZE * 0.5)), 1.0)
                 .with_ease(ease::expo::ease_in_out),
         );
         expand_right_actions.push(
-            act.play(
-                rect_motions[r].expand_right(900.0 * (r as f64) / (RECT_COUNT as f64) + 100.0),
-                1.0,
-            )
-            .with_ease(ease::expo::ease_in_out),
+            act.play(rect_motions[r].expand_right(expansion), 1.0)
+                .with_ease(ease::expo::ease_in_out),
         );
         expand_left_actions.push(
-            act.play(
-                rect_motions[r].expand_left(-(900.0 * (r as f64) / (RECT_COUNT as f64) + 100.0)),
-                1.0,
-            )
-            .with_ease(ease::expo::ease_in_out),
+            act.play(rect_motions[r].expand_left(-expansion), 1.0)
+                .with_ease(ease::expo::ease_in_out),
         );
 
         let mut translation: Vec3 = transform_motions[r].get_transform().translation;
@@ -101,23 +99,15 @@ fn vello_basic(
                 .with_ease(ease::back::ease_in_out),
         );
 
+        let color: Color = Color::lerp(
+            palette.get_or_default(&ColorKey::Purple),
+            palette.get_or_default(&ColorKey::Blue),
+            (r as f32) / (RECT_COUNT as f32),
+        );
+
         fill_actions.push(all(&[
-            act.play(
-                rect_motions[r].fill_brush_to(Color::rgb(
-                    0.0,
-                    1.0 - (r as f32) / (RECT_COUNT as f32),
-                    (r as f32) / (RECT_COUNT as f32),
-                )),
-                1.0,
-            ),
-            act.play(
-                rect_motions[r].stroke_brush_to(Color::rgb(
-                    0.0,
-                    (r as f32) / (RECT_COUNT as f32),
-                    1.0 - (r as f32) / (RECT_COUNT as f32),
-                )),
-                1.0,
-            ),
+            act.play(rect_motions[r].fill_brush_to(color), 1.0),
+            act.play(rect_motions[r].stroke_brush_to(color * 1.2), 1.0),
             act.play(rect_motions[r].stroke_style_to(5.0), 1.0),
         ]));
     }
