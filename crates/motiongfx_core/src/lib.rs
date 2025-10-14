@@ -1,56 +1,41 @@
-use bevy_app::prelude::*;
-use bevy_ecs::prelude::*;
+use bevy::prelude::*;
+use sequence::{sequence_controller, sequence_player};
+use slide::slide_controller;
 
 pub mod action;
 pub mod color_palette;
-pub mod cross_lerp;
 pub mod ease;
-pub mod lerp;
+pub mod f32lerp;
 pub mod sequence;
 pub mod slide;
+pub mod tuple_motion;
 
 pub mod prelude {
     pub use crate::{
-        action::{Action, ActionBuilder},
+        action::{act, Action, SequenceBuilderExt},
         color_palette::{ColorKey, ColorPalette},
-        cross_lerp::*,
         ease,
-        lerp::*,
+        f32lerp::F32Lerp,
         sequence::{
-            Sequence, SequenceBundle, SequenceController, SequencePlayer, SequencePlayerBundle,
+            all, any, chain, delay, flow, update_asset, update_component, MultiSeqOrd, Sequence,
+            SequenceBundle, SequenceController, SequencePlayer, SequencePlayerBundle, SingleSeqOrd,
         },
-        // sequence::{
-        //     all, any, chain, delay, flow, Sequence, SequenceBundle, SequenceController,
-        //     SequencePlayer, SequencePlayerBundle,
-        // },
         slide::{create_slide, SlideBundle, SlideController, SlideCurrState, SlideTargetState},
-        EmptyComp,
-        EmptyRes,
-        MotionGfx,
+        tuple_motion::{GetId, GetMut, GetMutValue},
     };
-
-    pub use crate::{all, any, chain, flow};
-
-    // pub use motiongfx_core_macros::rect;
 }
 
-pub struct MotionGfx;
+pub struct MotionGfxCorePlugin;
 
-impl Plugin for MotionGfx {
+impl Plugin for MotionGfxCorePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(EmptyRes)
-            .add_systems(PreUpdate, sequence::sequence_controller)
-            .add_systems(Update, (sequence::sequence_player, slide::slide_controller));
+        app.add_systems(
+            Update,
+            (sequence_player, slide_controller).before(UpdateSequenceSet),
+        )
+        .add_systems(Update, sequence_controller.after(UpdateSequenceSet));
     }
 }
 
-#[derive(Resource)]
-pub struct EmptyRes;
-
-#[derive(Component)]
-pub struct EmptyComp;
-
-/// Calculate if 2 time range (in float) overlaps.
-pub(crate) fn time_range_overlap(a_begin: f32, a_end: f32, b_begin: f32, b_end: f32) -> bool {
-    a_begin <= b_end && b_begin <= a_end
-}
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UpdateSequenceSet;

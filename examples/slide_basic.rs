@@ -1,92 +1,77 @@
-use bevy::{
-    core_pipeline::{
-        bloom::BloomSettings,
-        experimental::taa::{TemporalAntiAliasBundle, TemporalAntiAliasPlugin},
-    },
-    pbr::{NotShadowCaster, ScreenSpaceAmbientOcclusionBundle},
-    prelude::*,
-};
-use bevy_motiongfx::prelude::*;
+use bevy::{core_pipeline::bloom::BloomSettings, pbr::NotShadowCaster, prelude::*};
+use bevy_motiongfx::{prelude::*, MotionGfxPlugin};
 
 fn main() {
     App::new()
         // Bevy plugins
-        .add_plugins((DefaultPlugins, TemporalAntiAliasPlugin))
-        .insert_resource(Msaa::Off)
+        .add_plugins(DefaultPlugins)
         // Custom plugins
-        .add_plugins((MotionGfx, MotionGfxBevy))
+        .add_plugins(MotionGfxPlugin)
         .add_systems(Startup, (setup, slide_basic))
         .add_systems(Update, slide_movement)
         .run();
 }
 
-fn slide_basic(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn slide_basic(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     // Color palette
     let palette = ColorPalette::default();
 
-    // Materials
-    let green_material = StandardMaterial {
-        base_color: *palette.get_or_default(&ColorKey::Green),
-        ..default()
-    };
-    let blue_material = StandardMaterial {
-        base_color: *palette.get_or_default(&ColorKey::Blue),
-        ..default()
-    };
-
-    let x_offset = 2.0;
     // Cube
-    let cube_pbr = PbrBundle {
-        transform: Transform::default().with_scale(Vec3::splat(0.0)),
-        mesh: meshes.add(Cuboid::default()),
-        material: materials.add(green_material.clone()),
+    let x_offset = 2.0;
+    let transform = Transform::default().with_scale(Vec3::splat(0.0));
+    let material = StandardMaterial {
+        base_color: palette.get(ColorKey::Green),
         ..default()
     };
-    let cube = commands
-        .spawn(cube_pbr.clone())
-        .insert(NotShadowCaster)
+    let id = commands
+        .spawn((
+            NotShadowCaster,
+            PbrBundle {
+                transform,
+                mesh: meshes.add(Cuboid::default()),
+                ..default()
+            },
+        ))
+        .add_new_asset(material.clone())
         .id();
-
-    let mut cube_transform = TransformMotion::new(cube, cube_pbr.transform);
-    let mut cube_material = StandardMaterialMotion::new(cube, green_material);
+    let mut cube = (id, (transform, material));
 
     // Sphere
-    let sphere_pbr = PbrBundle {
-        transform: Transform::default()
-            .with_translation(Vec3::X * x_offset)
-            .with_scale(Vec3::splat(0.0)),
-        mesh: meshes.add(Sphere::default()),
-        material: materials.add(blue_material),
+    let transform = Transform::default()
+        .with_translation(Vec3::X * x_offset)
+        .with_scale(Vec3::splat(0.0));
+    let material = StandardMaterial {
+        base_color: palette.get(ColorKey::Blue),
         ..default()
     };
-    let sphere = commands
-        .spawn(sphere_pbr.clone())
-        .insert(NotShadowCaster)
+    let id = commands
+        .spawn((
+            NotShadowCaster,
+            PbrBundle {
+                transform,
+                mesh: meshes.add(Sphere::default()),
+                ..default()
+            },
+        ))
+        .add_new_asset(material.clone())
         .id();
-
-    let mut sphere_tranform = TransformMotion::new(sphere, sphere_pbr.transform);
+    let mut sphere = (id, (transform, material));
 
     // Create slides
-    let slide0 = commands
-        .play(cube_transform.scale_to(Vec3::ONE), 1.0)
-        .with_ease(ease::cubic::ease_in_out);
+    let slide0 = commands.play_motion(cube.transform().to_scale(Vec3::ONE).animate(1.0));
 
-    let slide1 = flow!(
-        0.1,
-        all!(
-            commands.play(cube_transform.translate_add(Vec3::X * -x_offset), 1.0),
-            commands.play(
-                cube_material.base_color_to(*palette.get_or_default(&ColorKey::Base0)),
-                1.0,
-            ),
-        ),
-        commands.play(sphere_tranform.scale_to(Vec3::ONE), 1.0),
-    )
-    .with_ease(ease::cubic::ease_in_out);
+    let slide1 = [
+        commands
+            .add_motion(cube.transform().to_translation_x(-x_offset).animate(1.0))
+            .add_motion(
+                cube.std_material()
+                    .to_base_color(palette.get(ColorKey::Base0))
+                    .animate(1.0),
+            )
+            .all(),
+        commands.play_motion(sphere.transform().to_scale(Vec3::ONE).animate(1.0)),
+    ]
+    .flow(0.1);
 
     commands.spawn(create_slide(vec![slide0, slide1]));
 }
@@ -103,9 +88,7 @@ fn setup(mut commands: Commands) {
             tonemapping: bevy::core_pipeline::tonemapping::Tonemapping::AcesFitted,
             ..default()
         })
-        .insert(BloomSettings::default())
-        .insert(ScreenSpaceAmbientOcclusionBundle::default())
-        .insert(TemporalAntiAliasBundle::default());
+        .insert(BloomSettings::default());
 
     // Directional light
     commands.spawn(DirectionalLightBundle {

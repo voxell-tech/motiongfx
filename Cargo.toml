@@ -1,27 +1,45 @@
-[package]
-name = "bevy_motiongfx"
+[workspace]
+resolver = "2"
+members = ["crates/*", ]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/nixon-voxell/bevy_motiongfx"
+readme = "README.md"
+
+[workspace.dependencies]
+bevy = { version = "0.14", default-features = false }
+bevy_vello_graphics = { version = "0.1.0", git = "https://github.com/voxell-tech/bevy_vello_graphics" }
+smallvec = "1"
+
+[package]
+name = "bevy_motiongfx"
 categories = ["graphics", "gui", "rendering", "motion-graphics", "vector-graphics"]
 description = "Motion graphics creation tool in Bevy. (Highly inspired by Motion Canvas and Manim)"
-exclude = ["assets/", "tools/", ".github/", "crates/", "examples/wasm/assets/"]
+exclude = ["/assets/", "/.github/", "/examples/"]
 keywords = ["motion-graphics", "game", "gamedev", "graphics", "bevy", "vello"]
-license = "MIT OR Apache-2.0"
-readme = "README.md"
-repository = "https://github.com/nixon-voxell/bevy_motiongfx"
-
-[workspace]
-members = ["crates/*", ]
-resolver = "2"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
 
 [dependencies]
-motiongfx_core = { path = "crates/motiongfx_core" }
-motiongfx_bevy = { path = "crates/motiongfx_bevy" }
-motiongfx_vello = { path = "crates/motiongfx_vello" }
-motiongfx_typst = { path = "crates/motiongfx_typst" }
+motiongfx_core = { version = "0.1.0", path = "crates/motiongfx_core" }
+motiongfx_common = { version = "0.1.0", path = "crates/motiongfx_common", optional = true }
+motiongfx_vello = { version = "0.1.0", path = "crates/motiongfx_vello", optional = true }
+bevy = { workspace = true }
+
+[features]
+default = ["common", "vello_graphics"]
+common = ["dep:motiongfx_common"]
+vello_graphics = ["dep:motiongfx_vello", "motiongfx_core/vello_graphics"]
 
 [dev-dependencies]
-bevy = "0.13"
+bevy = "0.14"
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
+bool_comparison = "allow"

@@ -1,142 +1,165 @@
-use bevy::{
-    math::{DVec2, DVec4},
-    prelude::*,
-};
-use bevy_motiongfx::prelude::*;
+use bevy::{math::DVec2, prelude::*};
+use bevy_motiongfx::motiongfx_vello::bevy_vello_graphics::bevy_vello::{prelude::*, VelloPlugin};
+use bevy_motiongfx::{prelude::*, MotionGfxPlugin};
 
 fn main() {
     App::new()
-        // Bevy plugins
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, VelloPlugin::default()))
         // Custom plugins
-        .add_plugins((MotionGfx, MotionGfxBevy, MotionGfxVello))
+        .add_plugins(MotionGfxPlugin)
         .add_systems(Startup, (setup, vello_basic))
         .add_systems(Update, timeline_movement)
         .run();
 }
 
-fn vello_basic(mut commands: Commands, mut scenes: ResMut<Assets<VelloScene>>) {
+fn vello_basic(mut commands: Commands) {
     // Color palette
     let palette = ColorPalette::default();
 
-    let rect = create_rect(100.0, 100.0)
-        .radius(10.0)
-        .fill(*palette.get_or_default(&ColorKey::Blue))
-        .stroke(*palette.get_or_default(&ColorKey::Blue) * 1.5)
-        .build(&mut commands, &mut scenes);
+    // Create vello graphics
+    let line = (
+        VelloLine::new(DVec2::new(-300.0, 0.0), DVec2::new(300.0, 0.0)),
+        Stroke::default().with_brush(Brush::from_color(palette.get(ColorKey::Base8))),
+        Transform::from_xyz(0.0, -100.0, 0.0),
+    );
+    let id = commands
+        .spawn(VelloSceneBundle::default())
+        .insert(line.clone())
+        .id();
+    let mut line = (id, line);
 
-    // Spawning entities
-    let rect_bundle = VelloRectBundle {
-        rect: VelloRect::anchor_center(DVec2::new(100.0, 100.0), DVec4::splat(10.0)),
-        fill: FillStyle::from_brush(*palette.get_or_default(&ColorKey::Blue)),
-        stroke: StrokeStyle::from_brush(*palette.get_or_default(&ColorKey::Blue) * 1.5)
-            .with_style(4.0),
-        scene_bundle: VelloSceneBundle {
-            scene: scenes.add(VelloScene::default()),
-            transform: Transform::from_xyz(-200.0, 0.0, 0.0),
-            ..default()
-        },
-    };
+    let rect = (
+        VelloRect::new(100.0, 100.0),
+        Fill::new().with_color(palette.get(ColorKey::Blue)),
+        Stroke::new(4.0).with_color(palette.get(ColorKey::Blue).lighter(0.2)),
+        Transform::from_xyz(-200.0, 0.0, 0.0),
+    );
+    let id = commands
+        .spawn(VelloSceneBundle::default())
+        .insert(rect.clone())
+        .id();
+    let mut rect = (id, rect);
 
-    let circ_bundle = VelloCircleBundle {
-        circle: VelloCircle::from_radius(50.0),
-        fill: FillStyle::from_brush(*palette.get_or_default(&ColorKey::Purple)),
-        stroke: StrokeStyle::from_brush(*palette.get_or_default(&ColorKey::Purple) * 1.5)
-            .with_style(4.0),
-        scene_bundle: VelloSceneBundle {
-            scene: scenes.add(VelloScene::default()),
-            transform: Transform::from_xyz(200.0, 0.0, 0.0),
-            ..default()
-        },
-    };
+    let circle = (
+        VelloCircle::new(50.0),
+        Fill::new().with_color(palette.get(ColorKey::Purple)),
+        Stroke::new(4.0).with_color(palette.get(ColorKey::Purple).lighter(0.2)),
+        Transform::from_xyz(200.0, 0.0, 0.0),
+    );
+    let id = commands
+        .spawn(VelloSceneBundle::default())
+        .insert(circle.clone())
+        .id();
+    let mut circle = (id, circle);
 
-    let line_bundle = VelloLineBundle {
-        line: VelloLine::from_points(DVec2::new(-300.0, 0.0), DVec2::new(300.0, 0.0)),
-        stroke: StrokeStyle::from_brush(*palette.get_or_default(&ColorKey::Base8)),
-        scene_bundle: VelloSceneBundle {
-            scene: scenes.add(VelloScene::default()),
-            transform: Transform::from_xyz(0.0, -100.0, 0.0),
-            ..default()
-        },
-    };
+    // Generate sequence
+    let line_seq = [
+        commands
+            .add_motion({
+                let y = line.transform().transform.translation.y;
+                line.transform().to_translation_y(y - 100.0).animate(1.5)
+            })
+            .add_motion(
+                act!(
+                    (line.id(), VelloLine),
+                    start = { *line.get_mut::<VelloLine>() },
+                    end = line.get_mut::<VelloLine>().extend(100.0),
+                )
+                .animate(1.0),
+            )
+            .add_motion(line.stroke().to_width(10.0).animate(1.0))
+            .all(),
+        commands
+            .add_motion({
+                let y = line.transform().transform.translation.y;
+                line.transform().to_translation_y(y + 100.0).animate(1.5)
+            })
+            .add_motion(
+                act!(
+                    (line.id(), VelloLine),
+                    start = { *line.get_mut::<VelloLine>() },
+                    end = line.get_mut::<VelloLine>().extend(-100.0),
+                )
+                .animate(1.0),
+            )
+            .add_motion(line.stroke().to_width(1.0).animate(1.0))
+            .all(),
+    ]
+    .chain();
 
-    let rect_id = commands.spawn(rect_bundle.clone()).id();
-    let circ_id = commands.spawn(circ_bundle.clone()).id();
-    let line_id = commands.spawn(line_bundle.clone()).id();
-
-    // Motions
-    let mut rect_motion = VelloRectBundleMotion::new(rect_id, rect_bundle);
-    let mut circ_motion = VelloCircleBundleMotion::new(circ_id, circ_bundle);
-    let mut line_motion = VelloLineBundleMotion::new(line_id, line_bundle);
-
-    // Sequence
-    let sequence = flow!(
-        0.5,
-        // Line animation
-        chain!(
-            all!(
-                commands.play(
-                    line_motion
-                        .transform
-                        .translate_add(Vec3::new(0.0, -100.0, 0.0)),
-                    1.5,
-                ),
-                commands.play(line_motion.line.extend(100.0), 1.0),
-                commands.play(line_motion.stroke.style_to(10.0), 1.0),
-            ),
-            all!(
-                commands.play(
-                    line_motion
-                        .transform
-                        .translate_add(Vec3::new(0.0, 100.0, 0.0)),
-                    1.5,
-                ),
-                commands.play(line_motion.line.extend(-100.0), 1.0),
-                commands.play(line_motion.stroke.style_to(1.0), 1.0),
-            ),
-        ),
-        // Rect animation
-        chain!(
-            all!(
-                commands.play(rect_motion.rect.inflate(DVec2::splat(50.0)), 1.0),
-                commands.play(
-                    rect_motion.transform.rotate_to(Quat::from_euler(
+    let rect_seq = [
+        commands
+            .add_motion(
+                act!(
+                    (rect.id(), VelloRect),
+                    start = { rect.get_mut::<VelloRect>() }.size,
+                    end = rect.get_mut::<VelloRect>().size + 50.0,
+                )
+                .animate(1.0),
+            )
+            .add_motion(
+                rect.transform()
+                    .to_rotation(Quat::from_euler(
                         EulerRot::XYZ,
                         0.0,
                         0.0,
                         std::f32::consts::PI,
-                    )),
-                    1.0,
-                ),
-                commands.play(rect_motion.stroke.style_to(20.0), 1.0),
-            ),
-            all!(
-                commands.play(rect_motion.rect.inflate(-DVec2::splat(50.0)), 1.0),
-                commands.play(
-                    rect_motion.transform.rotate_to(Quat::from_euler(
+                    ))
+                    .animate(1.0),
+            )
+            .add_motion(rect.stroke().to_width(20.0).animate(1.0))
+            .all(),
+        commands
+            .add_motion(
+                act!(
+                    (rect.id(), VelloRect),
+                    start = { rect.get_mut::<VelloRect>() }.size,
+                    end = rect.get_mut::<VelloRect>().size - 50.0,
+                )
+                .animate(1.0),
+            )
+            .add_motion(
+                rect.transform()
+                    .to_rotation(Quat::from_euler(
                         EulerRot::XYZ,
                         0.0,
                         0.0,
                         std::f32::consts::TAU,
-                    )),
-                    1.0,
-                ),
-                commands.play(rect_motion.stroke.style_to(4.0), 1.0),
-            ),
-        ),
-        // Circle animation
-        chain!(
-            all!(
-                commands.play(circ_motion.circle.inflate(50.0), 1.0),
-                commands.play(circ_motion.stroke.style_to(20.0), 1.0),
-            ),
-            all!(
-                commands.play(circ_motion.circle.inflate(-50.0), 1.0),
-                commands.play(circ_motion.stroke.style_to(4.0), 1.0),
-            ),
-        ),
-    )
-    .with_ease(ease::cubic::ease_in_out);
+                    ))
+                    .animate(1.0),
+            )
+            .add_motion(rect.stroke().to_width(4.0).animate(1.0))
+            .all(),
+    ]
+    .chain();
+
+    let cirlce_seq = [
+        commands
+            .add_motion(
+                act!(
+                    (circle.id(), VelloCircle),
+                    start = { circle.get_mut::<VelloCircle>() }.radius,
+                    end = circle.get_mut::<VelloCircle>().radius + 50.0,
+                )
+                .animate(1.0),
+            )
+            .add_motion(circle.stroke().to_width(20.0).animate(1.0))
+            .all(),
+        commands
+            .add_motion(
+                act!(
+                    (circle.id(), VelloCircle),
+                    start = { circle.get_mut::<VelloCircle>() }.radius,
+                    end = circle.get_mut::<VelloCircle>().radius - 50.0,
+                )
+                .animate(1.0),
+            )
+            .add_motion(circle.stroke().to_width(4.0).animate(1.0))
+            .all(),
+    ]
+    .chain();
+
+    let sequence = [line_seq, rect_seq, cirlce_seq].flow(0.5);
 
     commands.spawn(SequencePlayerBundle {
         sequence,

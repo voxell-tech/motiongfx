@@ -1,5 +1,5 @@
 [package]
-name = "motiongfx_vello"
+name = "motiongfx_common"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -7,8 +7,7 @@ repository.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
-bevy_vello_graphics = { workspace = true }
-motiongfx_core = { version = "0.1.0", path = "../motiongfx_core", features = ["vello_graphics"] }
+motiongfx_core = { version = "0.1.0", path = "../motiongfx_core" }
 
 [lints]
 workspace = true

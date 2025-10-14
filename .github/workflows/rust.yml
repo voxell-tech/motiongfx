@@ -1,0 +1,73 @@
+name: CI
+on: 
+  pull_request:
+  push:
+    branches:
+      - main
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: rustup component add rustfmt
+      - run: cargo fmt --all -- --check
+
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+      - run: cargo check --workspace --all-features --all-targets
+
+  check-no-defaults:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+      - run: cargo check --workspace --no-default-features
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+      - run: rustup component add clippy
+      - run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+      - run: cargo doc --workspace --all-features --no-deps --document-private-items
+        env:
+          RUSTDOCFLAGS: -D warnings
+    
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+      - run: cargo test --workspace --all-features --all-targets
+
+  # Note: cargo test --all-targets disables doc tests, so we have to add this to test docs
+  doctest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+      - run: cargo test --workspace --all-features --doc

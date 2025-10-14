@@ -1,13 +1,6 @@
-use bevy_ecs::prelude::*;
-use bevy_time::prelude::*;
-use bevy_utils::prelude::*;
+use bevy::prelude::*;
 
-use crate::{
-    action::{Action, ActionMeta},
-    ease::EaseFn,
-    lerp::*,
-    EmptyRes,
-};
+use crate::action::{Action, ActionMeta};
 
 /// Bundle to encapsulate [`Sequence`] and [`SequenceController`].
 #[derive(Bundle, Default)]
@@ -46,6 +39,7 @@ impl SequencePlayerBundle {
 #[derive(Component, Default, Clone)]
 pub struct Sequence {
     duration: f32,
+    // TODO(perf): Use SmallVec to prevent heap allocations for single action sequences.
     pub(crate) action_metas: Vec<ActionMeta>,
 }
 
@@ -63,15 +57,6 @@ impl Sequence {
             duration,
             ..default()
         }
-    }
-
-    /// Add easing to all the [`Action`]s within this [`Sequence`].
-    pub fn with_ease(mut self, ease_fn: EaseFn) -> Self {
-        for action_meta in &mut self.action_metas {
-            action_meta.ease_fn = ease_fn;
-        }
-
-        self
     }
 
     pub(crate) fn set_slide_index(&mut self, slide_index: usize) {
@@ -102,64 +87,46 @@ pub struct SequencePlayer {
     pub time_scale: f32,
 }
 
-/// Interpolation for [`SequenceController`].
-pub(crate) fn sequence_controller_interp(
-    player: &mut SequenceController,
-    begin: &f32,
-    end: &f32,
-    t: f32,
-    _: &mut ResMut<EmptyRes>,
-) {
-    player.target_time = f32::lerp(begin, end, t);
+// SEQUENCE ORDERING FUNCTIONS
+
+pub trait MultiSeqOrd {
+    /// Run one [`Sequence`] after another.
+    fn chain(self) -> Sequence;
+    /// Run all [`Sequence`]s concurrently and wait for all of them to finish.
+    fn all(self) -> Sequence;
+    /// Run all [`Sequence`]s concurrently and wait for any of them to finish.
+    fn any(self) -> Sequence;
+    /// Run one [`Sequence`] after another with a fixed delay time.
+    fn flow(self, delay: f32) -> Sequence;
 }
 
-// ANIMATION FLOW FUNCTIONS
+impl MultiSeqOrd for &[Sequence] {
+    fn chain(self) -> Sequence {
+        chain(self)
+    }
 
-#[macro_export]
-macro_rules! any {
-    (&$motion:expr) => {
-        $crate::sequence::any(&$motion)
-    };
-    ($($motion:expr),+ $(,)?) => {
-        $crate::sequence::any(&[$($motion),+])
-    };
+    fn all(self) -> Sequence {
+        all(self)
+    }
+
+    fn any(self) -> Sequence {
+        any(self)
+    }
+
+    fn flow(self, t: f32) -> Sequence {
+        flow(t, self)
+    }
 }
 
-#[macro_export]
-macro_rules! chain {
-    (&$motion:expr) => {
-        $crate::sequence::chain(&$motion)
-    };
-    ($($motion:expr),+ $(,)?) => {
-        $crate::sequence::chain(&[$($motion),+])
-    };
+pub trait SingleSeqOrd {
+    /// Run a [`Sequence`] after a fixed delay time.
+    fn delay(self, t: f32) -> Sequence;
 }
 
-#[macro_export]
-macro_rules! all {
-    (&$motion:expr) => {
-       $crate::sequence::all(&$motion)
-    };
-    ($($motion:expr),+ $(,)?) => {
-        $crate::sequence::all(&[$($motion),+])
-    };
-}
-
-#[macro_export]
-macro_rules! flow {
-    ($duration:expr, &$motion:expr) => {
-        $crate::sequence::flow($duration, &$motion)
-    };
-    ($duration:expr, $($motion:expr),+ $(,)?) => {
-        $crate::sequence::flow($duration, &[$($motion),+])
-    };
-}
-
-#[macro_export]
-macro_rules! delay {
-    ($duration:expr, &$motion:expr) => {
-        $crate::sequence::delay($duration, &$motion)
-    };
+impl SingleSeqOrd for Sequence {
+    fn delay(self, t: f32) -> Sequence {
+        delay(t, self)
+    }
 }
 
 /// Run one [`Sequence`] after another.
@@ -216,7 +183,7 @@ pub fn any(sequences: &[Sequence]) -> Sequence {
 }
 
 /// Run one [`Sequence`] after another with a fixed delay time.
-pub fn flow(delay: f32, sequences: &[Sequence]) -> Sequence {
+pub fn flow(t: f32, sequences: &[Sequence]) -> Sequence {
     let mut final_sequence = Sequence::default();
     let mut flow_duration = 0.0;
     let mut final_duration = 0.0;
@@ -228,7 +195,7 @@ pub fn flow(delay: f32, sequences: &[Sequence]) -> Sequence {
                 .push(action_meta.with_start_time(action_meta.start_time + flow_duration));
         }
 
-        flow_duration += delay;
+        flow_duration += t;
         final_duration = f32::max(final_duration, flow_duration + sequence.duration);
     }
 
@@ -236,39 +203,97 @@ pub fn flow(delay: f32, sequences: &[Sequence]) -> Sequence {
     final_sequence
 }
 
-/// Run an [`Sequence`] after a fixed delay time.
-pub fn delay(delay: f32, sequence: &Sequence) -> Sequence {
+/// Run a [`Sequence`] after a fixed delay time.
+pub fn delay(t: f32, sequence: Sequence) -> Sequence {
     let mut final_sequence = Sequence::default();
 
     for action_meta in &sequence.action_metas {
         final_sequence
             .action_metas
-            .push(action_meta.with_start_time(action_meta.start_time + delay));
+            .push(action_meta.with_start_time(action_meta.start_time + t));
     }
 
-    final_sequence.duration = sequence.duration + delay;
+    final_sequence.duration = sequence.duration + t;
     final_sequence
 }
 
-/// System for playing the [`Action`]s that are inside the [`Sequence`].
-pub fn sequence_update_system<CompType, InterpType, ResType>(
-    mut q_components: Query<&mut CompType>,
-    q_actions: Query<&Action<CompType, InterpType, ResType>>,
+/// System for mutating the [`Component`] related [`Action`]s that are inside the [`Sequence`].
+pub fn update_component<U, T>(
+    mut q_components: Query<&mut U>,
+    q_actions: Query<&'static Action<T, U>>,
     q_sequences: Query<(&Sequence, &SequenceController)>,
-    mut resource: ResMut<ResType>,
 ) where
-    CompType: Component,
-    InterpType: Send + Sync + 'static,
-    ResType: Resource,
+    T: Send + Sync + 'static,
+    U: Component,
 {
     for (sequence, sequence_controller) in q_sequences.iter() {
-        play_sequence(
-            &mut q_components,
-            &q_actions,
-            sequence,
-            sequence_controller,
-            &mut resource,
-        );
+        if let Some(action) = generate_action_iter(&q_actions, sequence, sequence_controller) {
+            for (action, action_meta) in action {
+                // Get component to mutate based on action id
+                let Ok(mut component) = q_components.get_mut(action.target_id) else {
+                    continue;
+                };
+
+                let mut unit_time = (sequence_controller.target_time - action_meta.start_time)
+                    / action_meta.duration;
+
+                // In case of division by 0.0
+                if f32::is_nan(unit_time) {
+                    unit_time = 0.0;
+                }
+
+                unit_time = f32::clamp(unit_time, 0.0, 1.0);
+                // Calculate unit time using ease function
+                unit_time = (action.ease_fn)(unit_time);
+
+                // Mutate the component using interpolate function
+                let field = (action.get_field_fn)(&mut component);
+                *field = (action.interp_fn)(&action.start, &action.end, unit_time);
+            }
+        }
+    }
+}
+
+/// System for mutating the [`Asset`] related [`Action`]s that are inside the [`Sequence`].
+pub fn update_asset<U, T>(
+    q_handles: Query<&Handle<U>>,
+    mut assets: ResMut<Assets<U>>,
+    q_actions: Query<&'static Action<T, U>>,
+    q_sequences: Query<(&Sequence, &SequenceController)>,
+) where
+    T: Send + Sync + 'static,
+    U: Asset,
+{
+    for (sequence, sequence_controller) in q_sequences.iter() {
+        if let Some(action) = generate_action_iter(&q_actions, sequence, sequence_controller) {
+            for (action, action_meta) in action {
+                // Get handle based on action id
+                let Ok(handle) = q_handles.get(action.target_id) else {
+                    continue;
+                };
+
+                // Get asset to mutate based on the handle id
+                let Some(asset) = assets.get_mut(handle) else {
+                    continue;
+                };
+
+                let mut unit_time = (sequence_controller.target_time - action_meta.start_time)
+                    / action_meta.duration;
+
+                // In case of division by 0.0
+                if f32::is_nan(unit_time) {
+                    unit_time = 0.0;
+                }
+
+                unit_time = f32::clamp(unit_time, 0.0, 1.0);
+                // Calculate unit time using ease function
+                unit_time = (action.ease_fn)(unit_time);
+
+                // Mutate the component using interpolate function
+                let field = (action.get_field_fn)(asset);
+                *field = (action.interp_fn)(&action.start, &action.end, unit_time);
+            }
+        }
     }
 }
 
@@ -295,23 +320,20 @@ pub(crate) fn sequence_player(
     }
 }
 
-fn play_sequence<CompType, InterpType, ResType>(
-    q_components: &mut Query<&mut CompType>,
-    q_actions: &Query<&Action<CompType, InterpType, ResType>>,
-    sequence: &Sequence,
-    sequence_controller: &SequenceController,
-    resource: &mut ResMut<ResType>,
-) where
-    CompType: Component,
-    InterpType: Send + Sync + 'static,
-    ResType: Resource,
+fn generate_action_iter<'a, T, U>(
+    q_actions: &'a Query<&'static Action<T, U>>,
+    sequence: &'a Sequence,
+    sequence_controller: &'a SequenceController,
+) -> Option<impl std::iter::Iterator<Item = (&'a Action<T, U>, &'a ActionMeta)>>
+where
+    T: Send + Sync + 'static,
 {
     // Do not perform any actions if there are no changes to the timeline timings
     // or there are no actions at all.
     if sequence_controller.curr_time == sequence_controller.target_time
         || sequence.action_metas.is_empty()
     {
-        return;
+        return None;
     }
 
     // Calculate time flow direction based on time difference
@@ -338,63 +360,47 @@ fn play_sequence<CompType, InterpType, ResType>(
 
     let mut action_index = start_index;
 
-    // Loop through `Action`s in the direction that the timeline is going towards.
-    loop {
-        if action_index == (end_index as isize + direction) as usize {
-            break;
-        }
-
-        let action_meta = &sequence.action_metas[action_index];
-        let action_id = action_meta.id();
-
-        let slide_direction = isize::signum(
-            sequence_controller.target_slide_index as isize - action_meta.slide_index as isize,
-        );
-
-        // Continue only when slide direction matches or is 0
-        if slide_direction != 0 && slide_direction != direction {
-            break;
-        }
-
-        action_index = (action_index as isize + direction) as usize;
-
-        // Ignore if `ActionMeta` not in range
-        if !crate::time_range_overlap(
-            action_meta.start_time,
-            action_meta.end_time(),
-            timeline_start,
-            timeline_end,
-        ) {
-            continue;
-        }
-
-        // Ignore if `Action` does not exists
-        let Ok(action) = q_actions.get(action_id) else {
-            continue;
-        };
-
-        // Get component to mutate based on action id
-        if let Ok(mut component) = q_components.get_mut(action.target_id) {
-            let mut unit_time =
-                (sequence_controller.target_time - action_meta.start_time) / action_meta.duration;
-
-            // In case of division by 0.0
-            if f32::is_nan(unit_time) {
-                unit_time = 0.0;
+    Some(std::iter::from_fn(move || {
+        // Loop through `Action`s in the direction that the timeline is going towards.
+        loop {
+            if action_index == (end_index as isize + direction) as usize {
+                return None;
             }
 
-            unit_time = f32::clamp(unit_time, 0.0, 1.0);
-            // Calculate unit time using ease function
-            unit_time = (action_meta.ease_fn)(unit_time);
+            let action_meta = &sequence.action_metas[action_index];
+            let action_id = action_meta.id();
 
-            // Mutate the component using interpolate function
-            (action.interp_fn)(
-                &mut component,
-                &action.begin,
-                &action.end,
-                unit_time,
-                resource,
+            let slide_direction = isize::signum(
+                sequence_controller.target_slide_index as isize - action_meta.slide_index as isize,
             );
+
+            // Continue only when slide direction matches or is 0
+            if slide_direction != 0 && slide_direction != direction {
+                return None;
+            }
+
+            action_index = (action_index as isize + direction) as usize;
+
+            let is_time_overlap = time_range_overlap(
+                action_meta.start_time,
+                action_meta.end_time(),
+                timeline_start,
+                timeline_end,
+            );
+            // Ignore if `ActionMeta` not in range
+            if is_time_overlap == false {
+                continue;
+            }
+
+            // Ignore if `Action` does not exists
+            if let Ok(action) = q_actions.get(action_id) {
+                return Some((action, action_meta));
+            }
         }
-    }
+    }))
+}
+
+/// Calculate if 2 time range (in float) overlaps.
+fn time_range_overlap(a_begin: f32, a_end: f32, b_begin: f32, b_end: f32) -> bool {
+    a_begin <= b_end && b_begin <= a_end
 }
