@@ -2,8 +2,7 @@ use bevy_ecs::prelude::*;
 
 use crate::{
     ease::{quad, EaseFn},
-    sequence::{sequence_controller_interp, Sequence, SequenceController},
-    EmptyRes,
+    sequence::{sequence_controller_interp, Sequence},
 };
 
 pub type InterpFn<CompType, InterpType, ResType> = fn(
@@ -116,8 +115,8 @@ impl ActionBuilder for Commands<'_, '_> {
         action: Action<impl Component, impl Send + Sync + 'static, impl Resource>,
         duration: f32,
     ) -> Sequence {
-        let action_id: Entity = self.spawn(action).id();
-        let mut action_meta: ActionMeta = ActionMeta::new(action_id);
+        let action_id = self.spawn(action).id();
+        let mut action_meta = ActionMeta::new(action_id);
         action_meta.duration = duration;
 
         // TODO: create single sequence
@@ -131,11 +130,10 @@ impl ActionBuilder for Commands<'_, '_> {
         end: f32,
         playback_speed: f32,
     ) -> Sequence {
-        let action: Action<SequenceController, f32, EmptyRes> =
-            Action::new(target_id, begin, end, sequence_controller_interp);
+        let action = Action::new(target_id, begin, end, sequence_controller_interp);
 
-        let action_id: Entity = self.spawn(action).id();
-        let mut action_meta: ActionMeta = ActionMeta::new(action_id);
+        let action_id = self.spawn(action).id();
+        let mut action_meta = ActionMeta::new(action_id);
 
         // Prevent division by 0.0
         if f32::abs(playback_speed) <= f32::EPSILON {

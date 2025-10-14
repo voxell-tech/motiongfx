@@ -31,21 +31,21 @@ fn hello_world_system(
     const CAPACITY: usize = WIDTH * HEIGHT;
 
     // Color palette
-    let palette: ColorPalette<ColorKey> = ColorPalette::default();
+    let palette = ColorPalette::default();
 
-    let mut cubes: Vec<Entity> = Vec::with_capacity(CAPACITY);
+    let mut cubes = Vec::with_capacity(CAPACITY);
     // Motion
-    let mut transform_motions: Vec<TransformMotion> = Vec::with_capacity(CAPACITY);
+    let mut transform_motions = Vec::with_capacity(CAPACITY);
 
     // Create cube objects (Entity)
-    let material: StandardMaterial = StandardMaterial {
+    let material = StandardMaterial {
         base_color: *palette.get_or_default(&ColorKey::Green),
         ..default()
     };
 
     for w in 0..WIDTH {
         for h in 0..HEIGHT {
-            let transform: Transform = Transform::from_translation(Vec3::new(
+            let transform = Transform::from_translation(Vec3::new(
                 (w as f32) - (WIDTH as f32) * 0.5 - 1.0,
                 (h as f32) - (HEIGHT as f32) * 0.5,
                 0.0,
@@ -69,7 +69,7 @@ fn hello_world_system(
     }
 
     // Generate cube animations
-    let mut cube_seqs: Vec<Sequence> = Vec::with_capacity(CAPACITY);
+    let mut cube_seqs = Vec::with_capacity(CAPACITY);
 
     for w in 0..WIDTH {
         for h in 0..HEIGHT {
@@ -94,7 +94,7 @@ fn hello_world_system(
         }
     }
 
-    let sequence: Sequence = flow(0.01, &cube_seqs);
+    let sequence = flow(0.01, &cube_seqs);
 
     commands.spawn(SequencePlayerBundle {
         sequence,

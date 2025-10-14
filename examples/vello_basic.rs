@@ -17,10 +17,10 @@ fn main() {
 
 fn vello_basic_system(mut commands: Commands, mut scenes: ResMut<Assets<VelloScene>>) {
     // Color palette
-    let palette: ColorPalette<ColorKey> = ColorPalette::default();
+    let palette = ColorPalette::default();
 
     // Spawning entities
-    let rect_bundle: VelloRectBundle = VelloRectBundle {
+    let rect_bundle = VelloRectBundle {
         rect: VelloRect::anchor_center(DVec2::new(100.0, 100.0), DVec4::splat(10.0)),
         fill: FillStyle::from_brush(*palette.get_or_default(&ColorKey::Blue)),
         stroke: StrokeStyle::from_brush(*palette.get_or_default(&ColorKey::Blue) * 1.5)
@@ -32,7 +32,7 @@ fn vello_basic_system(mut commands: Commands, mut scenes: ResMut<Assets<VelloSce
         },
     };
 
-    let circ_bundle: VelloCircleBundle = VelloCircleBundle {
+    let circ_bundle = VelloCircleBundle {
         circle: VelloCircle::from_radius(50.0),
         fill: FillStyle::from_brush(*palette.get_or_default(&ColorKey::Purple)),
         stroke: StrokeStyle::from_brush(*palette.get_or_default(&ColorKey::Purple) * 1.5)
@@ -44,7 +44,7 @@ fn vello_basic_system(mut commands: Commands, mut scenes: ResMut<Assets<VelloSce
         },
     };
 
-    let line_bundle: VelloLineBundle = VelloLineBundle {
+    let line_bundle = VelloLineBundle {
         line: VelloLine::from_points(DVec2::new(-300.0, 0.0), DVec2::new(300.0, 0.0)),
         stroke: StrokeStyle::from_brush(*palette.get_or_default(&ColorKey::Base8)),
         scene_bundle: VelloSceneBundle {
@@ -54,18 +54,17 @@ fn vello_basic_system(mut commands: Commands, mut scenes: ResMut<Assets<VelloSce
         },
     };
 
-    let rect_id: Entity = commands.spawn(rect_bundle.clone()).id();
-    let circ_id: Entity = commands.spawn(circ_bundle.clone()).id();
-    let line_id: Entity = commands.spawn(line_bundle.clone()).id();
+    let rect_id = commands.spawn(rect_bundle.clone()).id();
+    let circ_id = commands.spawn(circ_bundle.clone()).id();
+    let line_id = commands.spawn(line_bundle.clone()).id();
 
     // Motions
-    let mut rect_motion: VelloRectBundleMotion = VelloRectBundleMotion::new(rect_id, rect_bundle);
-    let mut circ_motion: VelloCircleBundleMotion =
-        VelloCircleBundleMotion::new(circ_id, circ_bundle);
-    let mut line_motion: VelloLineBundleMotion = VelloLineBundleMotion::new(line_id, line_bundle);
+    let mut rect_motion = VelloRectBundleMotion::new(rect_id, rect_bundle);
+    let mut circ_motion = VelloCircleBundleMotion::new(circ_id, circ_bundle);
+    let mut line_motion = VelloLineBundleMotion::new(line_id, line_bundle);
 
     // Sequence
-    let sequence: Sequence = flow(
+    let sequence = flow(
         0.5,
         &[
             // Line animation

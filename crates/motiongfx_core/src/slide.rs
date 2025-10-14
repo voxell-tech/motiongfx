@@ -89,9 +89,9 @@ pub enum SlideTargetState {
 }
 
 pub fn create_slide(mut sequences: Vec<Sequence>) -> SlideBundle {
-    let mut start_times: Vec<f32> = Vec::with_capacity(sequences.len());
+    let mut start_times = Vec::with_capacity(sequences.len());
 
-    let mut start_time: f32 = 0.0;
+    let mut start_time = 0.0;
     for (s, sequence) in sequences.iter_mut().enumerate() {
         sequence.set_slide_index(s);
         start_times.push(start_time);
@@ -120,7 +120,7 @@ pub(crate) fn slide_controller_system(
         }
 
         // Determine direction based on target slide state. (it can only be start or end)
-        let direction: isize = {
+        let direction = {
             match slide_controller.target_state {
                 SlideTargetState::Start => -1,
                 SlideTargetState::End => 1,
@@ -137,8 +137,7 @@ pub(crate) fn slide_controller_system(
 
         // Clamp target time based on direction
         if direction < 0 {
-            let start_time: f32 =
-                slide_controller.start_times[sequence_controller.target_slide_index];
+            let start_time = slide_controller.start_times[sequence_controller.target_slide_index];
 
             // Start time reached
             if sequence_controller.target_time <= start_time {
@@ -146,8 +145,7 @@ pub(crate) fn slide_controller_system(
                 sequence_controller.target_time = start_time;
             }
         } else {
-            let end_time: f32 =
-                slide_controller.start_times[sequence_controller.target_slide_index + 1];
+            let end_time = slide_controller.start_times[sequence_controller.target_slide_index + 1];
 
             // End time reached
             if sequence_controller.target_time >= end_time {

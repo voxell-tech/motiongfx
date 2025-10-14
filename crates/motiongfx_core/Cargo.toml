@@ -4,11 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy_app = { version = "0.13", default-features = false }
-bevy_ecs = { version = "0.13", default-features = false }
-bevy_math = { version = "0.13", default-features = false }
-bevy_render = { version = "0.13", default-features = false }
-bevy_time = { version = "0.13", default-features = false }
-bevy_utils = { version = "0.13", default-features = false }
 bevy_vello_renderer = { git = "https://github.com/nixon-voxell/bevy_vello_renderer", rev = "49ef841842b3170f225614c7d3ffffba31522150" }
+bevy_app = "0.13"
+bevy_ecs = "0.13"
+bevy_math = "0.13"
+bevy_render = "0.13"
+bevy_time = "0.13"
+bevy_utils = "0.13"
 smallvec = "1.11"
+
+[lints]
+workspace = true

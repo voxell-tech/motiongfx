@@ -1,3 +1,5 @@
+pub use motiongfx_vello_macros::{VelloBuilder, VelloVector};
+
 use bevy_asset::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_vello_renderer::{
@@ -13,16 +15,16 @@ pub mod line;
 pub mod rect;
 
 pub(crate) trait VelloVector {
-    fn shape(&self) -> &impl kurbo::Shape {
-        &kurbo::Rect::ZERO
-    }
+    fn shape(&self) -> impl kurbo::Shape;
 
+    #[inline]
     fn build_fill(&self, fill: &FillStyle, scene: &mut vello::Scene) {
-        fill.build(scene, self.shape());
+        fill.build(scene, &self.shape());
     }
 
+    #[inline]
     fn build_stroke(&self, stroke: &StrokeStyle, scene: &mut vello::Scene) {
-        stroke.build(scene, self.shape());
+        stroke.build(scene, &self.shape());
     }
 }
 
@@ -55,7 +57,7 @@ pub(crate) fn vector_builder_system<Vector: VelloVector + VelloBuilder + Compone
                 continue;
             }
 
-            let mut scene: vello::Scene = vello::Scene::new();
+            let mut scene = vello::Scene::new();
 
             // Build the vector to the VelloScene
             vector.build_fill(&fill, &mut scene);
@@ -75,7 +77,7 @@ pub(crate) fn vector_builder_system<Vector: VelloVector + VelloBuilder + Compone
                 continue;
             }
 
-            let mut scene: vello::Scene = vello::Scene::new();
+            let mut scene = vello::Scene::new();
 
             // Build the vector to the VelloScene
             vector.build_stroke(&stroke, &mut scene);
@@ -95,7 +97,7 @@ pub(crate) fn vector_builder_system<Vector: VelloVector + VelloBuilder + Compone
                 continue;
             }
 
-            let mut scene: vello::Scene = vello::Scene::new();
+            let mut scene = vello::Scene::new();
 
             // Build the vector to the VelloScene
             vector.build_fill(&fill, &mut scene);

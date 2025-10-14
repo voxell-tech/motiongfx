@@ -83,7 +83,7 @@ impl VelloLineMotion {
         let percentage: DVec2 = percentage.into();
 
         let mut new_line: kurbo::Line = self.vello_line.line;
-        let direction: kurbo::Vec2 = self.get_p0_direction();
+        let direction = self.get_p0_direction();
 
         new_line.p0 += direction * extension * percentage.x;
         new_line.p1 -= direction * extension * percentage.y;
@@ -118,10 +118,10 @@ impl VelloLineMotion {
 
     /// Extend the line only using `p0`.
     pub fn extend_p0(&mut self, extension: f64) -> Action<VelloLine, kurbo::Point, EmptyRes> {
-        let direction: kurbo::Vec2 = self.get_p0_direction();
+        let direction = self.get_p0_direction();
         let new_p0 = self.vello_line.line.p0 + direction * extension;
 
-        let action: Action<VelloLine, kurbo::Point, EmptyRes> = Action::new(
+        let action = Action::new(
             self.target_id,
             self.vello_line.line.p0,
             new_p0,
@@ -136,9 +136,9 @@ impl VelloLineMotion {
     /// Move `p0` to a new location.
     pub fn p0_to(&mut self, new_p0: impl Into<DVec2>) -> Action<VelloLine, kurbo::Point, EmptyRes> {
         let new_p0: DVec2 = new_p0.into();
-        let new_p0: kurbo::Point = kurbo::Point::new(new_p0.x, new_p0.y);
+        let new_p0 = kurbo::Point::new(new_p0.x, new_p0.y);
 
-        let action: Action<VelloLine, kurbo::Point, EmptyRes> = Action::new(
+        let action = Action::new(
             self.target_id,
             self.vello_line.line.p0,
             new_p0,
@@ -155,11 +155,11 @@ impl VelloLineMotion {
         translation: impl Into<DVec2>,
     ) -> Action<VelloLine, kurbo::Point, EmptyRes> {
         let translation: DVec2 = translation.into();
-        let translation: kurbo::Vec2 = kurbo::Vec2::new(translation.x, translation.y);
+        let translation = kurbo::Vec2::new(translation.x, translation.y);
 
-        let new_p0: kurbo::Point = self.vello_line.line.p0 + translation;
+        let new_p0 = self.vello_line.line.p0 + translation;
 
-        let action: Action<VelloLine, kurbo::Point, EmptyRes> = Action::new(
+        let action = Action::new(
             self.target_id,
             self.vello_line.line.p0,
             new_p0,
@@ -184,10 +184,10 @@ impl VelloLineMotion {
 
     /// Extend the line only using `p1`.
     pub fn extend_p1(&mut self, extension: f64) -> Action<VelloLine, kurbo::Point, EmptyRes> {
-        let direction: kurbo::Vec2 = self.get_p0_direction();
+        let direction = self.get_p0_direction();
         let new_p1 = self.vello_line.line.p1 - direction * extension;
 
-        let action: Action<VelloLine, kurbo::Point, EmptyRes> = Action::new(
+        let action = Action::new(
             self.target_id,
             self.vello_line.line.p1,
             new_p1,
@@ -202,9 +202,9 @@ impl VelloLineMotion {
     /// Move `p1` to a new location.
     pub fn p1_to(&mut self, new_p1: impl Into<DVec2>) -> Action<VelloLine, kurbo::Point, EmptyRes> {
         let new_p1: DVec2 = new_p1.into();
-        let new_p1: kurbo::Point = kurbo::Point::new(new_p1.x, new_p1.y);
+        let new_p1 = kurbo::Point::new(new_p1.x, new_p1.y);
 
-        let action: Action<VelloLine, kurbo::Point, EmptyRes> = Action::new(
+        let action = Action::new(
             self.target_id,
             self.vello_line.line.p1,
             new_p1,
@@ -221,11 +221,11 @@ impl VelloLineMotion {
         translation: impl Into<DVec2>,
     ) -> Action<VelloLine, kurbo::Point, EmptyRes> {
         let translation: DVec2 = translation.into();
-        let translation: kurbo::Vec2 = kurbo::Vec2::new(translation.x, translation.y);
+        let translation = kurbo::Vec2::new(translation.x, translation.y);
 
-        let new_p1: kurbo::Point = self.vello_line.line.p1 + translation;
+        let new_p1 = self.vello_line.line.p1 + translation;
 
-        let action: Action<VelloLine, kurbo::Point, EmptyRes> = Action::new(
+        let action = Action::new(
             self.target_id,
             self.vello_line.line.p1,
             new_p1,
@@ -249,7 +249,7 @@ impl VelloLineMotion {
     }
 
     fn get_p0_direction(&self) -> kurbo::Vec2 {
-        let mut direction: kurbo::Vec2 = self.vello_line.line.p0 - self.vello_line.line.p1;
+        let mut direction = self.vello_line.line.p0 - self.vello_line.line.p1;
 
         // If direction has no magnitude, a horizontal direction will be assigned
         if direction.length_squared() == 0.0 {

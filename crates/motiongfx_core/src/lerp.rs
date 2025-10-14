@@ -41,7 +41,7 @@ impl Lerp<f32> for kurbo::Circle {
 
 impl Lerp<f32> for kurbo::Line {
     fn lerp(&self, other: &Self, t: f32) -> Self {
-        let t: f64 = t as f64;
+        let t = t as f64;
 
         Self {
             p0: kurbo::Point::lerp(self.p0, other.p0, t),
@@ -139,17 +139,17 @@ where
     Array: smallvec::Array<Item = Item>,
 {
     fn lerp(&self, other: &Self, t: f32) -> Self {
-        let mut self_iter: std::slice::Iter<Item> = self.iter();
-        let mut other_iter: std::slice::Iter<Item> = other.iter();
+        let mut self_iter = self.iter();
+        let mut other_iter = other.iter();
 
-        let mut last_self_item: Item = Item::default();
-        let mut last_other_item: Item = Item::default();
+        let mut last_self_item = Item::default();
+        let mut last_other_item = Item::default();
 
-        let mut interp_vec: smallvec::SmallVec<Array> = smallvec::SmallVec::new();
+        let mut interp_vec = smallvec::SmallVec::new();
 
         loop {
-            let self_item: Option<&Item> = self_iter.next();
-            let other_item: Option<&Item> = other_iter.next();
+            let self_item = self_iter.next();
+            let other_item = other_iter.next();
 
             if self_item.is_none() && other_item.is_none() {
                 break;
@@ -221,8 +221,8 @@ impl Lerp<f32> for f64 {
 impl Lerp<f32> for u8 {
     #[inline]
     fn lerp(&self, other: &Self, t: f32) -> Self {
-        let other: f32 = *other as f32;
-        let self_: f32 = *self as f32;
+        let other = *other as f32;
+        let self_ = *self as f32;
 
         ((other - self_) * t + self_) as u8
     }

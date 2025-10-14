@@ -66,7 +66,7 @@ pub fn spawn_tree_flatten(
     scenes: &mut ResMut<Assets<VelloScene>>,
     svg: &usvg::Tree,
 ) -> SvgTreeBundle {
-    let root_entity: Entity = commands
+    let root_entity = commands
         .spawn((TransformBundle::default(), VisibilityBundle::default()))
         .id();
 
@@ -78,14 +78,13 @@ pub fn spawn_tree_flatten(
         match &*node.borrow() {
             usvg::NodeKind::Group(_) => {}
             usvg::NodeKind::Path(path) => {
-                let transform: Transform = svg_to_bevy_transform(node.abs_transform());
-                let mut entity_commands: EntityCommands = commands.spawn((
+                let transform = svg_to_bevy_transform(node.abs_transform());
+                let mut entity_commands = commands.spawn((
                     TransformBundle::from_transform(transform),
                     VisibilityBundle::default(),
                 ));
 
-                let mut svg_path_bundle: SvgPathBundle =
-                    SvgPathBundle::new(entity_commands.id(), transform);
+                let mut svg_path_bundle = SvgPathBundle::new(entity_commands.id(), transform);
 
                 populate_with_path(&mut entity_commands, &mut svg_path_bundle, scenes, path);
 
@@ -115,7 +114,7 @@ fn populate_with_path(
 ) {
     let mut local_path = kurbo::BezPath::new();
     // The semantics of SVG paths don't line up with `BezPath`; we must manually track initial points
-    let mut just_closed: bool = false;
+    let mut just_closed = false;
     let mut most_recent_initial = (0.0, 0.0);
 
     for elt in path.data.segments() {
@@ -166,11 +165,11 @@ fn populate_with_path(
 
     if let Some(fill) = &path.fill {
         if let Some((brush, transform)) = paint_to_brush(&fill.paint, fill.opacity) {
-            let fill_rule: peniko::Fill = match fill.rule {
+            let fill_rule = match fill.rule {
                 usvg::FillRule::NonZero => peniko::Fill::NonZero,
                 usvg::FillRule::EvenOdd => peniko::Fill::EvenOdd,
             };
-            let fill_style: FillStyle = FillStyle::new(fill_rule, brush, transform);
+            let fill_style = FillStyle::new(fill_rule, brush, transform);
 
             entity_commands.insert(fill_style.clone());
             svg_path_bundle.fill = Some(fill_style);
@@ -181,7 +180,7 @@ fn populate_with_path(
 
     if let Some(stroke) = &path.stroke {
         if let Some((brush, transform)) = paint_to_brush(&stroke.paint, stroke.opacity) {
-            let mut conv_stroke: kurbo::Stroke = kurbo::Stroke::new(stroke.width.get() as f64)
+            let mut conv_stroke = kurbo::Stroke::new(stroke.width.get() as f64)
                 .with_caps(match stroke.linecap {
                     usvg::LineCap::Butt => kurbo::Cap::Butt,
                     usvg::LineCap::Round => kurbo::Cap::Round,
@@ -200,7 +199,7 @@ fn populate_with_path(
                 );
             }
 
-            let stroke_style: StrokeStyle = StrokeStyle::new(conv_stroke, brush, transform);
+            let stroke_style = StrokeStyle::new(conv_stroke, brush, transform);
 
             entity_commands.insert(stroke_style.clone());
             svg_path_bundle.stroke = Some(stroke_style);
@@ -308,7 +307,7 @@ fn svg_to_bevy_transform(transform: usvg::Transform) -> Transform {
     } = transform;
 
     // https://stackoverflow.com/questions/39440369/how-to-convert-a-3x2-matrix-into-4x4-matrix
-    let transform: [f32; 16] = [
+    let transform = [
         sx, kx, 0.0, 0.0, // row 1
         ky, sy, 0.0, 0.0, // row 2
         0.0, 0.0, 1.0, 0.0, // row 3

@@ -4,17 +4,22 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy_app = { version = "0.13", default-features = false }
-bevy_asset = { version = "0.13", default-features = false }
-bevy_ecs = { version = "0.13", default-features = false }
-bevy_log = { version = "0.13", default-features = false }
-bevy_math = { version = "0.13", default-features = false }
-bevy_pbr = { version = "0.13", default-features = false }
-bevy_reflect = { version = "0.13", default-features = false }
-bevy_render = { version = "0.13", default-features = false }
-bevy_transform = { version = "0.13", default-features = false }
-bevy_utils = { version = "0.13", default-features = false }
-bevy_hierarchy = { version = "0.13", default-features = false }
 motiongfx_core = { path = "../motiongfx_core" }
 motiongfx_bevy = { path = "../motiongfx_bevy" }
+motiongfx_vello_macros = { path = "macros" }
+
 bevy_vello_renderer = { git = "https://github.com/nixon-voxell/bevy_vello_renderer", rev = "49ef841842b3170f225614c7d3ffffba31522150" }
+bevy_app = "0.13"
+bevy_asset = "0.13"
+bevy_ecs = "0.13"
+bevy_log = "0.13"
+bevy_math = "0.13"
+bevy_pbr = "0.13"
+bevy_reflect = "0.13"
+bevy_render = "0.13"
+bevy_transform = "0.13"
+bevy_utils = "0.13"
+bevy_hierarchy = "0.13"
+
+[lints]
+workspace = true

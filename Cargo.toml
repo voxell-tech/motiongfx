@@ -22,3 +22,6 @@ motiongfx_typst = { path = "crates/motiongfx_typst" }
 
 [dev-dependencies]
 bevy = "0.13"
+
+[workspace.lints.clippy]
+redundant_type_annotations = "warn"

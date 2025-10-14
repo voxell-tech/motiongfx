@@ -17,26 +17,23 @@ pub struct VelloCircleBundle {
     pub scene_bundle: VelloSceneBundle,
 }
 
-#[derive(Component, Clone, Default)]
+#[derive(VelloBuilder, VelloVector, Component, Clone, Default)]
 pub struct VelloCircle {
-    pub(crate) circle: kurbo::Circle,
+    #[shape]
+    pub circle: kurbo::Circle,
     built: bool,
 }
 
 impl VelloCircle {
     #[inline]
-    pub fn new(circle: impl Into<kurbo::Circle>) -> Self {
-        let circle: kurbo::Circle = circle.into();
-
+    pub fn new(circle: kurbo::Circle) -> Self {
         Self {
             circle,
             ..default()
         }
     }
 
-    pub fn from_vec(center: impl Into<DVec2>, radius: f64) -> Self {
-        let center: DVec2 = center.into();
-
+    pub fn from_vec(center: DVec2, radius: f64) -> Self {
         Self::new(kurbo::Circle::new(
             kurbo::Point::new(center.x, center.y),
             radius,
@@ -46,24 +43,5 @@ impl VelloCircle {
     #[inline]
     pub fn from_radius(radius: f64) -> Self {
         Self::new(kurbo::Circle::new(kurbo::Point::default(), radius))
-    }
-}
-
-impl VelloVector for VelloCircle {
-    #[inline]
-    fn shape(&self) -> &impl kurbo::Shape {
-        &self.circle
-    }
-}
-
-impl VelloBuilder for VelloCircle {
-    #[inline]
-    fn is_built(&self) -> bool {
-        self.built
-    }
-
-    #[inline]
-    fn set_built(&mut self, built: bool) {
-        self.built = built;
     }
 }

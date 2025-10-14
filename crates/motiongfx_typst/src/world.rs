@@ -7,7 +7,7 @@ use std::{
 use bevy_utils::hashbrown::HashMap;
 use chrono::{DateTime, Datelike, Local};
 use comemo::Prehashed;
-use parking_lot::{lock_api::MutexGuard, Mutex, RawMutex};
+use parking_lot::Mutex;
 use typst::{
     diag::{FileError, FileResult, StrResult},
     foundations::{Bytes, Datetime},
@@ -63,7 +63,7 @@ impl TypstWorld {
     where
         F: FnOnce(&mut FileSlot) -> T,
     {
-        let mut map: MutexGuard<RawMutex, HashMap<FileId, FileSlot>> = self.slots.lock();
+        let mut map = self.slots.lock();
         f(map.entry(id).or_insert_with(|| FileSlot::new(id)))
     }
 }

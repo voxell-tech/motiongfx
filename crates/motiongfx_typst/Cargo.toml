@@ -4,13 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy_app = { version = "0.13", default-features = false }
-bevy_asset = { version = "0.13", default-features = false }
-bevy_ecs = { version = "0.13", default-features = false }
-bevy_utils = { version = "0.13", default-features = false }
 motiongfx_core = { path = "../motiongfx_core" }
 motiongfx_vello = { path = "../motiongfx_vello" }
+
 bevy_vello_renderer = { git = "https://github.com/nixon-voxell/bevy_vello_renderer", rev = "49ef841842b3170f225614c7d3ffffba31522150" }
+bevy_app = "0.13"
+bevy_asset = "0.13"
+bevy_ecs = "0.13"
+bevy_utils = "0.13"
 # typst dependencies
 typst = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
 typst-svg = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
@@ -25,3 +26,6 @@ flate2 = "1"
 codespan-reporting = "0.11"
 ecow = { version = "0.2", features = ["serde"] }
 env_proxy = "0.4"
+
+[lints]
+workspace = true

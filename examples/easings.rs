@@ -27,22 +27,22 @@ fn easings_system(
     const CAPACITY: usize = 10;
 
     // Color palette
-    let palette: ColorPalette<ColorKey> = ColorPalette::default();
+    let palette = ColorPalette::default();
 
-    let mut spheres: Vec<Entity> = Vec::with_capacity(CAPACITY);
+    let mut spheres = Vec::with_capacity(CAPACITY);
     // States
-    let mut transform_motions: Vec<TransformMotion> = Vec::with_capacity(CAPACITY);
-    let mut material_motions: Vec<StandardMaterialMotion> = Vec::with_capacity(CAPACITY);
+    let mut transform_motions = Vec::with_capacity(CAPACITY);
+    let mut material_motions = Vec::with_capacity(CAPACITY);
 
     // Create sphere objects (Entity)
-    let material: StandardMaterial = StandardMaterial {
+    let material = StandardMaterial {
         base_color: Color::WHITE,
         emissive: *palette.get_or_default(&ColorKey::Blue) * 100.0,
         ..default()
     };
 
     for i in 0..CAPACITY {
-        let transform: Transform =
+        let transform =
             Transform::from_translation(Vec3::new(-5.0, (i as f32) - (CAPACITY as f32) * 0.5, 0.0))
                 .with_scale(Vec3::ONE);
 
@@ -63,9 +63,9 @@ fn easings_system(
     }
 
     // Generate easing animations
-    let mut easing_seqs: Vec<Sequence> = Vec::with_capacity(CAPACITY);
+    let mut easing_seqs = Vec::with_capacity(CAPACITY);
 
-    let easings: [ease::EaseFn; CAPACITY] = [
+    let easings = [
         ease::linear,
         ease::sine::ease_in_out,
         ease::quad::ease_in_out,
@@ -92,7 +92,7 @@ fn easings_system(
         );
     }
 
-    let sequence: Sequence = chain(&easing_seqs);
+    let sequence = chain(&easing_seqs);
 
     commands.spawn(SequencePlayerBundle {
         sequence,

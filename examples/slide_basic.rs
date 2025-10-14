@@ -26,37 +26,36 @@ fn slide_basic_system(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Color palette
-    let palette: ColorPalette<ColorKey> = ColorPalette::default();
+    let palette = ColorPalette::default();
 
     // Materials
-    let green_material: StandardMaterial = StandardMaterial {
+    let green_material = StandardMaterial {
         base_color: *palette.get_or_default(&ColorKey::Green),
         ..default()
     };
-    let blue_material: StandardMaterial = StandardMaterial {
+    let blue_material = StandardMaterial {
         base_color: *palette.get_or_default(&ColorKey::Blue),
         ..default()
     };
 
-    let x_offset: f32 = 2.0;
+    let x_offset = 2.0;
     // Cube
-    let cube_pbr: PbrBundle = PbrBundle {
+    let cube_pbr = PbrBundle {
         transform: Transform::default().with_scale(Vec3::splat(0.0)),
         mesh: meshes.add(Cuboid::default()),
         material: materials.add(green_material.clone()),
         ..default()
     };
-    let cube: Entity = commands
+    let cube = commands
         .spawn(cube_pbr.clone())
         .insert(NotShadowCaster)
         .id();
 
-    let mut cube_transform: TransformMotion = TransformMotion::new(cube, cube_pbr.transform);
-    let mut cube_material: StandardMaterialMotion =
-        StandardMaterialMotion::new(cube, green_material);
+    let mut cube_transform = TransformMotion::new(cube, cube_pbr.transform);
+    let mut cube_material = StandardMaterialMotion::new(cube, green_material);
 
     // Sphere
-    let sphere_pbr: PbrBundle = PbrBundle {
+    let sphere_pbr = PbrBundle {
         transform: Transform::default()
             .with_translation(Vec3::X * x_offset)
             .with_scale(Vec3::splat(0.0)),
@@ -64,19 +63,19 @@ fn slide_basic_system(
         material: materials.add(blue_material),
         ..default()
     };
-    let sphere: Entity = commands
+    let sphere = commands
         .spawn(sphere_pbr.clone())
         .insert(NotShadowCaster)
         .id();
 
-    let mut sphere_tranform: TransformMotion = TransformMotion::new(sphere, sphere_pbr.transform);
+    let mut sphere_tranform = TransformMotion::new(sphere, sphere_pbr.transform);
 
     // Create slides
-    let slide0: Sequence = commands
+    let slide0 = commands
         .play(cube_transform.scale_to(Vec3::ONE), 1.0)
         .with_ease(ease::cubic::ease_in_out);
 
-    let slide1: Sequence = flow(
+    let slide1 = flow(
         0.1,
         &[
             all(&[
