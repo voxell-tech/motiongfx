@@ -13,12 +13,12 @@ fn main() {
             MotionGfxVello,
             TypstCompilerPlugin::new(Vec::new()),
         ))
-        .add_systems(Startup, (setup_system, typst_basic_system))
-        .add_systems(Update, timeline_movement_system)
+        .add_systems(Startup, (setup, typst_basic))
+        .add_systems(Update, timeline_movement)
         .run();
 }
 
-fn typst_basic_system(
+fn typst_basic(
     mut commands: Commands,
     mut typst_compiler: ResMut<TypstCompiler>,
     mut scenes: ResMut<Assets<VelloScene>>,
@@ -27,9 +27,7 @@ fn typst_basic_system(
         r###"
         #set page(width: 1120pt, margin: 8pt)
         #set raw(theme: "themes/Monokai Pro.tmTheme")
-        #set text(size: 24pt, font: "consolas", fill: rgb("#FCFCFA"))
-
-        #show raw: set text(font: "Consolas")
+        #set text(size: 24pt, fill: rgb("#FCFCFA"))
 
         #box()[
             #text(fill: gradient.linear(rgb("#13A8C1"), rgb("#21C0AA")))[= Typst]
@@ -95,7 +93,7 @@ fn typst_basic_system(
                     setup_seqs.push(commands.play(motion.brush_to(Color::NONE), 0.0));
                 }
 
-                animate_seqs.push(all(&[
+                animate_seqs.push(all!(
                     commands.play(transform_motions[p].translate_add(transform_offset), 1.0),
                     {
                         if let Some(motion) = &mut fill_motions[p] {
@@ -112,11 +110,11 @@ fn typst_basic_system(
                         } else {
                             commands.sleep(1.0)
                         }
-                    },
-                ]));
+                    }
+                ));
             }
 
-            let sequence = all(&[all(&setup_seqs), flow(0.1, &animate_seqs)])
+            let sequence = all!(all!(&setup_seqs), flow!(0.1, &animate_seqs))
                 .with_ease(ease::expo::ease_in_out);
 
             commands.spawn(SequencePlayerBundle {
@@ -130,11 +128,11 @@ fn typst_basic_system(
     }
 }
 
-fn setup_system(mut commands: Commands) {
+fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn timeline_movement_system(
+fn timeline_movement(
     mut q_timelines: Query<(&mut SequencePlayer, &mut SequenceController)>,
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,

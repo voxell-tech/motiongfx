@@ -17,12 +17,21 @@ pub mod prelude {
         ease,
         lerp::*,
         sequence::{
-            all, any, chain, delay, flow, Sequence, SequenceBundle, SequenceController,
-            SequencePlayer, SequencePlayerBundle,
+            Sequence, SequenceBundle, SequenceController, SequencePlayer, SequencePlayerBundle,
         },
+        // sequence::{
+        //     all, any, chain, delay, flow, Sequence, SequenceBundle, SequenceController,
+        //     SequencePlayer, SequencePlayerBundle,
+        // },
         slide::{create_slide, SlideBundle, SlideController, SlideCurrState, SlideTargetState},
-        EmptyComp, EmptyRes, MotionGfx,
+        EmptyComp,
+        EmptyRes,
+        MotionGfx,
     };
+
+    pub use crate::{all, any, chain, flow};
+
+    // pub use motiongfx_core_macros::rect;
 }
 
 pub struct MotionGfx;
@@ -30,14 +39,8 @@ pub struct MotionGfx;
 impl Plugin for MotionGfx {
     fn build(&self, app: &mut App) {
         app.insert_resource(EmptyRes)
-            .add_systems(PreUpdate, sequence::sequence_controller_system)
-            .add_systems(
-                Update,
-                (
-                    sequence::sequence_player_system,
-                    slide::slide_controller_system,
-                ),
-            );
+            .add_systems(PreUpdate, sequence::sequence_controller)
+            .add_systems(Update, (sequence::sequence_player, slide::slide_controller));
     }
 }
 

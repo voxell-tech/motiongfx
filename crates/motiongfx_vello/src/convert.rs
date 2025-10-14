@@ -22,6 +22,7 @@ impl From<Color> for PenikoColor {
     }
 }
 
+#[derive(Default)]
 pub struct PenikoBrush(pub peniko::Brush);
 
 impl From<peniko::Brush> for PenikoBrush {

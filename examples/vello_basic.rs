@@ -10,14 +10,20 @@ fn main() {
         .add_plugins(DefaultPlugins)
         // Custom plugins
         .add_plugins((MotionGfx, MotionGfxBevy, MotionGfxVello))
-        .add_systems(Startup, (setup_system, vello_basic_system))
-        .add_systems(Update, timeline_movement_system)
+        .add_systems(Startup, (setup, vello_basic))
+        .add_systems(Update, timeline_movement)
         .run();
 }
 
-fn vello_basic_system(mut commands: Commands, mut scenes: ResMut<Assets<VelloScene>>) {
+fn vello_basic(mut commands: Commands, mut scenes: ResMut<Assets<VelloScene>>) {
     // Color palette
     let palette = ColorPalette::default();
+
+    let rect = create_rect(100.0, 100.0)
+        .radius(10.0)
+        .fill(*palette.get_or_default(&ColorKey::Blue))
+        .stroke(*palette.get_or_default(&ColorKey::Blue) * 1.5)
+        .build(&mut commands, &mut scenes);
 
     // Spawning entities
     let rect_bundle = VelloRectBundle {
@@ -64,73 +70,71 @@ fn vello_basic_system(mut commands: Commands, mut scenes: ResMut<Assets<VelloSce
     let mut line_motion = VelloLineBundleMotion::new(line_id, line_bundle);
 
     // Sequence
-    let sequence = flow(
+    let sequence = flow!(
         0.5,
-        &[
-            // Line animation
-            chain(&[
-                all(&[
-                    commands.play(
-                        line_motion
-                            .transform
-                            .translate_add(Vec3::new(0.0, -100.0, 0.0)),
-                        1.5,
-                    ),
-                    commands.play(line_motion.line.extend(100.0), 1.0),
-                    commands.play(line_motion.stroke.style_to(10.0), 1.0),
-                ]),
-                all(&[
-                    commands.play(
-                        line_motion
-                            .transform
-                            .translate_add(Vec3::new(0.0, 100.0, 0.0)),
-                        1.5,
-                    ),
-                    commands.play(line_motion.line.extend(-100.0), 1.0),
-                    commands.play(line_motion.stroke.style_to(1.0), 1.0),
-                ]),
-            ]),
-            // Rect animation
-            chain(&[
-                all(&[
-                    commands.play(rect_motion.rect.inflate(DVec2::splat(50.0)), 1.0),
-                    commands.play(
-                        rect_motion.transform.rotate_to(Quat::from_euler(
-                            EulerRot::XYZ,
-                            0.0,
-                            0.0,
-                            std::f32::consts::PI,
-                        )),
-                        1.0,
-                    ),
-                    commands.play(rect_motion.stroke.style_to(20.0), 1.0),
-                ]),
-                all(&[
-                    commands.play(rect_motion.rect.inflate(-DVec2::splat(50.0)), 1.0),
-                    commands.play(
-                        rect_motion.transform.rotate_to(Quat::from_euler(
-                            EulerRot::XYZ,
-                            0.0,
-                            0.0,
-                            std::f32::consts::TAU,
-                        )),
-                        1.0,
-                    ),
-                    commands.play(rect_motion.stroke.style_to(4.0), 1.0),
-                ]),
-            ]),
-            // Circle animation
-            chain(&[
-                all(&[
-                    commands.play(circ_motion.circle.inflate(50.0), 1.0),
-                    commands.play(circ_motion.stroke.style_to(20.0), 1.0),
-                ]),
-                all(&[
-                    commands.play(circ_motion.circle.inflate(-50.0), 1.0),
-                    commands.play(circ_motion.stroke.style_to(4.0), 1.0),
-                ]),
-            ]),
-        ],
+        // Line animation
+        chain!(
+            all!(
+                commands.play(
+                    line_motion
+                        .transform
+                        .translate_add(Vec3::new(0.0, -100.0, 0.0)),
+                    1.5,
+                ),
+                commands.play(line_motion.line.extend(100.0), 1.0),
+                commands.play(line_motion.stroke.style_to(10.0), 1.0),
+            ),
+            all!(
+                commands.play(
+                    line_motion
+                        .transform
+                        .translate_add(Vec3::new(0.0, 100.0, 0.0)),
+                    1.5,
+                ),
+                commands.play(line_motion.line.extend(-100.0), 1.0),
+                commands.play(line_motion.stroke.style_to(1.0), 1.0),
+            ),
+        ),
+        // Rect animation
+        chain!(
+            all!(
+                commands.play(rect_motion.rect.inflate(DVec2::splat(50.0)), 1.0),
+                commands.play(
+                    rect_motion.transform.rotate_to(Quat::from_euler(
+                        EulerRot::XYZ,
+                        0.0,
+                        0.0,
+                        std::f32::consts::PI,
+                    )),
+                    1.0,
+                ),
+                commands.play(rect_motion.stroke.style_to(20.0), 1.0),
+            ),
+            all!(
+                commands.play(rect_motion.rect.inflate(-DVec2::splat(50.0)), 1.0),
+                commands.play(
+                    rect_motion.transform.rotate_to(Quat::from_euler(
+                        EulerRot::XYZ,
+                        0.0,
+                        0.0,
+                        std::f32::consts::TAU,
+                    )),
+                    1.0,
+                ),
+                commands.play(rect_motion.stroke.style_to(4.0), 1.0),
+            ),
+        ),
+        // Circle animation
+        chain!(
+            all!(
+                commands.play(circ_motion.circle.inflate(50.0), 1.0),
+                commands.play(circ_motion.stroke.style_to(20.0), 1.0),
+            ),
+            all!(
+                commands.play(circ_motion.circle.inflate(-50.0), 1.0),
+                commands.play(circ_motion.stroke.style_to(4.0), 1.0),
+            ),
+        ),
     )
     .with_ease(ease::cubic::ease_in_out);
 
@@ -140,11 +144,11 @@ fn vello_basic_system(mut commands: Commands, mut scenes: ResMut<Assets<VelloSce
     });
 }
 
-fn setup_system(mut commands: Commands) {
+fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn timeline_movement_system(
+fn timeline_movement(
     mut q_timelines: Query<(&mut SequencePlayer, &mut SequenceController)>,
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,

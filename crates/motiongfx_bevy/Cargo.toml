@@ -13,6 +13,7 @@ bevy_transform = "0.13"
 bevy_pbr = "0.13"
 bevy_asset = "0.13"
 bevy_render = "0.13"
+bevy_sprite = "0.13"
 
 [lints]
 workspace = true

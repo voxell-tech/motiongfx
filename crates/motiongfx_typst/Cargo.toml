@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 motiongfx_core = { path = "../motiongfx_core" }
 motiongfx_vello = { path = "../motiongfx_vello" }
+motiongfx_typst_macros = { path = "macros" }
 
 bevy_vello_renderer = { git = "https://github.com/nixon-voxell/bevy_vello_renderer", rev = "49ef841842b3170f225614c7d3ffffba31522150" }
 bevy_app = "0.13"

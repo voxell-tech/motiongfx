@@ -49,7 +49,7 @@ impl Plugin for TypstCompilerPlugin {
 /// use motiongfx_vello::prelude::*;
 /// use motiongfx_typst::TypstCompiler;
 ///
-/// pub fn compile_system(
+/// pub fn compile(
 ///     mut commands: Commands,
 ///     mut typst_compiler: ResMut<TypstCompiler>,
 ///     mut scenes: ResMut<Assets<VelloScene>>,
@@ -78,8 +78,10 @@ pub struct TypstCompiler {
 
 impl TypstCompiler {
     pub fn new(font_paths: &[PathBuf]) -> Self {
+        let mut assets = PathBuf::from(".");
+        assets.push("assets");
         Self {
-            world: TypstWorld::new(PathBuf::from(".\\assets"), font_paths).unwrap(),
+            world: TypstWorld::new(assets, font_paths).unwrap(),
             tracer: Tracer::new(),
         }
     }

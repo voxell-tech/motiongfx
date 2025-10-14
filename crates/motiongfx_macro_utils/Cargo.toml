@@ -1,15 +1,10 @@
 [package]
-name = "motiongfx_vello_macros"
+name = "motiongfx_macro_utils"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
-[lib]
-proc-macro = true
-
 [dependencies]
-motiongfx_macro_utils = { path = "../../motiongfx_macro_utils" }
-
 syn = "2.0"
 quote = "1.0"
 

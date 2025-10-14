@@ -115,6 +115,53 @@ pub(crate) fn sequence_controller_interp(
 
 // ANIMATION FLOW FUNCTIONS
 
+#[macro_export]
+macro_rules! any {
+    (&$motion:expr) => {
+        $crate::sequence::any(&$motion)
+    };
+    ($($motion:expr),+ $(,)?) => {
+        $crate::sequence::any(&[$($motion),+])
+    };
+}
+
+#[macro_export]
+macro_rules! chain {
+    (&$motion:expr) => {
+        $crate::sequence::chain(&$motion)
+    };
+    ($($motion:expr),+ $(,)?) => {
+        $crate::sequence::chain(&[$($motion),+])
+    };
+}
+
+#[macro_export]
+macro_rules! all {
+    (&$motion:expr) => {
+       $crate::sequence::all(&$motion)
+    };
+    ($($motion:expr),+ $(,)?) => {
+        $crate::sequence::all(&[$($motion),+])
+    };
+}
+
+#[macro_export]
+macro_rules! flow {
+    ($duration:expr, &$motion:expr) => {
+        $crate::sequence::flow($duration, &$motion)
+    };
+    ($duration:expr, $($motion:expr),+ $(,)?) => {
+        $crate::sequence::flow($duration, &[$($motion),+])
+    };
+}
+
+#[macro_export]
+macro_rules! delay {
+    ($duration:expr, &$motion:expr) => {
+        $crate::sequence::delay($duration, &$motion)
+    };
+}
+
 /// Run one [`Sequence`] after another.
 pub fn chain(sequences: &[Sequence]) -> Sequence {
     let mut final_sequence = Sequence::default();
@@ -226,9 +273,7 @@ pub fn sequence_update_system<CompType, InterpType, ResType>(
 }
 
 /// Safely update the `target_time` in [`SequenceController`] after performing all the necessary actions.
-pub(crate) fn sequence_controller_system(
-    mut q_sequences: Query<(&Sequence, &mut SequenceController)>,
-) {
+pub(crate) fn sequence_controller(mut q_sequences: Query<(&Sequence, &mut SequenceController)>) {
     for (sequence, mut sequence_controller) in q_sequences.iter_mut() {
         sequence_controller.target_time =
             f32::clamp(sequence_controller.target_time, 0.0, sequence.duration());
@@ -237,7 +282,7 @@ pub(crate) fn sequence_controller_system(
 }
 
 /// Update [`SequenceController`] based on `time_scale` of [`SequencePlayer`].
-pub(crate) fn sequence_player_system(
+pub(crate) fn sequence_player(
     mut q_sequences: Query<(&Sequence, &mut SequenceController, &SequencePlayer)>,
     time: Res<Time>,
 ) {

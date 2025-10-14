@@ -90,3 +90,13 @@ pub enum ColorKey {
     #[default]
     Base8,
 }
+
+impl ColorKey {
+    pub fn darkest() -> Self {
+        Self::Base0
+    }
+
+    pub fn lightest() -> Self {
+        Self::Base8
+    }
+}

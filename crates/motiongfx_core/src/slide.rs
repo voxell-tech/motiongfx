@@ -110,7 +110,7 @@ pub fn create_slide(mut sequences: Vec<Sequence>) -> SlideBundle {
     }
 }
 
-pub(crate) fn slide_controller_system(
+pub(crate) fn slide_controller(
     mut q_slides: Query<(&mut SlideController, &mut SequenceController)>,
     time: Res<Time>,
 ) {

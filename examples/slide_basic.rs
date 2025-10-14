@@ -15,12 +15,12 @@ fn main() {
         .insert_resource(Msaa::Off)
         // Custom plugins
         .add_plugins((MotionGfx, MotionGfxBevy))
-        .add_systems(Startup, (setup_system, slide_basic_system))
-        .add_systems(Update, slide_movement_system)
+        .add_systems(Startup, (setup, slide_basic))
+        .add_systems(Update, slide_movement)
         .run();
 }
 
-fn slide_basic_system(
+fn slide_basic(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -75,25 +75,23 @@ fn slide_basic_system(
         .play(cube_transform.scale_to(Vec3::ONE), 1.0)
         .with_ease(ease::cubic::ease_in_out);
 
-    let slide1 = flow(
+    let slide1 = flow!(
         0.1,
-        &[
-            all(&[
-                commands.play(cube_transform.translate_add(Vec3::X * -x_offset), 1.0),
-                commands.play(
-                    cube_material.base_color_to(*palette.get_or_default(&ColorKey::Base0)),
-                    1.0,
-                ),
-            ]),
-            commands.play(sphere_tranform.scale_to(Vec3::ONE), 1.0),
-        ],
+        all!(
+            commands.play(cube_transform.translate_add(Vec3::X * -x_offset), 1.0),
+            commands.play(
+                cube_material.base_color_to(*palette.get_or_default(&ColorKey::Base0)),
+                1.0,
+            ),
+        ),
+        commands.play(sphere_tranform.scale_to(Vec3::ONE), 1.0),
     )
     .with_ease(ease::cubic::ease_in_out);
 
     commands.spawn(create_slide(vec![slide0, slide1]));
 }
 
-fn setup_system(mut commands: Commands) {
+fn setup(mut commands: Commands) {
     // Camera
     commands
         .spawn(Camera3dBundle {
@@ -116,10 +114,7 @@ fn setup_system(mut commands: Commands) {
     });
 }
 
-fn slide_movement_system(
-    mut q_slides: Query<&mut SlideController>,
-    keys: Res<ButtonInput<KeyCode>>,
-) {
+fn slide_movement(mut q_slides: Query<&mut SlideController>, keys: Res<ButtonInput<KeyCode>>) {
     for mut slide in q_slides.iter_mut() {
         if keys.just_pressed(KeyCode::Space) {
             slide.set_time_scale(1.0);
