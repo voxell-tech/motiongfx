@@ -24,7 +24,7 @@ pub mod sine {
 
     #[inline]
     pub fn ease_out(t: f32) -> f32 {
-        cos(t * PI * 0.5)
+        sin(t * PI * 0.5)
     }
 
     #[inline]
