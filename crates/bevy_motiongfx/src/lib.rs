@@ -14,9 +14,8 @@ use crate::pipeline::PipelinePlugin;
 
 pub mod controller;
 pub mod interpolation;
+pub mod pipeline;
 pub mod registry;
-
-mod pipeline;
 
 pub mod prelude {
     pub use motiongfx::prelude::*;
@@ -28,6 +27,8 @@ pub mod prelude {
     pub use crate::register_fields;
     pub use crate::registry::FieldPathRegisterAppExt;
 }
+
+pub use motiongfx;
 
 pub struct BevyMotionGfxPlugin;
 
@@ -94,7 +95,7 @@ impl Plugin for BevyMotionGfxPlugin {
             use bevy_pbr::prelude::*;
 
             register_fields!(
-                app.register_asset_field::<MeshMaterial3d<_>>(),
+                app.register_asset_field(),
                 StandardMaterial,
                 (
                     base_color,

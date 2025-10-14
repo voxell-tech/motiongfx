@@ -1,4 +1,7 @@
 use bevy_app::prelude::*;
+#[cfg(feature = "asset")]
+use bevy_asset::Asset;
+use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
@@ -17,6 +20,131 @@ impl Plugin for PipelinePlugin {
             ),
         )
         .add_observer(mark_bake_timeline);
+    }
+}
+
+pub fn bake_component_actions<S, T>(ctx: BakeCtx)
+where
+    S: Component,
+    T: Clone + ThreadSafe,
+{
+    ctx.bake::<Entity, S, T>(|entity, target_world, accessor| {
+        target_world.get::<S>(entity).map(|s| (accessor.ref_fn)(s))
+    });
+}
+
+pub fn sample_component_actions<S, T>(ctx: SampleCtx)
+where
+    S: Component<Mutability = Mutable>,
+    T: Clone + ThreadSafe,
+{
+    ctx.sample::<Entity, S, T>(
+        |target, entity, target_world, accessor| {
+            if let Some(mut source) =
+                target_world.get_mut::<S>(entity)
+            {
+                *(accessor.mut_fn)(&mut source) = target;
+            }
+
+            target_world
+        },
+    );
+}
+
+#[cfg(feature = "asset")]
+pub fn bake_asset_actions<S, T>(ctx: BakeCtx)
+where
+    S: Asset,
+    T: Clone + ThreadSafe,
+{
+    use bevy_asset::Assets;
+    use bevy_asset::UntypedAssetId;
+
+    ctx.bake::<UntypedAssetId, S, T>(
+        |asset_id, target_world, accessor| {
+            target_world
+                .get_resource::<Assets<S>>()?
+                .get(asset_id.typed::<S>())
+                .map(|s| (accessor.ref_fn)(s))
+        },
+    );
+}
+
+#[cfg(feature = "asset")]
+pub fn sample_asset_actions<S, T>(ctx: SampleCtx)
+where
+    S: Asset,
+    T: Clone + ThreadSafe,
+{
+    use bevy_asset::Assets;
+    use bevy_asset::UntypedAssetId;
+
+    ctx.sample::<UntypedAssetId, S, T>(
+        |target, asset_id, target_world, accessor| {
+            if let Some(mut assets) =
+                target_world.get_resource_mut::<Assets<S>>()
+            {
+                if let Some(source) =
+                    assets.get_mut(asset_id.typed::<S>())
+                {
+                    *(accessor.mut_fn)(source) = target;
+                }
+            }
+
+            target_world
+        },
+    );
+}
+
+pub trait PipelineRegistryExt {
+    fn register_component<S, T>(&mut self) -> PipelineKey
+    where
+        S: Component<Mutability = Mutable>,
+        T: Clone + ThreadSafe;
+
+    #[cfg(feature = "asset")]
+    fn register_asset<S, T>(&mut self) -> PipelineKey
+    where
+        S: Asset,
+        T: Clone + ThreadSafe;
+}
+
+impl PipelineRegistryExt for PipelineRegistry {
+    fn register_component<S, T>(&mut self) -> PipelineKey
+    where
+        S: Component<Mutability = Mutable>,
+        T: Clone + ThreadSafe,
+    {
+        let key = PipelineKey::new::<S, T>();
+
+        self.register_unchecked(
+            key,
+            Pipeline::new(
+                bake_component_actions::<S, T>,
+                sample_component_actions::<S, T>,
+            ),
+        );
+
+        key
+    }
+
+    #[cfg(feature = "asset")]
+    fn register_asset<S, T>(&mut self) -> PipelineKey
+    where
+        S: Asset,
+        T: Clone + ThreadSafe,
+    {
+        let key = PipelineKey::new::<S, T>();
+
+        self.register_unchecked(
+            key,
+            Pipeline::new(
+                bake_asset_actions::<S, T>,
+                sample_asset_actions::<S, T>,
+            ),
+        );
+
+        key
     }
 }
 

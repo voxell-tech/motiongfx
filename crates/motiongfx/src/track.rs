@@ -1,9 +1,8 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 
-use crate::action::{ActionClip, ActionTarget};
+use crate::action::{ActionClip, ActionKey};
 use crate::field::UntypedField;
 use crate::sequence::Sequence;
 
@@ -141,28 +140,6 @@ pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
     track
 }
 
-/// Key that uniquely identifies a sequence of non-overlapping
-/// actions.
-#[derive(
-    Component,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-)]
-#[component(immutable)]
-pub struct ActionKey {
-    /// The target entity of the action.
-    pub target: ActionTarget,
-    /// The source and target field related to the entity.
-    pub field: UntypedField,
-}
-
-#[derive(Default)]
 pub struct TrackFragment {
     sequences: HashMap<ActionKey, Sequence>,
     duration: f32,
@@ -170,7 +147,10 @@ pub struct TrackFragment {
 
 impl TrackFragment {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            sequences: HashMap::new(),
+            duration: 0.0,
+        }
     }
 
     pub fn single(key: ActionKey, clip: ActionClip) -> Self {
@@ -178,6 +158,37 @@ impl TrackFragment {
             duration: clip.duration,
             sequences: [(key, Sequence::new(clip))].into(),
         }
+    }
+
+    /// Updates or inserts a [`Sequence`] in a track.
+    ///
+    /// If the [`ActionKey`] already exists, this method appends the
+    /// clips of the `new_sequence` to the existing sequence.
+    /// If the [`ActionKey`] does not exist, a new entry is created
+    /// for the `new_sequence`.
+    ///
+    /// This method consumes `self` and returns a modified instance,
+    /// following a builder pattern.
+    ///
+    /// # Parameters
+    ///
+    /// * `key`: The unique identifier for the track.
+    /// * `new_sequence`: The sequence to be added or extended.
+    pub fn upsert_sequence(
+        mut self,
+        key: ActionKey,
+        new_sequence: Sequence,
+    ) -> Self {
+        match self.sequences.get_mut(&key) {
+            Some(sequence) => {
+                sequence.extend(new_sequence);
+            }
+            None => {
+                self.sequences.insert(key, new_sequence);
+            }
+        }
+
+        self
     }
 
     pub fn compile(self) -> Track {
@@ -242,36 +253,9 @@ impl TrackFragment {
     }
 }
 
-impl TrackFragment {
-    /// Updates or inserts a [`Sequence`] in a track.
-    ///
-    /// If the [`ActionKey`] already exists, this method appends the
-    /// clips of the `new_sequence` to the existing sequence.
-    /// If the [`ActionKey`] does not exist, a new entry is created
-    /// for the `new_sequence`.
-    ///
-    /// This method consumes `self` and returns a modified instance,
-    /// following a builder pattern.
-    ///
-    /// # Parameters
-    ///
-    /// * `key`: The unique identifier for the track.
-    /// * `new_sequence`: The sequence to be added or extended.
-    pub fn upsert_sequence(
-        mut self,
-        key: ActionKey,
-        new_sequence: Sequence,
-    ) -> Self {
-        match self.sequences.get_mut(&key) {
-            Some(sequence) => {
-                sequence.extend(new_sequence);
-            }
-            None => {
-                self.sequences.insert(key, new_sequence);
-            }
-        }
-
-        self
+impl Default for TrackFragment {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -359,13 +343,15 @@ pub struct Span {
 
 #[cfg(test)]
 mod tests {
-    use crate::action::ActionId;
+    use bevy_ecs::entity::Entity;
+
+    use crate::action::{ActionId, IdRegistry, UntypedSubjectId};
 
     use super::*;
 
     fn key(path: &'static str) -> ActionKey {
         ActionKey {
-            target: Entity::PLACEHOLDER.into(),
+            subject_id: UntypedSubjectId::placeholder(),
             field: UntypedField::placeholder_with_path(path),
         }
     }
@@ -384,16 +370,20 @@ mod tests {
         let field_u32_a = UntypedField::placeholder_with_path("a");
         let field_u32_b = UntypedField::placeholder_with_path("b");
 
+        let mut id_registry = IdRegistry::new();
+        let id1 = id_registry.register_instance(entity1);
+        let id2 = id_registry.register_instance(entity2);
+
         let k1 = ActionKey {
-            target: entity1.into(),
+            subject_id: UntypedSubjectId::new::<Entity>(id1),
             field: field_u32_a,
         };
         let k2 = ActionKey {
-            target: entity2.into(),
+            subject_id: UntypedSubjectId::new::<Entity>(id2),
             field: field_u32_a,
         };
         let k3 = ActionKey {
-            target: entity1.into(),
+            subject_id: UntypedSubjectId::new::<Entity>(id1),
             field: field_u32_b,
         };
 

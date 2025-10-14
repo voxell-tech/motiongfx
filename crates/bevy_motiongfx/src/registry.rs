@@ -1,10 +1,11 @@
 use bevy_app::prelude::*;
 #[cfg(feature = "asset")]
-use bevy_asset::AsAssetId;
+use bevy_asset::Asset;
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
-use motiongfx::ThreadSafe;
+
+use crate::pipeline::PipelineRegistryExt;
 
 // TODO: Move purely the recursive logic back to motiongfx and keep
 // the registration logic here.
@@ -94,8 +95,8 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            field!(<$root>),
-            Accessor {
+            ::motiongfx::field::field!(<$root>),
+            ::motiongfx::accessor::Accessor {
                 ref_fn: |v| v,
                 mut_fn: |v| v,
             }
@@ -121,8 +122,8 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            field!(<$root>$(::$path)*::$field),
-            Accessor {
+            motiongfx::field::field!(<$root>$(::$path)*::$field),
+            ::motiongfx::accessor::Accessor {
                 ref_fn: |v| &v$(.$path)*.$field,
                 mut_fn: |v| &mut v$(.$path)*.$field,
             },
@@ -166,11 +167,11 @@ pub trait FieldPathRegisterAppExt {
     #[cfg(feature = "asset")]
     fn register_asset_field<S, T>(
         &mut self,
-        field: Field<S::Asset, T>,
-        accessor: Accessor<S::Asset, T>,
+        field: Field<S, T>,
+        accessor: Accessor<S, T>,
     ) -> &mut Self
     where
-        S: AsAssetId,
+        S: Asset,
         T: Clone + ThreadSafe;
 }
 
@@ -198,11 +199,11 @@ impl FieldPathRegisterAppExt for App {
     #[cfg(feature = "asset")]
     fn register_asset_field<S, T>(
         &mut self,
-        field: Field<S::Asset, T>,
-        accessor: Accessor<S::Asset, T>,
+        field: Field<S, T>,
+        accessor: Accessor<S, T>,
     ) -> &mut Self
     where
-        S: AsAssetId,
+        S: Asset,
         T: Clone + ThreadSafe,
     {
         self.world_mut()

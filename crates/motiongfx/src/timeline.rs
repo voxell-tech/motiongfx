@@ -7,15 +7,16 @@ use bevy_platform::collections::HashMap;
 
 use crate::accessor::FieldAccessorRegistry;
 use crate::action::{
-    Action, ActionBuilder, ActionId, ActionTarget, ActionWorld,
-    InterpolatedActionBuilder, SampleMode,
+    Action, ActionBuilder, ActionId, ActionKey, ActionWorld,
+    InterpActionBuilder, SampleMode,
 };
 use crate::field::Field;
 use crate::pipeline::Range;
-use crate::prelude::{
+use crate::pipeline::{
     BakeCtx, PipelineKey, PipelineRegistry, SampleCtx,
 };
-use crate::track::{ActionKey, Track};
+use crate::subject::SubjectId;
+use crate::track::Track;
 use crate::ThreadSafe;
 
 #[derive(Component)]
@@ -320,12 +321,17 @@ impl Timeline {
 /// which result in sampling the same target field on the same entity
 /// more than once. This is crucial as the sampling pipeline happens
 /// in an unordered manner.
-#[derive(Default)]
 pub struct QueueCache {
     cache: HashMap<ActionKey, ActionId>,
 }
 
 impl QueueCache {
+    pub fn new() -> Self {
+        Self {
+            cache: HashMap::new(),
+        }
+    }
+
     /// Clear all the cached contents.
     pub fn clear(&mut self) {
         self.cache.clear();
@@ -345,7 +351,12 @@ impl QueueCache {
     }
 }
 
-#[derive(Default)]
+impl Default for QueueCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct TimelineBuilder {
     action_world: ActionWorld,
     pipeline_counts: HashMap<PipelineKey, u32>,
@@ -355,17 +366,22 @@ pub struct TimelineBuilder {
 impl TimelineBuilder {
     /// Creates an empty timeline builder.
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            action_world: ActionWorld::new(),
+            pipeline_counts: HashMap::new(),
+            tracks: Vec::new(),
+        }
     }
 
     /// Add an [`Action`] without interpolation.
-    pub fn act<S, T>(
+    pub fn act<I, S, T>(
         &mut self,
-        target: impl Into<ActionTarget>,
+        target: I,
         field: Field<S, T>,
         action: impl Action<T>,
     ) -> ActionBuilder<'_, T>
     where
+        I: SubjectId,
         S: 'static,
         T: ThreadSafe,
     {
@@ -382,13 +398,14 @@ impl TimelineBuilder {
     }
 
     /// Add an [`Action`] using step interpolation.
-    pub fn act_step<S, T>(
+    pub fn act_step<I, S, T>(
         &mut self,
-        target: impl Into<ActionTarget>,
+        target: I,
         field: Field<S, T>,
         action: impl Action<T>,
-    ) -> InterpolatedActionBuilder<'_, T>
+    ) -> InterpActionBuilder<'_, T>
     where
+        I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
@@ -444,12 +461,18 @@ impl TimelineBuilder {
                 .into_iter()
                 .collect(),
             tracks: self.tracks.into_boxed_slice(),
-            queue_cahce: QueueCache::default(),
+            queue_cahce: QueueCache::new(),
             curr_time: 0.0,
             target_time: 0.0,
             curr_index: 0,
             target_index: 0,
         }
+    }
+}
+
+impl Default for TimelineBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
