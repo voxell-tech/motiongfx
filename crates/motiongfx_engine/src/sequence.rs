@@ -1,8 +1,8 @@
 use bevy::asset::AsAssetId;
 use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
-use keyframe::{
-    bake_asset_keyframes, bake_component_keyframes,
+use segment::{
+    bake_asset_actions, bake_component_actions,
     sample_asset_keyframes, sample_component_keyframes,
 };
 use smallvec::SmallVec;
@@ -12,7 +12,7 @@ use crate::field::{FieldBundle, RegisterFieldAppExt};
 use crate::prelude::Interpolation;
 use crate::{MotionGfxSet, ThreadSafe};
 
-pub mod keyframe;
+pub mod segment;
 pub mod track;
 
 pub(super) struct SequencePlugin;
@@ -21,7 +21,7 @@ impl Plugin for SequencePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             track::TrackPlugin,
-            keyframe::KeyframePlugin,
+            segment::KeyframePlugin,
         ));
 
         app.add_systems(
@@ -66,7 +66,7 @@ impl AnimateAppExt for App {
             sample_component_keyframes(field_bundle.field)
                 .in_set(MotionGfxSet::Sample),
         )
-        .add_observer(bake_component_keyframes(field_bundle.field))
+        .add_observer(bake_component_actions(field_bundle.field))
         .register_field(field_bundle)
     }
 
@@ -83,7 +83,7 @@ impl AnimateAppExt for App {
             sample_asset_keyframes::<Source, _>(field_bundle.field)
                 .in_set(MotionGfxSet::Sample),
         )
-        .add_observer(bake_asset_keyframes::<Source, _>(
+        .add_observer(bake_asset_actions::<Source, _>(
             field_bundle.field,
         ))
         .register_field(field_bundle)
@@ -129,24 +129,22 @@ fn update_curr_time(
     }
 }
 
-// TODO: Remove this as a component?
-// Add type wrappers to them. e.g. Slide, Timeline..
-
 /// A group of actions in chronological order.
 #[derive(Component, Default, Clone)]
 #[require(SequenceController)]
 #[component(immutable)]
 pub struct Sequence {
-    duration: f32,
     /// Stores the [`ActionSpan`]s that makes up the sequence.
     pub(crate) spans: SmallVec<[ActionSpan; 1]>,
+    /// The duration of the entire sequence, accumulated from `spans`.
+    duration: f32,
 }
 
 impl Sequence {
     pub fn single(span: ActionSpan) -> Self {
-        let duration = span.duration();
         let mut spans = SmallVec::new();
         spans.push(span);
+        let duration = span.duration();
 
         Self { spans, duration }
     }

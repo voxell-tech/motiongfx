@@ -25,6 +25,9 @@ impl<T, U> ActionFn<T> for U where U: Fn(&T) -> T + ThreadSafe {}
 pub struct RelatedActions(Vec<Entity>);
 
 /// The target entity that this [`Action`] belongs to.
+///
+/// In other words, the entity that is going to be animated
+/// by this [`Action`].
 #[derive(
     Component, Reflect, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash,
 )]
@@ -172,7 +175,7 @@ impl<'w> ActionBuilderExt<'w> for EntityCommands<'w> {
         let action_target = ActionTarget(self.id());
         ActionBuilder::new(self.commands_mut().spawn((
             action_target,
-            field.to_hash(),
+            field,
             Action::new(action),
         )))
     }
