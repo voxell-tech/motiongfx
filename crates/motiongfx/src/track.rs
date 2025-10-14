@@ -407,7 +407,7 @@ mod tests {
         assert_eq!(track.duration, 3.0);
         let seq_b = &track.sequences[&key("b")];
         // `seq_b` should be delayed by 1.0 (duration of `track1`).
-        assert_eq!(seq_b.offset(), 1.0);
+        assert_eq!(seq_b.start(), 1.0);
     }
 
     #[test]
@@ -438,7 +438,7 @@ mod tests {
         assert_eq!(track.duration, 1.5); // 0.5 delay + 1.0 duration
         let seq_b = &track.sequences[&key("b")];
         // `seq_b` should be delayed by 0.5
-        assert_eq!(seq_b.offset(), 0.5);
+        assert_eq!(seq_b.start(), 0.5);
     }
 
     #[test]
@@ -448,7 +448,7 @@ mod tests {
         let track = delay(1.5, track);
         let seq_a = &track.sequences[&key("a")];
 
-        assert_eq!(seq_a.offset(), 1.5);
+        assert_eq!(seq_a.start(), 1.5);
         assert_eq!(seq_a.end(), 3.5);
         assert_eq!(track.duration, 2.0);
     }

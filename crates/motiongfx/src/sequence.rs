@@ -21,10 +21,9 @@ impl Sequence {
         self.clips.len()
     }
 
-    /// Get the offset time of the sequence.
+    /// Get the start time of the sequence.
     #[inline]
-    pub fn offset(&self) -> f32 {
-        // TODO: Change naming
+    pub fn start(&self) -> f32 {
         self.clips.first().start
     }
 
@@ -37,7 +36,7 @@ impl Sequence {
     /// Get the duration of the sequence.
     #[inline]
     pub fn duration(&self) -> f32 {
-        self.end() - self.offset()
+        self.end() - self.start()
     }
 
     pub(crate) fn delay(&mut self, duration: f32) {
