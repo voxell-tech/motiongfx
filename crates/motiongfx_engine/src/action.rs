@@ -128,7 +128,7 @@ pub trait ActionBuilderExt<'w> {
         &'w mut self,
         field: Field<Source, Target>,
         action: impl ActionFn<Target>,
-    ) -> ActionBuilder<'w, Source>
+    ) -> ActionBuilder<'w, Target>
     where
         Source: ThreadSafe,
         Target: ThreadSafe;
@@ -139,7 +139,7 @@ impl<'w> ActionBuilderExt<'w> for EntityCommands<'w> {
         &'w mut self,
         field: Field<Source, Target>,
         action: impl ActionFn<Target>,
-    ) -> ActionBuilder<'w, Source>
+    ) -> ActionBuilder<'w, Target>
     where
         Source: ThreadSafe,
         Target: ThreadSafe,
