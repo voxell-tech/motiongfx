@@ -27,6 +27,7 @@ pub trait CreateTimelineAppExt {
 }
 
 impl CreateTimelineAppExt for Commands<'_, '_> {
+    /// Helper method to create timeline.
     fn create_timeline(
         &mut self,
         sequences: impl IntoIterator<Item = Sequence>,
