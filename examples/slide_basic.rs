@@ -1,14 +1,14 @@
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::pbr::NotShadowCaster;
 use bevy::prelude::*;
-use bevy_motiongfx::prelude::*;
+use motiongfx::prelude::*;
 
 fn main() {
     App::new()
         // Bevy plugins
         .add_plugins(DefaultPlugins)
         // Custom plugins
-        .add_plugins(bevy_motiongfx::MotionGfxPlugin)
+        .add_plugins(motiongfx::MotionGfxPlugin)
         .add_systems(Startup, (setup, slide_basic))
         .add_systems(Update, slide_movement)
         .run();
@@ -19,18 +19,20 @@ fn slide_basic(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Color palette
-    let palette = ColorPalette::default();
+    // Color.
+    let green = Srgba::hex("A9DC76").unwrap().into();
+    let blue = Srgba::hex("78DCE8").unwrap().into();
+    let base0 = Srgba::hex("19181A").unwrap().into();
 
-    // Cube
+    // Cube.
     let x_offset = 2.0;
     let transform = Transform::default().with_scale(Vec3::splat(0.0));
     let material = StandardMaterial {
-        base_color: palette.get(ColorKey::Green),
+        base_color: green,
         ..default()
     };
     let material_handle = materials.add(material.clone());
-    let id = commands
+    let cube = commands
         .spawn((
             NotShadowCaster,
             Mesh3d(meshes.add(Cuboid::default())),
@@ -38,18 +40,17 @@ fn slide_basic(
             MeshMaterial3d(material_handle.clone()),
         ))
         .id();
-    let mut cube = (id, (transform, material));
 
-    // Sphere
+    // Sphere.
     let transform = Transform::default()
         .with_translation(Vec3::X * x_offset)
         .with_scale(Vec3::splat(0.0));
     let material = StandardMaterial {
-        base_color: palette.get(ColorKey::Blue),
+        base_color: blue,
         ..default()
     };
     let material_handle = materials.add(material.clone());
-    let id = commands
+    let sphere = commands
         .spawn((
             NotShadowCaster,
             Mesh3d(meshes.add(Sphere::default())),
@@ -57,29 +58,38 @@ fn slide_basic(
             MeshMaterial3d(material_handle.clone()),
         ))
         .id();
-    let mut sphere = (id, (transform, material));
 
-    // Create slides
-    let slide0 = commands.play_motion(
-        cube.transform().to_scale(Vec3::ONE).animate(1.0),
-    );
+    // Create slides.
+    let slide0 = commands
+        .entity(cube)
+        .act(field!(<Transform>::scale), |_| Vec3::ONE)
+        .with_ease(ease::cubic::ease_out)
+        .play(1.0);
 
     let slide1 = [
+        [
+            commands
+                .entity(cube)
+                .act(field!(<Transform>::translation::x), move |_| {
+                    -x_offset
+                })
+                .with_ease(ease::cubic::ease_out)
+                .play(1.0),
+            commands
+                .entity(cube)
+                .act(
+                    field!(<StandardMaterial>::base_color),
+                    move |_| base0,
+                )
+                .with_ease(ease::cubic::ease_out)
+                .play(1.0),
+        ]
+        .all(),
         commands
-            .add_motion(
-                cube.transform()
-                    .to_translation_x(-x_offset)
-                    .animate(1.0),
-            )
-            .add_motion(
-                cube.std_material()
-                    .to_base_color(palette.get(ColorKey::Base0))
-                    .animate(1.0),
-            )
-            .all(),
-        commands.play_motion(
-            sphere.transform().to_scale(Vec3::ONE).animate(1.0),
-        ),
+            .entity(sphere)
+            .act(field!(<Transform>::scale), |_| Vec3::ONE)
+            .with_ease(ease::cubic::ease_out)
+            .play(1.0),
     ]
     .flow(0.1);
 
@@ -87,7 +97,6 @@ fn slide_basic(
 }
 
 fn setup(mut commands: Commands) {
-    // Camera
     commands.spawn((
         Camera {
             hdr: true,
@@ -99,7 +108,6 @@ fn setup(mut commands: Commands) {
         bevy::core_pipeline::bloom::Bloom::default(),
     ));
 
-    // Directional light
     commands.spawn((
         DirectionalLight::default(),
         Transform::from_xyz(3.0, 10.0, 5.0)

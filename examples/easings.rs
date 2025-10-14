@@ -2,14 +2,14 @@ use bevy::core_pipeline::bloom::Bloom;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::pbr::NotShadowCaster;
 use bevy::prelude::*;
-use bevy_motiongfx::prelude::*;
+use motiongfx::prelude::*;
 
 fn main() {
     App::new()
         // Bevy plugins
         .add_plugins(DefaultPlugins)
         // Custom plugins
-        .add_plugins(bevy_motiongfx::MotionGfxPlugin)
+        .add_plugins(motiongfx::MotionGfxPlugin)
         .add_systems(Startup, (setup, easings))
         .add_systems(Update, timeline_movement)
         .run();
@@ -35,15 +35,17 @@ fn easings(
 
     let capacity = easings.len();
 
-    // Color palette
-    let palette = ColorPalette::default();
+    // Colors.
+    let blue =
+        LinearRgba::from(Srgba::hex("78DCE8").unwrap()) * 100.0;
+    let red = LinearRgba::from(Srgba::hex("FF6188").unwrap()) * 100.0;
 
-    // Create spheres
+    // Create spheres.
     let mut spheres = Vec::with_capacity(capacity);
     let mesh_handle = meshes.add(Sphere::default());
     let material = StandardMaterial {
         base_color: Color::WHITE,
-        emissive: palette.get(ColorKey::Blue).to_linear() * 100.0,
+        emissive: blue,
         ..default()
     };
 
@@ -65,51 +67,40 @@ fn easings(
             ))
             .id();
 
-        spheres.push((id, (transform, material.clone())));
+        spheres.push(id);
     }
 
-    // Generate sequence
+    // Generate sequence.
     let sequence = spheres
         .iter()
         .zip(easings)
-        .map(|((entity, (transform, material)), ease_fn)| {
-            commands
-                .add_motion({
-                    let x = transform.translation.x;
-                    Action::<_, Transform>::new_f32lerp(
-                        *entity,
-                        x,
-                        x + 10.0,
-                        |t| &mut t.translation.x,
+        .map(|(&sphere, ease_fn)| {
+            [
+                commands
+                    .entity(sphere)
+                    .act(field!(<Transform>::translation::x), |x| {
+                        x + 10.0
+                    })
+                    .with_ease(ease_fn)
+                    .play(1.0),
+                commands
+                    .entity(sphere)
+                    .act(
+                        field!(<StandardMaterial>::emissive),
+                        move |_| red,
                     )
                     .with_ease(ease_fn)
-                    .animate(1.0)
-                })
-                .add_motion({
-                    let color = material.emissive;
-                    Action::<_, StandardMaterial>::new_f32lerp(
-                        *entity,
-                        color,
-                        palette.get(ColorKey::Red).to_linear()
-                            * 100.0,
-                        |m| &mut m.emissive,
-                    )
-                    .with_ease(ease_fn)
-                    .animate(1.0)
-                })
-                .all()
+                    .play(1.0),
+            ]
+            .all()
         })
         .collect::<Vec<_>>()
         .chain();
 
-    commands.spawn(SequencePlayerBundle {
-        sequence,
-        ..default()
-    });
+    commands.spawn((sequence, SequencePlayer::default()));
 }
 
 fn setup(mut commands: Commands) {
-    // Camera
     commands.spawn((
         Camera {
             hdr: true,
