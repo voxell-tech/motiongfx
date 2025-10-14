@@ -31,13 +31,16 @@ pub fn hello_world(
 
     const CAPACITY: usize = WIDTH * HEIGHT;
 
+    // Color palette
+    let palette: ColorPalette<ColorKey> = ColorPalette::default();
+
     let mut cubes: Vec<Entity> = Vec::with_capacity(CAPACITY);
     // Motion
     let mut cube_transform_motions: Vec<TransformMotion> = Vec::with_capacity(CAPACITY);
 
     // Create cube objects (Entity)
     let material: StandardMaterial = StandardMaterial {
-        base_color: style::GREEN,
+        base_color: *palette.get_or_default(&ColorKey::Green),
         ..default()
     };
 

@@ -35,15 +35,15 @@ impl TransformMotion {
         action
     }
 
-    pub fn translate_to(&mut self, translation: Vec3) -> Action<Transform, Vec3, EmptyRes> {
+    pub fn translate_to(&mut self, new_translation: Vec3) -> Action<Transform, Vec3, EmptyRes> {
         let action: Action<Transform, Vec3, EmptyRes> = Action::new(
             self.target_id,
             self.transform.translation,
-            translation,
+            new_translation,
             Self::translation_interp,
         );
 
-        self.transform.translation = translation;
+        self.transform.translation = new_translation;
 
         action
     }
@@ -88,15 +88,15 @@ impl TransformMotion {
         action
     }
 
-    pub fn scale_to(&mut self, scale: Vec3) -> Action<Transform, Vec3, EmptyRes> {
+    pub fn scale_to(&mut self, new_scale: Vec3) -> Action<Transform, Vec3, EmptyRes> {
         let action: Action<Transform, Vec3, EmptyRes> = Action::new(
             self.target_id,
             self.transform.scale,
-            scale,
+            new_scale,
             Self::scale_interp,
         );
 
-        self.transform.scale = scale;
+        self.transform.scale = new_scale;
 
         action
     }
@@ -131,15 +131,15 @@ impl TransformMotion {
         action
     }
 
-    pub fn rotate_to(&mut self, rotation: Quat) -> Action<Transform, Quat, EmptyRes> {
+    pub fn rotate_to(&mut self, new_rotation: Quat) -> Action<Transform, Quat, EmptyRes> {
         let action: Action<Transform, Quat, EmptyRes> = Action::new(
             self.target_id,
             self.transform.rotation,
-            rotation,
+            new_rotation,
             Self::interp,
         );
 
-        self.transform.rotation = rotation;
+        self.transform.rotation = new_rotation;
 
         action
     }

@@ -6,8 +6,8 @@ use bevy_render::prelude::*;
 use bevy_transform::prelude::*;
 use motiongfx_core::prelude::*;
 
-pub mod standard_material;
-pub mod transform;
+mod standard_material;
+mod transform;
 
 pub mod prelude {
     pub use crate::{

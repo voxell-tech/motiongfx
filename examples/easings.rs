@@ -27,6 +27,9 @@ pub fn easings(
 ) {
     const CAPACITY: usize = 10;
 
+    // Color palette
+    let palette: ColorPalette<ColorKey> = ColorPalette::default();
+
     let mut spheres: Vec<Entity> = Vec::with_capacity(CAPACITY);
     // States
     let mut cube_transform_motions: Vec<TransformMotion> = Vec::with_capacity(CAPACITY);
@@ -34,7 +37,7 @@ pub fn easings(
 
     // Create cube objects (Entity)
     let material: StandardMaterial = StandardMaterial {
-        emissive: style::BLUE * 4.0,
+        emissive: *palette.get_or_default(&ColorKey::Blue) * 4.0,
         ..default()
     };
 
@@ -82,7 +85,11 @@ pub fn easings(
         cube_actions.push(
             all(&[
                 act.play(cube_transform_motions[i].translate_add(Vec3::X * 10.0), 1.0),
-                act.play(cube_material_motion[i].emissive_to(style::RED * 4.0), 1.0),
+                act.play(
+                    cube_material_motion[i]
+                        .emissive_to(*palette.get_or_default(&ColorKey::Red) * 4.0),
+                    1.0,
+                ),
             ])
             .with_ease(easings[i]),
         );

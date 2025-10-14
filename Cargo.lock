@@ -2358,6 +2358,7 @@ dependencies = [
  "bevy_transform",
  "bevy_utils",
  "bevy_vello_renderer",
+ "motiongfx_bevy",
  "motiongfx_core",
 ]
 

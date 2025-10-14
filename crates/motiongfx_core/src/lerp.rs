@@ -10,7 +10,7 @@ pub trait Lerp<Time> {
 
 impl Lerp<f32> for kurbo::RoundedRectRadii {
     fn lerp(&self, other: &Self, t: f32) -> Self {
-        kurbo::RoundedRectRadii {
+        Self {
             top_left: f64::lerp(&self.top_left, &other.top_left, t),
             top_right: f64::lerp(&self.top_right, &other.top_right, t),
             bottom_right: f64::lerp(&self.bottom_right, &other.bottom_right, t),
@@ -21,11 +21,31 @@ impl Lerp<f32> for kurbo::RoundedRectRadii {
 
 impl Lerp<f32> for kurbo::Rect {
     fn lerp(&self, other: &Self, t: f32) -> Self {
-        kurbo::Rect {
+        Self {
             x0: f64::lerp(&self.x0, &other.x0, t),
             y0: f64::lerp(&self.y0, &other.y0, t),
             x1: f64::lerp(&self.x1, &other.x1, t),
             y1: f64::lerp(&self.y1, &other.y1, t),
+        }
+    }
+}
+
+impl Lerp<f32> for kurbo::Circle {
+    fn lerp(&self, other: &Self, t: f32) -> Self {
+        Self {
+            center: kurbo::Point::lerp(self.center, other.center, t as f64),
+            radius: f64::lerp(&self.radius, &other.radius, t),
+        }
+    }
+}
+
+impl Lerp<f32> for kurbo::Line {
+    fn lerp(&self, other: &Self, t: f32) -> Self {
+        let t: f64 = t as f64;
+
+        Self {
+            p0: kurbo::Point::lerp(self.p0, other.p0, t),
+            p1: kurbo::Point::lerp(self.p1, other.p1, t),
         }
     }
 }
@@ -45,19 +65,19 @@ impl Lerp<f32> for kurbo::Stroke {
 impl Lerp<f32> for peniko::Brush {
     fn lerp(&self, other: &Self, t: f32) -> Self {
         match self {
-            peniko::Brush::Solid(self_color) => match other {
+            Self::Solid(self_color) => match other {
                 // =====================
                 // Solid -> Solid
                 // =====================
-                peniko::Brush::Solid(other_color) => {
-                    return peniko::Brush::Solid(peniko::Color::lerp(self_color, other_color, t));
+                Self::Solid(other_color) => {
+                    return Self::Solid(peniko::Color::lerp(self_color, other_color, t));
                 }
 
                 // =====================
                 // Solid -> Gradient
                 // =====================
-                peniko::Brush::Gradient(other_grad) => {
-                    return peniko::Brush::Gradient(peniko::Gradient {
+                Self::Gradient(other_grad) => {
+                    return Self::Gradient(peniko::Gradient {
                         kind: other_grad.kind,
                         extend: other_grad.extend,
                         stops: peniko::Color::cross_lerp(self_color, &other_grad.stops, t),
@@ -65,15 +85,15 @@ impl Lerp<f32> for peniko::Brush {
                 }
 
                 // Image interpolation is not supported
-                peniko::Brush::Image(_) => {}
+                Self::Image(_) => {}
             },
 
-            peniko::Brush::Gradient(self_grad) => match other {
+            Self::Gradient(self_grad) => match other {
                 // =====================
                 // Gradient -> Solid
                 // =====================
-                peniko::Brush::Solid(other_color) => {
-                    return peniko::Brush::Gradient(peniko::Gradient {
+                Self::Solid(other_color) => {
+                    return Self::Gradient(peniko::Gradient {
                         kind: self_grad.kind,
                         extend: self_grad.extend,
                         stops: peniko::ColorStops::cross_lerp(&self_grad.stops, other_color, t),
@@ -83,13 +103,13 @@ impl Lerp<f32> for peniko::Brush {
                 // =====================
                 // Gradient -> Gradient
                 // =====================
-                peniko::Brush::Gradient(other_grad) => 'grad: {
+                Self::Gradient(other_grad) => 'grad: {
                     // Gradient kind and extend must be the same, otherwise, fallback
                     if self_grad.kind != other_grad.kind && self_grad.extend != other_grad.extend {
                         break 'grad;
                     }
 
-                    return peniko::Brush::Gradient(peniko::Gradient {
+                    return Self::Gradient(peniko::Gradient {
                         kind: self_grad.kind,
                         extend: self_grad.extend,
                         stops: peniko::ColorStops::lerp(&self_grad.stops, &other_grad.stops, t),
@@ -97,11 +117,11 @@ impl Lerp<f32> for peniko::Brush {
                 }
 
                 // Image interpolation is not supported
-                peniko::Brush::Image(_) => {}
+                Self::Image(_) => {}
             },
 
             // Image interpolation is not supported
-            peniko::Brush::Image(_) => {}
+            Self::Image(_) => {}
         }
 
         // Fallback to discrete interpolation
