@@ -379,8 +379,8 @@ mod tests {
         // Sequence with 0 duration to prevent overlaps.
         const DUMMY_SEQ: Sequence = Sequence::new(clip(0.0));
 
-        let entity1 = Entity::from_raw(1);
-        let entity2 = Entity::from_raw(2);
+        let entity1 = Entity::from_raw_u32(1).unwrap();
+        let entity2 = Entity::from_raw_u32(2).unwrap();
         let field_u32_a = UntypedField::placeholder_with_path("a");
         let field_u32_b = UntypedField::placeholder_with_path("b");
 
