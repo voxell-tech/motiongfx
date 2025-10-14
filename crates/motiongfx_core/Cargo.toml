@@ -1,0 +1,10 @@
+[package]
+name = "motiongfx_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy_ecs = { version = "0.12", default-features = false }
+bevy_app = { version = "0.12", default-features = false }
+bevy_math = { version = "0.12", default-features = false }
+bevy_time = { version = "0.12", default-features = false }
