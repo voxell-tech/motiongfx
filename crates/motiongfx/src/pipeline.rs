@@ -8,30 +8,18 @@ use crate::action::{
     ActionClip, ActionKey, ActionWorld, EaseStorage, InterpStorage,
     SampleMode, Segment,
 };
-use crate::field::UntypedField;
 use crate::subject::SubjectId;
 use crate::track::Track;
 use crate::ThreadSafe;
 
-/*
-TODO: Convert Pipeline to be independant of Bevy's `World` as the
-`target_world` for baking and sampling.
-
-As such:
-- `target_world` in Pipeline should be a trait/generic reference.
-- `BakeCtx`/`SampleCtx` should only take in `target_world` with trait
-  functions for getting the accessor or pipelines..?
-
-See also https://github.com/voxell-tech/motiongfx/issues/71
-*/
-
-pub type BakeFn = fn(BakeCtx);
-pub type SampleFn = fn(SampleCtx);
-
+/// Uniquely identifies a [`Pipeline`] to bake and sample a target
+/// field from a subject's source data structure.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord,
 )]
 pub struct PipelineKey {
+    /// The [`TypeId`] of the [`SubjectId`].
+    subject_id: TypeId,
     /// The [`TypeId`] of the source type.
     source_id: TypeId,
     /// The [`TypeId`] of the target type.
@@ -39,61 +27,64 @@ pub struct PipelineKey {
 }
 
 impl PipelineKey {
-    pub fn new<S: 'static, T: 'static>() -> Self {
+    pub fn new<I, S, T>() -> Self
+    where
+        I: SubjectId,
+        S: 'static,
+        T: 'static,
+    {
         Self {
+            subject_id: TypeId::of::<I>(),
             source_id: TypeId::of::<S>(),
             target_id: TypeId::of::<T>(),
         }
     }
 
-    pub fn from_field(field: impl Into<UntypedField>) -> Self {
-        let field = field.into();
+    pub fn from_action_key(key: ActionKey) -> Self {
         Self {
-            source_id: field.source_id(),
-            target_id: field.target_id(),
+            subject_id: key.subject_id().type_id(),
+            source_id: key.field().source_id(),
+            target_id: key.field().target_id(),
         }
     }
 }
 
-impl From<UntypedField> for PipelineKey {
-    fn from(field: UntypedField) -> Self {
-        Self::from_field(field)
-    }
-}
+pub type BakeFn<W> = fn(&W, BakeCtx);
+pub type SampleFn<W> = fn(&mut W, SampleCtx);
 
 #[derive(Debug, Clone, Copy)]
-pub struct Pipeline {
-    bake: BakeFn,
-    sample: SampleFn,
+pub struct Pipeline<W> {
+    bake: BakeFn<W>,
+    sample: SampleFn<W>,
 }
 
-impl Pipeline {
-    pub fn new(bake: BakeFn, sample: SampleFn) -> Self {
+impl<W> Pipeline<W> {
+    pub fn new(bake: BakeFn<W>, sample: SampleFn<W>) -> Self {
         Self { bake, sample }
     }
 
-    pub fn bake(&self, ctx: BakeCtx) {
-        (self.bake)(ctx)
+    pub fn bake(&self, world: &W, ctx: BakeCtx) {
+        (self.bake)(world, ctx)
     }
 
-    pub fn sample(&self, ctx: SampleCtx) {
-        (self.sample)(ctx)
+    pub fn sample(&self, world: &mut W, ctx: SampleCtx) {
+        (self.sample)(world, ctx)
     }
 }
 
 #[derive(Resource)]
-pub struct PipelineRegistry {
-    pipelines: HashMap<PipelineKey, Pipeline>,
+pub struct PipelineRegistry<W> {
+    pipelines: HashMap<PipelineKey, Pipeline<W>>,
 }
 
-impl PipelineRegistry {
+impl<W> PipelineRegistry<W> {
     pub fn new() -> Self {
         Self {
             pipelines: HashMap::new(),
         }
     }
 
-    pub fn get(&self, key: &PipelineKey) -> Option<&Pipeline> {
+    pub fn get(&self, key: &PipelineKey) -> Option<&Pipeline<W>> {
         self.pipelines.get(key)
     }
 
@@ -109,14 +100,14 @@ impl PipelineRegistry {
     pub fn register_unchecked(
         &mut self,
         key: PipelineKey,
-        pipeline: Pipeline,
+        pipeline: Pipeline<W>,
     ) -> &mut Self {
         self.pipelines.insert(key, pipeline);
         self
     }
 }
 
-impl Default for PipelineRegistry {
+impl<W> Default for PipelineRegistry<W> {
     fn default() -> Self {
         Self::new()
     }
@@ -125,14 +116,13 @@ impl Default for PipelineRegistry {
 pub struct BakeCtx<'a> {
     pub track: &'a Track,
     pub action_world: &'a mut ActionWorld,
-    pub target_world: &'a World,
     pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
 impl<'a> BakeCtx<'a> {
     pub fn bake<I, S, T>(
         self,
-        get_target: impl Fn(I, &'a World, Accessor<S, T>) -> Option<&'a T>,
+        get_source: impl Fn(I) -> Option<&'a S>,
     ) where
         I: SubjectId,
         S: 'static,
@@ -140,23 +130,23 @@ impl<'a> BakeCtx<'a> {
     {
         for (key, span) in self.track.sequences_spans() {
             let Ok(accessor) =
-                self.accessor_registry.get::<S, T>(&key.field)
+                self.accessor_registry.get::<S, T>(key.field())
             else {
                 continue;
             };
 
             let Some(&id) =
-                self.action_world.get_id(&key.subject_id.uid)
+                self.action_world.get_id(&key.subject_id().uid())
             else {
                 continue;
             };
 
-            // Get the target value from the target world.
-            let Some(mut start) =
-                get_target(id, self.target_world, accessor).cloned()
-            else {
+            // Get the source from the target world.
+            let Some(source) = get_source(id) else {
                 continue;
             };
+
+            let mut start = (accessor.ref_fn)(source).clone();
 
             for ActionClip { id, .. } in self.track.clips(*span) {
                 let Some(action) =
@@ -181,19 +171,13 @@ impl<'a> BakeCtx<'a> {
 
 pub struct SampleCtx<'a> {
     pub action_world: &'a ActionWorld,
-    pub target_world: &'a mut World,
     pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
 impl<'a> SampleCtx<'a> {
     pub fn sample<I, S, T>(
-        mut self,
-        set_target: impl Fn(
-            T,
-            I,
-            &'a mut World,
-            Accessor<S, T>,
-        ) -> &'a mut World,
+        self,
+        mut set_target: impl FnMut(I, T, Accessor<S, T>),
     ) where
         I: SubjectId,
         S: 'static,
@@ -213,13 +197,13 @@ impl<'a> SampleCtx<'a> {
             q.iter(self.action_world.world())
         {
             let Ok(accessor) =
-                self.accessor_registry.get::<S, T>(&key.field)
+                self.accessor_registry.get::<S, T>(key.field())
             else {
                 continue;
             };
 
             let Some(&id) =
-                self.action_world.get_id(&key.subject_id.uid)
+                self.action_world.get_id(&key.subject_id().uid())
             else {
                 continue;
             };
@@ -237,8 +221,7 @@ impl<'a> SampleCtx<'a> {
                 }
             };
 
-            self.target_world =
-                set_target(target, id, self.target_world, accessor);
+            set_target(id, target, accessor);
         }
     }
 }
@@ -256,44 +239,40 @@ impl Range {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
-    use crate::track::TrackBuilder;
-
     use super::*;
 
     #[test]
-    fn new_pipeline() {
-        let mut pipeline = PipelineRegistry::default();
+    fn range_overlap_behavior() {
+        let a = Range {
+            start: 0.0,
+            end: 5.0,
+        };
+        let b = Range {
+            start: 3.0,
+            end: 8.0,
+        };
+        let c = Range {
+            start: 6.0,
+            end: 10.0,
+        };
+        let d = Range {
+            start: 5.0,
+            end: 5.0,
+        }; // touching boundary
 
-        let _key0 = pipeline.register_component::<Transform, f32>();
-        let _key1 = pipeline
-            .register_asset::<MeshMaterial3d<StandardMaterial>, f32>(
-            );
-
-        let transform_pipeline = pipeline.get(&_key0).unwrap();
-
-        let mut action_world = ActionWorld::new();
-        let mut target_world = World::new();
-        let field_registry = FieldRegistry::new();
-        let track = TrackBuilder::default().compile();
-
-        transform_pipeline.bake(BakeCtx {
-            action_world: &mut action_world,
-            target_world: &mut target_world,
-            field_registry: &field_registry,
-            track: &track,
-        });
-
-        transform_pipeline.sample(SampleCtx {
-            action_world: &action_world,
-            target_world: &mut target_world,
-            field_registry: &field_registry,
-        });
-
-        let mut world = World::new();
-        world.insert_resource(pipeline);
+        assert!(
+            a.overlap(&b),
+            "Overlapping ranges should return true"
+        );
+        assert!(
+            !a.overlap(&c),
+            "Separated ranges should return false"
+        );
+        assert!(
+            a.overlap(&d),
+            "Touching at end should count as overlap"
+        );
     }
 }
-*/
