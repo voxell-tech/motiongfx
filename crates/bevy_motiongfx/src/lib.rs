@@ -10,7 +10,7 @@ use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
 use crate::controller::ControllerPlugin;
-use crate::pipeline::PipelinePlugin;
+use crate::pipeline::{PipelinePlugin, WorldPipelineRegistry};
 
 pub mod controller;
 pub mod interpolation;
@@ -23,6 +23,9 @@ pub mod prelude {
     pub use crate::controller::RealtimePlayer;
     pub use crate::interpolation::{
         ActionInterpTimelineExt, Interpolation,
+    };
+    pub use crate::pipeline::{
+        PipelineRegistryExt, WorldPipeline, WorldPipelineRegistry,
     };
     pub use crate::register_fields;
     pub use crate::registry::FieldPathRegisterAppExt;
@@ -51,7 +54,7 @@ impl Plugin for BevyMotionGfxPlugin {
         );
 
         app.init_resource::<FieldAccessorRegistry>()
-            .init_resource::<PipelineRegistry>();
+            .init_resource::<WorldPipelineRegistry>();
 
         app.add_plugins((PipelinePlugin, ControllerPlugin));
 

@@ -1,11 +1,12 @@
 use bevy_app::prelude::*;
-#[cfg(feature = "asset")]
-use bevy_asset::Asset;
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
 use crate::MotionGfxSet;
+
+pub type WorldPipelineRegistry = PipelineRegistry<World>;
+pub type WorldPipeline = Pipeline<World>;
 
 pub struct PipelinePlugin;
 
@@ -23,75 +24,67 @@ impl Plugin for PipelinePlugin {
     }
 }
 
-pub fn bake_component_actions<S, T>(ctx: BakeCtx)
+pub fn bake_component_actions<S, T>(world: &World, ctx: BakeCtx)
 where
     S: Component,
     T: Clone + ThreadSafe,
 {
-    ctx.bake::<Entity, S, T>(|entity, target_world, accessor| {
-        target_world.get::<S>(entity).map(|s| (accessor.ref_fn)(s))
-    });
+    ctx.bake::<Entity, S, T>(|entity| world.get::<S>(entity));
 }
 
-pub fn sample_component_actions<S, T>(ctx: SampleCtx)
-where
+pub fn sample_component_actions<S, T>(
+    world: &mut World,
+    ctx: SampleCtx,
+) where
     S: Component<Mutability = Mutable>,
     T: Clone + ThreadSafe,
 {
-    ctx.sample::<Entity, S, T>(
-        |target, entity, target_world, accessor| {
-            if let Some(mut source) =
-                target_world.get_mut::<S>(entity)
-            {
-                *(accessor.mut_fn)(&mut source) = target;
-            }
-
-            target_world
-        },
-    );
+    ctx.sample::<Entity, S, T>(|entity, target, accessor| {
+        if let Some(mut source) = world.get_mut::<S>(entity) {
+            *(accessor.mut_fn)(&mut source) = target;
+        }
+    });
 }
 
 #[cfg(feature = "asset")]
-pub fn bake_asset_actions<S, T>(ctx: BakeCtx)
+pub fn bake_asset_actions<S, T>(world: &World, ctx: BakeCtx)
 where
-    S: Asset,
+    S: bevy_asset::Asset,
     T: Clone + ThreadSafe,
 {
     use bevy_asset::Assets;
     use bevy_asset::UntypedAssetId;
 
-    ctx.bake::<UntypedAssetId, S, T>(
-        |asset_id, target_world, accessor| {
-            target_world
-                .get_resource::<Assets<S>>()?
-                .get(asset_id.typed::<S>())
-                .map(|s| (accessor.ref_fn)(s))
-        },
-    );
+    let Some(assets) = world.get_resource::<Assets<S>>() else {
+        return;
+    };
+
+    ctx.bake::<UntypedAssetId, S, T>(|asset_id| {
+        assets.get(asset_id.typed::<S>())
+    });
 }
 
 #[cfg(feature = "asset")]
-pub fn sample_asset_actions<S, T>(ctx: SampleCtx)
+pub fn sample_asset_actions<S, T>(world: &mut World, ctx: SampleCtx)
 where
-    S: Asset,
+    S: bevy_asset::Asset,
     T: Clone + ThreadSafe,
 {
     use bevy_asset::Assets;
     use bevy_asset::UntypedAssetId;
+
+    let Some(mut assets) = world.get_resource_mut::<Assets<S>>()
+    else {
+        return;
+    };
 
     ctx.sample::<UntypedAssetId, S, T>(
-        |target, asset_id, target_world, accessor| {
-            if let Some(mut assets) =
-                target_world.get_resource_mut::<Assets<S>>()
+        |asset_id, target, accessor| {
+            if let Some(source) =
+                assets.get_mut(asset_id.typed::<S>())
             {
-                if let Some(source) =
-                    assets.get_mut(asset_id.typed::<S>())
-                {
-                    *(accessor.mut_fn)(source) = target;
-                }
+                *(accessor.mut_fn)(source) = target;
             }
-
-            target_world
         },
     );
 }
@@ -105,21 +98,21 @@ pub trait PipelineRegistryExt {
     #[cfg(feature = "asset")]
     fn register_asset<S, T>(&mut self) -> PipelineKey
     where
-        S: Asset,
+        S: bevy_asset::Asset,
         T: Clone + ThreadSafe;
 }
 
-impl PipelineRegistryExt for PipelineRegistry {
+impl PipelineRegistryExt for WorldPipelineRegistry {
     fn register_component<S, T>(&mut self) -> PipelineKey
     where
         S: Component<Mutability = Mutable>,
         T: Clone + ThreadSafe,
     {
-        let key = PipelineKey::new::<S, T>();
+        let key = PipelineKey::new::<Entity, S, T>();
 
         self.register_unchecked(
             key,
-            Pipeline::new(
+            WorldPipeline::new(
                 bake_component_actions::<S, T>,
                 sample_component_actions::<S, T>,
             ),
@@ -131,14 +124,16 @@ impl PipelineRegistryExt for PipelineRegistry {
     #[cfg(feature = "asset")]
     fn register_asset<S, T>(&mut self) -> PipelineKey
     where
-        S: Asset,
+        S: bevy_asset::Asset,
         T: Clone + ThreadSafe,
     {
-        let key = PipelineKey::new::<S, T>();
+        use bevy_asset::UntypedAssetId;
+
+        let key = PipelineKey::new::<UntypedAssetId, S, T>();
 
         self.register_unchecked(
             key,
-            Pipeline::new(
+            WorldPipeline::new(
                 bake_asset_actions::<S, T>,
                 sample_asset_actions::<S, T>,
             ),
@@ -170,7 +165,7 @@ fn bake_timeline(main_world: &mut World) {
     // SAFETY: Timeline should never bake timeline itself.
     unsafe {
         let pipeline_registry =
-            main_cell.get_resource::<PipelineRegistry>().expect(
+            main_cell.get_resource::<WorldPipelineRegistry>().expect(
                 "`PipelineRegistry` resource should be inserted.",
             );
 
@@ -216,7 +211,7 @@ fn sample_timeline(main_world: &mut World) {
     // SAFETY: Timeline should never sample timeline itself.
     unsafe {
         let pipeline_registry =
-            main_cell.get_resource::<PipelineRegistry>().expect(
+            main_cell.get_resource::<WorldPipelineRegistry>().expect(
                 "`PipelineRegistry` resource should be inserted.",
             );
 

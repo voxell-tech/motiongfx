@@ -111,11 +111,20 @@ impl<I: SubjectId> Default for IdRegistry<I> {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
 pub struct UntypedSubjectId {
-    pub type_id: TypeId,
-    pub uid: UId,
+    /// The [`TypeId`] of the [`SubjectId`].
+    type_id: TypeId,
+    /// The type-erased [`UId`] of the [`SubjectId`].
+    uid: UId,
 }
 
 impl UntypedSubjectId {
+    pub fn new<I: SubjectId>(uid: UId) -> Self {
+        Self {
+            type_id: TypeId::of::<I>(),
+            uid,
+        }
+    }
+
     pub fn placeholder() -> Self {
         Self::placeholder_with_u64(0)
     }
@@ -127,11 +136,12 @@ impl UntypedSubjectId {
         }
     }
 
-    pub fn new<I: SubjectId>(uid: UId) -> Self {
-        Self {
-            type_id: TypeId::of::<I>(),
-            uid,
-        }
+    pub fn type_id(&self) -> TypeId {
+        self.type_id
+    }
+
+    pub fn uid(&self) -> UId {
+        self.uid
     }
 }
 
@@ -151,9 +161,26 @@ impl UntypedSubjectId {
 #[component(immutable)]
 pub struct ActionKey {
     /// The subject Id of the action.
-    pub subject_id: UntypedSubjectId,
+    subject_id: UntypedSubjectId,
     /// The source and target field related to the subject.
-    pub field: UntypedField,
+    field: UntypedField,
+}
+
+impl ActionKey {
+    pub fn new(
+        subject_id: UntypedSubjectId,
+        field: UntypedField,
+    ) -> Self {
+        Self { subject_id, field }
+    }
+
+    pub fn subject_id(&self) -> &UntypedSubjectId {
+        &self.subject_id
+    }
+
+    pub fn field(&self) -> &UntypedField {
+        &self.field
+    }
 }
 
 #[derive(Component, Debug, Clone, Copy)]
@@ -286,7 +313,7 @@ impl ActionWorld {
     /// In general, this should not be an issue as this is only used
     /// internally within the crate.
     pub(crate) fn edit_action(
-        &'_ mut self,
+        &mut self,
         id: ActionId,
     ) -> ActionCommand<'_> {
         ActionCommand {

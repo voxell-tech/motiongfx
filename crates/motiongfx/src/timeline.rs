@@ -40,10 +40,10 @@ pub struct Timeline {
 }
 
 impl Timeline {
-    pub fn bake_actions(
+    pub fn bake_actions<W>(
         &mut self,
-        pipeline_registry: &PipelineRegistry,
-        target_world: &World,
+        pipeline_registry: &PipelineRegistry<W>,
+        subject_world: &W,
         accessor_registry: &FieldAccessorRegistry,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
@@ -52,12 +52,14 @@ impl Timeline {
             };
 
             for track in self.tracks.iter() {
-                pipeline.bake(BakeCtx {
-                    track,
-                    action_world: &mut self.action_world,
-                    target_world,
-                    accessor_registry,
-                })
+                pipeline.bake(
+                    subject_world,
+                    BakeCtx {
+                        track,
+                        action_world: &mut self.action_world,
+                        accessor_registry,
+                    },
+                )
             }
         }
     }
@@ -214,10 +216,10 @@ impl Timeline {
         self.curr_time = self.target_time;
     }
 
-    pub fn sample_queued_actions(
+    pub fn sample_queued_actions<W>(
         &self,
-        pipeline_registry: &PipelineRegistry,
-        target_world: &mut World,
+        pipeline_registry: &PipelineRegistry<W>,
+        subject_world: &mut W,
         accessor_registry: &FieldAccessorRegistry,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
@@ -225,11 +227,13 @@ impl Timeline {
                 continue;
             };
 
-            pipeline.sample(SampleCtx {
-                action_world: &self.action_world,
-                target_world,
-                accessor_registry,
-            });
+            pipeline.sample(
+                subject_world,
+                SampleCtx {
+                    action_world: &self.action_world,
+                    accessor_registry,
+                },
+            );
         }
     }
 
@@ -385,7 +389,7 @@ impl TimelineBuilder {
         S: 'static,
         T: ThreadSafe,
     {
-        let key = PipelineKey::from_field(field);
+        let key = PipelineKey::new::<I, S, T>();
 
         match self.pipeline_counts.get_mut(&key) {
             Some(count) => *count += 1,
@@ -420,23 +424,22 @@ impl TimelineBuilder {
 
     /// Remove an [`Action`].
     pub fn unact(&mut self, id: ActionId) -> bool {
-        if let Some(ActionKey { field, .. }) =
-            self.action_world.remove(id)
-        {
-            let key = PipelineKey::from_field(field);
+        if let Some(key) = self.action_world.remove(id) {
+            let pipeline_key = PipelineKey::from_action_key(key);
 
             let count = self
                 .pipeline_counts
-                .get_mut(&key)
+                .get_mut(&pipeline_key)
                 .unwrap_or_else(|| {
                     panic!(
-                        "Field counts not registered for {field:?}!"
+                        "Field counts not registered for {:?}!",
+                        key.field()
                     )
                 });
 
             *count -= 1;
             if *count == 0 {
-                self.pipeline_counts.remove(&key);
+                self.pipeline_counts.remove(&pipeline_key);
             }
 
             return true;

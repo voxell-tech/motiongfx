@@ -194,12 +194,12 @@ impl TrackFragment {
     pub fn compile(self) -> Track {
         let mut sequences =
             self.sequences.into_iter().collect::<Vec<_>>();
-        sequences.sort_by_key(|(key, _)| key.field);
+        sequences.sort_by_key(|(key, _)| *key.field());
 
         let mut seq_offset = 0;
         let mut sequence_spans = Vec::with_capacity(sequences.len());
 
-        let mut field = sequences[0].0.field;
+        let mut field = sequences[0].0.field();
         let mut field_offset = 0;
         let mut field_len = 0;
         let mut field_lookups = Vec::new();
@@ -214,16 +214,16 @@ impl TrackFragment {
             ));
             seq_offset += seq.len();
 
-            if key.field != field {
+            if key.field() != field {
                 field_lookups.push((
-                    field,
+                    *field,
                     Span {
                         offset: field_offset,
                         len: field_len,
                     },
                 ));
 
-                field = key.field;
+                field = key.field();
                 field_offset = field_len;
                 field_len = 0;
             }
@@ -232,7 +232,7 @@ impl TrackFragment {
 
         // Final field.
         field_lookups.push((
-            field,
+            *field,
             Span {
                 offset: field_offset,
                 len: field_len,
@@ -350,10 +350,10 @@ mod tests {
     use super::*;
 
     fn key(path: &'static str) -> ActionKey {
-        ActionKey {
-            subject_id: UntypedSubjectId::placeholder(),
-            field: UntypedField::placeholder_with_path(path),
-        }
+        ActionKey::new(
+            UntypedSubjectId::placeholder(),
+            UntypedField::placeholder_with_path(path),
+        )
     }
 
     const fn clip(duration: f32) -> ActionClip {
@@ -374,18 +374,18 @@ mod tests {
         let id1 = id_registry.register_instance(entity1);
         let id2 = id_registry.register_instance(entity2);
 
-        let k1 = ActionKey {
-            subject_id: UntypedSubjectId::new::<Entity>(id1),
-            field: field_u32_a,
-        };
-        let k2 = ActionKey {
-            subject_id: UntypedSubjectId::new::<Entity>(id2),
-            field: field_u32_a,
-        };
-        let k3 = ActionKey {
-            subject_id: UntypedSubjectId::new::<Entity>(id1),
-            field: field_u32_b,
-        };
+        let k1 = ActionKey::new(
+            UntypedSubjectId::new::<Entity>(id1),
+            field_u32_a,
+        );
+        let k2 = ActionKey::new(
+            UntypedSubjectId::new::<Entity>(id2),
+            field_u32_a,
+        );
+        let k3 = ActionKey::new(
+            UntypedSubjectId::new::<Entity>(id1),
+            field_u32_b,
+        );
 
         let track = TrackFragment::new()
             .upsert_sequence(k1, DUMMY_SEQ.clone())
