@@ -1,6 +1,6 @@
-# Bevy MotionGfx
+# MotionGfx
 
-Bevy MotionGfx is a motion graphics creation tool in [Bevy](https://bevyengine.org/). It is highly inspired by [Motion Canvas](https://motioncanvas.io/) & [Manim](https://www.manim.community/).
+MotionGfx is a motion graphics creation tool in [Bevy](https://bevyengine.org/). It is highly inspired by [Motion Canvas](https://motioncanvas.io/) & [Manim](https://www.manim.community/).
 
 ![hello_world gif](./.github/assets/hello_world.gif)
 
@@ -8,7 +8,7 @@ Bevy MotionGfx is a motion graphics creation tool in [Bevy](https://bevyengine.o
 
 ## Goal
 
-The goal of this tool is to procedurally generate animations with code. Below are some of the core design principles used in Bevy MotionGfx:
+The goal of this tool is to procedurally generate animations with code. Below are some of the core design principles used in MotionGfx:
 
 - Ease of use.
 - Performance by default.
@@ -31,11 +31,11 @@ Procedurally coded animations can be easily scaled to larger projects (e.g. code
 
 ### 2 way playback support
 
-In addition to all of the above, Bevy MotionGfx also provides 2 way playback support. This means that the animations you created can be played in both forward and backward directions without any extra computational cost! This is a feature that is very lacking in other code-based animation libraries.
+In addition to all of the above, MotionGfx also provides 2 way playback support. This means that the animations you created can be played in both forward and backward directions without any extra computational cost! This is a feature that is very lacking in other code-based animation libraries.
 
 ## Easing Functions
 
-Bevy MotionGfx also comes with built-in easing functions which are crucial for animation creation.
+MotionGfx also comes with built-in easing functions which are crucial for animation creation.
 
 ![easings gif](./.github/assets/easings.gif)
 
@@ -44,7 +44,7 @@ Bevy MotionGfx also comes with built-in easing functions which are crucial for a
 
 ## Typst Integration (Coming soon...)
 
-Bevy MotionGfx seamlessly integrates with [Typst](https://typst.app) via the [Velyst](https://github.com/voxell-tech/velyst) crate.
+MotionGfx seamlessly integrates with [Typst](https://typst.app) via the [Velyst](https://github.com/voxell-tech/velyst) crate.
 
 ![typst_basic_gif](./.github/assets/typst_basic.gif)
 
@@ -56,7 +56,7 @@ You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ) or
 
 ## License
 
-`bevy_motiongfx` is dual-licensed under either:
+`motiongfx` is dual-licensed under either:
 
 - MIT License ([LICENSE-MIT](LICENSE-MIT) or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
 - Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
