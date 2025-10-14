@@ -113,7 +113,7 @@ pub struct Field<Source, Target> {
     /// (e.g. `Transform::translation::x` will have
     /// a field path of `"::translation::x"`).
     ///
-    /// You can achieved this using [`stringify!`].
+    /// You can achieved this using [`stringify_field!`].
     pub field_path: &'static str,
     _marker: PhantomData<(Source, Target)>,
 }
@@ -278,6 +278,7 @@ macro_rules! stringify_field {
         concat!($("::", stringify!($field),)*)
     };
 }
+pub use stringify_field;
 
 /// Creates a [`FieldHash`] with path safety.
 ///
