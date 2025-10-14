@@ -1,0 +1,27 @@
+[package]
+name = "motiongfx_typst"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy_app = { version = "0.12", default-features = false }
+bevy_asset = { version = "0.12", default-features = false }
+bevy_ecs = { version = "0.12", default-features = false }
+bevy_utils = { version = "0.12", default-features = false }
+motiongfx_core = { path = "../motiongfx_core" }
+motiongfx_vello = { path = "../motiongfx_vello" }
+bevy_vello_renderer = { git = "https://github.com/nixon-voxell/bevy_vello_renderer", rev = "b9fb17a188c302047d7718fb606ba2b0b0ada8c7" }
+# typst dependencies
+typst = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
+typst-svg = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
+comemo = "0.3.1" # in sync with typst
+parking_lot = "0.12.1"
+fontdb = { version = "0.16", features = ["memmap", "fontconfig"] }
+chrono = { version = "0.4.24", default-features = false, features = ["clock", "std"] }
+ureq = "2"
+dirs = "5"
+tar = "0.4"
+flate2 = "1"
+codespan-reporting = "0.11"
+ecow = { version = "0.2", features = ["serde"] }
+env_proxy = "0.4"

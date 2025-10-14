@@ -1,5 +1,6 @@
 use crate::ease::{quad, EaseFn};
 use bevy_ecs::prelude::*;
+use bevy_utils::prelude::*;
 
 pub type InterpFn<CompType, InterpType, ResType> = fn(
     component: &mut CompType,
@@ -127,8 +128,16 @@ impl<'a, 'w, 's> ActionBuilder<'a, 'w, 's> {
 
         ActionMetaGroup::single(action_meta)
     }
+
+    pub fn sleep(&mut self, duration: f32) -> ActionMetaGroup {
+        ActionMetaGroup {
+            duration,
+            ..default()
+        }
+    }
 }
 
+// FIXME: use Sequence instead??
 #[derive(Clone, Default)]
 pub struct ActionMetaGroup {
     pub(crate) action_metas: Vec<ActionMeta>,

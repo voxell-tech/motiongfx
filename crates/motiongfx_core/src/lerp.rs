@@ -2,7 +2,7 @@ use bevy_render::prelude::*;
 use bevy_utils::prelude::*;
 use bevy_vello_renderer::vello::{kurbo, peniko};
 
-use crate::CrossLerp;
+use crate::cross_lerp::CrossLerp;
 
 pub trait Lerp<Time> {
     fn lerp(&self, other: &Self, t: Time) -> Self;

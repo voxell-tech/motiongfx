@@ -1,6 +1,6 @@
 use bevy_vello_renderer::vello::peniko;
 
-use crate::Lerp;
+use crate::lerp::Lerp;
 
 pub trait CrossLerp<Time, Other, Return> {
     fn cross_lerp(&self, other: &Other, t: Time) -> Return;

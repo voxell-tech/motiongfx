@@ -1,24 +1,35 @@
 use bevy_asset::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_vello_renderer::{prelude::*, vello};
+use bevy_vello_renderer::{
+    prelude::*,
+    vello::{self, kurbo},
+};
 
-use crate::fill_style::FillStyle;
-use crate::stroke_style::StrokeStyle;
+use crate::{fill_style::FillStyle, stroke_style::StrokeStyle};
 
+pub mod bezpath;
 pub mod circle;
 pub mod line;
 pub mod rect;
 
 pub(crate) trait VelloVector {
-    fn build_fill(&self, fill: &FillStyle, builder: &mut vello::SceneBuilder);
+    fn shape(&self) -> &impl kurbo::Shape {
+        &kurbo::Rect::ZERO
+    }
 
-    fn build_stroke(&self, stroke: &StrokeStyle, builder: &mut vello::SceneBuilder);
+    fn build_fill(&self, fill: &FillStyle, builder: &mut vello::SceneBuilder) {
+        fill.build(builder, self.shape());
+    }
+
+    fn build_stroke(&self, stroke: &StrokeStyle, builder: &mut vello::SceneBuilder) {
+        stroke.build(builder, self.shape());
+    }
 }
 
 pub(crate) trait VelloBuilder {
     fn is_built(&self) -> bool;
 
-    fn set_built(&mut self, should_build: bool);
+    fn set_built(&mut self, built: bool);
 }
 
 pub(crate) fn vector_builder<Vector: VelloVector + VelloBuilder + Component>(

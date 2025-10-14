@@ -62,10 +62,10 @@ pub fn easings(
         spheres.push(cube);
     }
 
+    // Actions
     let mut act: ActionBuilder = ActionBuilder::new(&mut commands);
 
     // Generate cube animations
-    // Actions
     let mut cube_actions: Vec<ActionMetaGroup> = Vec::with_capacity(CAPACITY);
 
     let easings: [ease::EaseFn; CAPACITY] = [

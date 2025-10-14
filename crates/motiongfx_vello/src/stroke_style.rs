@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::*;
-use bevy_vello_renderer::vello::{kurbo, peniko};
+use bevy_utils::prelude::*;
+use bevy_vello_renderer::vello::{self, kurbo, peniko};
 use motiongfx_core::prelude::*;
 
 use crate::convert::*;
@@ -7,12 +8,29 @@ use crate::vello_vector::VelloBuilder;
 
 #[derive(Component, Clone)]
 pub struct StrokeStyle {
-    pub(crate) style: kurbo::Stroke,
-    pub(crate) brush: peniko::Brush,
+    pub style: kurbo::Stroke,
+    pub brush: peniko::Brush,
+    pub transform: kurbo::Affine,
     should_build: bool,
 }
 
 impl StrokeStyle {
+    pub fn new(
+        style: impl Into<KurboStroke>,
+        brush: impl Into<PenikoBrush>,
+        transform: kurbo::Affine,
+    ) -> Self {
+        let style: kurbo::Stroke = style.into().0;
+        let brush: peniko::Brush = brush.into().0;
+
+        Self {
+            style,
+            brush,
+            transform,
+            ..default()
+        }
+    }
+
     #[inline]
     pub fn from_brush(brush: impl Into<PenikoBrush>) -> Self {
         Self::default().with_brush(brush)
@@ -28,6 +46,17 @@ impl StrokeStyle {
     pub fn with_brush(mut self, brush: impl Into<PenikoBrush>) -> Self {
         self.brush = brush.into().0;
         self
+    }
+
+    #[inline]
+    pub fn build(&self, builder: &mut vello::SceneBuilder, shape: &impl kurbo::Shape) {
+        builder.stroke(
+            &self.style,
+            kurbo::Affine::IDENTITY,
+            &self.brush,
+            Some(self.transform),
+            shape,
+        );
     }
 }
 
@@ -48,6 +77,7 @@ impl Default for StrokeStyle {
         Self {
             style: kurbo::Stroke::default(),
             brush: peniko::Brush::Solid(peniko::Color::WHITE_SMOKE),
+            transform: kurbo::Affine::IDENTITY,
             should_build: false,
         }
     }
@@ -91,7 +121,7 @@ impl StrokeStyleMotion {
         _: &mut ResMut<EmptyRes>,
     ) {
         stroke.brush = peniko::Brush::lerp(begin, end, t);
-        stroke.set_built(true);
+        stroke.set_built(false);
     }
 
     // =====================

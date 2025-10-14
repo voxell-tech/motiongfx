@@ -4,7 +4,7 @@ use crate::{
 };
 use bevy_ecs::prelude::*;
 
-/// An array of `Action`.
+/// A vector of [`ActionMeta`]s.
 #[derive(Resource, Default)]
 pub struct Sequence {
     duration: f32,
@@ -38,7 +38,7 @@ impl Sequence {
 
 // ANIMATION FLOW FUNCTIONS
 
-/// Run one action after another.
+/// Run one [`ActionMetaGroup`] after another.
 pub fn chain(action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
     let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
     let mut chain_duration: f32 = 0.0;
@@ -59,7 +59,7 @@ pub fn chain(action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
     final_action_grp
 }
 
-/// Run all actions concurrently and wait for all of them to finish.
+/// Run all [`ActionMetaGroup`]s concurrently and wait for all of them to finish.
 pub fn all(action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
     let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
     let mut max_duration: f32 = 0.0;
@@ -76,7 +76,7 @@ pub fn all(action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
     final_action_grp
 }
 
-/// Run all actions concurrently and wait for any of them to finish.
+/// Run all [`ActionMetaGroup`]s concurrently and wait for any of them to finish.
 pub fn any(action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
     let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
     let mut min_duration: f32 = 0.0;
@@ -93,6 +93,7 @@ pub fn any(action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
     final_action_grp
 }
 
+/// Run one [`ActionMetaGroup`] after another with a fixed delay time.
 pub fn flow(delay: f32, action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
     let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
     let mut flow_duration: f32 = 0.0;
@@ -115,6 +116,7 @@ pub fn flow(delay: f32, action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
     final_action_grp
 }
 
+/// Run an [`ActionMetaGroup`] after a fixed delay time.
 pub fn delay(delay: f32, action_grp: ActionMetaGroup) -> ActionMetaGroup {
     let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
 
@@ -131,7 +133,7 @@ pub fn delay(delay: f32, action_grp: ActionMetaGroup) -> ActionMetaGroup {
     final_action_grp
 }
 
-/// System for playing the `Action`s that are inside the `Sequence`.
+/// System for playing the [`Action`]s that are inside the [`Sequence`].
 pub fn sequence_player_system<CompType, InterpType, ResType>(
     mut q_component: Query<&mut CompType>,
     q_actions: Query<&Action<CompType, InterpType, ResType>>,
@@ -143,8 +145,9 @@ pub fn sequence_player_system<CompType, InterpType, ResType>(
     InterpType: Send + Sync + 'static,
     ResType: Resource,
 {
-    // Do not perform any actions if there are no changes to the timeline timings.
-    if timeline.curr_time == timeline.target_time {
+    // Do not perform any actions if there are no changes to the timeline timings
+    // or there are no actions at all.
+    if timeline.curr_time == timeline.target_time || scene.action_metas.len() == 0 {
         return;
     }
 

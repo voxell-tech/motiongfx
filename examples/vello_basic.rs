@@ -3,7 +3,6 @@ use bevy::{
     prelude::*,
 };
 use bevy_motiongfx::prelude::*;
-use motiongfx_vello::prelude::*;
 
 fn main() {
     App::new()
@@ -151,7 +150,6 @@ fn vello_basic(
 
 fn timeline_movement_system(
     mut timeline: ResMut<Timeline>,
-    sequence: Res<Sequence>,
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
@@ -161,13 +159,6 @@ fn timeline_movement_system(
 
     if keys.pressed(KeyCode::A) {
         timeline.target_time -= time.delta_seconds();
-    }
-
-    // Ping pong animation while playing
-    if timeline.is_playing
-        && (timeline.target_time <= 0.0 || timeline.target_time >= sequence.duration())
-    {
-        timeline.time_scale *= -1.0;
     }
 
     if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {

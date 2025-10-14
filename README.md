@@ -1,8 +1,10 @@
 # Bevy MotionGfx
 
-Bevy Motiongfx is a motion graphics creation tool in [Bevy](https://bevyengine.org/). It is highly inspired by [Motion Canvas](https://motioncanvas.io/) & [Manim](https://github.com/3b1b/manim).
+Bevy MotionGfx is a motion graphics creation tool in [Bevy](https://bevyengine.org/). It is highly inspired by [Motion Canvas](https://motioncanvas.io/) & [Manim](https://www.manim.community/).
 
 ![hello_world gif](./.github/assets/hello_world.gif)
+
+*Associated example [here](./examples/hello_world.rs)!*
 
 ## Goal
 
@@ -36,6 +38,24 @@ In addition to all of the above, Bevy MotionGfx also provides 2 way playback sup
 Bevy MotionGfx also comes with built-in easing functions which are crucial for animation creation.
 
 ![easings gif](./.github/assets/easings.gif)
+
+*Associated example [here](./examples/easings.rs)!*
+
+## Vector Graphics
+
+In Bevy MotionGfx, all vector graphics are rendered using [Vello](https://github.com/linebender/vello)! This is done using the minimal [Bevy Vello Renderer](https://github.com/nixon-voxell/bevy_vello_renderer).
+
+![vello_basic_gif](./.github/assets/vello_basic.gif)
+
+*Associated example [here](./examples/vello_basic.rs)!*
+
+## Typst Integration
+
+Bevy MotionGfx also supports [Typst](https://typst.app)! It comes with a compiler that compiles Typst content into Svg and display them using [Vello](https://github.com/linebender/vello).
+
+![typst_basic_gif](./.github/assets/typst_basic.gif)
+
+*Associated example [here](./examples/typst_basic.rs)!*
 
 ## Join the community!
 

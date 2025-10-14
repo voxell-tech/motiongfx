@@ -5,13 +5,14 @@ use bevy_vello_renderer::{
     prelude::*,
     vello::{kurbo, peniko},
 };
-use motiongfx_core::prelude::*;
+use motiongfx_core::{prelude::*, sequence::sequence_player_system};
 
-mod convert;
-mod fill_style;
-mod stroke_style;
-mod vello_motion;
-mod vello_vector;
+pub mod convert;
+pub mod fill_style;
+pub mod stroke_style;
+pub mod svg;
+pub mod vello_motion;
+pub mod vello_vector;
 
 pub mod prelude {
     pub use crate::{
@@ -24,10 +25,12 @@ pub mod prelude {
             rect_motion::{VelloRectBundleMotion, VelloRectMotion},
         },
         vello_vector::{
+            bezpath::{VelloBezPath, VelloBezPathBundle},
             circle::{VelloCircle, VelloCircleBundle},
             line::{VelloLine, VelloLineBundle},
             rect::{VelloRect, VelloRectBundle},
         },
+        MotionGfxVello,
     };
     pub use bevy_vello_renderer::prelude::*;
 }
@@ -49,6 +52,7 @@ impl Plugin for MotionGfxVello {
                     vello_vector::vector_builder::<vello_vector::rect::VelloRect>,
                     vello_vector::vector_builder::<vello_vector::circle::VelloCircle>,
                     vello_vector::vector_builder::<vello_vector::line::VelloLine>,
+                    vello_vector::vector_builder::<vello_vector::bezpath::VelloBezPath>,
                     // Sequences
                     sequence_player_system::<fill_style::FillStyle, peniko::Brush, EmptyRes>,
                     sequence_player_system::<stroke_style::StrokeStyle, peniko::Brush, EmptyRes>,

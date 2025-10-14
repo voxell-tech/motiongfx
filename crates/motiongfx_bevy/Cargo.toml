@@ -11,4 +11,4 @@ bevy_transform = { version = "0.12", default-features = false }
 bevy_pbr = { version = "0.12", default-features = false }
 bevy_asset = { version = "0.12", default-features = false }
 bevy_render = { version = "0.12", default-features = false }
-motiongfx_core = { version = "0.1.0", path = "../motiongfx_core" }
+motiongfx_core = { path = "../motiongfx_core" }

@@ -48,12 +48,14 @@ impl Default for ColorPalette<ColorKey> {
         Self {
             default: Color::default(),
             palette: [
+                // Primary colors
                 (ColorKey::Red, Color::hex("FF6188").unwrap()),
                 (ColorKey::Orange, Color::hex("FC9867").unwrap()),
                 (ColorKey::Yellow, Color::hex("FFD866").unwrap()),
                 (ColorKey::Green, Color::hex("A9DC76").unwrap()),
                 (ColorKey::Blue, Color::hex("78DCE8").unwrap()),
                 (ColorKey::Purple, Color::hex("AB9DF2").unwrap()),
+                // Base colors, sorted from darkest to lightest
                 (ColorKey::Base0, Color::hex("19181A").unwrap()),
                 (ColorKey::Base1, Color::hex("221F22").unwrap()),
                 (ColorKey::Base2, Color::hex("2D2A2E").unwrap()),
@@ -71,14 +73,12 @@ impl Default for ColorPalette<ColorKey> {
 
 #[derive(Default, PartialEq, Eq, Hash)]
 pub enum ColorKey {
-    // Primary colors
     Red,
     Orange,
     Yellow,
     Green,
     Blue,
     Purple,
-    // Base colors, sorted from darkest to lightest
     Base0,
     Base1,
     Base2,

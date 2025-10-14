@@ -18,6 +18,7 @@ resolver = "2"
 motiongfx_core = { path = "crates/motiongfx_core" }
 motiongfx_bevy = { path = "crates/motiongfx_bevy" }
 motiongfx_vello = { path = "crates/motiongfx_vello" }
+motiongfx_typst = { path = "crates/motiongfx_typst" }
 
 [dev-dependencies]
 bevy = "0.12"

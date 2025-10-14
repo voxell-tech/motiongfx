@@ -1,24 +1,22 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use prelude::*;
 
+pub mod action;
+pub mod color_palette;
+pub mod cross_lerp;
 pub mod ease;
-
-mod action;
-mod color_palette;
-mod cross_lerp;
-mod lerp;
-mod sequence;
-mod timeline;
+pub mod lerp;
+pub mod sequence;
+pub mod timeline;
 
 pub mod prelude {
     pub use crate::{
-        action::{Action, ActionBuilder, ActionMeta, ActionMetaGroup, InterpFn},
+        action::{Action, ActionBuilder, ActionMeta, ActionMetaGroup},
         color_palette::{ColorKey, ColorPalette},
         cross_lerp::*,
         ease,
         lerp::*,
-        sequence::{all, any, chain, delay, flow, sequence_player_system, Sequence},
+        sequence::{all, any, chain, delay, flow, Sequence},
         timeline::Timeline,
         EmptyComp, EmptyRes, MotionGfx,
     };
@@ -28,8 +26,8 @@ pub struct MotionGfx;
 
 impl Plugin for MotionGfx {
     fn build(&self, app: &mut App) {
-        app.insert_resource(Timeline::default())
-            .insert_resource(Sequence::default())
+        app.insert_resource(timeline::Timeline::default())
+            .insert_resource(sequence::Sequence::default())
             .insert_resource(EmptyRes)
             .add_systems(PreUpdate, timeline::timeline_update_system);
     }

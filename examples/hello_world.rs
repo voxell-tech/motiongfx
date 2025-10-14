@@ -69,10 +69,10 @@ pub fn hello_world(
         }
     }
 
+    // Actions
     let mut act: ActionBuilder = ActionBuilder::new(&mut commands);
 
     // Generate cube animations
-    // Actions
     let mut cube_actions: Vec<ActionMetaGroup> = Vec::with_capacity(CAPACITY);
 
     for w in 0..WIDTH {

@@ -3,7 +3,7 @@ use bevy_ecs::prelude::*;
 use bevy_math::DVec2;
 use bevy_vello_renderer::vello::kurbo;
 use motiongfx_bevy::prelude::*;
-use motiongfx_core::prelude::*;
+use motiongfx_core::{prelude::*, sequence::sequence_player_system};
 
 use crate::{
     fill_style::FillStyleMotion,
