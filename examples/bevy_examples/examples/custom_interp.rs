@@ -1,15 +1,14 @@
-use std::f32::consts::FRAC_PI_2;
+use core::f32::consts::FRAC_PI_2;
 
 use bevy::color::palettes;
 use bevy::prelude::*;
-use motiongfx::prelude::*;
+use bevy_examples::timeline_movement;
+use bevy_motiongfx::prelude::*;
+use bevy_motiongfx::BevyMotionGfxPlugin;
 
 fn main() {
     App::new()
-        // Bevy plugins
-        .add_plugins(DefaultPlugins)
-        // Custom plugins
-        .add_plugins(motiongfx::MotionGfxPlugin)
+        .add_plugins((DefaultPlugins, BevyMotionGfxPlugin))
         .add_systems(Startup, (setup, spawn_timeline))
         .add_systems(Update, timeline_movement)
         .run();
@@ -32,19 +31,21 @@ fn spawn_timeline(
         ))
         .id();
 
-    // Generate sequence.
-    let sequence = commands
-        .entity(cube)
-        .act(field!(<Transform>::translation), |x| {
+    // Build the timeline.
+    let mut b = TimelineBuilder::new();
+
+    let track = b
+        .act(cube, field!(<Transform>::translation), |x| {
             x + Vec3::ZERO.with_x(10.0).with_z(1.0)
         })
-        .with_ease(ease::cubic::ease_in_out)
         .with_interp(|start, end, t| arc_lerp_3d(*start, *end, t))
-        .play(1.0);
+        .with_ease(ease::cubic::ease_in_out)
+        .play(1.0)
+        .compile();
 
-    commands
-        .create_timeline(sequence)
-        .insert(TimelinePlayback::Forward);
+    b.add_tracks(track);
+
+    commands.spawn((b.compile(), RealtimePlayer::new()));
 }
 
 fn setup(mut commands: Commands) {
@@ -64,42 +65,6 @@ fn setup(mut commands: Commands) {
         Transform::from_xyz(3.0, 10.0, 5.0)
             .looking_at(Vec3::ZERO, Vec3::Y),
     ));
-}
-
-fn timeline_movement(
-    mut q_timelines: Query<(&Timeline, &mut TimelinePlayback)>,
-    mut q_sequences: Query<&mut SequenceController>,
-    keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-) -> Result {
-    for (timeline, mut playback) in q_timelines.iter_mut() {
-        let mut controller = timeline
-            .curr_sequence_id()
-            .and_then(|e| q_sequences.get_mut(e).ok())
-            .ok_or("Can't get sequence controller!")?;
-
-        if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
-            controller.target_time += time.delta_secs();
-        }
-
-        if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
-            controller.target_time -= time.delta_secs();
-        }
-
-        if keys.just_pressed(KeyCode::Space) {
-            if keys.pressed(KeyCode::ShiftLeft) {
-                playback.backward();
-            } else {
-                playback.forward();
-            }
-        }
-
-        if keys.just_pressed(KeyCode::Escape) {
-            playback.pause();
-        }
-    }
-
-    Ok(())
 }
 
 // TODO: Optimize this.

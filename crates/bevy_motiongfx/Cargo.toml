@@ -1,0 +1,32 @@
+[package]
+name = "bevy_motiongfx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# motiongfx
+motiongfx = { workspace = true }
+
+# bevy
+bevy_ecs = { workspace = true }
+bevy_app = { workspace = true }
+bevy_math = { workspace = true }
+bevy_time = { workspace = true }
+bevy_asset = { workspace = true, optional = true }
+bevy_transform = { workspace = true, optional = true }
+bevy_color = { workspace = true, optional = true }
+bevy_sprite = { workspace = true, optional = true }
+bevy_pbr = { workspace = true, optional = true }
+
+[lints]
+workspace = true
+
+[features]
+default = ["asset", "transform", "color", "sprite", "pbr"]
+asset = ["dep:bevy_asset"]
+transform = ["dep:bevy_transform"]
+color = ["dep:bevy_color"]
+sprite = ["dep:bevy_sprite", "asset"]
+pbr = ["dep:bevy_pbr", "asset"]
