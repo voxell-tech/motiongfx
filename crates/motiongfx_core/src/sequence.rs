@@ -1,145 +1,170 @@
-use crate::{
-    action::{Action, ActionMeta, ActionMetaGroup},
-    timeline::Timeline,
-};
 use bevy_ecs::prelude::*;
 
-/// A vector of [`ActionMeta`]s.
-#[derive(Resource, Default)]
+use crate::{
+    action::{Action, ActionMeta},
+    ease::EaseFn,
+    timeline::Timeline,
+};
+
+/// A group of actions in chronological order.
+#[derive(Component, Default)]
 pub struct Sequence {
-    duration: f32,
-    action_metas: Vec<ActionMeta>,
+    pub(crate) duration: f32,
+    pub(crate) action_metas: Vec<ActionMeta>,
 }
 
 impl Sequence {
-    pub fn duration(&self) -> f32 {
-        self.duration
+    pub(crate) fn single(action_meta: ActionMeta) -> Self {
+        let duration: f32 = action_meta.duration;
+        Self {
+            action_metas: vec![action_meta],
+            duration,
+        }
     }
 
-    pub fn play(&mut self, action_grp: ActionMetaGroup) {
-        let mut max_duration: f32 = 0.0;
-
-        for action_meta in action_grp.action_metas {
-            self.action_metas.push(
-                action_meta
-                    .clone()
-                    .with_start_time(action_meta.start_time() + self.duration),
-            );
-
-            max_duration = f32::max(
-                max_duration,
-                action_meta.start_time() + action_meta.duration(),
-            );
+    pub fn with_ease(mut self, ease_fn: EaseFn) -> Self {
+        for action_meta in &mut self.action_metas {
+            action_meta.ease_fn = ease_fn;
         }
 
-        self.duration = max_duration;
+        self
+    }
+
+    pub fn duration(&self) -> f32 {
+        self.duration
     }
 }
 
 // ANIMATION FLOW FUNCTIONS
 
-/// Run one [`ActionMetaGroup`] after another.
-pub fn chain(action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
-    let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
+/// Run one [`Sequence`] after another.
+pub fn chain(sequences: &[Sequence]) -> Sequence {
+    let mut final_sequence: Sequence = Sequence::default();
     let mut chain_duration: f32 = 0.0;
 
-    for action_grp in action_grps {
-        for action_meta in &action_grp.action_metas {
-            final_action_grp.action_metas.push(
-                action_meta
-                    .clone()
-                    .with_start_time(action_meta.start_time() + chain_duration),
-            );
+    for sequence in sequences {
+        for action_meta in &sequence.action_metas {
+            let mut action_meta: ActionMeta = action_meta.clone();
+
+            action_meta.start_time += chain_duration;
+            final_sequence.action_metas.push(action_meta);
         }
 
-        chain_duration += action_grp.duration;
+        chain_duration += sequence.duration;
     }
 
-    final_action_grp.duration += chain_duration;
-    final_action_grp
+    final_sequence.duration = chain_duration;
+    final_sequence
 }
 
-/// Run all [`ActionMetaGroup`]s concurrently and wait for all of them to finish.
-pub fn all(action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
-    let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
+/// Run all [`Sequence`]s concurrently and wait for all of them to finish.
+pub fn all(sequences: &[Sequence]) -> Sequence {
+    let mut final_sequence: Sequence = Sequence::default();
     let mut max_duration: f32 = 0.0;
 
-    for action_grp in action_grps {
-        for action_meta in &action_grp.action_metas {
-            final_action_grp.action_metas.push(action_meta.clone());
+    for sequence in sequences {
+        for action_meta in &sequence.action_metas {
+            final_sequence.action_metas.push(action_meta.clone());
         }
 
-        max_duration = f32::max(max_duration, action_grp.duration);
+        max_duration = f32::max(max_duration, sequence.duration);
     }
 
-    final_action_grp.duration = max_duration;
-    final_action_grp
+    final_sequence.duration = max_duration;
+    final_sequence
 }
 
-/// Run all [`ActionMetaGroup`]s concurrently and wait for any of them to finish.
-pub fn any(action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
-    let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
+/// Run all [`Sequence`]s concurrently and wait for any of them to finish.
+pub fn any(sequences: &[Sequence]) -> Sequence {
+    let mut final_sequence: Sequence = Sequence::default();
     let mut min_duration: f32 = 0.0;
 
-    for action_grp in action_grps {
+    for action_grp in sequences {
         for action_meta in &action_grp.action_metas {
-            final_action_grp.action_metas.push(action_meta.clone());
+            final_sequence.action_metas.push(action_meta.clone());
         }
 
         min_duration = f32::min(min_duration, action_grp.duration);
     }
 
-    final_action_grp.duration = min_duration;
-    final_action_grp
+    final_sequence.duration = min_duration;
+    final_sequence
 }
 
-/// Run one [`ActionMetaGroup`] after another with a fixed delay time.
-pub fn flow(delay: f32, action_grps: &[ActionMetaGroup]) -> ActionMetaGroup {
-    let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
+/// Run one [`Sequence`] after another with a fixed delay time.
+pub fn flow(delay: f32, sequences: &[Sequence]) -> Sequence {
+    let mut final_sequence: Sequence = Sequence::default();
     let mut flow_duration: f32 = 0.0;
     let mut final_duration: f32 = 0.0;
 
-    for action_grp in action_grps {
-        for action_meta in &action_grp.action_metas {
-            final_action_grp.action_metas.push(
-                action_meta
-                    .clone()
-                    .with_start_time(action_meta.start_time() + flow_duration),
-            );
+    for sequence in sequences {
+        for action_meta in &sequence.action_metas {
+            let mut action_meta: ActionMeta = action_meta.clone();
+
+            action_meta.start_time += flow_duration;
+            final_sequence.action_metas.push(action_meta);
         }
 
         flow_duration += delay;
-        final_duration = f32::max(final_duration, flow_duration + action_grp.duration);
+        final_duration = f32::max(final_duration, flow_duration + sequence.duration);
     }
 
-    final_action_grp.duration = final_duration;
-    final_action_grp
+    final_sequence.duration = final_duration;
+    final_sequence
 }
 
-/// Run an [`ActionMetaGroup`] after a fixed delay time.
-pub fn delay(delay: f32, action_grp: ActionMetaGroup) -> ActionMetaGroup {
-    let mut final_action_grp: ActionMetaGroup = ActionMetaGroup::default();
+/// Run an [`Sequence`] after a fixed delay time.
+pub fn delay(delay: f32, sequence: &Sequence) -> Sequence {
+    let mut final_sequence: Sequence = Sequence::default();
 
-    for action_meta in &action_grp.action_metas {
-        final_action_grp.action_metas.push(
-            action_meta
-                .clone()
-                .with_start_time(action_meta.start_time() + delay),
-        );
+    for action_meta in &sequence.action_metas {
+        let mut action_meta: ActionMeta = action_meta.clone();
+
+        action_meta.start_time += delay;
+        final_sequence.action_metas.push(action_meta);
     }
 
-    final_action_grp.duration = delay + action_grp.duration;
-
-    final_action_grp
+    final_sequence.duration = sequence.duration + delay;
+    final_sequence
 }
 
 /// System for playing the [`Action`]s that are inside the [`Sequence`].
 pub fn sequence_player_system<CompType, InterpType, ResType>(
-    mut q_component: Query<&mut CompType>,
+    mut q_components: Query<&mut CompType>,
     q_actions: Query<&Action<CompType, InterpType, ResType>>,
-    scene: Res<Sequence>,
-    timeline: Res<Timeline>,
+    q_sequences: Query<&Sequence>,
+    q_timelines: Query<&Timeline>,
     mut resource: ResMut<ResType>,
+) where
+    CompType: Component,
+    InterpType: Send + Sync + 'static,
+    ResType: Resource,
+{
+    for timeline in q_timelines.iter() {
+        let Some(target_sequence) = timeline.sequence_id else {
+            return;
+        };
+
+        let Ok(sequence) = q_sequences.get(target_sequence) else {
+            return;
+        };
+
+        play_sequence(
+            &mut q_components,
+            &q_actions,
+            sequence,
+            timeline,
+            &mut resource,
+        );
+    }
+}
+
+fn play_sequence<CompType, InterpType, ResType>(
+    q_components: &mut Query<&mut CompType>,
+    q_actions: &Query<&Action<CompType, InterpType, ResType>>,
+    sequence: &Sequence,
+    timeline: &Timeline,
+    resource: &mut ResMut<ResType>,
 ) where
     CompType: Component,
     InterpType: Send + Sync + 'static,
@@ -147,7 +172,7 @@ pub fn sequence_player_system<CompType, InterpType, ResType>(
 {
     // Do not perform any actions if there are no changes to the timeline timings
     // or there are no actions at all.
-    if timeline.curr_time == timeline.target_time || scene.action_metas.len() == 0 {
+    if timeline.curr_time == timeline.target_time || sequence.action_metas.is_empty() {
         return;
     }
 
@@ -157,7 +182,7 @@ pub fn sequence_player_system<CompType, InterpType, ResType>(
     let timeline_end: f32 = f32::max(timeline.curr_time, timeline.target_time);
 
     let mut start_index: usize = 0;
-    let mut end_index: usize = scene.action_metas.len() - 1;
+    let mut end_index: usize = sequence.action_metas.len() - 1;
 
     // Swap direction if needed
     if direction == -1 {
@@ -173,14 +198,14 @@ pub fn sequence_player_system<CompType, InterpType, ResType>(
             break;
         }
 
-        let action_meta: &ActionMeta = &scene.action_metas[action_index];
+        let action_meta: &ActionMeta = &sequence.action_metas[action_index];
         let action_id: Entity = action_meta.id();
 
         action_index = (action_index as i32 + direction) as usize;
 
         // Ignore if `ActionMeta` not in range
         if !time_range_overlap(
-            action_meta.start_time(),
+            action_meta.start_time,
             action_meta.end_time(),
             timeline_start,
             timeline_end,
@@ -194,9 +219,9 @@ pub fn sequence_player_system<CompType, InterpType, ResType>(
         };
 
         // Get component to mutate based on action id
-        if let Ok(mut component) = q_component.get_mut(action.target_id) {
+        if let Ok(mut component) = q_components.get_mut(action.target_id) {
             let mut unit_time: f32 =
-                (timeline.target_time - action_meta.start_time()) / action_meta.duration();
+                (timeline.target_time - action_meta.start_time) / action_meta.duration;
 
             // In case of division by 0.0
             if f32::is_nan(unit_time) {
@@ -213,7 +238,7 @@ pub fn sequence_player_system<CompType, InterpType, ResType>(
                 &action.begin,
                 &action.end,
                 unit_time,
-                &mut resource,
+                resource,
             );
         }
     }

@@ -21,7 +21,6 @@ fn main() {
 
 pub fn easings(
     mut commands: Commands,
-    mut sequence: ResMut<Sequence>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -66,7 +65,7 @@ pub fn easings(
     let mut act: ActionBuilder = ActionBuilder::new(&mut commands);
 
     // Generate cube animations
-    let mut cube_actions: Vec<ActionMetaGroup> = Vec::with_capacity(CAPACITY);
+    let mut cube_actions: Vec<Sequence> = Vec::with_capacity(CAPACITY);
 
     let easings: [ease::EaseFn; CAPACITY] = [
         ease::linear,
@@ -95,7 +94,10 @@ pub fn easings(
         );
     }
 
-    sequence.play(chain(&cube_actions));
+    let sequence: Sequence = chain(&cube_actions);
+
+    let sequence_id: Entity = commands.spawn(sequence).id();
+    commands.spawn(Timeline::new(sequence_id));
 }
 
 fn setup(mut commands: Commands) {
@@ -122,23 +124,25 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement_system(
-    mut timeline: ResMut<Timeline>,
+    mut q_timelines: Query<&mut Timeline>,
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    if keys.pressed(KeyCode::D) {
-        timeline.target_time += time.delta_seconds();
-    }
+    for mut timeline in q_timelines.iter_mut() {
+        if keys.pressed(KeyCode::D) {
+            timeline.target_time += time.delta_seconds();
+        }
 
-    if keys.pressed(KeyCode::A) {
-        timeline.target_time -= time.delta_seconds();
-    }
+        if keys.pressed(KeyCode::A) {
+            timeline.target_time -= time.delta_seconds();
+        }
 
-    if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {
-        timeline.time_scale = -1.0;
-        timeline.is_playing = true;
-    } else if keys.pressed(KeyCode::Space) {
-        timeline.time_scale = 1.0;
-        timeline.is_playing = true;
+        if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {
+            timeline.time_scale = -1.0;
+            timeline.is_playing = true;
+        } else if keys.pressed(KeyCode::Space) {
+            timeline.time_scale = 1.0;
+            timeline.is_playing = true;
+        }
     }
 }

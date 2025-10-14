@@ -22,7 +22,6 @@ fn main() {
 
 pub fn hello_world(
     mut commands: Commands,
-    mut sequence: ResMut<Sequence>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -73,7 +72,7 @@ pub fn hello_world(
     let mut act: ActionBuilder = ActionBuilder::new(&mut commands);
 
     // Generate cube animations
-    let mut cube_actions: Vec<ActionMetaGroup> = Vec::with_capacity(CAPACITY);
+    let mut cube_actions: Vec<Sequence> = Vec::with_capacity(CAPACITY);
 
     for w in 0..WIDTH {
         for h in 0..HEIGHT {
@@ -98,9 +97,10 @@ pub fn hello_world(
         }
     }
 
-    let action_grp: ActionMetaGroup = flow(0.01, &cube_actions);
+    let sequence: Sequence = flow(0.01, &cube_actions);
 
-    sequence.play(action_grp);
+    let sequence_id: Entity = commands.spawn(sequence).id();
+    commands.spawn(Timeline::new(sequence_id));
 }
 
 fn setup(mut commands: Commands) {
@@ -127,23 +127,25 @@ fn setup(mut commands: Commands) {
 }
 
 fn timeline_movement_system(
-    mut timeline: ResMut<Timeline>,
+    mut q_timelines: Query<&mut Timeline>,
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    if keys.pressed(KeyCode::D) {
-        timeline.target_time += time.delta_seconds();
-    }
+    for mut timeline in q_timelines.iter_mut() {
+        if keys.pressed(KeyCode::D) {
+            timeline.target_time += time.delta_seconds();
+        }
 
-    if keys.pressed(KeyCode::A) {
-        timeline.target_time -= time.delta_seconds();
-    }
+        if keys.pressed(KeyCode::A) {
+            timeline.target_time -= time.delta_seconds();
+        }
 
-    if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {
-        timeline.time_scale = -1.0;
-        timeline.is_playing = true;
-    } else if keys.pressed(KeyCode::Space) {
-        timeline.time_scale = 1.0;
-        timeline.is_playing = true;
+        if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {
+            timeline.time_scale = -1.0;
+            timeline.is_playing = true;
+        } else if keys.pressed(KeyCode::Space) {
+            timeline.time_scale = 1.0;
+            timeline.is_playing = true;
+        }
     }
 }

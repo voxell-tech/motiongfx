@@ -25,7 +25,6 @@ fn setup(mut commands: Commands) {
 
 fn typst_basic(
     mut commands: Commands,
-    mut sequence: ResMut<Sequence>,
     mut typst_compiler: ResMut<TypstCompiler>,
     mut fragment_assets: ResMut<Assets<VelloFragment>>,
 ) {
@@ -88,8 +87,8 @@ fn typst_basic(
             // Actions
             let mut act: ActionBuilder = ActionBuilder::new(&mut commands);
 
-            let mut setup_actions: Vec<ActionMetaGroup> = Vec::with_capacity(path_len);
-            let mut animate_actions: Vec<ActionMetaGroup> = Vec::with_capacity(path_len);
+            let mut setup_actions: Vec<Sequence> = Vec::with_capacity(path_len);
+            let mut animate_actions: Vec<Sequence> = Vec::with_capacity(path_len);
 
             let transform_offset: Vec3 = Vec3::Y * 24.0;
 
@@ -124,10 +123,11 @@ fn typst_basic(
                 ]));
             }
 
-            sequence.play(
-                all(&[all(&setup_actions), flow(0.1, &animate_actions)])
-                    .with_ease(ease::expo::ease_in_out),
-            );
+            let sequence: Sequence = all(&[all(&setup_actions), flow(0.1, &animate_actions)])
+                .with_ease(ease::expo::ease_in_out);
+
+            let sequence_id: Entity = commands.spawn(sequence).id();
+            commands.spawn(Timeline::new(sequence_id));
         }
         Err(err) => {
             println!("{:#?}", err);
@@ -136,23 +136,25 @@ fn typst_basic(
 }
 
 fn timeline_movement_system(
-    mut timeline: ResMut<Timeline>,
+    mut q_timelines: Query<&mut Timeline>,
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    if keys.pressed(KeyCode::D) {
-        timeline.target_time += time.delta_seconds();
-    }
+    for mut timeline in q_timelines.iter_mut() {
+        if keys.pressed(KeyCode::D) {
+            timeline.target_time += time.delta_seconds();
+        }
 
-    if keys.pressed(KeyCode::A) {
-        timeline.target_time -= time.delta_seconds();
-    }
+        if keys.pressed(KeyCode::A) {
+            timeline.target_time -= time.delta_seconds();
+        }
 
-    if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {
-        timeline.time_scale = -1.0;
-        timeline.is_playing = true;
-    } else if keys.pressed(KeyCode::Space) {
-        timeline.time_scale = 1.0;
-        timeline.is_playing = true;
+        if keys.pressed(KeyCode::Space) && keys.pressed(KeyCode::ShiftLeft) {
+            timeline.time_scale = -1.0;
+            timeline.is_playing = true;
+        } else if keys.pressed(KeyCode::Space) {
+            timeline.time_scale = 1.0;
+            timeline.is_playing = true;
+        }
     }
 }

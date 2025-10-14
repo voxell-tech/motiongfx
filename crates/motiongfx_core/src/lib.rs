@@ -11,7 +11,7 @@ pub mod timeline;
 
 pub mod prelude {
     pub use crate::{
-        action::{Action, ActionBuilder, ActionMeta, ActionMetaGroup},
+        action::{Action, ActionBuilder},
         color_palette::{ColorKey, ColorPalette},
         cross_lerp::*,
         ease,
@@ -26,9 +26,7 @@ pub struct MotionGfx;
 
 impl Plugin for MotionGfx {
     fn build(&self, app: &mut App) {
-        app.insert_resource(timeline::Timeline::default())
-            .insert_resource(sequence::Sequence::default())
-            .insert_resource(EmptyRes)
+        app.insert_resource(EmptyRes)
             .add_systems(PreUpdate, timeline::timeline_update_system);
     }
 }

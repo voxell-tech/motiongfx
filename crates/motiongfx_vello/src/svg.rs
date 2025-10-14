@@ -124,7 +124,7 @@ pub fn spawn_tree_flatten(
         .map(|svg_path| svg_path.entity)
         .collect();
 
-    commands.entity(root_entity).push_children(&child_entities);
+    commands.entity(root_entity).push_children(child_entities);
 
     svg_tree_bundle
 }
