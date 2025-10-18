@@ -1,11 +1,12 @@
 use bevy_app::prelude::*;
-#[cfg(feature = "asset")]
-use bevy_asset::Asset;
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
-use crate::pipeline::{PipelineRegistryExt, WorldPipelineRegistry};
+use crate::{
+    pipeline::{PipelineRegistryExt, WorldPipelineRegistry},
+    FieldAccessorRegistry,
+};
 
 // TODO: Move purely the recursive logic back to motiongfx and keep
 // the registration logic here.
@@ -96,8 +97,8 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            ::motiongfx::field::field!(<$root>),
-            ::motiongfx::accessor::Accessor {
+            ::motiongfx::field_path::field::field!(<$root>),
+            ::motiongfx::field_path::accessor::Accessor {
                 ref_fn: |v| v,
                 mut_fn: |v| v,
             }
@@ -123,8 +124,8 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            motiongfx::field::field!(<$root>$(::$path)*::$field),
-            ::motiongfx::accessor::Accessor {
+            motiongfx::field_path::field::field!(<$root>$(::$path)*::$field),
+            ::motiongfx::field_path::accessor::Accessor {
                 ref_fn: |v| &v$(.$path)*.$field,
                 mut_fn: |v| &mut v$(.$path)*.$field,
             },
@@ -172,7 +173,7 @@ pub trait FieldPathRegisterAppExt {
         accessor: Accessor<S, T>,
     ) -> &mut Self
     where
-        S: Asset,
+        S: bevy_asset::Asset,
         T: Clone + ThreadSafe;
 }
 
@@ -204,7 +205,7 @@ impl FieldPathRegisterAppExt for App {
         accessor: Accessor<S, T>,
     ) -> &mut Self
     where
-        S: Asset,
+        S: bevy_asset::Asset,
         T: Clone + ThreadSafe,
     {
         self.world_mut()

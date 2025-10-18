@@ -1,6 +1,6 @@
 [package]
 name = "motiongfx"
-description = "Motion graphics creation tool. (Highly inspired by Motion Canvas and Manim)"
+description = "Backend agnostic motion graphics creation tool."
 exclude = ["/assets/", "/.github/", "/examples/"]
 keywords = ["motion", "animation", "procedural", "bevy"]
 categories = ["multimedia", "graphics", "gui", "rendering", "game-development", "no_std"]
@@ -16,10 +16,8 @@ bevy_platform = { workspace = true }
 bevy_math = { workspace = true }
 
 # other
+field_path = { workspace = true }
 nonempty = { workspace = true }
 
 [lints]
 workspace = true
-
-[features]
-default = []

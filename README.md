@@ -68,14 +68,14 @@ MotionGfx seamlessly integrates with [Typst](https://typst.app) via the [Velyst]
 | ------- | --------------- |
 | 0.17    | 0.1             |
 
-## Join the community!
-
-You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ) or our project focused [VOS (Voxell Open Source) discord server](https://discord.gg/X3ZucbxXFc).
-
 ## Inspirations and Similar Projects
 
 - [Motion Canvas](https://motioncanvas.io/)
 - [Manim](https://www.manim.community/)
+
+## Join the community!
+
+You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ).
 
 ## License
 

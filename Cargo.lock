@@ -724,6 +724,7 @@ dependencies = [
  "bevy_app",
  "bevy_asset",
  "bevy_color",
+ "bevy_derive",
  "bevy_ecs",
  "bevy_math",
  "bevy_pbr",
@@ -1524,6 +1525,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
+name = "field_path"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c94e82a339b4a40a5a7e1f1e93bd421a68f346f8a0565fd011ec0d38effaebdc"
+dependencies = [
+ "hashbrown 0.16.0",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1732,6 +1742,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
 dependencies = [
  "equivalent",
+ "foldhash 0.2.0",
  "serde",
 ]
 
@@ -1949,6 +1960,7 @@ dependencies = [
  "bevy_ecs",
  "bevy_math",
  "bevy_platform",
+ "field_path",
  "nonempty",
 ]
 

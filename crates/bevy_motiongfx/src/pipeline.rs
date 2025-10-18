@@ -3,7 +3,7 @@ use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
-use crate::MotionGfxSet;
+use crate::{FieldAccessorRegistry, MotionGfxSet};
 
 pub type WorldPipelineRegistry = PipelineRegistry<World>;
 pub type WorldPipeline = Pipeline<World>;

@@ -2,15 +2,15 @@ use core::any::TypeId;
 
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
+use field_path::accessor::{Accessor, FieldAccessorRegistry};
 
-use crate::accessor::{Accessor, FieldAccessorRegistry};
+use crate::ThreadSafe;
 use crate::action::{
     ActionClip, ActionKey, ActionWorld, EaseStorage, InterpStorage,
     SampleMode, Segment,
 };
 use crate::subject::SubjectId;
 use crate::track::Track;
-use crate::ThreadSafe;
 
 /// Uniquely identifies a [`Pipeline`] to bake and sample a target
 /// field from a subject's source data structure.
