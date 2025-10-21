@@ -1,10 +1,19 @@
 # MotionGfx
 
-MotionGfx is a motion graphics creation tool in [Bevy](https://bevyengine.org/). It is highly inspired by [Motion Canvas](https://motioncanvas.io/) & [Manim](https://www.manim.community/).
+MotionGfx is a motion graphics creation tool powered by [Bevy](https://bevyengine.org/) ECS.
 
 ![hello_world gif](./.github/assets/hello_world.gif)
 
 *Associated example [here](./examples/hello_world.rs)!*
+
+## Running Examples
+
+```bash
+# Clone the repo and run the examples
+git clone https://github.com/voxell-tech/motiongfx
+cd motiongfx
+cargo run --example hello_world
+```
 
 ## Goal
 
@@ -50,13 +59,24 @@ MotionGfx seamlessly integrates with [Typst](https://typst.app) via the [Velyst]
 
 *Associated example [here](./examples/typst_basic.rs)!*
 
+## Supported Bevy Versions
+
+| Bevy    | Bevy MotionGfx  |
+| ------- | --------------- |
+| 0.17    | 0.1             |
+
+## Inspirations and Similar Projects
+
+- [Motion Canvas](https://motioncanvas.io/)
+- [Manim](https://www.manim.community/)
+
 ## Join the community!
 
-You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ) or our project focused [VOS (Voxell Open Source) discord server](https://discord.gg/X3ZucbxXFc).
+You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ).
 
 ## License
 
-`motiongfx` is dual-licensed under either:
+The entire workspace is dual-licensed under either:
 
 - MIT License ([LICENSE-MIT](LICENSE-MIT) or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
 - Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))

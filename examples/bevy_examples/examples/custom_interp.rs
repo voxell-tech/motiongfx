@@ -3,8 +3,8 @@ use core::f32::consts::FRAC_PI_2;
 use bevy::color::palettes;
 use bevy::prelude::*;
 use bevy_examples::timeline_movement;
-use bevy_motiongfx::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
+use bevy_motiongfx::prelude::*;
 
 fn main() {
     App::new()

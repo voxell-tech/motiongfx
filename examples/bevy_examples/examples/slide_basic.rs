@@ -1,8 +1,8 @@
 use bevy::color::palettes;
 use bevy::prelude::*;
 use bevy::render::view::Hdr;
-use bevy_motiongfx::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
+use bevy_motiongfx::prelude::*;
 
 fn main() {
     App::new()

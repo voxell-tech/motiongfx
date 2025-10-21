@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
+publish = false
 
 [dependencies]
 bevy_motiongfx = { workspace = true }

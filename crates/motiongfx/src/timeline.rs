@@ -4,20 +4,20 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
+use field_path::accessor::FieldAccessorRegistry;
+use field_path::field::Field;
 
-use crate::accessor::FieldAccessorRegistry;
+use crate::ThreadSafe;
 use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionWorld,
     InterpActionBuilder, SampleMode,
 };
-use crate::field::Field;
 use crate::pipeline::Range;
 use crate::pipeline::{
     BakeCtx, PipelineKey, PipelineRegistry, SampleCtx,
 };
 use crate::subject::SubjectId;
 use crate::track::Track;
-use crate::ThreadSafe;
 
 #[derive(Component)]
 pub struct Timeline {
@@ -245,6 +245,12 @@ impl Timeline {
 
 // Getter methods.
 impl Timeline {
+    /// Returns the current queue cache.
+    #[inline]
+    pub fn queue_cahce(&self) -> &QueueCache {
+        &self.queue_cahce
+    }
+
     /// Returns the current playback time.
     #[inline]
     pub fn curr_time(&self) -> f32 {
@@ -325,6 +331,7 @@ impl Timeline {
 /// which result in sampling the same target field on the same entity
 /// more than once. This is crucial as the sampling pipeline happens
 /// in an unordered manner.
+#[derive(Debug)]
 pub struct QueueCache {
     cache: HashMap<ActionKey, ActionId>,
 }
@@ -414,11 +421,7 @@ impl TimelineBuilder {
         T: Clone + ThreadSafe,
     {
         self.act(target, field, action).with_interp(|a, b, t| {
-            if t < 1.0 {
-                a.clone()
-            } else {
-                b.clone()
-            }
+            if t < 1.0 { a.clone() } else { b.clone() }
         })
     }
 

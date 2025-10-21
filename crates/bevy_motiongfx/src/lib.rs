@@ -6,8 +6,9 @@
 #![no_std]
 
 use bevy_app::prelude::*;
+use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
-use motiongfx::prelude::*;
+use motiongfx::field_path::accessor::FieldAccessorRegistry as AccessorRegistry;
 
 use crate::controller::ControllerPlugin;
 use crate::pipeline::{PipelinePlugin, WorldPipelineRegistry};
@@ -20,6 +21,7 @@ pub mod registry;
 pub mod prelude {
     pub use motiongfx::prelude::*;
 
+    pub use crate::FieldAccessorRegistry;
     pub use crate::controller::RealtimePlayer;
     pub use crate::interpolation::{
         ActionInterpTimelineExt, Interpolation,
@@ -32,6 +34,9 @@ pub mod prelude {
 }
 
 pub use motiongfx;
+
+#[derive(Resource, Default, Debug, Deref, DerefMut)]
+pub struct FieldAccessorRegistry(AccessorRegistry);
 
 pub struct BevyMotionGfxPlugin;
 

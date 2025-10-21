@@ -7,11 +7,11 @@ use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::prelude::*;
 use bevy_ecs::world::DeferredWorld;
 use bevy_platform::collections::HashMap;
+use field_path::field::UntypedField;
 
-use crate::field::UntypedField;
+use crate::ThreadSafe;
 use crate::subject::SubjectId;
 use crate::track::TrackFragment;
-use crate::ThreadSafe;
 
 /// A type-erased unique Id in the [`IdRegistry`].
 #[derive(
@@ -227,9 +227,12 @@ pub struct ActionWorld {
 
 impl ActionWorld {
     pub fn new() -> Self {
-        Self {
-            world: World::new(),
-        }
+        let mut world = World::new();
+        // EaseStorage is optional, so it needs to be registered
+        // manually for the sample query to be valid.
+        world.register_component::<EaseStorage>();
+
+        Self { world }
     }
 
     pub fn add<I, T>(
