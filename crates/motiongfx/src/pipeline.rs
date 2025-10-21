@@ -146,7 +146,7 @@ impl<'a> BakeCtx<'a> {
                 continue;
             };
 
-            let mut start = (accessor.ref_fn)(source).clone();
+            let mut start = accessor.get_ref(source).clone();
 
             for ActionClip { id, .. } in self.track.clips(*span) {
                 let Some(action) =

@@ -21,6 +21,7 @@ pub mod registry;
 pub mod prelude {
     pub use motiongfx::prelude::*;
 
+    pub use crate::FieldAccessorRegistry;
     pub use crate::controller::RealtimePlayer;
     pub use crate::interpolation::{
         ActionInterpTimelineExt, Interpolation,

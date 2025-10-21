@@ -4,8 +4,8 @@ use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
 use crate::{
-    pipeline::{PipelineRegistryExt, WorldPipelineRegistry},
     FieldAccessorRegistry,
+    pipeline::{PipelineRegistryExt, WorldPipelineRegistry},
 };
 
 // TODO: Move purely the recursive logic back to motiongfx and keep
@@ -66,10 +66,10 @@ use crate::{
 ///
 /// let mut foo = Foo::default();
 ///
-/// assert_eq!((accessor.ref_fn)(&foo), &foo.bar_x.cho_a.bo_c.0,);
+/// assert_eq!(accessor.get_ref(&foo), &foo.bar_x.cho_a.bo_c.0,);
 ///
-/// *(accessor.mut_fn)(&mut foo) = 2.0;
-/// assert_eq!((accessor.ref_fn)(&foo), &2.0);
+/// *accessor.get_mut(&mut foo) = 2.0;
+/// assert_eq!(accessor.get_ref(&foo), &2.0);
 ///
 /// // Get pipeline from the registry.
 /// let pipeline_registry =
@@ -98,10 +98,7 @@ macro_rules! register_fields {
         ::$reg_func::<$source, _>(
             $app,
             ::motiongfx::field_path::field::field!(<$root>),
-            ::motiongfx::field_path::accessor::Accessor {
-                ref_fn: |v| v,
-                mut_fn: |v| v,
-            }
+            ::motiongfx::field_path::accessor::accessor!(<$root>),
         );
 
         register_fields!(
@@ -125,10 +122,7 @@ macro_rules! register_fields {
         ::$reg_func::<$source, _>(
             $app,
             motiongfx::field_path::field::field!(<$root>$(::$path)*::$field),
-            ::motiongfx::field_path::accessor::Accessor {
-                ref_fn: |v| &v$(.$path)*.$field,
-                mut_fn: |v| &mut v$(.$path)*.$field,
-            },
+            ::motiongfx::field_path::accessor::accessor!(<$root>$(::$path)*::$field),
         );
 
         // Register sub fields.

@@ -6,13 +6,10 @@ MotionGfx is a motion graphics creation tool powered by [Bevy](https://bevyengin
 
 *Associated example [here](./examples/hello_world.rs)!*
 
-## Quick Start
+## Running Examples
 
 ```bash
-# Add dependency in Cargo.toml
-motiongfx = "0.1"
-
-# Or clone the repo and run the examples
+# Clone the repo and run the examples
 git clone https://github.com/voxell-tech/motiongfx
 cd motiongfx
 cargo run --example hello_world

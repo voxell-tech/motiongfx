@@ -24,6 +24,15 @@
 //! dynamically linked to any structure without requiring concrete
 //! type information at compile time.
 //!
+//! ## Running Examples
+//!
+//! ```bash
+//! # Clone the repo and run the examples
+//! git clone https://github.com/voxell-tech/motiongfx
+//! cd motiongfx
+//! cargo run --example hello_world
+//! ```
+//!
 //! ## Core Concepts
 //!
 //! MotionGfx is organized around a few fundamental building blocks:
@@ -55,7 +64,7 @@
 //!   baking of actions and the sampling of animation segments for
 //!   playback or preview.
 //!
-//! In short, a timeline holds all the actions and subject Id via the
+//! In short, a timeline holds all the actions and subject Ids via an
 //! action world and stores the timing of each actions within blocks
 //! of tracks. Then, when it comes to animating subjects, the timeline
 //! reaches out to the pipeline registry and accessor registry to
@@ -88,12 +97,9 @@
 //! // the subjects. In our case, it's just the first field in
 //! // the tuple struct: `Subject::0`.
 //!
-//! accessor_registry.register(
-//!     field!(<Subject>::0).untyped(),
-//!     Accessor::<Subject, f32> {
-//!         ref_fn: |x| &x.0,
-//!         mut_fn: |x| &mut x.0,
-//!     },
+//! accessor_registry.register_typed(
+//!     field!(<Subject>::0),
+//!     accessor!(<Subject>::0),
 //! );
 //!
 //! // Similarly, the pipeline registry shoiud contain pipelines to
@@ -109,7 +115,7 @@
 //!             ctx.sample::<Id, Subject, f32>(
 //!                 |id, target, accessor| {
 //!                     if let Some(x) = world.get_mut(&id) {
-//!                         *(accessor.mut_fn)(x) = target;
+//!                         *accessor.get_mut(x) = target;
 //!                     }
 //!                 },
 //!             );
@@ -187,6 +193,11 @@ pub mod track;
 pub use field_path;
 
 pub mod prelude {
+    pub use field_path::accessor::{
+        Accessor, FieldAccessorRegistry, UntypedAccessor, accessor,
+    };
+    pub use field_path::field::{Field, UntypedField, field};
+
     pub use crate::ThreadSafe;
     pub use crate::action::{
         Action, ActionBuilder, ActionId, EaseFn, InterpActionBuilder,
@@ -198,10 +209,6 @@ pub mod prelude {
     };
     pub use crate::timeline::{Timeline, TimelineBuilder};
     pub use crate::track::{Track, TrackFragment, TrackOrdering};
-    pub use field_path::accessor::{
-        Accessor, FieldAccessorRegistry, UntypedAccessor,
-    };
-    pub use field_path::field::{Field, UntypedField, field};
 }
 
 /// Auto trait for types that implements [`Send`] + [`Sync`] +

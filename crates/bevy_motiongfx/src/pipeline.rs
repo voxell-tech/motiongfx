@@ -41,7 +41,7 @@ pub fn sample_component_actions<S, T>(
 {
     ctx.sample::<Entity, S, T>(|entity, target, accessor| {
         if let Some(mut source) = world.get_mut::<S>(entity) {
-            *(accessor.mut_fn)(&mut source) = target;
+            *accessor.get_mut(&mut source) = target;
         }
     });
 }
@@ -83,7 +83,7 @@ where
             if let Some(source) =
                 assets.get_mut(asset_id.typed::<S>())
             {
-                *(accessor.mut_fn)(source) = target;
+                *accessor.get_mut(source) = target;
             }
         },
     );

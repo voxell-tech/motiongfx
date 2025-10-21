@@ -146,7 +146,7 @@ fn register_pipelines(
                         };
 
                         if let Subject::Point(point) = subject {
-                            *(accessor.mut_fn)(point) = target;
+                            *accessor.get_mut(point) = target;
                         }
                     },
                 );
@@ -175,7 +175,7 @@ fn register_pipelines(
                         };
 
                         if let Subject::Line(line) = subject {
-                            *(accessor.mut_fn)(line) = target;
+                            *accessor.get_mut(line) = target;
                         }
                     },
                 );
@@ -206,7 +206,7 @@ fn register_pipelines(
                         };
 
                         if let Subject::Line(line) = subject {
-                            *(accessor.mut_fn)(line) = target;
+                            *accessor.get_mut(line) = target;
                         }
                     },
                 );
@@ -220,63 +220,31 @@ fn register_accessors(accessor_registry: &mut FieldAccessorRegistry) {
     // Refer to `bevy_motiongfx` for now...
 
     // Point -> f32.
-    accessor_registry.register(
-        field!(<Point>::x).untyped(),
-        Accessor::<Point, f32> {
-            ref_fn: |p| &p.x,
-            mut_fn: |p| &mut p.x,
-        },
-    );
-    accessor_registry.register(
-        field!(<Point>::y).untyped(),
-        Accessor::<Point, f32> {
-            ref_fn: |p| &p.y,
-            mut_fn: |p| &mut p.y,
-        },
-    );
+    accessor_registry
+        .register_typed(field!(<Point>::x), accessor!(<Point>::x));
+    accessor_registry
+        .register_typed(field!(<Point>::y), accessor!(<Point>::y));
     // Line -> Point.
-    accessor_registry.register(
-        field!(<Line>::p0).untyped(),
-        Accessor::<Line, Point> {
-            ref_fn: |l| &l.p0,
-            mut_fn: |l| &mut l.p0,
-        },
-    );
-    accessor_registry.register(
-        field!(<Line>::p1).untyped(),
-        Accessor::<Line, Point> {
-            ref_fn: |l| &l.p1,
-            mut_fn: |l| &mut l.p1,
-        },
-    );
+    accessor_registry
+        .register_typed(field!(<Line>::p0), accessor!(<Line>::p0));
+    accessor_registry
+        .register_typed(field!(<Line>::p1), accessor!(<Line>::p1));
     // Line -> Point -> f32.
-    accessor_registry.register(
-        field!(<Line>::p0::x).untyped(),
-        Accessor::<Line, f32> {
-            ref_fn: |l| &l.p0.x,
-            mut_fn: |l| &mut l.p0.x,
-        },
+    accessor_registry.register_typed(
+        field!(<Line>::p0::x),
+        accessor!(<Line>::p0::x),
     );
-    accessor_registry.register(
-        field!(<Line>::p0::y).untyped(),
-        Accessor::<Line, f32> {
-            ref_fn: |l| &l.p0.y,
-            mut_fn: |l| &mut l.p0.y,
-        },
+    accessor_registry.register_typed(
+        field!(<Line>::p0::y),
+        accessor!(<Line>::p0::y),
     );
-    accessor_registry.register(
-        field!(<Line>::p1::x).untyped(),
-        Accessor::<Line, f32> {
-            ref_fn: |l| &l.p1.x,
-            mut_fn: |l| &mut l.p1.x,
-        },
+    accessor_registry.register_typed(
+        field!(<Line>::p1::x),
+        accessor!(<Line>::p1::x),
     );
-    accessor_registry.register(
-        field!(<Line>::p1::y).untyped(),
-        Accessor::<Line, f32> {
-            ref_fn: |l| &l.p1.y,
-            mut_fn: |l| &mut l.p1.y,
-        },
+    accessor_registry.register_typed(
+        field!(<Line>::p1::y),
+        accessor!(<Line>::p1::y),
     );
 }
 
