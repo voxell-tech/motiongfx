@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/*", "examples/*", ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.0-rc.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/voxell-tech/motiongfx"
@@ -11,8 +11,8 @@ readme = "README.md"
 
 [workspace.dependencies]
 # motiongfx
-motiongfx = { version = "0.1.0", path = "crates/motiongfx" }
-bevy_motiongfx = { version = "0.1.0", path = "crates/bevy_motiongfx" }
+motiongfx = { version = "0.1.0-rc.1", path = "crates/motiongfx" }
+bevy_motiongfx = { version = "0.1.0-rc.1", path = "crates/bevy_motiongfx" }
 
 # bevy
 bevy = { version = "0.17", default-features = false }
