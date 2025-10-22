@@ -343,6 +343,24 @@ impl QueueCache {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.cache.is_empty()
+    }
+
+    pub fn iter(
+        &self,
+    ) -> impl Iterator<Item = (&ActionKey, &ActionId)> {
+        self.cache.iter()
+    }
+
+    pub fn iter_keys(&self) -> impl Iterator<Item = &ActionKey> {
+        self.cache.keys()
+    }
+
+    pub fn iter_ids(&self) -> impl Iterator<Item = &ActionId> {
+        self.cache.values()
+    }
+
     /// Clear all the cached contents.
     pub fn clear(&mut self) {
         self.cache.clear();
