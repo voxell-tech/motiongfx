@@ -721,6 +721,7 @@ checksum = "7ef8e4b7e61dfe7719bb03c884dc270cd46a82efb40f93e9933b990c5c190c59"
 name = "bevy_motiongfx"
 version = "0.1.0-rc.1"
 dependencies = [
+ "bevy",
  "bevy_app",
  "bevy_asset",
  "bevy_color",

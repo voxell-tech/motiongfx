@@ -1,14 +1,3 @@
-# Bevy MotionGfx
-
-An integration of the
-[MotionGfx](https://github.com/voxell-tech/motiongfx) crate for the
-[Bevy](https://bevyengine.org) game engine.
-
-## Getting Started
-
-To start animating a cube from the left to right:
-
-```rs
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
@@ -67,10 +56,3 @@ fn build_timeline(
     commands
         .spawn((timeline, RealtimePlayer::new().with_playing(true)));
 }
-```
-
-## Supported Bevy Versions
-
-| Bevy    | Bevy MotionGfx  |
-| ------- | --------------- |
-| 0.17    | 0.1             |

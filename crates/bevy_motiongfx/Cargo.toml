@@ -26,6 +26,9 @@ bevy_color = { workspace = true, optional = true }
 bevy_sprite = { workspace = true, optional = true }
 bevy_pbr = { workspace = true, optional = true }
 
+[dev-dependencies]
+bevy = { workspace = true, features = ["bevy_pbr"] }
+
 [lints]
 workspace = true
 
