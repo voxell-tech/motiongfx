@@ -22,12 +22,10 @@ use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
 
-fn main() {
-    App::new()
-        .add_plugins((DefaultPlugins, BevyMotionGfxPlugin))
-        // Add systems here...
-        .run();
-}
+App::new()
+    .add_plugins((DefaultPlugins, BevyMotionGfxPlugin))
+    // Add systems here...
+    .run();
 ```
 
 ### Create Animations
