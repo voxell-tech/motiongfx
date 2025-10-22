@@ -30,6 +30,8 @@ fn realtime_player_timing(
     }
 }
 
+/// A minimal controller for a [`Timeline`] that increments the target
+/// time based on Bevy's [`Time::delta_secs()`].
 #[derive(Component, Debug)]
 pub struct RealtimePlayer {
     /// Determines if the timeline is currently playing.

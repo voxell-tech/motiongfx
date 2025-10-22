@@ -29,25 +29,35 @@ fn build_timeline(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let material =
+        materials.add(StandardMaterial::from_color(Srgba::BLUE));
     // Spawns the cube.
     let cube = commands
         .spawn((
             Mesh3d(meshes.add(Cuboid::default())),
-            MeshMaterial3d(
-                materials.add(StandardMaterial::default()),
-            ),
+            MeshMaterial3d(material.clone()),
             Transform::from_xyz(-3.0, 0.0, 0.0),
         ))
         .id();
 
     // Build the timeline.
     let mut b = TimelineBuilder::new();
-    let track = b
-        .act_interp(cube, field!(<Transform>::translation::x), |x| {
-            x + 6.0
-        })
-        .play(1.0)
-        .compile();
+    let track = [
+        b.act_interp(
+            cube,
+            field!(<Transform>::translation::x),
+            |x| x + 6.0,
+        )
+        .play(1.0),
+        b.act_interp(
+            material.untyped().id(),
+            field!(<StandardMaterial>::base_color),
+            |_| Srgba::RED.into(),
+        )
+        .play(1.0),
+    ]
+    .ord_all()
+    .compile();
 
     b.add_tracks(track);
     let timeline = b.compile();

@@ -26,6 +26,10 @@ for a more thorough walkthrough of the crate!
 - **Batteries included**: Packed with common easing and interpolation
   functions.
 
+## Officially Supported Backends
+
+- [Bevy MotionGfx](./crates/bevy_motiongfx)
+
 ## Join the community!
 
 You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ).
