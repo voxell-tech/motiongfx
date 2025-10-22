@@ -1,8 +1,4 @@
-//! [Motion Canvas]: https://motioncanvas.io/
-//! [Manim]: https://www.manim.community/
 //! [Bevy]: https://bevyengine.org/
-//! [Vello]: https://github.com/linebender/vello
-//! [Typst]: https://typst.app
 //! [`World`]: bevy_ecs::world::World
 //! [`SubjectId`]: subject::SubjectId
 //! [`ActionWorld`]: action::ActionWorld
@@ -23,15 +19,6 @@
 //! *type-erased field access*, allowing animation data to be
 //! dynamically linked to any structure without requiring concrete
 //! type information at compile time.
-//!
-//! ## Running Examples
-//!
-//! ```bash
-//! # Clone the repo and run the examples
-//! git clone https://github.com/voxell-tech/motiongfx
-//! cd motiongfx
-//! cargo run --example hello_world
-//! ```
 //!
 //! ## Core Concepts
 //!
@@ -70,7 +57,7 @@
 //! reaches out to the pipeline registry and accessor registry to
 //! perform baking and sampling.
 //!
-//! ## Using MotionGfx
+//! ## Example
 //!
 //! MotionGfx on its own is extremely simple to use, below is an
 //! example of how to use it. (Read the comments!)
@@ -148,9 +135,9 @@
 //! let mut timeline = builder.compile();
 //! // The timeline needs to be baked once before sampling can happen.
 //! timeline.bake_actions(
+//!     &accessor_registry,
 //!     &pipeline_registry,
 //!     &subject_world,
-//!     &accessor_registry,
 //! );
 //!
 //! // Let's visualize the current state of the subject world before
@@ -163,19 +150,14 @@
 //! // The queued actions are stored internally.
 //! timeline.queue_actions();
 //! timeline.sample_queued_actions(
+//!     &accessor_registry,
 //!     &pipeline_registry,
 //!     &mut subject_world,
-//!     &accessor_registry,
 //! );
 //!
 //! // Visualize the state of the subject world after the sampling.
 //! println!("After:  {:?}", subject_world);
 //! ```
-//!
-//! ## Inspirations and Similar Projects
-//!
-//! - [Motion Canvas]
-//! - [Manim]
 
 #![no_std]
 

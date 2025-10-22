@@ -42,9 +42,9 @@ pub struct Timeline {
 impl Timeline {
     pub fn bake_actions<W>(
         &mut self,
+        accessor_registry: &FieldAccessorRegistry,
         pipeline_registry: &PipelineRegistry<W>,
         subject_world: &W,
-        accessor_registry: &FieldAccessorRegistry,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
             let Some(pipeline) = pipeline_registry.get(key) else {
@@ -218,9 +218,9 @@ impl Timeline {
 
     pub fn sample_queued_actions<W>(
         &self,
+        accessor_registry: &FieldAccessorRegistry,
         pipeline_registry: &PipelineRegistry<W>,
         subject_world: &mut W,
-        accessor_registry: &FieldAccessorRegistry,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
             let Some(pipeline) = pipeline_registry.get(key) else {
