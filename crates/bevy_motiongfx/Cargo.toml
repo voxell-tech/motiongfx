@@ -2,8 +2,8 @@
 name = "bevy_motiongfx"
 description = "An implementation of the MotionGfx framework for Bevy."
 exclude = ["/assets/", "/examples/"]
-keywords = ["motion", "animation", "procedural", "bevy", "ecs", "plugin"]
-categories = ["no-std", "multimedia", "graphics", "visualization", "gui", "rendering", "game-development"]
+keywords = ["motion", "animation", "procedural", "bevy", "plugin"]
+categories = ["no-std", "multimedia", "graphics", "visualization", "gui"]
 readme = "./README.md"
 version.workspace = true
 edition.workspace = true
