@@ -17,7 +17,7 @@ An integration of the
 The `BevyMotionGfxPlugin` must be added for timeline and controllers
 to work.
 
-```rust
+```rust,no_run
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
