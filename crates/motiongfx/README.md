@@ -160,7 +160,7 @@ let f1 = TrackFragment::new();
 let f = [f0, f1].ord_flow(0.5);
 ```
 
-Any runs `f1` after `f0` with a fixed delay time rather than waiting
+Flow runs `f1` after `f0` with a fixed delay time rather than waiting
 for `f0` to finish.
 
 ### Registries
@@ -363,3 +363,4 @@ You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ).
 
 This means you can select the license you prefer!
 This dual-licensing approach is the de-facto standard in the Rust ecosystem and there are [very good reasons](https://github.com/bevyengine/bevy/issues/2373) to include both.
+
