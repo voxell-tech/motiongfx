@@ -119,8 +119,8 @@ fn build_timeline(mut commands: Commands) {
 }
 ```
 
-## Supported Bevy Versions
+## Version Matrix
 
-| Bevy    | Bevy MotionGfx  |
-| ------- | --------------- |
-| 0.17    | 0.1             |
+| Bevy    | MotionGfx  | Bevy MotionGfx  |
+| ------- | ---------- | --------------- |
+| 0.17    | 0.1        | 0.1             |

@@ -343,7 +343,7 @@ println!("After:  {:?}", subject_world);
 
 ## Officially Supported Backends
 
-- [Bevy MotionGfx](./crates/bevy_motiongfx)
+- [Bevy MotionGfx](https://crates.io/crates/bevy_motiongfx)
 
 ## Join the community!
 
