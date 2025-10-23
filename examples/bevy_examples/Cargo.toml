@@ -13,7 +13,6 @@ bevy = { workspace = true }
 
 [dev-dependencies]
 bevy = { workspace = true, features = [
-  "dynamic_linking",
   "multi_threaded",
   "bevy_log",
   "bevy_color",

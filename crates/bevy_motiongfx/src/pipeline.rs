@@ -180,9 +180,9 @@ fn bake_timeline(main_world: &mut World) {
             q_timelines.iter_mut(main_cell.world_mut())
         {
             timeline.bake_actions(
+                accessor_registry,
                 pipeline_registry,
                 main_cell.world(),
-                accessor_registry,
             );
 
             commands.entity(entity).remove::<BakeTimeline>();
@@ -222,9 +222,9 @@ fn sample_timeline(main_world: &mut World) {
 
         for timeline in q_timelines.iter(main_cell.world()) {
             timeline.sample_queued_actions(
+                accessor_registry,
                 pipeline_registry,
                 main_cell.world_mut(),
-                accessor_registry,
             );
         }
     }

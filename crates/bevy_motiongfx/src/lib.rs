@@ -1,8 +1,4 @@
-//! [Bevy]: https://bevyengine.org/
-//! [MotionGfx]: motiongfx
-//!
-//! A [Bevy] integration of  [MotionGfx].
-
+#![doc = include_str!("../README.md")]
 #![no_std]
 
 use bevy_app::prelude::*;

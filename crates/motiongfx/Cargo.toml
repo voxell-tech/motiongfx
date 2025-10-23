@@ -1,9 +1,10 @@
 [package]
 name = "motiongfx"
-description = "Backend agnostic motion graphics creation tool."
-exclude = ["/assets/", "/.github/", "/examples/"]
-keywords = ["motion", "animation", "procedural", "bevy"]
-categories = ["multimedia", "graphics", "gui", "rendering", "game-development", "no-std"]
+description = "Backend agnostic motion graphics creation framework."
+exclude = ["/examples/"]
+keywords = ["motion", "animation", "procedural", "timeline", "agnostic"]
+categories = ["no-std", "multimedia", "graphics", "visualization"]
+readme = "./README.md"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

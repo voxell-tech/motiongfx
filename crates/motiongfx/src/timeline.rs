@@ -42,9 +42,9 @@ pub struct Timeline {
 impl Timeline {
     pub fn bake_actions<W>(
         &mut self,
+        accessor_registry: &FieldAccessorRegistry,
         pipeline_registry: &PipelineRegistry<W>,
         subject_world: &W,
-        accessor_registry: &FieldAccessorRegistry,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
             let Some(pipeline) = pipeline_registry.get(key) else {
@@ -65,6 +65,10 @@ impl Timeline {
     }
 
     pub fn queue_actions(&mut self) {
+        if self.tracks.is_empty() {
+            return;
+        }
+
         self.reset_queues();
         // Current time will change if the track index changes.
         let mut curr_time = self.curr_time();
@@ -218,9 +222,9 @@ impl Timeline {
 
     pub fn sample_queued_actions<W>(
         &self,
+        accessor_registry: &FieldAccessorRegistry,
         pipeline_registry: &PipelineRegistry<W>,
         subject_world: &mut W,
-        accessor_registry: &FieldAccessorRegistry,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
             let Some(pipeline) = pipeline_registry.get(key) else {
@@ -341,6 +345,24 @@ impl QueueCache {
         Self {
             cache: HashMap::new(),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cache.is_empty()
+    }
+
+    pub fn iter(
+        &self,
+    ) -> impl Iterator<Item = (&ActionKey, &ActionId)> {
+        self.cache.iter()
+    }
+
+    pub fn iter_keys(&self) -> impl Iterator<Item = &ActionKey> {
+        self.cache.keys()
+    }
+
+    pub fn iter_ids(&self) -> impl Iterator<Item = &ActionId> {
+        self.cache.values()
     }
 
     /// Clear all the cached contents.

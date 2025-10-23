@@ -99,9 +99,9 @@ fn main() {
 
     // Bake actions into segments.
     timeline.bake_actions(
+        &world.accessor_registry,
         &world.pipeline_registry,
         &world.subject_world,
-        &world.accessor_registry,
     );
 
     // Change the target time.
@@ -113,9 +113,9 @@ fn main() {
     // Queue and sample the actions.
     timeline.queue_actions();
     timeline.sample_queued_actions(
+        &world.accessor_registry,
         &world.pipeline_registry,
         &mut world.subject_world,
-        &world.accessor_registry,
     );
 
     // Check the values after sampling:
