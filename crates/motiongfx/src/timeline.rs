@@ -65,6 +65,10 @@ impl Timeline {
     }
 
     pub fn queue_actions(&mut self) {
+        if self.tracks.is_empty() {
+            return;
+        }
+
         self.reset_queues();
         // Current time will change if the track index changes.
         let mut curr_time = self.curr_time();
