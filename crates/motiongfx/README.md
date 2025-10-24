@@ -8,7 +8,7 @@
 [![Discord](https://img.shields.io/discord/442334985471655946.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/Mhnyp6VYEQ)
 
 **MotionGfx** is a backend-agnostic motion graphics framework
-built on top of the [Bevy](https://bevyengine.org) ECS. It provides a
+built on top of [Bevy](https://bevyengine.org) ECS. It provides a
 modular foundation for procedural animations.
 
 ## Key Features
