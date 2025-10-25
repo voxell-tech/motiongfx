@@ -17,6 +17,7 @@ bevy = { workspace = true, features = [
   "bevy_log",
   "bevy_color",
   "bevy_pbr",
+  "bevy_winit",
   "bevy_post_process",
   "hdr",
   "tonemapping_luts",
