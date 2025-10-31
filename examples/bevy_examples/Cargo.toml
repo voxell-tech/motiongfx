@@ -12,16 +12,7 @@ bevy_motiongfx = { workspace = true }
 bevy = { workspace = true }
 
 [dev-dependencies]
-bevy = { workspace = true, features = [
-  "multi_threaded",
-  "bevy_log",
-  "bevy_color",
-  "bevy_pbr",
-  "bevy_post_process",
-  "hdr",
-  "tonemapping_luts",
-  "zstd_rust",
-] }
+bevy = { workspace = true, default-features = true }
 
 [lints]
 workspace = true
