@@ -983,6 +983,7 @@ dependencies = [
  "bevy_ecs",
  "bevy_math",
  "bevy_pbr",
+ "bevy_platform",
  "bevy_sprite",
  "bevy_time",
  "bevy_transform",

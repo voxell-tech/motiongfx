@@ -13,6 +13,7 @@ pub mod controller;
 pub mod interpolation;
 pub mod pipeline;
 pub mod registry;
+pub mod world;
 
 pub mod prelude {
     pub use motiongfx::prelude::*;
