@@ -54,13 +54,12 @@ use crate::world::MotionGfxWorld;
 ///     )
 /// );
 ///
-/// // Get accessor from the registry.
-/// let accessor_registry =
-///     app.world().resource::<FieldAccessorRegistry>();
+/// let motiongfx = app.world().resource::<MotionGfxWorld>();
 ///
+/// // Get accessor from the registry.
 /// let key = field!(<Foo>::bar_x::cho_a::bo_c::0).untyped();
 /// let accessor =
-///     accessor_registry.get::<Foo, f32>(&key).unwrap();
+///     motiongfx.accessor_registry.get::<Foo, f32>(&key).unwrap();
 ///
 /// let mut foo = Foo::default();
 ///
@@ -70,11 +69,8 @@ use crate::world::MotionGfxWorld;
 /// assert_eq!(accessor.get_ref(&foo), &2.0);
 ///
 /// // Get pipeline from the registry.
-/// let pipeline_registry =
-///     app.world().resource::<WorldPipelineRegistry>();
-///
 /// let key = PipelineKey::new::<Entity, Foo, f32>();
-/// let pipeline = pipeline_registry.get(&key).unwrap();
+/// let pipeline = motiongfx.pipeline_registry.get(&key).unwrap();
 /// ```
 #[macro_export]
 macro_rules! register_fields {

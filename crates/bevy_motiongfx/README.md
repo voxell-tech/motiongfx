@@ -20,7 +20,6 @@ to work.
 ```rust,no_run
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
-use bevy_motiongfx::prelude::*;
 
 App::new()
     .add_plugins((DefaultPlugins, BevyMotionGfxPlugin))
@@ -39,7 +38,10 @@ This example demonstrates how to animate an `Entity`.
 use bevy::prelude::*;
 use bevy_motiongfx::prelude::*;
 
-fn build_timeline(mut commands: Commands) {
+fn build_timeline(
+    mut commands: Commands,
+    mut motiongfx: ResMut<MotionGfxWorld>,
+) {
     // Spawn the Entity.
     let entity = commands
         .spawn(Transform::from_xyz(-3.0, 0.0, 0.0))
@@ -58,7 +60,7 @@ fn build_timeline(mut commands: Commands) {
     let timeline = b.compile();
 
     // Spawn the timeline.
-    commands.spawn(timeline);
+    commands.spawn(motiongfx.add_timeline(timeline));
 }
 ```
 
@@ -70,6 +72,7 @@ use bevy_motiongfx::prelude::*;
 
 fn build_timeline(
     mut commands: Commands,
+    mut motiongfx: ResMut<MotionGfxWorld>,
     mut materials: ResMut<Assets<StandardMaterial>>
 ) {
     // Create the asset.
@@ -94,7 +97,7 @@ fn build_timeline(
     let timeline = b.compile();
 
     // Spawn the timeline.
-    commands.spawn(timeline);
+    commands.spawn(motiongfx.add_timeline(timeline));
 }
 ```
 
@@ -107,15 +110,20 @@ target track of a `Timeline`.
 use bevy::prelude::*;
 use bevy_motiongfx::prelude::*;
 
-fn build_timeline(mut commands: Commands) {
+fn build_timeline(
+    mut commands: Commands,
+    mut motiongfx: ResMut<MotionGfxWorld>,
+) {
     // Build the timeline.
     let mut b = TimelineBuilder::new();
     // Add tracks here...
     let timeline = b.compile();
 
     // Spawn the timeline with a controller.
-    commands
-        .spawn((timeline, RealtimePlayer::new().with_playing(true)));
+    commands.spawn((
+        motiongfx.add_timeline(timeline),
+        RealtimePlayer::new().with_playing(true),
+    ));
 }
 ```
 
