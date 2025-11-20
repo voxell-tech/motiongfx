@@ -49,7 +49,7 @@ let action = b
     .act("x", field!(<f32>), |x| x + 1.0)
     // Every action needs an interpolation function.
     .with_interp(|&a, &b, t| a + (b - a) * t)
-    // An optional easing function and be added.
+    // An optional easing function can be added.
     .with_ease(ease::cubic::ease_in_out);
 
 // Once an action is created, it can be "played" into a

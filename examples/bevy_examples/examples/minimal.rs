@@ -26,6 +26,7 @@ fn setup(mut commands: Commands) {
 /// Creates the timeline and plays it.
 fn build_timeline(
     mut commands: Commands,
+    mut motiongfx: ResMut<MotionGfxWorld>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -63,6 +64,8 @@ fn build_timeline(
     let timeline = b.compile();
 
     // Spawns the timeline and start playing.
-    commands
-        .spawn((timeline, RealtimePlayer::new().with_playing(true)));
+    commands.spawn((
+        motiongfx.add_timeline(timeline),
+        RealtimePlayer::new().with_playing(true),
+    ));
 }

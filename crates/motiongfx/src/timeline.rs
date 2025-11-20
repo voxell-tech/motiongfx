@@ -2,7 +2,6 @@ use core::cmp::Ordering;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 use field_path::accessor::FieldAccessorRegistry;
 use field_path::field::Field;
@@ -19,7 +18,6 @@ use crate::pipeline::{
 use crate::subject::SubjectId;
 use crate::track::Track;
 
-#[derive(Component)]
 pub struct Timeline {
     action_world: ActionWorld,
     pipeline_counts: Box<[(PipelineKey, u32)]>,
