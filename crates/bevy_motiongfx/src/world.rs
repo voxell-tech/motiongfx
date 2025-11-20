@@ -1,12 +1,41 @@
 use core::ops::{Deref, DerefMut};
 
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 use motiongfx::prelude::{FieldAccessorRegistry, Timeline};
 
+use crate::MotionGfxSet;
 use crate::pipeline::WorldPipelineRegistry;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MotionGfxWorldPlugin;
+
+impl Plugin for MotionGfxWorldPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<MotionGfxWorld>().add_systems(
+            PostUpdate,
+            sample_timelines.in_set(MotionGfxSet::Sample),
+        );
+    }
+}
+
+// TODO: Optimize samplers into parallel operations.
+// This could be deferred into motiongfx::pipeline?
+// See also https://github.com/voxell-tech/motiongfx/issues/72
+
+/// # Panics
+///
+/// Panics if the [`Timeline`] component is sampling itself.
+fn sample_timelines(world: &mut World) {
+    world.try_resource_scope::<MotionGfxWorld, _>(
+        |world, mut motiongfx| {
+            motiongfx.load_pending_timelines(world);
+            motiongfx.sample_timelines(world);
+        },
+    );
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimelineId(u64);
 
 #[derive(Resource)]
@@ -16,6 +45,18 @@ pub struct MotionGfxWorld {
     timelines: HashMap<TimelineId, MutDetect<Timeline>>,
     pub pipeline_registry: WorldPipelineRegistry,
     pub accessor_registry: FieldAccessorRegistry,
+}
+
+impl Default for MotionGfxWorld {
+    fn default() -> Self {
+        Self {
+            id: TimelineId(0),
+            pending_timelines: Default::default(),
+            timelines: Default::default(),
+            pipeline_registry: Default::default(),
+            accessor_registry: Default::default(),
+        }
+    }
 }
 
 impl MotionGfxWorld {
@@ -64,27 +105,16 @@ impl MotionGfxWorld {
         }
     }
 
-    pub fn iter_changed_timelines(
-        &self,
-    ) -> impl Iterator<Item = &Timeline> {
-        self.timelines
-            .values()
-            .filter(|t| t.mutated())
-            .map(|t| &**t)
-    }
-
-    pub fn iter_changed_timelines_mut(
-        &mut self,
-    ) -> impl Iterator<Item = &mut Timeline> {
-        self.timelines
-            .values_mut()
-            .filter(|t| t.mutated())
-            .map(|t| &mut **t)
-    }
-
-    /// Reset all mutation detection flag to `false`.
-    pub fn reset_mut_detect(&mut self) {
-        for timeline in self.timelines.values_mut() {
+    pub fn sample_timelines(&mut self, world: &mut World) {
+        for timeline in
+            self.timelines.values_mut().filter(|t| t.mutated())
+        {
+            timeline.queue_actions();
+            timeline.sample_queued_actions(
+                &self.accessor_registry,
+                &self.pipeline_registry,
+                world,
+            );
             timeline.reset();
         }
     }

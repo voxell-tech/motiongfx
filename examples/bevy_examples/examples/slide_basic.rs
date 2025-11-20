@@ -14,6 +14,7 @@ fn main() {
 
 fn spawn_timeline(
     mut commands: Commands,
+    mut motiongfx: ResMut<MotionGfxWorld>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -84,7 +85,7 @@ fn spawn_timeline(
     b.add_tracks([slide0, slide1]);
 
     commands.spawn((
-        b.compile(),
+        motiongfx.add_timeline(b.compile()),
         RealtimePlayer::new().with_playing(true),
     ));
 }
@@ -108,56 +109,59 @@ fn setup(mut commands: Commands) {
 }
 
 fn slide_movement(
-    mut q_timelines: Query<(&mut Timeline, &mut RealtimePlayer)>,
+    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut q_timelines: Query<(&TimelineId, &mut RealtimePlayer)>,
     keys: Res<ButtonInput<KeyCode>>,
 ) {
-    for (mut timeline, mut player) in q_timelines.iter_mut() {
-        if keys.just_pressed(KeyCode::ArrowRight) {
-            // Move to the start of the next track.
-            let target_index = timeline.curr_index() + 1;
-            timeline.set_target_track(target_index);
-            timeline.set_target_time(0.0);
+    for (id, mut player) in q_timelines.iter_mut() {
+        if let Some(timeline) = motiongfx.get_timeline_mut(id) {
+            if keys.just_pressed(KeyCode::ArrowRight) {
+                // Move to the start of the next track.
+                let target_index = timeline.curr_index() + 1;
+                timeline.set_target_track(target_index);
+                timeline.set_target_time(0.0);
 
-            player.set_playing(false);
-        }
+                player.set_playing(false);
+            }
 
-        if keys.just_pressed(KeyCode::ArrowLeft) {
-            // Move to the start of the previous track.
-            let target_index =
-                timeline.curr_index().saturating_sub(1);
-            timeline.set_target_track(target_index);
-            timeline.set_target_time(0.0);
+            if keys.just_pressed(KeyCode::ArrowLeft) {
+                // Move to the start of the previous track.
+                let target_index =
+                    timeline.curr_index().saturating_sub(1);
+                timeline.set_target_track(target_index);
+                timeline.set_target_time(0.0);
 
-            player.set_playing(false);
-        }
+                player.set_playing(false);
+            }
 
-        if keys.just_pressed(KeyCode::Space) {
-            if keys.pressed(KeyCode::ShiftLeft) {
-                player.set_playing(true).set_time_scale(-1.0);
+            if keys.just_pressed(KeyCode::Space) {
+                if keys.pressed(KeyCode::ShiftLeft) {
+                    player.set_playing(true).set_time_scale(-1.0);
 
-                if timeline.curr_time() <= 0.0 {
-                    // Move to the end of the previous track.
-                    let target_index =
-                        timeline.curr_index().saturating_sub(1);
-                    timeline.set_target_track(target_index);
-                    timeline.set_target_time(f32::MAX);
-                }
-            } else {
-                player.set_playing(true).set_time_scale(1.0);
+                    if timeline.curr_time() <= 0.0 {
+                        // Move to the end of the previous track.
+                        let target_index =
+                            timeline.curr_index().saturating_sub(1);
+                        timeline.set_target_track(target_index);
+                        timeline.set_target_time(f32::MAX);
+                    }
+                } else {
+                    player.set_playing(true).set_time_scale(1.0);
 
-                if timeline.curr_time()
-                    >= timeline.curr_track().duration()
-                {
-                    // Move to the start of the next track.
-                    let target_index = timeline.curr_index() + 1;
-                    timeline.set_target_track(target_index);
-                    timeline.set_target_time(0.0);
+                    if timeline.curr_time()
+                        >= timeline.curr_track().duration()
+                    {
+                        // Move to the start of the next track.
+                        let target_index = timeline.curr_index() + 1;
+                        timeline.set_target_track(target_index);
+                        timeline.set_target_time(0.0);
+                    }
                 }
             }
-        }
 
-        if keys.just_pressed(KeyCode::Escape) {
-            player.set_playing(false);
+            if keys.just_pressed(KeyCode::Escape) {
+                player.set_playing(false);
+            }
         }
     }
 }

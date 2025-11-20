@@ -1,9 +1,9 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_time::prelude::*;
-use motiongfx::prelude::*;
 
 use crate::MotionGfxSet;
+use crate::world::{MotionGfxWorld, TimelineId};
 
 pub struct ControllerPlugin;
 
@@ -17,11 +17,14 @@ impl Plugin for ControllerPlugin {
 }
 
 fn realtime_player_timing(
-    mut q_timelines: Query<(&mut Timeline, &RealtimePlayer)>,
+    mut motiongfx: ResMut<MotionGfxWorld>,
+    q_timelines: Query<(&TimelineId, &RealtimePlayer)>,
     time: Res<Time>,
 ) {
-    for (mut timeline, player) in q_timelines.iter_mut() {
-        if player.is_playing {
+    for (id, player) in
+        q_timelines.iter().filter(|(_, p)| p.is_playing)
+    {
+        if let Some(timeline) = motiongfx.get_timeline_mut(id) {
             let target_time = timeline.target_time()
                 + player.time_scale * time.delta_secs();
 

@@ -2,12 +2,10 @@
 #![no_std]
 
 use bevy_app::prelude::*;
-use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
-use motiongfx::field_path::accessor::FieldAccessorRegistry as AccessorRegistry;
 
 use crate::controller::ControllerPlugin;
-use crate::pipeline::{PipelinePlugin, WorldPipelineRegistry};
+use crate::world::MotionGfxWorldPlugin;
 
 pub mod controller;
 pub mod interpolation;
@@ -18,7 +16,6 @@ pub mod world;
 pub mod prelude {
     pub use motiongfx::prelude::*;
 
-    pub use crate::FieldAccessorRegistry;
     pub use crate::controller::RealtimePlayer;
     pub use crate::interpolation::{
         ActionInterpTimelineExt, Interpolation,
@@ -28,12 +25,10 @@ pub mod prelude {
     };
     pub use crate::register_fields;
     pub use crate::registry::FieldPathRegisterAppExt;
+    pub use crate::world::{MotionGfxWorld, TimelineId};
 }
 
 pub use motiongfx;
-
-#[derive(Resource, Default, Debug, Deref, DerefMut)]
-pub struct FieldAccessorRegistry(AccessorRegistry);
 
 pub struct BevyMotionGfxPlugin;
 
@@ -43,8 +38,6 @@ impl Plugin for BevyMotionGfxPlugin {
             PostUpdate,
             (
                 MotionGfxSet::Controller,
-                MotionGfxSet::Bake,
-                MotionGfxSet::QueueAction,
                 #[cfg(not(feature = "transform"))]
                 MotionGfxSet::Sample,
                 #[cfg(feature = "transform")]
@@ -54,11 +47,7 @@ impl Plugin for BevyMotionGfxPlugin {
             )
                 .chain(),
         );
-
-        app.init_resource::<FieldAccessorRegistry>()
-            .init_resource::<WorldPipelineRegistry>();
-
-        app.add_plugins((PipelinePlugin, ControllerPlugin));
+        app.add_plugins((MotionGfxWorldPlugin, ControllerPlugin));
 
         #[cfg(feature = "transform")]
         {
@@ -125,10 +114,6 @@ impl Plugin for BevyMotionGfxPlugin {
 pub enum MotionGfxSet {
     /// [Controller](controller) update to the timeline.
     Controller,
-    /// Bake actions into segments.
-    Bake,
-    /// Queue actions that will be sampled by marking them.
-    QueueAction,
     /// Sample keyframes and applies the value.
     Sample,
 }

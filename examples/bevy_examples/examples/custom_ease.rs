@@ -14,6 +14,7 @@ fn main() {
 
 fn spawn_timeline(
     mut commands: Commands,
+    mut motiongfx: ResMut<MotionGfxWorld>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -43,7 +44,10 @@ fn spawn_timeline(
 
     b.add_tracks(track);
 
-    commands.spawn((b.compile(), RealtimePlayer::new()));
+    commands.spawn((
+        motiongfx.add_timeline(b.compile()),
+        RealtimePlayer::new(),
+    ));
 }
 
 fn setup(mut commands: Commands) {

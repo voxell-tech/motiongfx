@@ -3,10 +3,8 @@ use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
-use crate::{
-    FieldAccessorRegistry,
-    pipeline::{PipelineRegistryExt, WorldPipelineRegistry},
-};
+use crate::pipeline::PipelineRegistryExt;
+use crate::world::MotionGfxWorld;
 
 // TODO: Move purely the recursive logic back to motiongfx and keep
 // the registration logic here.
@@ -181,13 +179,13 @@ impl FieldPathRegisterAppExt for App {
         S: Component<Mutability = Mutable>,
         T: Clone + ThreadSafe,
     {
-        self.world_mut()
-            .resource_mut::<FieldAccessorRegistry>()
-            .register(field.untyped(), accessor);
+        let mut motiongfx =
+            self.world_mut().resource_mut::<MotionGfxWorld>();
 
-        self.world_mut()
-            .resource_mut::<WorldPipelineRegistry>()
-            .register_component::<S, T>();
+        motiongfx
+            .accessor_registry
+            .register(field.untyped(), accessor);
+        motiongfx.pipeline_registry.register_component::<S, T>();
 
         self
     }
@@ -202,13 +200,13 @@ impl FieldPathRegisterAppExt for App {
         S: bevy_asset::Asset,
         T: Clone + ThreadSafe,
     {
-        self.world_mut()
-            .resource_mut::<FieldAccessorRegistry>()
-            .register(field.untyped(), accessor);
+        let mut motiongfx =
+            self.world_mut().resource_mut::<MotionGfxWorld>();
 
-        self.world_mut()
-            .resource_mut::<WorldPipelineRegistry>()
-            .register_asset::<S, T>();
+        motiongfx
+            .accessor_registry
+            .register(field.untyped(), accessor);
+        motiongfx.pipeline_registry.register_asset::<S, T>();
 
         self
     }
