@@ -35,9 +35,11 @@ fn sample_timelines(world: &mut World) {
     );
 }
 
+/// A unique Id for a [`Timeline`].
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimelineId(u64);
 
+/// Resources that the [`motiongfx`] framework operates on.
 #[derive(Resource)]
 pub struct MotionGfxWorld {
     id: TimelineId,

@@ -46,7 +46,7 @@ fn spawn_timeline(
 
     commands.spawn((
         motiongfx.add_timeline(b.compile()),
-        RealtimePlayer::new(),
+        RealtimePlayer::new().with_playing(true),
     ));
 }
 
