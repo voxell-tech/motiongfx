@@ -10,7 +10,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
       - run: rustup component add rustfmt
       - run: cargo fmt --all -- --check
 
@@ -20,6 +19,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
       - run: cargo check --workspace --all-features --all-targets
 
@@ -29,6 +31,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          save-if: false
       - run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
       - run: cargo check --workspace --no-default-features
 
@@ -38,6 +43,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
       - run: rustup component add clippy
       - run: cargo clippy --workspace --all-features --all-targets -- -D warnings
@@ -48,6 +56,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          save-if: false
       - run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
       - run: cargo doc --workspace --all-features --no-deps --document-private-items
         env:
@@ -59,6 +70,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
       - run: cargo test --workspace --all-features --all-targets
 
@@ -69,5 +83,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
       - run: cargo test --workspace --all-features --doc
