@@ -11,6 +11,13 @@
 built on top of [Bevy](https://bevyengine.org) ECS. It provides a
 modular foundation for procedural animations.
 
+## Bevy Version Support
+
+| bevy | motiongfx |
+|------|-----------|
+| 0.18 | 0.2       |
+| 0.15 | 0.1       |
+
 ## Key Features
 
 - **Backend agnostic**: Works with any rendering backend.
@@ -344,6 +351,13 @@ println!("After:  {:?}", subject_world);
 ## Officially Supported Backends
 
 - [Bevy MotionGfx](https://crates.io/crates/bevy_motiongfx)
+
+
+| bevy   | motiongfx |
+|--------|-----------|
+| 0.18   | 0.2.0     |
+| 0.17.3 | 0.1.0     |
+
 
 ## Join the community!
 
