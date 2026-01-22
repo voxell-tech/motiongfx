@@ -3,29 +3,29 @@ resolver = "2"
 members = ["crates/*", "examples/*", ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/voxell-tech/motiongfx"
 
 [workspace.dependencies]
 # motiongfx
-motiongfx = { version = "0.1.0", path = "crates/motiongfx" }
-bevy_motiongfx = { version = "0.1.0", path = "crates/bevy_motiongfx" }
+motiongfx = { version = "0.2.0", path = "crates/motiongfx" }
+bevy_motiongfx = { version = "0.2.0", path = "crates/bevy_motiongfx" }
 
 # bevy
-bevy = { version = "0.18.0-rc.2", default-features = false }
-bevy_ecs = { version = "0.18.0-rc.2", default-features = false }
-bevy_app = { version = "0.18.0-rc.2", default-features = false }
-bevy_platform = { version = "0.18.0-rc.2", default-features = false }
-bevy_derive = { version = "0.18.0-rc.2", default-features = false }
-bevy_math = { version = "0.18.0-rc.2", default-features = false, features = [ "libm" ] }
-bevy_asset = { version = "0.18.0-rc.2", default-features = false }
-bevy_time = { version = "0.18.0-rc.2", default-features = false }
-bevy_transform = { version = "0.18.0-rc.2", default-features = false, features = ["bevy-support"] }
-bevy_color = { version = "0.18.0-rc.2", default-features = false }
-bevy_sprite = { version = "0.18.0-rc.2", default-features = false }
-bevy_pbr = { version = "0.18.0-rc.2", default-features = false }
+bevy = { version = "0.18.0", default-features = false }
+bevy_ecs = { version = "0.18.0", default-features = false }
+bevy_app = { version = "0.18.0", default-features = false }
+bevy_platform = { version = "0.18.0", default-features = false }
+bevy_derive = { version = "0.18.0", default-features = false }
+bevy_math = { version = "0.18.0", default-features = false, features = [ "libm" ] }
+bevy_asset = { version = "0.18.0", default-features = false }
+bevy_time = { version = "0.18.0", default-features = false }
+bevy_transform = { version = "0.18.0", default-features = false, features = ["bevy-support"] }
+bevy_color = { version = "0.18.0", default-features = false }
+bevy_sprite = { version = "0.18.0", default-features = false }
+bevy_pbr = { version = "0.18.0", default-features = false }
 
 # other
 field_path = "0.2"
