@@ -84,3 +84,13 @@ impl Default for RealtimePlayer {
         }
     }
 }
+
+/// Player for recording scene at custom fps
+#[derive(Component, Debug)]
+pub struct RecordPlayer {
+    // How often to take snapshots per second of the scene
+    pub fps: u64,
+    pub frame: u64,
+}
+
+impl RecordPlayer {}
