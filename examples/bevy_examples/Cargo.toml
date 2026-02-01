@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 bevy_motiongfx = { workspace = true }
 bevy = { workspace = true }
+image = "0.25"
 
 [dev-dependencies]
 bevy = { workspace = true, default-features = true }
