@@ -29,7 +29,6 @@ bevy_pbr = { version = "0.18.0", default-features = false }
 
 # other
 field_path = "0.2"
-smallvec = "1"
 nonempty = { version = "0.12", default-features = false }
 
 [workspace.lints.clippy]
