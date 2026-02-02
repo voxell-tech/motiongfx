@@ -11,7 +11,8 @@ impl Plugin for ControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            realtime_player_timing.in_set(MotionGfxSet::Controller),
+            (record_player_timing, realtime_player_timing)
+                .in_set(MotionGfxSet::Controller),
         );
     }
 }
@@ -29,6 +30,21 @@ fn realtime_player_timing(
                 + player.time_scale * time.delta_secs();
 
             timeline.set_target_time(target_time);
+        }
+    }
+}
+
+fn record_player_timing(
+    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut q_timelines: Query<(&TimelineId, &mut RecordPlayer)>,
+) {
+    for (id, mut player) in q_timelines.iter_mut() {
+        if let Some(timeline) = motiongfx.get_timeline_mut(id) {
+            let target_time =
+                timeline.target_time() + 1. / player.fps as f32;
+
+            timeline.set_target_time(target_time);
+            player.curr_frame += 1;
         }
     }
 }
@@ -88,9 +104,22 @@ impl Default for RealtimePlayer {
 /// Player for recording scene at custom fps
 #[derive(Component, Debug)]
 pub struct RecordPlayer {
-    // How often to take snapshots per second of the scene
-    pub fps: u64,
-    pub frame: u64,
+    // How many snapshots per second to take of the scene
+    pub fps: u32,
+    /// Where
+    pub curr_frame: u64,
 }
 
-impl RecordPlayer {}
+impl RecordPlayer {
+    pub fn new() -> Self {
+        Self {
+            fps: 30,
+            curr_frame: 0,
+        }
+    }
+
+    pub fn with_fps(mut self, fps: u32) -> Self {
+        self.fps = fps;
+        self
+    }
+}

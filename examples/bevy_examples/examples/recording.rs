@@ -8,10 +8,12 @@ use bevy::render::gpu_readback::ReadbackComplete;
 use bevy::render::render_resource::Extent3d;
 use bevy::render::render_resource::TextureDimension;
 use bevy::render::render_resource::TextureUsages;
+use bevy::render::view::screenshot::Screenshot;
+use bevy::render::view::screenshot::save_to_disk;
 use bevy_examples::timeline_movement;
 use bevy_motiongfx::BevyMotionGfxPlugin;
+use bevy_motiongfx::controller::RecordPlayer;
 use bevy_motiongfx::prelude::*;
-use image::{ImageBuffer, Rgba};
 
 fn main() {
     App::new()
@@ -20,12 +22,8 @@ fn main() {
         .add_systems(Startup, (setup, spawn_timeline))
         .add_observer(save_frame)
         .add_systems(Update, (timeline_movement))
-        .insert_resource(FrameCounter(0))
         .run();
 }
-
-#[derive(Resource)]
-struct FrameCounter(u32);
 
 #[derive(Resource)]
 struct RecordingCanvas(Handle<Image>);
@@ -58,14 +56,14 @@ fn spawn_canvas(
 
 fn save_frame(
     gpu_img: On<ReadbackComplete>,
+    mut commands: Commands,
     readbacks: Query<&Readback>,
+    player: Query<&RecordPlayer, Changed<RecordPlayer>>,
     canvas: Res<RecordingCanvas>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    frame: Res<FrameCounter>,
 ) {
-    if !keyboard.just_pressed(KeyCode::KeyP) {
+    let Ok(player) = player.single() else {
         return;
-    }
+    };
 
     if let Readback::Texture(handle) =
         readbacks.get(gpu_img.entity).unwrap()
@@ -73,14 +71,12 @@ fn save_frame(
         if *handle != canvas.0 {
             return;
         }
-        let img = ImageBuffer::<Rgba<u8>, _>::from_raw(
-            3840,
-            2160,
-            gpu_img.data.to_vec(),
-        )
-        .unwrap();
-
-        img.save(format!("frame_{:05}.png", frame.0)).unwrap();
+        commands.spawn(Screenshot::image(handle.clone())).observe(
+            save_to_disk(format!(
+                "frames/frame_{:05}.png",
+                player.curr_frame
+            )),
+        );
     }
 }
 
@@ -118,7 +114,7 @@ fn spawn_timeline(
 
     commands.spawn((
         motiongfx.add_timeline(b.compile()),
-        RealtimePlayer::new(),
+        RecordPlayer::new().with_fps(120),
     ));
 }
 
