@@ -26,7 +26,7 @@ pub struct Timeline {
     ///
     /// This cache will be cleared everytime [`Timeline::queue_actions`]
     /// is called.
-    queue_cahce: QueueCache,
+    queue_cache: QueueCache,
     /// The current time of the current track.
     curr_time: f32,
     /// The target time of the target track.
@@ -107,7 +107,7 @@ impl Timeline {
                         SampleMode::Interp(_) => unreachable!(),
                     };
 
-                    self.queue_cahce.cache(
+                    self.queue_cache.cache(
                         *key,
                         clip.id,
                         &mut self.action_world,
@@ -170,7 +170,7 @@ impl Timeline {
                     let t = (self.target_time - clip.start)
                         / (clip.end() - clip.start);
 
-                    self.queue_cahce.cache(
+                    self.queue_cache.cache(
                         *key,
                         clip.id,
                         &mut self.action_world,
@@ -194,7 +194,7 @@ impl Timeline {
                         continue;
                     }
 
-                    self.queue_cahce.cache(
+                    self.queue_cache.cache(
                         *key,
                         clip.id,
                         &mut self.action_world,
@@ -240,7 +240,7 @@ impl Timeline {
     }
 
     fn reset_queues(&mut self) {
-        self.queue_cahce.clear();
+        self.queue_cache.clear();
         self.action_world.clear_all_marks();
     }
 }
@@ -249,8 +249,8 @@ impl Timeline {
 impl Timeline {
     /// Returns the current queue cache.
     #[inline]
-    pub fn queue_cahce(&self) -> &QueueCache {
-        &self.queue_cahce
+    pub fn queue_cache(&self) -> &QueueCache {
+        &self.queue_cache
     }
 
     /// Returns the current playback time.
@@ -487,7 +487,7 @@ impl TimelineBuilder {
                 .into_iter()
                 .collect(),
             tracks: self.tracks.into_boxed_slice(),
-            queue_cahce: QueueCache::new(),
+            queue_cache: QueueCache::new(),
             curr_time: 0.0,
             target_time: 0.0,
             curr_index: 0,
