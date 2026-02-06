@@ -120,6 +120,32 @@ fn main() {
 
     // Check the values after sampling:
     println!("After:  {:?}", world.subject_world);
+
+    timeline.set_target_time(7.0);
+    println!();
+
+    println!(
+        "current time: {},\ntarget time: {}",
+        timeline.curr_time(),
+        timeline.target_time()
+    );
+
+    // Queue and sample the actions.
+    timeline.queue_actions();
+    timeline.sample_queued_actions(
+        &world.accessor_registry,
+        &world.pipeline_registry,
+        &mut world.subject_world,
+    );
+    println!();
+
+    println!(
+        "current time: {},\ntarget time: {}",
+        timeline.curr_time(),
+        timeline.target_time()
+    );
+
+    println!("Timeline is complete: {}", timeline.is_complete());
 }
 
 fn register_pipelines(
