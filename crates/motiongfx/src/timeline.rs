@@ -301,6 +301,15 @@ impl Timeline {
     pub fn last_track_index(&self) -> usize {
         self.tracks.len().saturating_sub(1)
     }
+
+    /// Get the index of the last track. This is essentially the largest
+    /// index you can provide in [`Timeline::set_target_track`].
+    #[inline]
+    pub fn is_complete(&self) -> bool {
+        self.is_last_track()
+            && self.curr_time
+                >= self.tracks()[self.last_track_index()].duration()
+    }
 }
 
 // Setter methods.
