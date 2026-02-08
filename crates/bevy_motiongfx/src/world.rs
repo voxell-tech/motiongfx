@@ -7,6 +7,7 @@ use motiongfx::prelude::{FieldAccessorRegistry, Timeline};
 
 use crate::MotionGfxSet;
 use crate::pipeline::WorldPipelineRegistry;
+use crate::prelude::RealtimePlayer;
 
 pub struct MotionGfxWorldPlugin;
 
@@ -14,7 +15,9 @@ impl Plugin for MotionGfxWorldPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MotionGfxWorld>().add_systems(
             PostUpdate,
-            sample_timelines.in_set(MotionGfxSet::Sample),
+            (sample_timelines, complete_timelines::<RealtimePlayer>)
+                .chain()
+                .in_set(MotionGfxSet::Sample),
         );
     }
 }
@@ -38,6 +41,30 @@ fn sample_timelines(world: &mut World) {
 /// A unique Id for a [`Timeline`].
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimelineId(u64);
+
+/// Signal for complete timelines
+#[derive(Component)]
+pub struct TimelineComplete;
+
+fn complete_timelines<T>(
+    mut commands: Commands,
+    motiongfx: Res<MotionGfxWorld>,
+    timelines: Query<
+        (Entity, &TimelineId),
+        (With<T>, Without<TimelineComplete>),
+    >,
+) where
+    T: Component,
+{
+    for (entity, timeline) in timelines.iter() {
+        if motiongfx
+            .get_timeline(timeline)
+            .is_some_and(|t| t.is_complete())
+        {
+            commands.entity(entity).insert(TimelineComplete);
+        }
+    }
+}
 
 /// Resources that the [`motiongfx`] framework operates on.
 #[derive(Resource)]
