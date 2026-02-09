@@ -58,10 +58,10 @@ fn save_frame(
     gpu_img: On<ReadbackComplete>,
     mut commands: Commands,
     readbacks: Query<&Readback>,
-    player: Query<&RecordPlayer, Changed<RecordPlayer>>,
+    mut player: Query<&mut RecordPlayer>,
     canvas: Res<RecordingCanvas>,
 ) {
-    let Ok(player) = player.single() else {
+    let Ok(mut player) = player.single_mut() else {
         return;
     };
 
@@ -77,6 +77,8 @@ fn save_frame(
                 player.curr_frame
             )),
         );
+
+        player.curr_frame += 1;
     }
 }
 

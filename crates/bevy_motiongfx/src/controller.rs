@@ -44,7 +44,6 @@ fn record_player_timing(
                 timeline.target_time() + 1. / player.fps as f32;
 
             timeline.set_target_time(target_time);
-            player.curr_frame += 1;
         }
     }
 }
