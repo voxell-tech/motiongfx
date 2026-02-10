@@ -3,17 +3,16 @@ use core::f32::consts::FRAC_PI_2;
 use bevy::asset::RenderAssetUsages;
 use bevy::color::palettes;
 use bevy::prelude::*;
-use bevy::render::gpu_readback::Readback;
-use bevy::render::gpu_readback::ReadbackComplete;
-use bevy::render::render_resource::Extent3d;
-use bevy::render::render_resource::TextureDimension;
-use bevy::render::render_resource::TextureUsages;
-use bevy::render::view::screenshot::Screenshot;
-use bevy::render::view::screenshot::save_to_disk;
+use bevy::render::{
+    gpu_readback::{Readback, ReadbackComplete},
+    render_resource::{Extent3d, TextureDimension, TextureUsages},
+    view::screenshot::{Screenshot, save_to_disk},
+};
 use bevy_examples::timeline_movement;
-use bevy_motiongfx::BevyMotionGfxPlugin;
-use bevy_motiongfx::controller::RecordPlayer;
-use bevy_motiongfx::prelude::*;
+use bevy_motiongfx::{
+    BevyMotionGfxPlugin, controller::RecordPlayer, prelude::*,
+    world::TimelineComplete,
+};
 
 fn main() {
     App::new()
@@ -21,7 +20,7 @@ fn main() {
         .add_systems(PreStartup, spawn_canvas)
         .add_systems(Startup, (setup, spawn_timeline))
         .add_observer(save_frame)
-        .add_systems(Update, (timeline_movement))
+        .add_systems(Update, timeline_movement)
         .run();
 }
 
@@ -58,10 +57,10 @@ fn save_frame(
     gpu_img: On<ReadbackComplete>,
     mut commands: Commands,
     readbacks: Query<&Readback>,
-    mut player: Query<&mut RecordPlayer>,
+    player: Query<&RecordPlayer, Without<TimelineComplete>>,
     canvas: Res<RecordingCanvas>,
 ) {
-    let Ok(mut player) = player.single_mut() else {
+    let Ok(player) = player.single() else {
         return;
     };
 
@@ -77,8 +76,6 @@ fn save_frame(
                 player.curr_frame
             )),
         );
-
-        player.curr_frame += 1;
     }
 }
 
@@ -116,7 +113,7 @@ fn spawn_timeline(
 
     commands.spawn((
         motiongfx.add_timeline(b.compile()),
-        RecordPlayer::new().with_fps(120),
+        RecordPlayer::default().with_fps(30),
     ));
 }
 

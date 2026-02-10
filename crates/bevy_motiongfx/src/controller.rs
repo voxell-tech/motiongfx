@@ -44,6 +44,7 @@ fn record_player_timing(
                 timeline.target_time() + 1. / player.fps as f32;
 
             timeline.set_target_time(target_time);
+            player.curr_frame += 1;
         }
     }
 }
@@ -100,7 +101,8 @@ impl Default for RealtimePlayer {
     }
 }
 
-/// Player for recording scene at custom fps
+/// A controller for [`Timeline`] that increments the time
+/// based on based on a specified fps for scene recording
 #[derive(Component, Debug)]
 pub struct RecordPlayer {
     // How many snapshots per second to take of the scene
@@ -109,12 +111,18 @@ pub struct RecordPlayer {
     pub curr_frame: u64,
 }
 
-impl RecordPlayer {
-    pub fn new() -> Self {
+impl Default for RecordPlayer {
+    fn default() -> Self {
         Self {
             fps: 30,
             curr_frame: 0,
         }
+    }
+}
+
+impl RecordPlayer {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn with_fps(mut self, fps: u32) -> Self {

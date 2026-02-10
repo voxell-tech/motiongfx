@@ -6,6 +6,7 @@ use bevy_platform::collections::HashMap;
 use motiongfx::prelude::{FieldAccessorRegistry, Timeline};
 
 use crate::MotionGfxSet;
+use crate::controller::RecordPlayer;
 use crate::pipeline::WorldPipelineRegistry;
 use crate::prelude::RealtimePlayer;
 
@@ -15,7 +16,11 @@ impl Plugin for MotionGfxWorldPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MotionGfxWorld>().add_systems(
             PostUpdate,
-            (sample_timelines, complete_timelines::<RealtimePlayer>)
+            (
+                sample_timelines,
+                complete_timelines::<RealtimePlayer>,
+                complete_timelines::<RecordPlayer>,
+            )
                 .chain()
                 .in_set(MotionGfxSet::Sample),
         );
@@ -46,6 +51,7 @@ pub struct TimelineId(u64);
 #[derive(Component)]
 pub struct TimelineComplete;
 
+#[allow(clippy::type_complexity)]
 fn complete_timelines<T>(
     mut commands: Commands,
     motiongfx: Res<MotionGfxWorld>,
