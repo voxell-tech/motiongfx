@@ -103,6 +103,8 @@ impl Default for RealtimePlayer {
 
 /// A controller for [`Timeline`] that increments the time
 /// based on based on a specified fps for scene recording
+///
+/// [`Timeline`]: motiongfx::timeline::Timeline
 #[derive(Component, Debug)]
 pub struct RecordPlayer {
     // How many snapshots per second to take of the scene
