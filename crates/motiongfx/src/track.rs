@@ -324,6 +324,12 @@ impl Track {
     pub fn duration(&self) -> f32 {
         self.duration
     }
+
+    // TODO
+    // #[inline]
+    // pub fn is_complete(&self) -> bool {
+    //     todo!()
+    // }
 }
 
 impl IntoIterator for Track {

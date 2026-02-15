@@ -1,11 +1,14 @@
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
+use bevy_motiongfx::world::TimelineComplete;
 
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins, BevyMotionGfxPlugin))
         .add_systems(Startup, (setup, build_timeline))
+        // logs timeline complete
+        .add_observer(log_complete)
         .run();
 }
 
@@ -21,6 +24,9 @@ fn setup(mut commands: Commands) {
         Transform::from_xyz(3.0, 10.0, 5.0)
             .looking_at(Vec3::ZERO, Vec3::Y),
     ));
+}
+fn log_complete(_: On<Add, TimelineComplete>) {
+    info!("Timeline is complete")
 }
 
 /// Creates the timeline and plays it.
