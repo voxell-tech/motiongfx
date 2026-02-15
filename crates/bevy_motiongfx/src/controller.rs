@@ -38,6 +38,7 @@ fn record_player_timing(
     mut motiongfx: ResMut<MotionGfxWorld>,
     mut q_timelines: Query<(&TimelineId, &mut RecordPlayer)>,
 ) {
+    // Each frame we update the cube position according to the fps
     for (id, mut player) in q_timelines.iter_mut() {
         if let Some(timeline) = motiongfx.get_timeline_mut(id) {
             let target_time =
@@ -101,8 +102,8 @@ impl Default for RealtimePlayer {
     }
 }
 
-/// A controller for [`Timeline`] that increments the time
-/// based on based on a specified fps for scene recording
+/// A controller for [`Timeline`] that increments the sequence time
+/// based on based on a specified fps. This is for scene recording.
 ///
 /// [`Timeline`]: motiongfx::timeline::Timeline
 #[derive(Component, Debug)]
