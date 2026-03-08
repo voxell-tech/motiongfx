@@ -91,8 +91,8 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            ::motiongfx::field_path::field::field!(<$root>),
-            ::motiongfx::field_path::accessor::accessor!(<$root>),
+            ::motiongfx::field_path::field!(<$root>),
+            ::motiongfx::field_path::accessor!(<$root>),
         );
 
         register_fields!(
@@ -115,8 +115,8 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            motiongfx::field_path::field::field!(<$root>$(::$path)*::$field),
-            ::motiongfx::field_path::accessor::accessor!(<$root>$(::$path)*::$field),
+            motiongfx::field_path::field!(<$root>$(::$path)*::$field),
+            ::motiongfx::field_path::accessor!(<$root>$(::$path)*::$field),
         );
 
         // Register sub fields.

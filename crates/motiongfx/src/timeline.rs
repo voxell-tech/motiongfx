@@ -3,8 +3,8 @@ use core::cmp::Ordering;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_platform::collections::HashMap;
-use field_path::accessor::FieldAccessorRegistry;
 use field_path::field::Field;
+use field_path::registry::FieldAccessorRegistry;
 
 use crate::ThreadSafe;
 use crate::action::{

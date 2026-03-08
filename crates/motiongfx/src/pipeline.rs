@@ -2,7 +2,8 @@ use core::any::TypeId;
 
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
-use field_path::accessor::{Accessor, FieldAccessorRegistry};
+use field_path::accessor::Accessor;
+use field_path::registry::FieldAccessorRegistry;
 
 use crate::ThreadSafe;
 use crate::action::{
