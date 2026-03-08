@@ -135,10 +135,15 @@ fn slide_movement(
             }
 
             if keys.just_pressed(KeyCode::Space) {
-                if keys.pressed(KeyCode::ShiftLeft) {
+                if keys.any_pressed([
+                    KeyCode::ShiftLeft,
+                    KeyCode::ShiftRight,
+                ]) {
                     player.set_playing(true).set_time_scale(-1.0);
 
-                    if timeline.curr_time() <= 0.0 {
+                    if timeline.curr_time() <= 0.0
+                        && timeline.curr_index() > 0
+                    {
                         // Move to the end of the previous track.
                         let target_index =
                             timeline.curr_index().saturating_sub(1);
@@ -148,8 +153,8 @@ fn slide_movement(
                 } else {
                     player.set_playing(true).set_time_scale(1.0);
 
-                    if timeline.curr_time()
-                        >= timeline.curr_track().duration()
+                    if timeline.is_track_end()
+                        && !timeline.is_complete()
                     {
                         // Move to the start of the next track.
                         let target_index = timeline.curr_index() + 1;
