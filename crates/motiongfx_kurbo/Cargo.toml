@@ -1,0 +1,19 @@
+[package]
+name = "motiongfx_kurbo"
+description = "Kurbo geometry support for the MotionGfx framework."
+keywords = ["motion", "animation", "procedural", "kurbo"]
+categories = ["no-std", "multimedia", "graphics", "visualization"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# motiongfx
+motiongfx = { workspace = true }
+
+# kurbo
+kurbo = { workspace = true }
+
+[lints]
+workspace = true

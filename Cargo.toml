@@ -12,6 +12,7 @@ repository = "https://github.com/voxell-tech/motiongfx"
 # motiongfx
 motiongfx = { version = "0.3.0", path = "crates/motiongfx" }
 bevy_motiongfx = { version = "0.3.0", path = "crates/bevy_motiongfx" }
+motiongfx_kurbo = { version = "0.3.0", path = "crates/motiongfx_kurbo" }
 
 # bevy
 bevy = { version = "0.18.1", default-features = false }
@@ -30,6 +31,7 @@ bevy_pbr = { version = "0.18.1", default-features = false }
 # other
 field_path = "0.4.1"
 nonempty = { version = "0.12", default-features = false }
+kurbo = { version = "0.13", default-features = false }
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"

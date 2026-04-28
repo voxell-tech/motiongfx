@@ -3032,6 +3032,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "kurbo"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7564e90fe3c0d5771e1f0bc95322b21baaeaa0d9213fa6a0b61c99f8b17b3bfb"
+dependencies = [
+ "arrayvec",
+ "euclid",
+ "libm",
+ "smallvec",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3219,6 +3231,14 @@ dependencies = [
  "bevy_platform",
  "field_path",
  "nonempty",
+]
+
+[[package]]
+name = "motiongfx_kurbo"
+version = "0.3.0"
+dependencies = [
+ "kurbo",
+ "motiongfx",
 ]
 
 [[package]]
