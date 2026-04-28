@@ -1,5 +1,5 @@
 [package]
-name = "motiongfx_kurbo"
+name = "kurbo_motiongfx"
 description = "Kurbo geometry support for the MotionGfx framework."
 keywords = ["motion", "animation", "procedural", "kurbo"]
 categories = ["no-std", "multimedia", "graphics", "visualization"]

@@ -12,7 +12,7 @@ repository = "https://github.com/voxell-tech/motiongfx"
 # motiongfx
 motiongfx = { version = "0.3.0", path = "crates/motiongfx" }
 bevy_motiongfx = { version = "0.3.0", path = "crates/bevy_motiongfx" }
-motiongfx_kurbo = { version = "0.3.0", path = "crates/motiongfx_kurbo" }
+kurbo_motiongfx = { version = "0.3.0", path = "crates/kurbo_motiongfx" }
 
 # bevy
 bevy = { version = "0.18.1", default-features = false }

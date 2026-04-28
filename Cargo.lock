@@ -3044,6 +3044,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "kurbo_motiongfx"
+version = "0.3.0"
+dependencies = [
+ "kurbo",
+ "motiongfx",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3231,14 +3239,6 @@ dependencies = [
  "bevy_platform",
  "field_path",
  "nonempty",
-]
-
-[[package]]
-name = "motiongfx_kurbo"
-version = "0.3.0"
-dependencies = [
- "kurbo",
- "motiongfx",
 ]
 
 [[package]]

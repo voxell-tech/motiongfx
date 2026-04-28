@@ -1,13 +1,17 @@
-use kurbo::{BezPath, CubicBez, ParamCurve, PathEl, PathSeg, QuadBez};
+use kurbo::{
+    BezPath, CubicBez, ParamCurve, PathEl, PathSeg, QuadBez,
+};
 
 #[inline]
 pub fn trace_cubic_bez(curve: &CubicBez, t: f32) -> CubicBez {
-    curve.subsegment(0.0..f64::from(t).clamp(0.0, 1.0))
+    let t = t as f64;
+    curve.subsegment(0.0..t)
 }
 
 #[inline]
 pub fn trace_quad_bez(curve: &QuadBez, t: f32) -> QuadBez {
-    curve.subsegment(0.0..f64::from(t).clamp(0.0, 1.0))
+    let t = t as f64;
+    curve.subsegment(0.0..t)
 }
 
 /// Returns the prefix of `path` traced from the start up to progress `t ∈ [0, 1]`.
@@ -58,6 +62,8 @@ fn push_seg(path: &mut BezPath, seg: PathSeg) {
     match seg {
         PathSeg::Line(l) => path.push(PathEl::LineTo(l.p1)),
         PathSeg::Quad(q) => path.push(PathEl::QuadTo(q.p1, q.p2)),
-        PathSeg::Cubic(c) => path.push(PathEl::CurveTo(c.p1, c.p2, c.p3)),
+        PathSeg::Cubic(c) => {
+            path.push(PathEl::CurveTo(c.p1, c.p2, c.p3))
+        }
     }
 }
