@@ -1,4 +1,4 @@
-use kurbo::{Affine, Circle, Line, Point, Rect, RoundedRect, RoundedRectRadii, Size, Vec2};
+use kurbo::{Affine, Circle, CubicBez, Line, Point, QuadBez, Rect, RoundedRect, RoundedRectRadii, Size, Vec2};
 
 #[inline]
 fn lerp(a: f64, b: f64, t: f32) -> f64 {
@@ -60,6 +60,25 @@ pub fn interp_affine(a: &Affine, b: &Affine, t: f32) -> Affine {
         lerp(ac[4], bc[4], t),
         lerp(ac[5], bc[5], t),
     ])
+}
+
+#[inline]
+pub fn interp_cubic_bez(a: &CubicBez, b: &CubicBez, t: f32) -> CubicBez {
+    CubicBez::new(
+        interp_point(&a.p0, &b.p0, t),
+        interp_point(&a.p1, &b.p1, t),
+        interp_point(&a.p2, &b.p2, t),
+        interp_point(&a.p3, &b.p3, t),
+    )
+}
+
+#[inline]
+pub fn interp_quad_bez(a: &QuadBez, b: &QuadBez, t: f32) -> QuadBez {
+    QuadBez::new(
+        interp_point(&a.p0, &b.p0, t),
+        interp_point(&a.p1, &b.p1, t),
+        interp_point(&a.p2, &b.p2, t),
+    )
 }
 
 #[inline]
