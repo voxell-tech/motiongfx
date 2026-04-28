@@ -34,7 +34,8 @@ bevy = { workspace = true, features = ["bevy_pbr"] }
 workspace = true
 
 [features]
-default = ["asset", "transform", "color", "sprite", "pbr"]
+default = ["std", "asset", "transform", "color", "sprite", "pbr"]
+std = ["motiongfx/std", "bevy_ecs/std", "bevy_app/std", "bevy_platform/std", "bevy_time/std"]
 asset = ["dep:bevy_asset"]
 transform = ["dep:bevy_transform"]
 color = ["dep:bevy_color"]
