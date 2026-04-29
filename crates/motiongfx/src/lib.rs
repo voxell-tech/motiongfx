@@ -29,6 +29,7 @@ pub mod prelude {
     pub use crate::ease;
     pub use crate::pipeline::{
         BakeCtx, Pipeline, PipelineKey, PipelineRegistry, SampleCtx,
+        SubjectSource,
     };
     pub use crate::timeline::{Timeline, TimelineBuilder};
     pub use crate::track::{Track, TrackFragment, TrackOrdering};

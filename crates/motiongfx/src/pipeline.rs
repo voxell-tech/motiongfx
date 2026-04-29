@@ -1,8 +1,8 @@
 use core::any::TypeId;
+use core::marker::PhantomData;
 
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
-use field_path::accessor::Accessor;
 use field_path::registry::FieldAccessorRegistry;
 
 use crate::ThreadSafe;
@@ -12,6 +12,27 @@ use crate::action::{
 };
 use crate::subject::SubjectId;
 use crate::track::Track;
+
+pub struct PipelineHandle<I, S, T>
+where
+    I: SubjectId,
+    S: 'static,
+    T: 'static,
+{
+    #[expect(clippy::complexity)]
+    _marker: PhantomData<fn() -> (I, S, T)>,
+}
+
+impl<I, S, T> PipelineHandle<I, S, T>
+where
+    I: SubjectId,
+    S: 'static,
+    T: 'static,
+{
+    pub fn as_key(&self) -> PipelineKey {
+        PipelineKey::new::<I, S, T>()
+    }
+}
 
 /// Uniquely identifies a [`Pipeline`] to bake and sample a target
 /// field from a subject's source data structure.
@@ -50,8 +71,18 @@ impl PipelineKey {
     }
 }
 
-pub type BakeFn<W> = fn(&W, BakeCtx);
-pub type SampleFn<W> = fn(&mut W, SampleCtx);
+/// Provides read and write access to a source type `S` by subject id `I`.
+pub trait SubjectSource<I: SubjectId, S: 'static> {
+    fn get_source(&self, id: I) -> Option<&S>;
+    fn apply_source<R>(
+        &mut self,
+        id: I,
+        f: impl FnOnce(&mut S) -> R,
+    ) -> Option<R>;
+}
+
+pub type BakeFn<W> = fn(BakeCtx<W>);
+pub type SampleFn<W> = fn(SampleCtx<W>);
 
 #[derive(Debug, Clone, Copy)]
 pub struct Pipeline<W> {
@@ -64,12 +95,12 @@ impl<W> Pipeline<W> {
         Self { bake, sample }
     }
 
-    pub fn bake(&self, world: &W, ctx: BakeCtx) {
-        (self.bake)(world, ctx)
+    pub fn bake(&self, ctx: BakeCtx<W>) {
+        (self.bake)(ctx)
     }
 
-    pub fn sample(&self, world: &mut W, ctx: SampleCtx) {
-        (self.sample)(world, ctx)
+    pub fn sample(&self, ctx: SampleCtx<W>) {
+        (self.sample)(ctx)
     }
 }
 
@@ -114,116 +145,111 @@ impl<W> Default for PipelineRegistry<W> {
     }
 }
 
-pub struct BakeCtx<'a> {
+pub struct BakeCtx<'a, W> {
+    pub world: &'a W,
     pub track: &'a Track,
     pub action_world: &'a mut ActionWorld,
     pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
-impl<'a> BakeCtx<'a> {
-    pub fn bake<I, S, T>(
-        self,
-        get_source: impl Fn(I) -> Option<&'a S>,
-    ) where
-        I: SubjectId,
-        S: 'static,
-        T: Clone + ThreadSafe,
-    {
-        for (key, span) in self.track.sequences_spans() {
-            let Ok(accessor) =
-                self.accessor_registry.get::<S, T>(key.field())
+pub fn bake<W, I, S, T>(ctx: BakeCtx<W>)
+where
+    W: SubjectSource<I, S>,
+    I: SubjectId,
+    S: 'static,
+    T: Clone + ThreadSafe,
+{
+    for (key, span) in ctx.track.sequences_spans() {
+        let Ok(accessor) =
+            ctx.accessor_registry.get::<S, T>(key.field())
+        else {
+            continue;
+        };
+
+        let Some(&id) =
+            ctx.action_world.get_id(&key.subject_id().uid())
+        else {
+            continue;
+        };
+
+        let Some(source) = ctx.world.get_source(id) else {
+            continue;
+        };
+
+        let mut start = accessor.get_ref(source).clone();
+
+        for ActionClip { id, .. } in ctx.track.clips(*span) {
+            let Some(action) = ctx.action_world.get_action::<T>(*id)
             else {
                 continue;
             };
 
-            let Some(&id) =
-                self.action_world.get_id(&key.subject_id().uid())
-            else {
-                continue;
-            };
+            let end = action(&start);
+            let segment = Segment::new(start.clone(), end.clone());
 
-            // Get the source from the target world.
-            let Some(source) = get_source(id) else {
-                continue;
-            };
+            ctx.action_world.edit_action(*id).set_segment(segment);
 
-            let mut start = accessor.get_ref(source).clone();
-
-            for ActionClip { id, .. } in self.track.clips(*span) {
-                let Some(action) =
-                    self.action_world.get_action::<T>(*id)
-                else {
-                    continue;
-                };
-
-                let end = action(&start);
-                let segment =
-                    Segment::new(start.clone(), end.clone());
-
-                self.action_world
-                    .edit_action(*id)
-                    .set_segment(segment);
-
-                start = end;
-            }
+            start = end;
         }
     }
 }
 
-pub struct SampleCtx<'a> {
+impl<W> BakeCtx<'_, W> {}
+
+pub struct SampleCtx<'a, W> {
+    pub world: &'a mut W,
     pub action_world: &'a ActionWorld,
     pub accessor_registry: &'a FieldAccessorRegistry,
 }
 
-impl<'a> SampleCtx<'a> {
-    pub fn sample<I, S, T>(
-        self,
-        mut set_target: impl FnMut(I, T, Accessor<S, T>),
-    ) where
-        I: SubjectId,
-        S: 'static,
-        T: Clone + ThreadSafe,
+pub fn sample<W, I, S, T>(ctx: SampleCtx<W>)
+where
+    W: SubjectSource<I, S>,
+    I: SubjectId,
+    S: 'static,
+    T: Clone + ThreadSafe,
+{
+    let Some(mut q) = ctx.action_world.world().try_query::<(
+        &ActionKey,
+        &SampleMode,
+        &Segment<T>,
+        &InterpStorage<T>,
+        Option<&EaseStorage>,
+    )>() else {
+        return;
+    };
+
+    for (key, sample_mode, segment, interp, ease) in
+        q.iter(ctx.action_world.world())
     {
-        let Some(mut q) = self.action_world.world().try_query::<(
-            &ActionKey,
-            &SampleMode,
-            &Segment<T>,
-            &InterpStorage<T>,
-            Option<&EaseStorage>,
-        )>() else {
-            return;
+        let Ok(accessor) =
+            ctx.accessor_registry.get::<S, T>(key.field())
+        else {
+            continue;
         };
 
-        for (key, sample_mode, segment, interp, ease) in
-            q.iter(self.action_world.world())
-        {
-            let Ok(accessor) =
-                self.accessor_registry.get::<S, T>(key.field())
-            else {
-                continue;
-            };
+        let Some(&id) =
+            ctx.action_world.get_id(&key.subject_id().uid())
+        else {
+            continue;
+        };
 
-            let Some(&id) =
-                self.action_world.get_id(&key.subject_id().uid())
-            else {
-                continue;
-            };
+        let target = match sample_mode {
+            SampleMode::Start => segment.start.clone(),
+            SampleMode::End => segment.end.clone(),
+            SampleMode::Interp(t) => {
+                let t = match ease {
+                    Some(ease) => ease.0(*t),
+                    None => *t,
+                };
 
-            let target = match sample_mode {
-                SampleMode::Start => segment.start.clone(),
-                SampleMode::End => segment.end.clone(),
-                SampleMode::Interp(t) => {
-                    let t = match ease {
-                        Some(ease) => ease.0(*t),
-                        None => *t,
-                    };
+                interp.0(&segment.start, &segment.end, t)
+            }
+        };
 
-                    interp.0(&segment.start, &segment.end, t)
-                }
-            };
-
-            set_target(id, target, accessor);
-        }
+        ctx.world.apply_source(id, |source| {
+            *accessor.get_mut(source) = target;
+        });
     }
 }
 

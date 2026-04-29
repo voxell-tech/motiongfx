@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use motiongfx::pipeline::{bake, sample};
 use motiongfx::prelude::*;
 
 struct World {
@@ -150,96 +151,62 @@ fn main() {
     );
 }
 
+impl SubjectSource<Id, Point> for SubjectWorld {
+    fn get_source(&self, id: Id) -> Option<&Point> {
+        match self.world.get(&id)? {
+            Subject::Point(point) => Some(point),
+            Subject::Line(_) => None,
+        }
+    }
+
+    fn apply_source<R>(
+        &mut self,
+        id: Id,
+        f: impl FnOnce(&mut Point) -> R,
+    ) -> Option<R> {
+        match self.world.get_mut(&id)? {
+            Subject::Point(point) => Some(f(point)),
+            Subject::Line(_) => None,
+        }
+    }
+}
+
+impl SubjectSource<Id, Line> for SubjectWorld {
+    fn get_source(&self, id: Id) -> Option<&Line> {
+        match self.world.get(&id)? {
+            Subject::Line(line) => Some(line),
+            Subject::Point(_) => None,
+        }
+    }
+
+    fn apply_source<R>(
+        &mut self,
+        id: Id,
+        f: impl FnOnce(&mut Line) -> R,
+    ) -> Option<R> {
+        match self.world.get_mut(&id)? {
+            Subject::Line(line) => Some(f(line)),
+            Subject::Point(_) => None,
+        }
+    }
+}
+
 fn register_pipelines(
     pipeline_registry: &mut PipelineRegistry<SubjectWorld>,
 ) {
     pipeline_registry.register_unchecked(
         PipelineKey::new::<Id, Point, f32>(),
-        Pipeline::new(
-            |world, ctx| {
-                ctx.bake::<Id, Point, f32>(|id| {
-                    let subject = world.world.get(&id)?;
-                    match subject {
-                        Subject::Point(point) => Some(point),
-                        Subject::Line(_) => None,
-                    }
-                });
-            },
-            |world, ctx| {
-                ctx.sample::<Id, Point, f32>(
-                    |id, target, accessor| {
-                        let Some(subject) = world.world.get_mut(&id)
-                        else {
-                            return;
-                        };
-
-                        if let Subject::Point(point) = subject {
-                            *accessor.get_mut(point) = target;
-                        }
-                    },
-                );
-            },
-        ),
+        Pipeline::new(bake::<_, _, Point, f32>, sample::<_, _, Point, f32>),
     );
 
     pipeline_registry.register_unchecked(
         PipelineKey::new::<Id, Line, Point>(),
-        Pipeline::new(
-            |world, ctx| {
-                ctx.bake::<Id, Line, Point>(|id| {
-                    let subject = world.world.get(&id)?;
-                    match subject {
-                        Subject::Line(line) => Some(line),
-                        Subject::Point(_) => None,
-                    }
-                });
-            },
-            |world, ctx| {
-                ctx.sample::<Id, Line, Point>(
-                    |id, target, accessor| {
-                        let Some(subject) = world.world.get_mut(&id)
-                        else {
-                            return;
-                        };
-
-                        if let Subject::Line(line) = subject {
-                            *accessor.get_mut(line) = target;
-                        }
-                    },
-                );
-            },
-        ),
+        Pipeline::new(bake::<_, _, Line, Point>, sample::<_, _, Line, Point>),
     );
 
-    // TODO: This looks almost exactly the same as above, could
-    // pipeline be simplified enough to ignore the target field?
     pipeline_registry.register_unchecked(
         PipelineKey::new::<Id, Line, f32>(),
-        Pipeline::new(
-            |world, ctx| {
-                ctx.bake::<Id, Line, f32>(|id| {
-                    let subject = world.world.get(&id)?;
-                    match subject {
-                        Subject::Line(line) => Some(line),
-                        Subject::Point(_) => None,
-                    }
-                });
-            },
-            |world, ctx| {
-                ctx.sample::<Id, Line, f32>(
-                    |id, target, accessor| {
-                        let Some(subject) = world.world.get_mut(&id)
-                        else {
-                            return;
-                        };
-
-                        if let Subject::Line(line) = subject {
-                            *accessor.get_mut(line) = target;
-                        }
-                    },
-                );
-            },
-        ),
+        Pipeline::new(bake::<_, _, Line, f32>, sample::<_, _, Line, f32>),
     );
 }
 

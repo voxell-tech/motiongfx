@@ -1,74 +1,69 @@
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
+use motiongfx::pipeline::{bake, sample};
 use motiongfx::prelude::*;
 
-pub type BevyPipelineRegistry = PipelineRegistry<World>;
-pub type BevyPipeline = Pipeline<World>;
+/// Newtype wrapper around [`World`] that is local to this crate,
+/// allowing [`SubjectSource`] impls without violating the orphan rule.
+#[repr(transparent)]
+pub struct BevyWorld(pub World);
 
-pub fn bake_component_actions<S, T>(world: &World, ctx: BakeCtx)
-where
-    S: Component,
-    T: Clone + ThreadSafe,
-{
-    ctx.bake::<Entity, S, T>(|entity| world.get::<S>(entity));
+impl BevyWorld {
+    pub fn from_ref(world: &World) -> &Self {
+        // SAFETY: `BevyWorld` is repr(transparent) over `World`.
+        unsafe { &*(world as *const World as *const Self) }
+    }
+
+    pub fn from_mut(world: &mut World) -> &mut Self {
+        // SAFETY: `BevyWorld` is repr(transparent) over `World`.
+        unsafe { &mut *(world as *mut World as *mut Self) }
+    }
 }
 
-pub fn sample_component_actions<S, T>(
-    world: &mut World,
-    ctx: SampleCtx,
-) where
-    S: Component<Mutability = Mutable>,
-    T: Clone + ThreadSafe,
+impl<S: Component<Mutability = Mutable>> SubjectSource<Entity, S>
+    for BevyWorld
 {
-    ctx.sample::<Entity, S, T>(|entity, target, accessor| {
-        if let Some(mut source) = world.get_mut::<S>(entity) {
-            *accessor.get_mut(&mut source) = target;
-        }
-    });
-}
+    fn get_source(&self, id: Entity) -> Option<&S> {
+        self.0.get::<S>(id)
+    }
 
-#[cfg(feature = "asset")]
-pub fn bake_asset_actions<S, T>(world: &World, ctx: BakeCtx)
-where
-    S: bevy_asset::Asset,
-    T: Clone + ThreadSafe,
-{
-    use bevy_asset::Assets;
-    use bevy_asset::UntypedAssetId;
-
-    let Some(assets) = world.get_resource::<Assets<S>>() else {
-        return;
-    };
-
-    ctx.bake::<UntypedAssetId, S, T>(|asset_id| {
-        assets.get(asset_id.typed::<S>())
-    });
+    fn apply_source<R>(
+        &mut self,
+        id: Entity,
+        f: impl FnOnce(&mut S) -> R,
+    ) -> Option<R> {
+        self.0.get_mut::<S>(id).map(|mut m| f(m.as_mut()))
+    }
 }
 
 #[cfg(feature = "asset")]
-pub fn sample_asset_actions<S, T>(world: &mut World, ctx: SampleCtx)
-where
-    S: bevy_asset::Asset,
-    T: Clone + ThreadSafe,
+impl<S: bevy_asset::Asset>
+    SubjectSource<bevy_asset::UntypedAssetId, S> for BevyWorld
 {
-    use bevy_asset::Assets;
-    use bevy_asset::UntypedAssetId;
+    fn get_source(
+        &self,
+        id: bevy_asset::UntypedAssetId,
+    ) -> Option<&S> {
+        self.0
+            .get_resource::<bevy_asset::Assets<S>>()?
+            .get(id.typed::<S>())
+    }
 
-    let Some(mut assets) = world.get_resource_mut::<Assets<S>>()
-    else {
-        return;
-    };
-
-    ctx.sample::<UntypedAssetId, S, T>(
-        |asset_id, target, accessor| {
-            if let Some(source) =
-                assets.get_mut(asset_id.typed::<S>())
-            {
-                *accessor.get_mut(source) = target;
-            }
-        },
-    );
+    fn apply_source<R>(
+        &mut self,
+        id: bevy_asset::UntypedAssetId,
+        f: impl FnOnce(&mut S) -> R,
+    ) -> Option<R> {
+        self.0
+            .get_resource_mut::<bevy_asset::Assets<S>>()?
+            .into_inner()
+            .get_mut(id.typed::<S>())
+            .map(f)
+    }
 }
+
+pub type BevyPipelineRegistry = PipelineRegistry<BevyWorld>;
+pub type BevyPipeline = Pipeline<BevyWorld>;
 
 pub trait PipelineRegistryExt {
     fn register_component<S, T>(&mut self) -> PipelineKey
@@ -94,8 +89,8 @@ impl PipelineRegistryExt for BevyPipelineRegistry {
         self.register_unchecked(
             key,
             BevyPipeline::new(
-                bake_component_actions::<S, T>,
-                sample_component_actions::<S, T>,
+                bake::<_, _, S, T>,
+                sample::<_, _, S, T>,
             ),
         );
 
@@ -115,8 +110,8 @@ impl PipelineRegistryExt for BevyPipelineRegistry {
         self.register_unchecked(
             key,
             BevyPipeline::new(
-                bake_asset_actions::<S, T>,
-                sample_asset_actions::<S, T>,
+                bake::<_, _, S, T>,
+                sample::<_, _, S, T>,
             ),
         );
 

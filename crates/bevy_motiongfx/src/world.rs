@@ -7,7 +7,7 @@ use motiongfx::prelude::{FieldAccessorRegistry, Timeline};
 
 use crate::MotionGfxSet;
 use crate::controller::FixedRatePlayer;
-use crate::pipeline::BevyPipelineRegistry;
+use crate::pipeline::{BevyPipelineRegistry, BevyWorld};
 use crate::prelude::RealtimePlayer;
 
 pub struct MotionGfxWorldPlugin;
@@ -135,7 +135,7 @@ impl MotionGfxWorld {
             timeline.bake_actions(
                 &self.accessor_registry,
                 &self.pipeline_registry,
-                world,
+                BevyWorld::from_ref(world),
             );
             self.timelines.insert(id, timeline);
         }
@@ -149,7 +149,7 @@ impl MotionGfxWorld {
             timeline.sample_queued_actions(
                 &self.accessor_registry,
                 &self.pipeline_registry,
-                world,
+                BevyWorld::from_mut(world),
             );
             timeline.reset();
         }

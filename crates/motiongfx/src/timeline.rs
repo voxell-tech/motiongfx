@@ -52,14 +52,12 @@ impl Timeline {
             };
 
             for track in self.tracks.iter() {
-                pipeline.bake(
-                    subject_world,
-                    BakeCtx {
-                        track,
-                        action_world: &mut self.action_world,
-                        accessor_registry,
-                    },
-                )
+                pipeline.bake(BakeCtx {
+                    world: subject_world,
+                    track,
+                    action_world: &mut self.action_world,
+                    accessor_registry,
+                })
             }
         }
     }
@@ -231,13 +229,11 @@ impl Timeline {
                 continue;
             };
 
-            pipeline.sample(
-                subject_world,
-                SampleCtx {
-                    action_world: &self.action_world,
-                    accessor_registry,
-                },
-            );
+            pipeline.sample(SampleCtx {
+                world: subject_world,
+                action_world: &self.action_world,
+                accessor_registry,
+            });
         }
     }
 
