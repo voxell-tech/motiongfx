@@ -7,7 +7,7 @@ use motiongfx::prelude::{FieldAccessorRegistry, Timeline};
 
 use crate::MotionGfxSet;
 use crate::controller::FixedRatePlayer;
-use crate::pipeline::WorldPipelineRegistry;
+use crate::pipeline::BevyPipelineRegistry;
 use crate::prelude::RealtimePlayer;
 
 pub struct MotionGfxWorldPlugin;
@@ -79,7 +79,7 @@ pub struct MotionGfxWorld {
     id: TimelineId,
     pending_timelines: HashMap<TimelineId, MutDetect<Timeline>>,
     timelines: HashMap<TimelineId, MutDetect<Timeline>>,
-    pub pipeline_registry: WorldPipelineRegistry,
+    pub pipeline_registry: BevyPipelineRegistry,
     pub accessor_registry: FieldAccessorRegistry,
 }
 

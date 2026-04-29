@@ -2,8 +2,8 @@ use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
-pub type WorldPipelineRegistry = PipelineRegistry<World>;
-pub type WorldPipeline = Pipeline<World>;
+pub type BevyPipelineRegistry = PipelineRegistry<World>;
+pub type BevyPipeline = Pipeline<World>;
 
 pub fn bake_component_actions<S, T>(world: &World, ctx: BakeCtx)
 where
@@ -83,7 +83,7 @@ pub trait PipelineRegistryExt {
         T: Clone + ThreadSafe;
 }
 
-impl PipelineRegistryExt for WorldPipelineRegistry {
+impl PipelineRegistryExt for BevyPipelineRegistry {
     fn register_component<S, T>(&mut self) -> PipelineKey
     where
         S: Component<Mutability = Mutable>,
@@ -93,7 +93,7 @@ impl PipelineRegistryExt for WorldPipelineRegistry {
 
         self.register_unchecked(
             key,
-            WorldPipeline::new(
+            BevyPipeline::new(
                 bake_component_actions::<S, T>,
                 sample_component_actions::<S, T>,
             ),
@@ -114,7 +114,7 @@ impl PipelineRegistryExt for WorldPipelineRegistry {
 
         self.register_unchecked(
             key,
-            WorldPipeline::new(
+            BevyPipeline::new(
                 bake_asset_actions::<S, T>,
                 sample_asset_actions::<S, T>,
             ),
