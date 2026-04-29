@@ -1,6 +1,6 @@
 use kurbo::{
-    Affine, Circle, CubicBez, Line, Point, QuadBez, Rect,
-    RoundedRect, RoundedRectRadii, Size, Vec2,
+    Circle, CubicBez, Line, Point, QuadBez, Rect, RoundedRect,
+    RoundedRectRadii, Size, Vec2,
 };
 
 #[inline]
@@ -51,21 +51,6 @@ pub fn interp_line(a: &Line, b: &Line, t: f32) -> Line {
         p0: interp_point(&a.p0, &b.p0, t),
         p1: interp_point(&a.p1, &b.p1, t),
     }
-}
-
-/// Linearly interpolates between two [`Affine`] transforms component-wise.
-#[inline]
-pub fn interp_affine(a: &Affine, b: &Affine, t: f32) -> Affine {
-    let ac = a.as_coeffs();
-    let bc = b.as_coeffs();
-    Affine::new([
-        lerp_f64(ac[0], bc[0], t),
-        lerp_f64(ac[1], bc[1], t),
-        lerp_f64(ac[2], bc[2], t),
-        lerp_f64(ac[3], bc[3], t),
-        lerp_f64(ac[4], bc[4], t),
-        lerp_f64(ac[5], bc[5], t),
-    ])
 }
 
 #[inline]
