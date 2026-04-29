@@ -41,17 +41,15 @@ pub fn trace_bez_path(path: &BezPath, t: f32) -> BezPath {
     let partial_t = scaled - complete as f64;
 
     let mut result = BezPath::new();
-    for (i, seg) in path.segments().enumerate() {
-        if i == 0 {
-            result.move_to(seg.start());
-        }
-        if i < complete {
-            push_seg(&mut result, seg);
-        } else if i == complete && partial_t > 0.0 {
+    result.move_to(
+        path.get_seg(0).map(|s| s.start()).unwrap_or_default(),
+    );
+    for seg in path.segments().take(complete) {
+        push_seg(&mut result, seg);
+    }
+    if partial_t > 0.0 {
+        if let Some(seg) = path.segments().nth(complete) {
             push_seg(&mut result, seg.subsegment(0.0..partial_t));
-            break;
-        } else {
-            break;
         }
     }
     result
