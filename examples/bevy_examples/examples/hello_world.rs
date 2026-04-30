@@ -53,7 +53,7 @@ fn spawn_timeline(
     }
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = BevyTimelineBuilder::new();
     let mut cube_tracks = Vec::with_capacity(CAPACITY);
 
     for w in 0..WIDTH {

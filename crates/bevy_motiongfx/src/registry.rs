@@ -69,7 +69,7 @@ use crate::world::MotionGfxWorld;
 /// assert_eq!(accessor.get_ref(&foo), &2.0);
 ///
 /// // Get pipeline from the registry.
-/// let key = PipelineKey::new::<Entity, Foo, f32>();
+/// let key = PipelineKey::new::<BevyWorld, Entity, Foo, f32>();
 /// let pipeline = motiongfx.pipeline_registry.get(&key).unwrap();
 /// ```
 #[macro_export]
@@ -178,9 +178,7 @@ impl FieldPathRegisterAppExt for App {
         let mut motiongfx =
             self.world_mut().resource_mut::<MotionGfxWorld>();
 
-        motiongfx
-            .accessor_registry
-            .register(field.untyped(), accessor);
+        motiongfx.accessor_registry.register(field, accessor);
         motiongfx.pipeline_registry.register_component::<S, T>();
 
         self
@@ -199,9 +197,7 @@ impl FieldPathRegisterAppExt for App {
         let mut motiongfx =
             self.world_mut().resource_mut::<MotionGfxWorld>();
 
-        motiongfx
-            .accessor_registry
-            .register(field.untyped(), accessor);
+        motiongfx.accessor_registry.register(field, accessor);
         motiongfx.pipeline_registry.register_asset::<S, T>();
 
         self

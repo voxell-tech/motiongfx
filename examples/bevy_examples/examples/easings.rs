@@ -71,7 +71,7 @@ fn spawn_timeline(
     }
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = BevyTimelineBuilder::new();
 
     let track = easings
         .into_iter()

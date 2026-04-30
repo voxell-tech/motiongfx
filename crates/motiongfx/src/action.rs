@@ -118,29 +118,28 @@ pub struct UntypedSubjectId {
 }
 
 impl UntypedSubjectId {
-    pub fn new<I: SubjectId>(uid: UId) -> Self {
+    pub const PLACEHOLDER: Self =
+        Self::placeholder_with_u64(u64::MAX);
+
+    pub const fn new<I: SubjectId>(uid: UId) -> Self {
         Self {
             type_id: TypeId::of::<I>(),
             uid,
         }
     }
 
-    pub fn placeholder() -> Self {
-        Self::placeholder_with_u64(0)
-    }
-
-    pub fn placeholder_with_u64(id: u64) -> Self {
+    pub const fn placeholder_with_u64(id: u64) -> Self {
         Self {
             type_id: TypeId::of::<()>(),
             uid: UId(id),
         }
     }
 
-    pub fn type_id(&self) -> TypeId {
+    pub const fn type_id(&self) -> TypeId {
         self.type_id
     }
 
-    pub fn uid(&self) -> UId {
+    pub const fn uid(&self) -> UId {
         self.uid
     }
 }
@@ -252,10 +251,8 @@ impl ActionWorld {
             .get_resource_or_insert_with(|| IdRegistry::new())
             .register_instance(target);
 
-        let key = ActionKey {
-            subject_id: UntypedSubjectId::new::<I>(uid),
-            field,
-        };
+        let key =
+            ActionKey::new(UntypedSubjectId::new::<I>(uid), field);
         let world = self.world.spawn((
             key,
             IdType::<I>::new(),

@@ -3,12 +3,12 @@ use core::ops::{Deref, DerefMut};
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
-use motiongfx::prelude::{FieldAccessorRegistry, Timeline};
+use motiongfx::prelude::*;
 
 use crate::MotionGfxSet;
 use crate::controller::FixedRatePlayer;
-use crate::pipeline::{BevyPipelineRegistry, BevyWorld};
-use crate::prelude::RealtimePlayer;
+use crate::controller::RealtimePlayer;
+use crate::pipeline::BevyWorld;
 
 pub struct MotionGfxWorldPlugin;
 
@@ -79,8 +79,8 @@ pub struct MotionGfxWorld {
     id: TimelineId,
     pending_timelines: HashMap<TimelineId, MutDetect<Timeline>>,
     timelines: HashMap<TimelineId, MutDetect<Timeline>>,
-    pub pipeline_registry: BevyPipelineRegistry,
-    pub accessor_registry: FieldAccessorRegistry,
+    pub pipeline_registry: PipelineRegistry,
+    pub accessor_registry: AccessorRegistry,
 }
 
 impl Default for MotionGfxWorld {

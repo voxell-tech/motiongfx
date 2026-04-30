@@ -46,7 +46,7 @@ fn spawn_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = BevyTimelineBuilder::new();
 
     // Generate slide sequences.
     let slide0 = b

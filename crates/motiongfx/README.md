@@ -80,7 +80,7 @@ type SubjectWorld = HashMap<&'static str, f32>;
 
 let mut world: SubjectWorld = HashMap::new();
 world.insert("x", 0.0);
-let accessor_registry = FieldAccessorRegistry::new();
+let accessor_registry = AccessorRegistry::new();
 let pipeline_registry = PipelineRegistry::<SubjectWorld>::new();
 
 let mut b = TimelineBuilder::new();

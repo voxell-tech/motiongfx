@@ -1,7 +1,8 @@
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
-use motiongfx::pipeline::{bake, sample};
+use motiongfx::pipeline::{Pipeline, PipelineHandle, PipelineKey};
 use motiongfx::prelude::*;
+use motiongfx::registry::PipelineRegistry;
 
 /// Newtype wrapper around [`World`] that is local to this crate,
 /// allowing [`SubjectSource`] impls without violating the orphan rule.
@@ -62,8 +63,7 @@ impl<S: bevy_asset::Asset>
     }
 }
 
-pub type BevyPipelineRegistry = PipelineRegistry<BevyWorld>;
-pub type BevyPipeline = Pipeline<BevyWorld>;
+pub type BevyTimelineBuilder = TimelineBuilder<BevyWorld>;
 
 pub trait PipelineRegistryExt {
     fn register_component<S, T>(&mut self) -> PipelineKey
@@ -78,23 +78,18 @@ pub trait PipelineRegistryExt {
         T: Clone + ThreadSafe;
 }
 
-impl PipelineRegistryExt for BevyPipelineRegistry {
+impl PipelineRegistryExt for PipelineRegistry {
     fn register_component<S, T>(&mut self) -> PipelineKey
     where
         S: Component<Mutability = Mutable>,
         T: Clone + ThreadSafe,
     {
-        let key = PipelineKey::new::<Entity, S, T>();
-
-        self.register_unchecked(
-            key,
-            BevyPipeline::new(
-                bake::<_, _, S, T>,
-                sample::<_, _, S, T>,
-            ),
+        let handle = PipelineHandle::<BevyWorld, Entity, S, T>::new();
+        self.register(
+            handle,
+            Pipeline::<Entity, S, T>::new::<BevyWorld>(),
         );
-
-        key
+        handle.as_key()
     }
 
     #[cfg(feature = "asset")]
@@ -103,18 +98,18 @@ impl PipelineRegistryExt for BevyPipelineRegistry {
         S: bevy_asset::Asset,
         T: Clone + ThreadSafe,
     {
-        use bevy_asset::UntypedAssetId;
-
-        let key = PipelineKey::new::<UntypedAssetId, S, T>();
-
-        self.register_unchecked(
-            key,
-            BevyPipeline::new(
-                bake::<_, _, S, T>,
-                sample::<_, _, S, T>,
-            ),
+        let handle = PipelineHandle::<
+            BevyWorld,
+            bevy_asset::UntypedAssetId,
+            S,
+            T,
+        >::new();
+        self.register(
+            handle,
+            Pipeline::<bevy_asset::UntypedAssetId, S, T>::new::<
+                BevyWorld,
+            >(),
         );
-
-        key
+        handle.as_key()
     }
 }

@@ -1,69 +1,99 @@
+pub mod func_pointers;
+
 use core::any::TypeId;
 use core::marker::PhantomData;
 
-use bevy_ecs::prelude::*;
-use bevy_platform::collections::HashMap;
-use field_path::registry::FieldAccessorRegistry;
+use func_pointers::{BakeFnPtr, SampleFnPtr};
 
 use crate::ThreadSafe;
 use crate::action::{
     ActionClip, ActionKey, ActionWorld, EaseStorage, InterpStorage,
     SampleMode, Segment,
 };
+use crate::registry::AccessorRegistry;
 use crate::subject::SubjectId;
 use crate::track::Track;
 
-pub struct PipelineHandle<I, S, T>
-where
-    I: SubjectId,
-    S: 'static,
-    T: 'static,
-{
+pub struct PipelineHandle<W, I, S, T> {
     #[expect(clippy::complexity)]
-    _marker: PhantomData<fn() -> (I, S, T)>,
+    _marker: PhantomData<fn() -> (W, I, S, T)>,
 }
 
-impl<I, S, T> PipelineHandle<I, S, T>
-where
-    I: SubjectId,
-    S: 'static,
-    T: 'static,
-{
-    pub fn as_key(&self) -> PipelineKey {
-        PipelineKey::new::<I, S, T>()
-    }
-}
-
-/// Uniquely identifies a [`Pipeline`] to bake and sample a target
-/// field from a subject's source data structure.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord,
-)]
-pub struct PipelineKey {
-    /// The [`TypeId`] of the [`SubjectId`].
-    subject_id: TypeId,
-    /// The [`TypeId`] of the source type.
-    source_id: TypeId,
-    /// The [`TypeId`] of the target type.
-    target_id: TypeId,
-}
-
-impl PipelineKey {
-    pub fn new<I, S, T>() -> Self
+impl<W, I, S, T> PipelineHandle<W, I, S, T> {
+    pub fn new() -> Self
     where
+        W: 'static,
         I: SubjectId,
         S: 'static,
         T: 'static,
     {
         Self {
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn as_key(&self) -> PipelineKey
+    where
+        W: 'static,
+        I: SubjectId,
+        S: 'static,
+        T: 'static,
+    {
+        PipelineKey::new::<W, I, S, T>()
+    }
+}
+
+impl<W, I, S, T> Copy for PipelineHandle<W, I, S, T> {}
+
+impl<W, I, S, T> Clone for PipelineHandle<W, I, S, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<W, I, S, T> Default for PipelineHandle<W, I, S, T>
+where
+    W: 'static,
+    I: SubjectId,
+    S: 'static,
+    T: 'static,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Uniquely identifies a [`Pipeline`] by its world, subject, source,
+/// and target types.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
+pub struct PipelineKey {
+    world_id: TypeId,
+    subject_id: TypeId,
+    source_id: TypeId,
+    target_id: TypeId,
+}
+
+impl PipelineKey {
+    pub fn new<W, I, S, T>() -> Self
+    where
+        W: 'static,
+        I: SubjectId,
+        S: 'static,
+        T: 'static,
+    {
+        Self {
+            world_id: TypeId::of::<W>(),
             subject_id: TypeId::of::<I>(),
             source_id: TypeId::of::<S>(),
             target_id: TypeId::of::<T>(),
         }
     }
 
-    pub fn from_action_key(key: ActionKey) -> Self {
+    pub fn from_action_key<W: 'static>(key: ActionKey) -> Self {
         Self {
+            world_id: TypeId::of::<W>(),
             subject_id: key.subject_id().type_id(),
             source_id: key.field().source_id(),
             target_id: key.field().target_id(),
@@ -81,67 +111,56 @@ pub trait SubjectSource<I: SubjectId, S: 'static> {
     ) -> Option<R>;
 }
 
-pub type BakeFn<W> = fn(BakeCtx<W>);
-pub type SampleFn<W> = fn(SampleCtx<W>);
-
+/// A pipeline for baking and sampling actions of type `(I, S, T)`.
+/// The world type `W` is erased at storage; it must match at call sites.
 #[derive(Debug, Clone, Copy)]
-pub struct Pipeline<W> {
-    bake: BakeFn<W>,
-    sample: SampleFn<W>,
+pub struct Pipeline<I, S, T> {
+    bake: BakeFnPtr,
+    sample: SampleFnPtr,
+    #[expect(clippy::complexity)]
+    _marker: PhantomData<fn() -> (I, S, T)>,
 }
 
-impl<W> Pipeline<W> {
-    pub fn new(bake: BakeFn<W>, sample: SampleFn<W>) -> Self {
-        Self { bake, sample }
-    }
-
-    pub fn bake(&self, ctx: BakeCtx<W>) {
-        (self.bake)(ctx)
-    }
-
-    pub fn sample(&self, ctx: SampleCtx<W>) {
-        (self.sample)(ctx)
-    }
-}
-
-#[derive(Resource)]
-pub struct PipelineRegistry<W> {
-    pipelines: HashMap<PipelineKey, Pipeline<W>>,
-}
-
-impl<W> PipelineRegistry<W> {
-    pub fn new() -> Self {
+impl<I, S, T> Pipeline<I, S, T> {
+    pub fn new<W>() -> Self
+    where
+        W: SubjectSource<I, S>,
+        I: SubjectId,
+        S: 'static,
+        T: Clone + ThreadSafe,
+    {
         Self {
-            pipelines: HashMap::new(),
+            bake: BakeFnPtr::new(bake::<W, I, S, T>),
+            sample: SampleFnPtr::new(sample::<W, I, S, T>),
+            _marker: PhantomData,
         }
     }
 
-    pub fn get(&self, key: &PipelineKey) -> Option<&Pipeline<W>> {
-        self.pipelines.get(key)
-    }
-
-    /// Register a pipeline function.
-    ///
-    /// Registering the same key twice will result in a replacement.
-    ///
-    /// # Note
-    ///
-    /// This function assumes that the baker function matches
-    /// the field that it points towards. Failure to do so will
-    /// result in a useless baker registry.
-    pub fn register_unchecked(
-        &mut self,
-        key: PipelineKey,
-        pipeline: Pipeline<W>,
-    ) -> &mut Self {
-        self.pipelines.insert(key, pipeline);
-        self
+    pub fn untyped(&self) -> PipelineUntyped {
+        PipelineUntyped {
+            bake: self.bake,
+            sample: self.sample,
+        }
     }
 }
 
-impl<W> Default for PipelineRegistry<W> {
-    fn default() -> Self {
-        Self::new()
+#[derive(Debug, Clone, Copy)]
+pub struct PipelineUntyped {
+    bake: BakeFnPtr,
+    sample: SampleFnPtr,
+}
+
+impl PipelineUntyped {
+    pub fn bake<W>(&self, ctx: BakeCtx<W>) {
+        // SAFETY: W matches the W passed to Pipeline::new.
+        let f = unsafe { self.bake.typed_unchecked::<W>() };
+        f(ctx)
+    }
+
+    pub fn sample<W>(&self, ctx: SampleCtx<W>) {
+        // SAFETY: W matches the W passed to Pipeline::new.
+        let f = unsafe { self.sample.typed_unchecked::<W>() };
+        f(ctx)
     }
 }
 
@@ -149,7 +168,7 @@ pub struct BakeCtx<'a, W> {
     pub world: &'a W,
     pub track: &'a Track,
     pub action_world: &'a mut ActionWorld,
-    pub accessor_registry: &'a FieldAccessorRegistry,
+    pub accessor_registry: &'a AccessorRegistry,
 }
 
 pub fn bake<W, I, S, T>(ctx: BakeCtx<W>)
@@ -160,7 +179,7 @@ where
     T: Clone + ThreadSafe,
 {
     for (key, span) in ctx.track.sequences_spans() {
-        let Ok(accessor) =
+        let Some(accessor) =
             ctx.accessor_registry.get::<S, T>(key.field())
         else {
             continue;
@@ -194,12 +213,10 @@ where
     }
 }
 
-impl<W> BakeCtx<'_, W> {}
-
 pub struct SampleCtx<'a, W> {
     pub world: &'a mut W,
     pub action_world: &'a ActionWorld,
-    pub accessor_registry: &'a FieldAccessorRegistry,
+    pub accessor_registry: &'a AccessorRegistry,
 }
 
 pub fn sample<W, I, S, T>(ctx: SampleCtx<W>)
@@ -222,7 +239,7 @@ where
     for (key, sample_mode, segment, interp, ease) in
         q.iter(ctx.action_world.world())
     {
-        let Ok(accessor) =
+        let Some(accessor) =
             ctx.accessor_registry.get::<S, T>(key.field())
         else {
             continue;

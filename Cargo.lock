@@ -2388,12 +2388,9 @@ dependencies = [
 
 [[package]]
 name = "field_path"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b15fe157f96af46037f9135145fd540de8a93cf4a32e8d7ba0037796878208a"
-dependencies = [
- "hashbrown 0.16.1",
-]
+checksum = "36ccac07e4c62197b44fd7161abc6bf6b006c8dc725aeca40fd438e62d0f2ada"
 
 [[package]]
 name = "find-msvc-tools"

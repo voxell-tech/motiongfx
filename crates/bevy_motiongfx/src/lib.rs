@@ -21,7 +21,7 @@ pub mod prelude {
         ActionInterpTimelineExt, Interpolation,
     };
     pub use crate::pipeline::{
-        BevyPipeline, BevyPipelineRegistry, PipelineRegistryExt,
+        BevyTimelineBuilder, PipelineRegistryExt,
     };
     pub use crate::register_fields;
     pub use crate::registry::FieldPathRegisterAppExt;

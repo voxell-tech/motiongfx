@@ -15,7 +15,7 @@ pub trait ActionInterpTimelineExt {
         T: Interpolation + ThreadSafe;
 }
 
-impl ActionInterpTimelineExt for TimelineBuilder {
+impl<W: 'static> ActionInterpTimelineExt for TimelineBuilder<W> {
     /// Add an [`Action`] with interpolation using
     /// [`Interpolation::interp`].
     fn act_interp<I, S, T>(

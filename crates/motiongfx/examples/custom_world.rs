@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 
-use motiongfx::pipeline::{bake, sample};
+use motiongfx::pipeline::{Pipeline, PipelineHandle};
 use motiongfx::prelude::*;
 
 struct World {
-    accessor_registry: FieldAccessorRegistry,
-    pipeline_registry: PipelineRegistry<SubjectWorld>,
+    accessor_registry: AccessorRegistry,
+    pipeline_registry: PipelineRegistry,
     subject_world: SubjectWorld,
 }
 
 impl World {
     pub fn new() -> Self {
         Self {
-            accessor_registry: FieldAccessorRegistry::new(),
+            accessor_registry: AccessorRegistry::new(),
             pipeline_registry: PipelineRegistry::new(),
             subject_world: SubjectWorld {
                 world: HashMap::new(),
@@ -56,7 +56,7 @@ fn main() {
 
     // Register the accessors.
     register_accessors(&mut world.accessor_registry);
-    // Regsitre the pipelines.
+    // Register the pipelines.
     register_pipelines(&mut world.pipeline_registry);
 
     // Spawn in some subjects.
@@ -69,7 +69,7 @@ fn main() {
         .world
         .insert(Id(1), Subject::Line(Line::default()));
 
-    let mut builder = TimelineBuilder::new();
+    let mut builder = TimelineBuilder::<SubjectWorld>::new();
 
     // Create the track.
     let track = [
@@ -191,56 +191,42 @@ impl SubjectSource<Id, Line> for SubjectWorld {
     }
 }
 
-fn register_pipelines(
-    pipeline_registry: &mut PipelineRegistry<SubjectWorld>,
-) {
-    pipeline_registry.register_unchecked(
-        PipelineKey::new::<Id, Point, f32>(),
-        Pipeline::new(bake::<_, _, Point, f32>, sample::<_, _, Point, f32>),
-    );
+fn register_pipelines(pipeline_registry: &mut PipelineRegistry) {
+    let handle =
+        PipelineHandle::<SubjectWorld, Id, Point, f32>::new();
+    pipeline_registry
+        .register(handle, Pipeline::new::<SubjectWorld>());
 
-    pipeline_registry.register_unchecked(
-        PipelineKey::new::<Id, Line, Point>(),
-        Pipeline::new(bake::<_, _, Line, Point>, sample::<_, _, Line, Point>),
-    );
+    let handle =
+        PipelineHandle::<SubjectWorld, Id, Line, Point>::new();
+    pipeline_registry
+        .register(handle, Pipeline::new::<SubjectWorld>());
 
-    pipeline_registry.register_unchecked(
-        PipelineKey::new::<Id, Line, f32>(),
-        Pipeline::new(bake::<_, _, Line, f32>, sample::<_, _, Line, f32>),
-    );
+    let handle = PipelineHandle::<SubjectWorld, Id, Line, f32>::new();
+    pipeline_registry
+        .register(handle, Pipeline::new::<SubjectWorld>());
 }
 
-fn register_accessors(accessor_registry: &mut FieldAccessorRegistry) {
-    // In real use cases, a macro should be used!
-    // Refer to `bevy_motiongfx` for now...
-
+fn register_accessors(accessor_registry: &mut AccessorRegistry) {
     // Point -> f32.
     accessor_registry
-        .register_typed(field!(<Point>::x), accessor!(<Point>::x));
+        .register(field!(<Point>::x), accessor!(<Point>::x));
     accessor_registry
-        .register_typed(field!(<Point>::y), accessor!(<Point>::y));
+        .register(field!(<Point>::y), accessor!(<Point>::y));
     // Line -> Point.
     accessor_registry
-        .register_typed(field!(<Line>::p0), accessor!(<Line>::p0));
+        .register(field!(<Line>::p0), accessor!(<Line>::p0));
     accessor_registry
-        .register_typed(field!(<Line>::p1), accessor!(<Line>::p1));
+        .register(field!(<Line>::p1), accessor!(<Line>::p1));
     // Line -> Point -> f32.
-    accessor_registry.register_typed(
-        field!(<Line>::p0::x),
-        accessor!(<Line>::p0::x),
-    );
-    accessor_registry.register_typed(
-        field!(<Line>::p0::y),
-        accessor!(<Line>::p0::y),
-    );
-    accessor_registry.register_typed(
-        field!(<Line>::p1::x),
-        accessor!(<Line>::p1::x),
-    );
-    accessor_registry.register_typed(
-        field!(<Line>::p1::y),
-        accessor!(<Line>::p1::y),
-    );
+    accessor_registry
+        .register(field!(<Line>::p0::x), accessor!(<Line>::p0::x));
+    accessor_registry
+        .register(field!(<Line>::p0::y), accessor!(<Line>::p0::y));
+    accessor_registry
+        .register(field!(<Line>::p1::x), accessor!(<Line>::p1::x));
+    accessor_registry
+        .register(field!(<Line>::p1::y), accessor!(<Line>::p1::y));
 }
 
 fn linear_f32(a: &f32, b: &f32, t: f32) -> f32 {

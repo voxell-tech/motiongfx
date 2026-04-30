@@ -107,7 +107,7 @@ fn spawn_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = BevyTimelineBuilder::new();
 
     let track = b
         .act(cube, field!(<Transform>::translation), |x| {

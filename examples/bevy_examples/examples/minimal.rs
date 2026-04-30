@@ -48,7 +48,7 @@ fn build_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = BevyTimelineBuilder::new();
     let track = [
         b.act_interp(
             cube,

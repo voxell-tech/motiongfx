@@ -1,20 +1,18 @@
 use core::cmp::Ordering;
+use core::marker::PhantomData;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_platform::collections::HashMap;
 use field_path::field::Field;
-use field_path::registry::FieldAccessorRegistry;
 
 use crate::ThreadSafe;
 use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionWorld,
     InterpActionBuilder, SampleMode,
 };
-use crate::pipeline::Range;
-use crate::pipeline::{
-    BakeCtx, PipelineKey, PipelineRegistry, SampleCtx,
-};
+use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
+use crate::registry::{AccessorRegistry, PipelineRegistry};
 use crate::subject::SubjectId;
 use crate::track::Track;
 
@@ -42,8 +40,8 @@ pub struct Timeline {
 impl Timeline {
     pub fn bake_actions<W>(
         &mut self,
-        accessor_registry: &FieldAccessorRegistry,
-        pipeline_registry: &PipelineRegistry<W>,
+        accessor_registry: &AccessorRegistry,
+        pipeline_registry: &PipelineRegistry,
         subject_world: &W,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
@@ -220,8 +218,8 @@ impl Timeline {
 
     pub fn sample_queued_actions<W>(
         &self,
-        accessor_registry: &FieldAccessorRegistry,
-        pipeline_registry: &PipelineRegistry<W>,
+        accessor_registry: &AccessorRegistry,
+        pipeline_registry: &PipelineRegistry,
         subject_world: &mut W,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
@@ -402,19 +400,21 @@ impl Default for QueueCache {
     }
 }
 
-pub struct TimelineBuilder {
+pub struct TimelineBuilder<W> {
     action_world: ActionWorld,
     pipeline_counts: HashMap<PipelineKey, u32>,
     tracks: Vec<Track>,
+    _marker: PhantomData<fn() -> W>,
 }
 
-impl TimelineBuilder {
+impl<W: 'static> TimelineBuilder<W> {
     /// Creates an empty timeline builder.
     pub fn new() -> Self {
         Self {
             action_world: ActionWorld::new(),
             pipeline_counts: HashMap::new(),
             tracks: Vec::new(),
+            _marker: PhantomData,
         }
     }
 
@@ -430,7 +430,7 @@ impl TimelineBuilder {
         S: 'static,
         T: ThreadSafe,
     {
-        let key = PipelineKey::new::<I, S, T>();
+        let key = PipelineKey::new::<W, I, S, T>();
 
         match self.pipeline_counts.get_mut(&key) {
             Some(count) => *count += 1,
@@ -462,7 +462,7 @@ impl TimelineBuilder {
     /// Remove an [`Action`].
     pub fn unact(&mut self, id: ActionId) -> bool {
         if let Some(key) = self.action_world.remove(id) {
-            let pipeline_key = PipelineKey::from_action_key(key);
+            let pipeline_key = PipelineKey::from_action_key::<W>(key);
 
             let count = self
                 .pipeline_counts
@@ -526,7 +526,7 @@ impl TimelineBuilder {
     }
 }
 
-impl Default for TimelineBuilder {
+impl<W: 'static> Default for TimelineBuilder<W> {
     fn default() -> Self {
         Self::new()
     }
