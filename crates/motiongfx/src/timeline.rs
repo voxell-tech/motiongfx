@@ -4,19 +4,21 @@ use core::marker::PhantomData;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_platform::collections::HashMap;
-use field_path::field::Field;
+use field_path::field_accessor::FieldAccessor;
 
 use crate::ThreadSafe;
 use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionWorld,
     InterpActionBuilder, SampleMode,
 };
-use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
-use crate::registry::{AccessorRegistry, PipelineRegistry};
+use crate::pipeline::{
+    BakeCtx, PipelineKey, Range, SampleCtx, SubjectSource,
+};
+use crate::registry::Registry;
 use crate::subject::SubjectId;
 use crate::track::Track;
 
-pub struct Timeline {
+pub struct Timeline<W> {
     action_world: ActionWorld,
     pipeline_counts: Box<[(PipelineKey, u32)]>,
     /// Track length is guaranteed to be at least 1 by construction.
@@ -35,17 +37,17 @@ pub struct Timeline {
     curr_index: usize,
     /// The index of the target track.
     target_index: usize,
+    _marker: PhantomData<fn() -> W>,
 }
 
-impl Timeline {
-    pub fn bake_actions<W>(
+impl<W: 'static> Timeline<W> {
+    pub fn bake_actions(
         &mut self,
-        accessor_registry: &AccessorRegistry,
-        pipeline_registry: &PipelineRegistry,
+        registry: &Registry,
         subject_world: &W,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
-            let Some(pipeline) = pipeline_registry.get(key) else {
+            let Some(pipeline) = registry.pipeline.get(key) else {
                 continue;
             };
 
@@ -54,7 +56,7 @@ impl Timeline {
                     world: subject_world,
                     track,
                     action_world: &mut self.action_world,
-                    accessor_registry,
+                    accessor_registry: &registry.accessor,
                 })
             }
         }
@@ -216,21 +218,20 @@ impl Timeline {
         self.curr_time = self.target_time;
     }
 
-    pub fn sample_queued_actions<W>(
+    pub fn sample_queued_actions(
         &self,
-        accessor_registry: &AccessorRegistry,
-        pipeline_registry: &PipelineRegistry,
+        registry: &Registry,
         subject_world: &mut W,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
-            let Some(pipeline) = pipeline_registry.get(key) else {
+            let Some(pipeline) = registry.pipeline.get(key) else {
                 continue;
             };
 
             pipeline.sample(SampleCtx {
                 world: subject_world,
                 action_world: &self.action_world,
-                accessor_registry,
+                accessor_registry: &registry.accessor,
             });
         }
     }
@@ -242,7 +243,7 @@ impl Timeline {
 }
 
 // Getter methods.
-impl Timeline {
+impl<W> Timeline<W> {
     /// Returns the current queue cache.
     #[inline]
     pub fn queue_cache(&self) -> &QueueCache {
@@ -316,7 +317,7 @@ impl Timeline {
 }
 
 // Setter methods.
-impl Timeline {
+impl<W> Timeline<W> {
     /// Set the target time of the current track, clamping the value
     /// within \[0.0..=track.duration\]
     pub fn set_target_time(&mut self, target_time: f32) -> &mut Self {
@@ -400,17 +401,19 @@ impl Default for QueueCache {
     }
 }
 
-pub struct TimelineBuilder<W> {
+pub struct TimelineBuilder<'a, W> {
+    registry: &'a mut Registry,
     action_world: ActionWorld,
     pipeline_counts: HashMap<PipelineKey, u32>,
     tracks: Vec<Track>,
     _marker: PhantomData<fn() -> W>,
 }
 
-impl<W: 'static> TimelineBuilder<W> {
+impl<'a, W: 'static> TimelineBuilder<'a, W> {
     /// Creates an empty timeline builder.
-    pub fn new() -> Self {
+    pub fn new(registry: &'a mut Registry) -> Self {
         Self {
+            registry,
             action_world: ActionWorld::new(),
             pipeline_counts: HashMap::new(),
             tracks: Vec::new(),
@@ -422,14 +425,17 @@ impl<W: 'static> TimelineBuilder<W> {
     pub fn act<I, S, T>(
         &mut self,
         target: I,
-        field: Field<S, T>,
+        field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> ActionBuilder<'_, T>
     where
+        W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: 'static,
-        T: ThreadSafe,
+        T: Clone + ThreadSafe,
     {
+        let field = field_acc.field;
+        self.registry.register::<W, I, S, T>(field_acc);
         let key = PipelineKey::new::<W, I, S, T>();
 
         match self.pipeline_counts.get_mut(&key) {
@@ -446,15 +452,16 @@ impl<W: 'static> TimelineBuilder<W> {
     pub fn act_step<I, S, T>(
         &mut self,
         target: I,
-        field: Field<S, T>,
+        field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
+        W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
-        self.act(target, field, action).with_interp(|a, b, t| {
+        self.act(target, field_acc, action).with_interp(|a, b, t| {
             if t < 1.0 { a.clone() } else { b.clone() }
         })
     }
@@ -498,7 +505,7 @@ impl<W: 'static> TimelineBuilder<W> {
     /// ## Panic
     ///
     /// Panics if the track is empty.
-    pub fn compile(self) -> Timeline {
+    pub fn compile(self) -> Timeline<W> {
         debug_assert!(
             !self.tracks.is_empty(),
             "Track cannot be empty!"
@@ -516,19 +523,14 @@ impl<W: 'static> TimelineBuilder<W> {
             target_time: 0.0,
             curr_index: 0,
             target_index: 0,
+            _marker: PhantomData,
         }
     }
 
     /// Similar to [`Self::compile()`] but return `None` instead of
     /// panicking.
-    pub fn try_compile(self) -> Option<Timeline> {
+    pub fn try_compile(self) -> Option<Timeline<W>> {
         (!self.tracks.is_empty()).then_some(self.compile())
-    }
-}
-
-impl<W: 'static> Default for TimelineBuilder<W> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

@@ -71,24 +71,23 @@ fn spawn_timeline(
     }
 
     // Build the timeline.
-    let mut b = BevyTimelineBuilder::new();
+    let mut b = motiongfx.create_bevy_builder();
 
     let track = easings
         .into_iter()
         .enumerate()
-        // .zip(easings)
         .map(|(i, ease_fn)| {
             [
                 b.act_interp(
                     spheres[i],
-                    field!(<Transform>::translation::x),
+                    path!(<Transform>::translation::x),
                     |x| x + 10.0,
                 )
                 .with_ease(ease_fn)
                 .play(1.0),
                 b.act_interp(
                     sphere_mats[i],
-                    field!(<StandardMaterial>::emissive),
+                    path!(<StandardMaterial>::emissive),
                     move |_| red,
                 )
                 .with_ease(ease_fn)
@@ -100,8 +99,9 @@ fn spawn_timeline(
 
     b.add_tracks(track.compile());
 
+    let timeline = b.compile();
     commands.spawn((
-        motiongfx.add_timeline(b.compile()),
+        motiongfx.add_timeline(timeline),
         RealtimePlayer::new().with_playing(true),
     ));
 }

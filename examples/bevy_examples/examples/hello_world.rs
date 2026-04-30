@@ -53,7 +53,7 @@ fn spawn_timeline(
     }
 
     // Build the timeline.
-    let mut b = BevyTimelineBuilder::new();
+    let mut b = motiongfx.create_bevy_builder();
     let mut cube_tracks = Vec::with_capacity(CAPACITY);
 
     for w in 0..WIDTH {
@@ -64,23 +64,21 @@ fn spawn_timeline(
             let circ_ease = ease::circ::ease_in_out;
 
             let track = [
-                b.act_interp(
-                    cube,
-                    field!(<Transform>::scale),
-                    |_| Vec3::splat(0.9),
-                )
+                b.act_interp(cube, path!(<Transform>::scale), |_| {
+                    Vec3::splat(0.9)
+                })
                 .with_ease(circ_ease)
                 .play(1.0),
                 b.act_interp(
                     cube,
-                    field!(<Transform>::translation::x),
+                    path!(<Transform>::translation::x),
                     |x| x + 1.0,
                 )
                 .with_ease(circ_ease)
                 .play(1.0),
                 b.act_interp(
                     cube,
-                    field!(<Transform>::rotation),
+                    path!(<Transform>::rotation),
                     |_| {
                         Quat::from_euler(
                             EulerRot::XYZ,

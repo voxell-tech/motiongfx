@@ -48,17 +48,15 @@ fn build_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = BevyTimelineBuilder::new();
+    let mut b = motiongfx.create_bevy_builder();
     let track = [
-        b.act_interp(
-            cube,
-            field!(<Transform>::translation::x),
-            |x| x + 6.0,
-        )
+        b.act_interp(cube, path!(<Transform>::translation::x), |x| {
+            x + 6.0
+        })
         .play(1.0),
         b.act_interp(
             material.untyped().id(),
-            field!(<StandardMaterial>::base_color),
+            path!(<StandardMaterial>::base_color),
             |_| Srgba::RED.into(),
         )
         .play(1.0),

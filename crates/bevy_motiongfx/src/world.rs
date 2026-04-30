@@ -8,7 +8,8 @@ use motiongfx::prelude::*;
 use crate::MotionGfxSet;
 use crate::controller::FixedRatePlayer;
 use crate::controller::RealtimePlayer;
-use crate::pipeline::BevyWorld;
+use crate::pipeline::{BevyTimeline, BevyWorld};
+use crate::prelude::BevyTimelineBuilder;
 
 pub struct MotionGfxWorldPlugin;
 
@@ -77,10 +78,9 @@ fn complete_timelines<T>(
 #[derive(Resource)]
 pub struct MotionGfxWorld {
     id: TimelineId,
-    pending_timelines: HashMap<TimelineId, MutDetect<Timeline>>,
-    timelines: HashMap<TimelineId, MutDetect<Timeline>>,
-    pub pipeline_registry: PipelineRegistry,
-    pub accessor_registry: AccessorRegistry,
+    pending_timelines: HashMap<TimelineId, MutDetect<BevyTimeline>>,
+    timelines: HashMap<TimelineId, MutDetect<BevyTimeline>>,
+    registry: Registry,
 }
 
 impl Default for MotionGfxWorld {
@@ -89,14 +89,26 @@ impl Default for MotionGfxWorld {
             id: TimelineId(0),
             pending_timelines: Default::default(),
             timelines: Default::default(),
-            pipeline_registry: Default::default(),
-            accessor_registry: Default::default(),
+            registry: Default::default(),
         }
     }
 }
 
 impl MotionGfxWorld {
-    pub fn add_timeline(&mut self, timeline: Timeline) -> TimelineId {
+    pub fn create_builder<W: 'static>(
+        &mut self,
+    ) -> TimelineBuilder<'_, W> {
+        TimelineBuilder::new(&mut self.registry)
+    }
+
+    pub fn create_bevy_builder(&mut self) -> BevyTimelineBuilder<'_> {
+        TimelineBuilder::new(&mut self.registry)
+    }
+
+    pub fn add_timeline(
+        &mut self,
+        timeline: BevyTimeline,
+    ) -> TimelineId {
         let id = self.id;
         self.pending_timelines.insert(id, MutDetect::new(timeline));
 
@@ -107,14 +119,17 @@ impl MotionGfxWorld {
     pub fn remove_timeline(
         &mut self,
         id: &TimelineId,
-    ) -> Option<Timeline> {
+    ) -> Option<BevyTimeline> {
         self.timelines
             .remove(id)
             .or_else(|| self.pending_timelines.remove(id))
             .map(|t| t.take())
     }
 
-    pub fn get_timeline(&self, id: &TimelineId) -> Option<&Timeline> {
+    pub fn get_timeline(
+        &self,
+        id: &TimelineId,
+    ) -> Option<&BevyTimeline> {
         self.timelines
             .get(id)
             .or_else(|| self.pending_timelines.get(id))
@@ -124,7 +139,7 @@ impl MotionGfxWorld {
     pub fn get_timeline_mut(
         &mut self,
         id: &TimelineId,
-    ) -> Option<&mut MutDetect<Timeline>> {
+    ) -> Option<&mut MutDetect<BevyTimeline>> {
         self.timelines
             .get_mut(id)
             .or_else(|| self.pending_timelines.get_mut(id))
@@ -133,8 +148,7 @@ impl MotionGfxWorld {
     pub fn load_pending_timelines(&mut self, world: &mut World) {
         for (id, mut timeline) in self.pending_timelines.drain() {
             timeline.bake_actions(
-                &self.accessor_registry,
-                &self.pipeline_registry,
+                &self.registry,
                 BevyWorld::from_ref(world),
             );
             self.timelines.insert(id, timeline);
@@ -147,8 +161,7 @@ impl MotionGfxWorld {
         {
             timeline.queue_actions();
             timeline.sample_queued_actions(
-                &self.accessor_registry,
-                &self.pipeline_registry,
+                &self.registry,
                 BevyWorld::from_mut(world),
             );
             timeline.reset();

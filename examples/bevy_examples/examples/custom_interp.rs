@@ -33,10 +33,10 @@ fn spawn_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = BevyTimelineBuilder::new();
+    let mut b = motiongfx.create_bevy_builder();
 
     let track = b
-        .act(cube, field!(<Transform>::translation), |x| {
+        .act(cube, path!(<Transform>::translation), |x| {
             x + Vec3::ZERO.with_x(10.0).with_z(1.0)
         })
         .with_interp(|start, end, t| arc_lerp_3d(*start, *end, t))
@@ -46,8 +46,9 @@ fn spawn_timeline(
 
     b.add_tracks(track);
 
+    let timeline = b.compile();
     commands.spawn((
-        motiongfx.add_timeline(b.compile()),
+        motiongfx.add_timeline(timeline),
         RealtimePlayer::new(),
     ));
 }

@@ -31,10 +31,10 @@ fn spawn_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = BevyTimelineBuilder::new();
+    let mut b = motiongfx.create_bevy_builder();
 
     let track = b
-        .act_interp(cube, field!(<Transform>::translation::x), |x| {
+        .act_interp(cube, path!(<Transform>::translation::x), |x| {
             x + 10.0
         })
         // A custom 10 step easing.
@@ -44,8 +44,9 @@ fn spawn_timeline(
 
     b.add_tracks(track);
 
+    let timeline = b.compile();
     commands.spawn((
-        motiongfx.add_timeline(b.compile()),
+        motiongfx.add_timeline(timeline),
         RealtimePlayer::new().with_playing(true),
     ));
 }

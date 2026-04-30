@@ -1,8 +1,6 @@
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
-use motiongfx::pipeline::{Pipeline, PipelineHandle, PipelineKey};
 use motiongfx::prelude::*;
-use motiongfx::registry::PipelineRegistry;
 
 /// Newtype wrapper around [`World`] that is local to this crate,
 /// allowing [`SubjectSource`] impls without violating the orphan rule.
@@ -63,53 +61,5 @@ impl<S: bevy_asset::Asset>
     }
 }
 
-pub type BevyTimelineBuilder = TimelineBuilder<BevyWorld>;
-
-pub trait PipelineRegistryExt {
-    fn register_component<S, T>(&mut self) -> PipelineKey
-    where
-        S: Component<Mutability = Mutable>,
-        T: Clone + ThreadSafe;
-
-    #[cfg(feature = "asset")]
-    fn register_asset<S, T>(&mut self) -> PipelineKey
-    where
-        S: bevy_asset::Asset,
-        T: Clone + ThreadSafe;
-}
-
-impl PipelineRegistryExt for PipelineRegistry {
-    fn register_component<S, T>(&mut self) -> PipelineKey
-    where
-        S: Component<Mutability = Mutable>,
-        T: Clone + ThreadSafe,
-    {
-        let handle = PipelineHandle::<BevyWorld, Entity, S, T>::new();
-        self.register(
-            handle,
-            Pipeline::<Entity, S, T>::new::<BevyWorld>(),
-        );
-        handle.as_key()
-    }
-
-    #[cfg(feature = "asset")]
-    fn register_asset<S, T>(&mut self) -> PipelineKey
-    where
-        S: bevy_asset::Asset,
-        T: Clone + ThreadSafe,
-    {
-        let handle = PipelineHandle::<
-            BevyWorld,
-            bevy_asset::UntypedAssetId,
-            S,
-            T,
-        >::new();
-        self.register(
-            handle,
-            Pipeline::<bevy_asset::UntypedAssetId, S, T>::new::<
-                BevyWorld,
-            >(),
-        );
-        handle.as_key()
-    }
-}
+pub type BevyTimeline = Timeline<BevyWorld>;
+pub type BevyTimelineBuilder<'a> = TimelineBuilder<'a, BevyWorld>;

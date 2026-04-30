@@ -3,14 +3,50 @@ use field_path::accessor::{Accessor, UntypedAccessor};
 use field_path::field::UntypedField;
 use field_path::field_accessor::FieldAccessor;
 
+use crate::ThreadSafe;
 use crate::pipeline::{
     Pipeline, PipelineHandle, PipelineKey, PipelineUntyped,
 };
+use crate::prelude::{SubjectSource, TimelineBuilder};
 use crate::subject::SubjectId;
 
 pub struct Registry {
     pub accessor: AccessorRegistry,
     pub pipeline: PipelineRegistry,
+}
+
+impl Registry {
+    pub fn new() -> Self {
+        Self {
+            accessor: AccessorRegistry::new(),
+            pipeline: PipelineRegistry::new(),
+        }
+    }
+
+    pub fn register<W, I, S, T>(
+        &mut self,
+        field_acc: FieldAccessor<S, T>,
+    ) where
+        W: SubjectSource<I, S> + 'static,
+        I: SubjectId,
+        S: 'static,
+        T: Clone + ThreadSafe,
+    {
+        self.accessor.register(field_acc);
+        self.pipeline.register::<W, I, S, T>();
+    }
+
+    pub fn create_builder<W: 'static>(
+        &mut self,
+    ) -> TimelineBuilder<'_, W> {
+        TimelineBuilder::new(self)
+    }
+}
+
+impl Default for Registry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub struct AccessorRegistry {
@@ -28,14 +64,15 @@ impl AccessorRegistry {
     #[inline]
     pub fn register<S: 'static, T: 'static>(
         &mut self,
-        fa: FieldAccessor<S, T>,
+        field_acc: FieldAccessor<S, T>,
     ) {
-        let untyped_field = fa.field.untyped();
+        let untyped_field = field_acc.field.untyped();
         if self.accessors.contains_key(&untyped_field) {
             return;
         }
 
-        self.accessors.insert(untyped_field, fa.accessor.untyped());
+        self.accessors
+            .insert(untyped_field, field_acc.accessor.untyped());
     }
 
     /// Retrieve a typed [`Accessor`] from the registry.
@@ -69,22 +106,20 @@ impl PipelineRegistry {
     }
 
     /// Register a pipeline. Skips pipelines already registered.
-    pub fn register<
-        W: 'static,
+    pub fn register<W, I, S, T>(&mut self) -> &mut Self
+    where
+        W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: 'static,
-        T: 'static,
-    >(
-        &mut self,
-        handle: PipelineHandle<W, I, S, T>,
-        pipeline: Pipeline<I, S, T>,
-    ) -> &mut Self {
-        let key = handle.as_key();
+        T: Clone + ThreadSafe,
+    {
+        let key = PipelineHandle::<W, I, S, T>::new().as_key();
         if self.pipelines.contains_key(&key) {
             return self;
         }
 
-        self.pipelines.insert(key, pipeline.untyped());
+        self.pipelines
+            .insert(key, Pipeline::<I, S, T>::new::<W>().untyped());
         self
     }
 }
