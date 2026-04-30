@@ -91,8 +91,7 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            ::motiongfx::field_path::field!(<$root>),
-            ::motiongfx::field_path::accessor!(<$root>),
+            ::motiongfx::path!(<$root>),
         );
 
         register_fields!(
@@ -115,8 +114,7 @@ macro_rules! register_fields {
         $crate::registry::FieldPathRegisterAppExt
         ::$reg_func::<$source, _>(
             $app,
-            motiongfx::field_path::field!(<$root>$(::$path)*::$field),
-            ::motiongfx::field_path::accessor!(<$root>$(::$path)*::$field),
+            ::motiongfx::path!(<$root>$(::$path)*::$field),
         );
 
         // Register sub fields.
@@ -147,8 +145,7 @@ macro_rules! register_fields {
 pub trait FieldPathRegisterAppExt {
     fn register_component_field<S, T>(
         &mut self,
-        field: Field<S, T>,
-        accessor: Accessor<S, T>,
+        fa: FieldAccessor<S, T>,
     ) -> &mut Self
     where
         S: Component<Mutability = Mutable>,
@@ -157,8 +154,7 @@ pub trait FieldPathRegisterAppExt {
     #[cfg(feature = "asset")]
     fn register_asset_field<S, T>(
         &mut self,
-        field: Field<S, T>,
-        accessor: Accessor<S, T>,
+        fa: FieldAccessor<S, T>,
     ) -> &mut Self
     where
         S: bevy_asset::Asset,
@@ -168,8 +164,7 @@ pub trait FieldPathRegisterAppExt {
 impl FieldPathRegisterAppExt for App {
     fn register_component_field<S, T>(
         &mut self,
-        field: Field<S, T>,
-        accessor: Accessor<S, T>,
+        fa: FieldAccessor<S, T>,
     ) -> &mut Self
     where
         S: Component<Mutability = Mutable>,
@@ -178,7 +173,7 @@ impl FieldPathRegisterAppExt for App {
         let mut motiongfx =
             self.world_mut().resource_mut::<MotionGfxWorld>();
 
-        motiongfx.accessor_registry.register(field, accessor);
+        motiongfx.accessor_registry.register(fa);
         motiongfx.pipeline_registry.register_component::<S, T>();
 
         self
@@ -187,8 +182,7 @@ impl FieldPathRegisterAppExt for App {
     #[cfg(feature = "asset")]
     fn register_asset_field<S, T>(
         &mut self,
-        field: Field<S, T>,
-        accessor: Accessor<S, T>,
+        fa: FieldAccessor<S, T>,
     ) -> &mut Self
     where
         S: bevy_asset::Asset,
@@ -197,7 +191,7 @@ impl FieldPathRegisterAppExt for App {
         let mut motiongfx =
             self.world_mut().resource_mut::<MotionGfxWorld>();
 
-        motiongfx.accessor_registry.register(field, accessor);
+        motiongfx.accessor_registry.register(fa);
         motiongfx.pipeline_registry.register_asset::<S, T>();
 
         self

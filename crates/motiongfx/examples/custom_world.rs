@@ -209,24 +209,16 @@ fn register_pipelines(pipeline_registry: &mut PipelineRegistry) {
 
 fn register_accessors(accessor_registry: &mut AccessorRegistry) {
     // Point -> f32.
-    accessor_registry
-        .register(field!(<Point>::x), accessor!(<Point>::x));
-    accessor_registry
-        .register(field!(<Point>::y), accessor!(<Point>::y));
+    accessor_registry.register(path!(<Point>::x));
+    accessor_registry.register(path!(<Point>::y));
     // Line -> Point.
-    accessor_registry
-        .register(field!(<Line>::p0), accessor!(<Line>::p0));
-    accessor_registry
-        .register(field!(<Line>::p1), accessor!(<Line>::p1));
+    accessor_registry.register(path!(<Line>::p0));
+    accessor_registry.register(path!(<Line>::p1));
     // Line -> Point -> f32.
-    accessor_registry
-        .register(field!(<Line>::p0::x), accessor!(<Line>::p0::x));
-    accessor_registry
-        .register(field!(<Line>::p0::y), accessor!(<Line>::p0::y));
-    accessor_registry
-        .register(field!(<Line>::p1::x), accessor!(<Line>::p1::x));
-    accessor_registry
-        .register(field!(<Line>::p1::y), accessor!(<Line>::p1::y));
+    accessor_registry.register(path!(<Line>::p0::x));
+    accessor_registry.register(path!(<Line>::p0::y));
+    accessor_registry.register(path!(<Line>::p1::x));
+    accessor_registry.register(path!(<Line>::p1::y));
 }
 
 fn linear_f32(a: &f32, b: &f32, t: f32) -> f32 {

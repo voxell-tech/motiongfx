@@ -1,6 +1,7 @@
 use bevy_platform::collections::HashMap;
 use field_path::accessor::{Accessor, UntypedAccessor};
-use field_path::field::{Field, UntypedField};
+use field_path::field::UntypedField;
+use field_path::field_accessor::FieldAccessor;
 
 use crate::pipeline::{
     Pipeline, PipelineHandle, PipelineKey, PipelineUntyped,
@@ -27,15 +28,14 @@ impl AccessorRegistry {
     #[inline]
     pub fn register<S: 'static, T: 'static>(
         &mut self,
-        field: Field<S, T>,
-        accessor: Accessor<S, T>,
+        fa: FieldAccessor<S, T>,
     ) {
-        let untyped_field = field.untyped();
+        let untyped_field = fa.field.untyped();
         if self.accessors.contains_key(&untyped_field) {
             return;
         }
 
-        self.accessors.insert(untyped_field, accessor.untyped());
+        self.accessors.insert(untyped_field, fa.accessor.untyped());
     }
 
     /// Retrieve a typed [`Accessor`] from the registry.
