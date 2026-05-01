@@ -531,7 +531,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     /// Similar to [`Self::compile()`] but return `None` instead of
     /// panicking.
     pub fn try_compile(self) -> Option<Timeline<W>> {
-        (!self.tracks.is_empty()).then_some(self.compile())
+        (!self.tracks.is_empty()).then(|| self.compile())
     }
 }
 
