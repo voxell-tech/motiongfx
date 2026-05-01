@@ -24,95 +24,199 @@ modular foundation for procedural animations.
 - **Batteries included**: Packed with common easing and interpolation
   functions.
 
-## Core Concepts
-
-### Timeline
-
-`Timeline` is a top-level structure that coordinates a sequence of
-tracks and their associated actions. Each track acts like a
-checkpoint, allowing animations to be grouped into discrete blocks
-(especially useful for creating slides).
-
-A `Track` represents sequences of actions in chronological order, each
-with a defined start time and duration. Tracks ensure that actions
-within them are played in the correct temporal order.
+## Quick Start
 
 ```rust
 use motiongfx::prelude::*;
 
-// `Timeline` can only be created via a `TimelineBuilder`.
-let mut b = TimelineBuilder::new();
-// To create a track, you first have to create the actions.
+// The world holds all subject's `f32` values.
+struct World(Vec<f32>);
+
+// Tell MotionGfx how to read and write `f32` values in `World`.
+impl SubjectSource<usize, f32> for World {
+    fn get_source(&self, id: usize) -> Option<&f32> {
+        self.0.get(id)
+    }
+
+    fn apply_source<R>(
+        &mut self,
+        id: usize,
+        f: impl FnOnce(&mut f32) -> R,
+    ) -> Option<R> {
+        self.0.get_mut(id).map(f)
+    }
+}
+
+let mut world = World(vec![0.0]);
+
+// The registry tracks which types are animated.
+let mut registry = Registry::new();
+let mut b = registry.create_builder::<World>();
+
+let id = 0;
+// Create an action with: id, field path, action fn.
 let action = b
-    // Create an action with:
-    //   id   field path     action fn
-    .act("x", field!(<f32>), |x| x + 1.0)
+    // Animate subject 0 from its current value to +10.0
+    .act(id, path!(<f32>), |x| x + 10.0)
     // Every action needs an interpolation function.
-    .with_interp(|&a, &b, t| a + (b - a) * t)
+    .with_interp(|a, b, t| a + (b - a) * t);
+
+// "Play" the action into a `TrackFragment` with a duration.
+let frag = action.play(1.0);
+
+// Compile into a `Track` (see Track Ordering for composing fragments).
+let track = frag.compile();
+
+b.add_tracks(track);
+let mut timeline = b.compile();
+
+// Bake must run once before sampling.
+timeline.bake_actions(&registry, &world);
+
+// Sample at t = 0.5 - world.0[0] should now be 5.0.
+timeline.set_target_time(0.5);
+timeline.queue_actions();
+timeline.sample_queued_actions(&registry, &mut world);
+
+assert!((world.0[0] - 5.0).abs() < f32::EPSILON);
+```
+
+## Creating your first animation
+
+### The World
+
+Think of a **world** as a container for everything you want to
+animate. Each item inside it (called a **subject**) has an ID so
+MotionGfx can find it. To connect your world to MotionGfx, implement
+`SubjectSource` with two methods: one to read a subject by ID, and
+one to write to it.
+
+```rust
+use motiongfx::prelude::*;
+
+// A Vec is a simple world. Each f32 value is a subject, accessed by its index.
+struct World(Vec<f32>);
+
+impl SubjectSource<usize, f32> for World {
+    fn get_source(&self, id: usize) -> Option<&f32> {
+        self.0.get(id)
+    }
+
+    fn apply_source<R>(
+        &mut self,
+        id: usize,
+        f: impl FnOnce(&mut f32) -> R,
+    ) -> Option<R> {
+        self.0.get_mut(id).map(f)
+    }
+}
+```
+
+### The Registry
+
+The `Registry` keeps track of how to animate your types behind the
+scenes. MotionGfx is type-erased at runtime, so it needs the registry
+to know how to read and write each field. You don't need to set it up
+manually, just create one and pass it to the builder. Registration
+happens automatically the first time you add an animation.
+
+```rust
+# use motiongfx::prelude::*;
+let mut registry = Registry::new();
+```
+
+### The Timeline Builder
+
+The `TimelineBuilder` is where you describe your animations. Create
+one from the registry, typed to your world:
+
+```rust
+# use motiongfx::prelude::*;
+# let mut registry = Registry::new();
+// Using `()` as a placeholder world type for this example.
+let mut b = registry.create_builder::<()>();
+```
+
+### Building the Timeline
+
+Animations are built up in layers:
+
+1. An **action** says what to animate and how to transform it.
+2. A **track fragment** gives the action a duration by calling `.play(seconds)`.
+3. A **track** is one or more fragments compiled together. You can
+   order fragments before compiling (see [Track Ordering](#track-ordering)).
+4. A **timeline** combines all your tracks into one playable sequence.
+
+```rust
+# use motiongfx::prelude::*;
+# struct World(Vec<f32>);
+# impl SubjectSource<usize, f32> for World {
+#     fn get_source(&self, id: usize) -> Option<&f32> { self.0.get(id) }
+#     fn apply_source<R>(&mut self, id: usize, f: impl FnOnce(&mut f32) -> R) -> Option<R> { self.0.get_mut(id).map(f) }
+# }
+# let mut registry = Registry::new();
+# let mut b = registry.create_builder::<World>();
+let id = 0_usize;
+// Act: animate subject 0 from its current value to +10.0.
+let action = b
+    .act(id, path!(<f32>), |x| x + 10.0)
+    // Every action needs an interpolation function.
+    .with_interp(|a: &f32, b: &f32, t| a + (b - a) * t)
     // An optional easing function can be added.
     .with_ease(ease::cubic::ease_in_out);
 
-// Once an action is created, it can be "played" into a
-// `TrackFragment` with a given duration.
+// Play: turn the action into a fragment with a 1-second duration.
 let frag = action.play(1.0);
 
-// Which can then be compiled into a `Track`.
+// Compile the fragment into a Track.
 let track = frag.compile();
 
-// 1 or more tracks can be added to the builder to create a timeline.
+// Add the track and compile into a Timeline.
 b.add_tracks(track);
-let timeline = b.compile();
+let mut timeline = b.compile();
 ```
 
-#### Bake and Sample Timeline
+### Bake and Sample
 
-Once a timeline is created, it is ready for baking and sampling. Bake
-must happen before sample. Otherwise, sampling it will be a no-op.
+Before playing an animation, you need to **bake** it. Baking reads
+the starting values from your world and prepares the animation data.
+This only needs to happen once, right after building the timeline.
 
-Registries must be created to perform baking/sampling. For more info
-about registries, see below.
+To advance the animation, set a target time, then **queue** and
+**sample**. Queuing figures out which actions are active at that
+time, and sampling writes the new values back into your world.
+
+A timeline can also have multiple tracks, each acting as a chapter.
+Use `set_target_track` to jump between them.
 
 ```rust
-use std::collections::HashMap;
-use motiongfx::prelude::*;
+# use motiongfx::prelude::*;
+# struct World(Vec<f32>);
+# impl SubjectSource<usize, f32> for World {
+#     fn get_source(&self, id: usize) -> Option<&f32> { self.0.get(id) }
+#     fn apply_source<R>(&mut self, id: usize, f: impl FnOnce(&mut f32) -> R) -> Option<R> { self.0.get_mut(id).map(f) }
+# }
+# let mut world = World(vec![0.0]);
+# let mut registry = Registry::new();
+# let mut b = registry.create_builder::<World>();
+# let track = b.act(0_usize, path!(<f32>), |x| x + 10.0).with_interp(|a: &f32, b: &f32, t| a + (b - a) * t).play(1.0).compile();
+# b.add_tracks(track);
+# let mut timeline = b.compile();
+// Bake once after building the timeline.
+timeline.bake_actions(&registry, &world);
 
-type SubjectWorld = HashMap<&'static str, f32>;
-
-let mut world: SubjectWorld = HashMap::new();
-world.insert("x", 0.0);
-let accessor_registry = AccessorRegistry::new();
-let pipeline_registry = PipelineRegistry::<SubjectWorld>::new();
-
-let mut b = TimelineBuilder::new();
-let action = b
-    .act("x", field!(<f32>), |x| x + 1.0)
-    .with_interp(|&a, &b, t| a + (b - a) * t);
-
-let track = action.play(1.0).compile();
-b.add_tracks(track);
-
-let mut timeline = b.compile();
-
-// Bake actions into segments.
-timeline.bake_actions(
-    &accessor_registry,
-    &pipeline_registry,
-    &world,
-);
-
-// Actions needs to be queued before it can be sampled.
+// Set target time, queue, then sample.
+timeline.set_target_time(0.5);
 timeline.queue_actions();
-timeline.sample_queued_actions(
-    &accessor_registry,
-    &pipeline_registry,
-    &mut world,
-);
+timeline.sample_queued_actions(&registry, &mut world);
+
+assert!((world.0[0] - 5.0).abs() < f32::EPSILON);
 ```
 
 ### Track Ordering
 
-`TrackFragment`s can be ordered using track ordering trait or
-functions. There are 4 ways to order track fragments:
+You can control how fragments play relative to each other. There are
+4 ordering combinators:
 
 #### 1. Chain
 
@@ -129,7 +233,7 @@ let f = [f0, f1].ord_chain();
 // let f = chain([f0, f1]);
 ```
 
-Chaining runs `f1` after `f0` finishes.
+`f1` plays after `f0` finishes.
 
 #### 2. All
 
@@ -142,8 +246,8 @@ let f1 = TrackFragment::new();
 let f = [f0, f1].ord_all();
 ```
 
-All runs `f0` and `f1` concurrently and waits for all of them to
-finish.
+`f0` and `f1` play at the same time, and the result finishes when
+both are done.
 
 #### 3. Any
 
@@ -156,7 +260,8 @@ let f1 = TrackFragment::new();
 let f = [f0, f1].ord_any();
 ```
 
-Any runs `f0` and `f1` concurrenly and wait for any of them to finish.
+`f0` and `f1` play at the same time, and the result finishes when
+either one is done.
 
 #### 4. Flow
 
@@ -169,186 +274,8 @@ let f1 = TrackFragment::new();
 let f = [f0, f1].ord_flow(0.5);
 ```
 
-Flow runs `f1` after `f0` with a fixed delay time rather than waiting
-for `f0` to finish.
-
-### Registries
-
-Registries are used to perform reflection and safely erase types.
-
-#### Field Accessor Regisry
-
-The `FieldAccessorRegistry` maintains a mapping between animatable
-fields and their corresponding accessors, enabling MotionGfx to read
-and write values on arbitrary data structures in a type-safe yet
-dynamic way.
-
-```rust
-use motiongfx::prelude::*;
-
-#[derive(Debug, Clone, Copy)]
-struct Subject(f32);
-
-let mut accessor_registry = FieldAccessorRegistry::new();
-accessor_registry.register_typed(
-    field!(<Subject>::0),
-    accessor!(<Subject>::0)
-);
-```
-
-#### Pipeline Registry
-
-Pipelines handle the baking of actions and the sampling of animation
-segments for playback or preview.
-
-```rust
-use std::collections::HashMap;
-
-use motiongfx::prelude::*;
-
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-struct Id(u32);
-#[derive(Debug, Clone, Copy)]
-struct Subject(f32);
-type SubjectWorld = HashMap<Id, Subject>;
-
-let mut pipeline_registry = PipelineRegistry::<SubjectWorld>::new();
-pipeline_registry.register_unchecked(
-    PipelineKey::new::<Id, Subject, f32>(),
-    Pipeline::new(
-        |world, ctx| {
-            ctx.bake::<Id, Subject, f32>(|id| world.get(&id));
-        },
-        |world, ctx| {
-            ctx.sample::<Id, Subject, f32>(
-                |id, target, accessor| {
-                    if let Some(x) = world.get_mut(&id) {
-                        *accessor.get_mut(x) = target;
-                    }
-                },
-            );
-        },
-    ),
-);
-```
-
-### Subject World
-
-Because MotionGfx is backend agnostic, it can be used to animate
-subjects in any world. A typical subject world would hold unique Ids
-that maps subject entities to their associated animatable components.
-
-A simple example of such would be a `HashMap`.
-
-```rust
-use std::collections::HashMap;
-
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-struct Id(u32);
-#[derive(Debug, Clone, Copy)]
-struct Subject(f32);
-type SubjectWorld = HashMap<Id, Subject>;
-```
-
-Below is a comprehensive example on how MotionGfx can be used with a
-custom world!
-
-```rust
-use std::collections::HashMap;
-
-use motiongfx::prelude::*;
-
-// First, we have to initialize a subject world and the
-// registries.
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-struct Id(u32);
-#[derive(Debug, Clone, Copy)]
-struct Subject(f32);
-type SubjectWorld = HashMap<Id, Subject>;
-
-let mut subject_world = SubjectWorld::new();
-let mut accessor_registry = FieldAccessorRegistry::new();
-let mut pipeline_registry =
-    PipelineRegistry::<SubjectWorld>::new();
-
-// The accessor registry should contain accessors to the fields in
-// the subjects. In our case, it's just the first field in
-// the tuple struct: `Subject::0`.
-
-accessor_registry.register_typed(
-    field!(<Subject>::0),
-    accessor!(<Subject>::0),
-);
-
-// Similarly, the pipeline registry shoiud contain pipelines to
-// bake and sample the fields in the subjects.
-
-pipeline_registry.register_unchecked(
-    PipelineKey::new::<Id, Subject, f32>(),
-    Pipeline::new(
-        |world, ctx| {
-            ctx.bake::<Id, Subject, f32>(|id| world.get(&id));
-        },
-        |world, ctx| {
-            ctx.sample::<Id, Subject, f32>(
-                |id, target, accessor| {
-                    if let Some(x) = world.get_mut(&id) {
-                        *accessor.get_mut(x) = target;
-                    }
-                },
-            );
-        },
-    ),
-);
-
-// Now that the registries are complete, we can start adding
-// subjects into the subject world.
-
-subject_world.insert(Id(1), Subject(0.0));
-
-// A timeline can only be created via the `TimelineBuilder`.
-
-let mut builder = TimelineBuilder::new();
-
-let track = builder
-    // Creates the action.
-    .act(Id(1), field!(<Subject>::0), |x| x + 10.0)
-    // Adds an interpolation method.
-    .with_interp(|&a, &b, t| a + (b - a) * t)
-    // Specifies the duration of the action.
-    .play(1.0)
-    // Compiles into a track.
-    .compile();
-
-// Adds the track to the builder.
-builder.add_tracks(track);
-// And compile it into a timeline.
-let mut timeline = builder.compile();
-// The timeline needs to be baked once before sampling can happen.
-timeline.bake_actions(
-    &accessor_registry,
-    &pipeline_registry,
-    &subject_world,
-);
-
-// Let's visualize the current state of the subject world before
-// the sampling happens.
-println!("Before: {:?}", subject_world);
-
-// We fast forward the timeline.
-timeline.set_target_time(0.5);
-// Actions need to be queued before it can be sampled.
-// The queued actions are stored internally.
-timeline.queue_actions();
-timeline.sample_queued_actions(
-    &accessor_registry,
-    &pipeline_registry,
-    &mut subject_world,
-);
-
-// Visualize the state of the subject world after the sampling.
-println!("After:  {:?}", subject_world);
-```
+`f1` starts 0.5 seconds after `f0` begins, regardless of how long
+`f0` takes.
 
 ## Officially Supported Backends
 
