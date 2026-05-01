@@ -16,10 +16,6 @@ pub mod track;
 pub use field_path;
 
 pub mod prelude {
-    pub use field_path::accessor;
-    pub use field_path::accessor::{Accessor, UntypedAccessor};
-    pub use field_path::field;
-    pub use field_path::field::{Field, UntypedField};
     pub use field_path::field_accessor::FieldAccessor;
 
     pub use crate::ThreadSafe;

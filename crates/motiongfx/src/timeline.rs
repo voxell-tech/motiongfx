@@ -506,6 +506,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     ///
     /// Panics if the track is empty.
     pub fn compile(self) -> Timeline<W> {
+        // TODO(nixon): What happens when track is empty?
         debug_assert!(
             !self.tracks.is_empty(),
             "Track cannot be empty!"
