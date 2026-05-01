@@ -118,29 +118,28 @@ pub struct UntypedSubjectId {
 }
 
 impl UntypedSubjectId {
-    pub fn new<I: SubjectId>(uid: UId) -> Self {
+    pub const PLACEHOLDER: Self =
+        Self::placeholder_with_u64(u64::MAX);
+
+    pub const fn new<I: SubjectId>(uid: UId) -> Self {
         Self {
             type_id: TypeId::of::<I>(),
             uid,
         }
     }
 
-    pub fn placeholder() -> Self {
-        Self::placeholder_with_u64(0)
-    }
-
-    pub fn placeholder_with_u64(id: u64) -> Self {
+    pub const fn placeholder_with_u64(id: u64) -> Self {
         Self {
             type_id: TypeId::of::<()>(),
             uid: UId(id),
         }
     }
 
-    pub fn type_id(&self) -> TypeId {
+    pub const fn type_id(&self) -> TypeId {
         self.type_id
     }
 
-    pub fn uid(&self) -> UId {
+    pub const fn uid(&self) -> UId {
         self.uid
     }
 }
@@ -252,10 +251,8 @@ impl ActionWorld {
             .get_resource_or_insert_with(|| IdRegistry::new())
             .register_instance(target);
 
-        let key = ActionKey {
-            subject_id: UntypedSubjectId::new::<I>(uid),
-            field,
-        };
+        let key =
+            ActionKey::new(UntypedSubjectId::new::<I>(uid), field);
         let world = self.world.spawn((
             key,
             IdType::<I>::new(),
@@ -533,4 +530,90 @@ pub enum SampleMode {
     Start,
     End,
     Interp(f32),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── UntypedSubjectId ──────────────────────────────────────────────────────
+
+    #[test]
+    fn untyped_subject_id_placeholder_uses_unit_type() {
+        let placeholder = UntypedSubjectId::PLACEHOLDER;
+        assert_eq!(placeholder.type_id(), TypeId::of::<()>());
+    }
+
+    #[test]
+    fn untyped_subject_id_placeholder_uid_is_u64_max() {
+        let placeholder = UntypedSubjectId::PLACEHOLDER;
+        assert_eq!(placeholder.uid(), UId(u64::MAX));
+    }
+
+    #[test]
+    fn untyped_subject_id_placeholder_with_u64_creates_correct_uid() {
+        let id = UntypedSubjectId::placeholder_with_u64(42);
+        assert_eq!(id.uid(), UId(42));
+        assert_eq!(id.type_id(), TypeId::of::<()>());
+    }
+
+    #[test]
+    fn untyped_subject_id_placeholder_with_zero() {
+        let id = UntypedSubjectId::placeholder_with_u64(0);
+        assert_eq!(id.uid(), UId(0));
+        assert_ne!(id, UntypedSubjectId::PLACEHOLDER);
+    }
+
+    #[test]
+    fn untyped_subject_id_new_uses_given_type() {
+        let uid = UId(1);
+        let id = UntypedSubjectId::new::<u32>(uid);
+        assert_eq!(id.type_id(), TypeId::of::<u32>());
+        assert_eq!(id.uid(), UId(1));
+    }
+
+    #[test]
+    fn untyped_subject_id_new_different_types_are_not_equal() {
+        let uid = UId(1);
+        let id_u32 = UntypedSubjectId::new::<u32>(uid);
+        let id_u64 = UntypedSubjectId::new::<u64>(uid);
+        // Same uid, different types → not equal.
+        assert_ne!(id_u32, id_u64);
+    }
+
+    #[test]
+    fn untyped_subject_id_same_type_and_uid_are_equal() {
+        let uid = UId(5);
+        let a = UntypedSubjectId::new::<u32>(uid);
+        let b = UntypedSubjectId::new::<u32>(uid);
+        assert_eq!(a, b);
+    }
+
+    // ── ActionId ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn action_id_placeholder_is_entity_placeholder() {
+        let id = ActionId::PLACEHOLDER;
+        assert_eq!(id.entity(), bevy_ecs::entity::Entity::PLACEHOLDER);
+    }
+
+    // ── ActionClip ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn action_clip_end_is_start_plus_duration() {
+        let clip = ActionClip {
+            id: ActionId::PLACEHOLDER,
+            start: 2.0,
+            duration: 3.0,
+        };
+        assert_eq!(clip.end(), 5.0);
+    }
+
+    #[test]
+    fn action_clip_new_has_zero_start() {
+        let clip = ActionClip::new(ActionId::PLACEHOLDER, 4.0);
+        assert_eq!(clip.start, 0.0);
+        assert_eq!(clip.duration, 4.0);
+        assert_eq!(clip.end(), 4.0);
+    }
 }

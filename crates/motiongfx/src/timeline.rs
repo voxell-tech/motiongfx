@@ -1,24 +1,24 @@
 use core::cmp::Ordering;
+use core::marker::PhantomData;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_platform::collections::HashMap;
-use field_path::field::Field;
-use field_path::registry::FieldAccessorRegistry;
+use field_path::field_accessor::FieldAccessor;
 
 use crate::ThreadSafe;
 use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionWorld,
     InterpActionBuilder, SampleMode,
 };
-use crate::pipeline::Range;
 use crate::pipeline::{
-    BakeCtx, PipelineKey, PipelineRegistry, SampleCtx,
+    BakeCtx, PipelineKey, Range, SampleCtx, SubjectSource,
 };
+use crate::registry::Registry;
 use crate::subject::SubjectId;
 use crate::track::Track;
 
-pub struct Timeline {
+pub struct Timeline<W> {
     action_world: ActionWorld,
     pipeline_counts: Box<[(PipelineKey, u32)]>,
     /// Track length is guaranteed to be at least 1 by construction.
@@ -37,33 +37,42 @@ pub struct Timeline {
     curr_index: usize,
     /// The index of the target track.
     target_index: usize,
+    _marker: PhantomData<fn() -> W>,
 }
 
-impl Timeline {
-    pub fn bake_actions<W>(
+impl<W: 'static> Timeline<W> {
+    pub fn bake_actions(
         &mut self,
-        accessor_registry: &FieldAccessorRegistry,
-        pipeline_registry: &PipelineRegistry<W>,
+        registry: &Registry,
         subject_world: &W,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
-            let Some(pipeline) = pipeline_registry.get(key) else {
-                continue;
-            };
-
             for track in self.tracks.iter() {
-                pipeline.bake(
-                    subject_world,
+                let ok = registry.pipeline.bake(
+                    key,
                     BakeCtx {
+                        world: subject_world,
                         track,
                         action_world: &mut self.action_world,
-                        accessor_registry,
+                        accessor_registry: &registry.accessor,
                     },
-                )
+                );
+                debug_assert!(
+                    ok,
+                    "pipeline not found for key {key:?}"
+                );
             }
         }
     }
 
+    /// Determines which actions are active at the current target time
+    /// and marks them for sampling.
+    ///
+    /// This step is intentionally separate from
+    /// [`Self::sample_queued_actions`] so that multiple timelines can
+    /// queue concurrently. Queuing only requires `&mut self`, whereas
+    /// sampling requires `&mut W`, which would prevent parallel
+    /// execution across timelines sharing the same world.
     pub fn queue_actions(&mut self) {
         if self.tracks.is_empty() {
             return;
@@ -220,24 +229,21 @@ impl Timeline {
         self.curr_time = self.target_time;
     }
 
-    pub fn sample_queued_actions<W>(
+    pub fn sample_queued_actions(
         &self,
-        accessor_registry: &FieldAccessorRegistry,
-        pipeline_registry: &PipelineRegistry<W>,
+        registry: &Registry,
         subject_world: &mut W,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
-            let Some(pipeline) = pipeline_registry.get(key) else {
-                continue;
-            };
-
-            pipeline.sample(
-                subject_world,
+            let ok = registry.pipeline.sample(
+                key,
                 SampleCtx {
+                    world: subject_world,
                     action_world: &self.action_world,
-                    accessor_registry,
+                    accessor_registry: &registry.accessor,
                 },
             );
+            debug_assert!(ok, "pipeline not found for key {key:?}");
         }
     }
 
@@ -248,7 +254,7 @@ impl Timeline {
 }
 
 // Getter methods.
-impl Timeline {
+impl<W> Timeline<W> {
     /// Returns the current queue cache.
     #[inline]
     pub fn queue_cache(&self) -> &QueueCache {
@@ -322,7 +328,7 @@ impl Timeline {
 }
 
 // Setter methods.
-impl Timeline {
+impl<W> Timeline<W> {
     /// Set the target time of the current track, clamping the value
     /// within \[0.0..=track.duration\]
     pub fn set_target_time(&mut self, target_time: f32) -> &mut Self {
@@ -406,19 +412,23 @@ impl Default for QueueCache {
     }
 }
 
-pub struct TimelineBuilder {
+pub struct TimelineBuilder<'a, W> {
+    registry: &'a mut Registry,
     action_world: ActionWorld,
     pipeline_counts: HashMap<PipelineKey, u32>,
     tracks: Vec<Track>,
+    _marker: PhantomData<fn() -> W>,
 }
 
-impl TimelineBuilder {
+impl<'a, W: 'static> TimelineBuilder<'a, W> {
     /// Creates an empty timeline builder.
-    pub fn new() -> Self {
+    pub fn new(registry: &'a mut Registry) -> Self {
         Self {
+            registry,
             action_world: ActionWorld::new(),
             pipeline_counts: HashMap::new(),
             tracks: Vec::new(),
+            _marker: PhantomData,
         }
     }
 
@@ -426,15 +436,18 @@ impl TimelineBuilder {
     pub fn act<I, S, T>(
         &mut self,
         target: I,
-        field: Field<S, T>,
+        field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> ActionBuilder<'_, T>
     where
+        W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: 'static,
-        T: ThreadSafe,
+        T: Clone + ThreadSafe,
     {
-        let key = PipelineKey::new::<I, S, T>();
+        let field = field_acc.field;
+        self.registry.register::<W, I, S, T>(field_acc);
+        let key = PipelineKey::new::<W, I, S, T>();
 
         match self.pipeline_counts.get_mut(&key) {
             Some(count) => *count += 1,
@@ -450,15 +463,16 @@ impl TimelineBuilder {
     pub fn act_step<I, S, T>(
         &mut self,
         target: I,
-        field: Field<S, T>,
+        field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
+        W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
-        self.act(target, field, action).with_interp(|a, b, t| {
+        self.act(target, field_acc, action).with_interp(|a, b, t| {
             if t < 1.0 { a.clone() } else { b.clone() }
         })
     }
@@ -466,7 +480,7 @@ impl TimelineBuilder {
     /// Remove an [`Action`].
     pub fn unact(&mut self, id: ActionId) -> bool {
         if let Some(key) = self.action_world.remove(id) {
-            let pipeline_key = PipelineKey::from_action_key(key);
+            let pipeline_key = PipelineKey::from_action_key::<W>(key);
 
             let count = self
                 .pipeline_counts
@@ -502,7 +516,8 @@ impl TimelineBuilder {
     /// ## Panic
     ///
     /// Panics if the track is empty.
-    pub fn compile(self) -> Timeline {
+    pub fn compile(self) -> Timeline<W> {
+        // TODO(nixon): What happens when track is empty?
         debug_assert!(
             !self.tracks.is_empty(),
             "Track cannot be empty!"
@@ -520,21 +535,363 @@ impl TimelineBuilder {
             target_time: 0.0,
             curr_index: 0,
             target_index: 0,
+            _marker: PhantomData,
         }
     }
 
     /// Similar to [`Self::compile()`] but return `None` instead of
     /// panicking.
-    pub fn try_compile(self) -> Option<Timeline> {
-        (!self.tracks.is_empty()).then_some(self.compile())
-    }
-}
-
-impl Default for TimelineBuilder {
-    fn default() -> Self {
-        Self::new()
+    pub fn try_compile(self) -> Option<Timeline<W>> {
+        (!self.tracks.is_empty()).then(|| self.compile())
     }
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use crate::path;
+    use crate::pipeline::SubjectSource;
+
+    // ── Shared test infrastructure ────────────────────────────────────────────
+
+    /// A simple world backed by a Vec of f32 values.
+    /// The subject id is `usize` (index into the vec).
+    struct VecWorld(alloc::vec::Vec<f32>);
+
+    impl SubjectSource<usize, f32> for VecWorld {
+        fn get_source(&self, id: usize) -> Option<&f32> {
+            self.0.get(id)
+        }
+
+        fn apply_source<R>(
+            &mut self,
+            id: usize,
+            f: impl FnOnce(&mut f32) -> R,
+        ) -> Option<R> {
+            self.0.get_mut(id).map(f)
+        }
+    }
+
+    fn linear_f32(a: &f32, b: &f32, t: f32) -> f32 {
+        a + (b - a) * t
+    }
+
+    // ── TimelineBuilder ───────────────────────────────────────────────────────
+
+    #[test]
+    fn timeline_builder_try_compile_returns_none_when_no_tracks() {
+        let mut registry = Registry::new();
+        let builder = registry.create_builder::<VecWorld>();
+        assert!(builder.try_compile().is_none());
+    }
+
+    #[test]
+    fn timeline_builder_registers_pipeline_on_act() {
+        // Verify that calling `act` registers the pipeline such that the
+        // subsequent bake-sample cycle completes without panicking.
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 5.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+        builder.add_tracks(frag.compile());
+
+        let mut timeline = builder.compile();
+        let mut world = VecWorld(alloc::vec![0.0]);
+
+        // If the pipeline was not registered, `bake_actions` would
+        // debug_assert / panic. This verifies registration happened.
+        timeline.bake_actions(&registry, &world);
+        timeline.set_target_time(1.0);
+        timeline.queue_actions();
+        timeline.sample_queued_actions(&registry, &mut world);
+
+        assert!((world.0[0] - 5.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn timeline_builder_act_step_produces_step_interpolation() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+
+        let frag =
+            builder.act_step(0_usize, path!(<f32>), |x| x + 10.0).play(1.0);
+        let track = frag.compile();
+        builder.add_tracks(track);
+        let mut timeline = builder.compile();
+
+        let mut world = VecWorld(alloc::vec![0.0]);
+        timeline.bake_actions(&registry, &world);
+
+        // At t=0.5 step-interpolation should stay at 0.0 (start value).
+        timeline.set_target_time(0.5);
+        timeline.queue_actions();
+        timeline.sample_queued_actions(&registry, &mut world);
+
+        // Step interp returns start until t == 1.0.
+        assert_eq!(world.0[0], 0.0);
+
+        // At t=1.0 step-interpolation should jump to the end value.
+        timeline.set_target_time(1.0);
+        timeline.queue_actions();
+        timeline.sample_queued_actions(&registry, &mut world);
+        assert_eq!(world.0[0], 10.0);
+    }
+
+    // ── Timeline (core bake / sample cycle) ───────────────────────────────────
+
+    #[test]
+    fn timeline_bake_and_sample_at_midpoint() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 10.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+
+        let track = frag.compile();
+        builder.add_tracks(track);
+        let mut timeline = builder.compile();
+
+        let mut world = VecWorld(alloc::vec![0.0]);
+
+        // Bake once before sampling.
+        timeline.bake_actions(&registry, &world);
+
+        timeline.set_target_time(0.5);
+        timeline.queue_actions();
+        timeline.sample_queued_actions(&registry, &mut world);
+
+        let expected = 5.0_f32;
+        assert!(
+            (world.0[0] - expected).abs() < f32::EPSILON,
+            "At t=0.5 expected {expected}, got {}",
+            world.0[0]
+        );
+    }
+
+    #[test]
+    fn timeline_bake_and_sample_at_end() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 10.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+
+        builder.add_tracks(frag.compile());
+        let mut timeline = builder.compile();
+        let mut world = VecWorld(alloc::vec![0.0]);
+
+        timeline.bake_actions(&registry, &world);
+
+        timeline.set_target_time(1.0);
+        timeline.queue_actions();
+        timeline.sample_queued_actions(&registry, &mut world);
+
+        assert!(
+            (world.0[0] - 10.0).abs() < f32::EPSILON,
+            "At t=1.0 expected 10.0, got {}",
+            world.0[0]
+        );
+    }
+
+    #[test]
+    fn timeline_bake_and_sample_at_start() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 10.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+
+        builder.add_tracks(frag.compile());
+        let mut timeline = builder.compile();
+        let mut world = VecWorld(alloc::vec![0.0]);
+
+        timeline.bake_actions(&registry, &world);
+
+        // Sampling at t=0.0 should produce the start value.
+        timeline.set_target_time(0.0);
+        timeline.queue_actions();
+        timeline.sample_queued_actions(&registry, &mut world);
+
+        assert_eq!(world.0[0], 0.0);
+    }
+
+    // ── Timeline setters ─────────────────────────────────────────────────────
+
+    #[test]
+    fn set_target_time_clamps_below_zero() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 1.0)
+            .with_interp(linear_f32)
+            .play(2.0);
+        builder.add_tracks(frag.compile());
+        let mut timeline = builder.compile();
+
+        timeline.set_target_time(-5.0);
+        assert_eq!(timeline.target_time(), 0.0);
+    }
+
+    #[test]
+    fn set_target_time_clamps_above_duration() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 1.0)
+            .with_interp(linear_f32)
+            .play(2.0);
+        builder.add_tracks(frag.compile());
+        let mut timeline = builder.compile();
+
+        timeline.set_target_time(999.0);
+        assert_eq!(timeline.target_time(), 2.0);
+    }
+
+    #[test]
+    fn set_target_track_clamps_above_last_index() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 1.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+        builder.add_tracks(frag.compile());
+        let mut timeline = builder.compile();
+
+        timeline.set_target_track(999);
+        assert_eq!(timeline.target_index(), 0); // only one track at index 0
+    }
+
+    // ── Timeline completion detection ─────────────────────────────────────────
+
+    #[test]
+    fn timeline_is_not_complete_at_start() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 1.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+        builder.add_tracks(frag.compile());
+        let mut timeline = builder.compile();
+
+        assert!(!timeline.is_complete());
+    }
+
+    #[test]
+    fn timeline_is_complete_at_end_of_last_track() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 1.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+        builder.add_tracks(frag.compile());
+        let mut timeline = builder.compile();
+        let mut world = VecWorld(alloc::vec![0.0]);
+
+        timeline.bake_actions(&registry, &world);
+        timeline.set_target_time(1.0);
+        timeline.queue_actions();
+        timeline.sample_queued_actions(&registry, &mut world);
+
+        assert!(timeline.is_complete());
+    }
+
+    #[test]
+    fn timeline_is_last_track_with_single_track() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 1.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+        builder.add_tracks(frag.compile());
+        let timeline = builder.compile();
+
+        assert!(timeline.is_last_track());
+    }
+
+    // ── QueueCache ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn queue_cache_starts_empty() {
+        let cache = QueueCache::new();
+        assert!(cache.is_empty());
+    }
+
+    #[test]
+    fn queue_cache_clears_on_demand() {
+        // Indirectly test clear via the timeline: after queue_actions the
+        // cache is populated, but after a second call it should be refreshed.
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+        let frag = builder
+            .act(0_usize, path!(<f32>), |x| x + 1.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+        builder.add_tracks(frag.compile());
+        let mut timeline = builder.compile();
+        let mut world = VecWorld(alloc::vec![0.0]);
+
+        timeline.bake_actions(&registry, &world);
+        timeline.set_target_time(0.5);
+        timeline.queue_actions();
+        // After queue, cache should be non-empty.
+        assert!(!timeline.queue_cache().is_empty());
+
+        // Calling queue again resets the cache before re-populating.
+        timeline.queue_actions();
+        assert!(!timeline.queue_cache().is_empty());
+    }
+
+    // ── Multi-subject animation ───────────────────────────────────────────────
+
+    #[test]
+    fn timeline_animates_multiple_subjects_independently() {
+        let mut registry = Registry::new();
+        let mut builder = registry.create_builder::<VecWorld>();
+
+        // Both subjects animated concurrently in a single track using ord_all.
+        use crate::track::TrackOrdering;
+        let frag0 = builder
+            .act(0_usize, path!(<f32>), |x| x + 10.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+        let frag1 = builder
+            .act(1_usize, path!(<f32>), |x| x + 20.0)
+            .with_interp(linear_f32)
+            .play(1.0);
+
+        let track = [frag0, frag1].ord_all().compile();
+
+        builder.add_tracks(track);
+        let mut timeline = builder.compile();
+        let mut world = VecWorld(alloc::vec![0.0, 0.0]);
+
+        timeline.bake_actions(&registry, &world);
+        timeline.set_target_time(1.0);
+        timeline.queue_actions();
+        timeline.sample_queued_actions(&registry, &mut world);
+
+        assert!(
+            (world.0[0] - 10.0).abs() < f32::EPSILON,
+            "Subject 0 expected 10.0, got {}",
+            world.0[0]
+        );
+        assert!(
+            (world.0[1] - 20.0).abs() < f32::EPSILON,
+            "Subject 1 expected 20.0, got {}",
+            world.0[1]
+        );
+    }
+}
