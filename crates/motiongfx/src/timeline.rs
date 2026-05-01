@@ -47,21 +47,28 @@ impl<W: 'static> Timeline<W> {
         subject_world: &W,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
-            let Some(pipeline) = registry.pipeline.get(key) else {
-                continue;
-            };
-
             for track in self.tracks.iter() {
-                pipeline.bake(BakeCtx {
-                    world: subject_world,
-                    track,
-                    action_world: &mut self.action_world,
-                    accessor_registry: &registry.accessor,
-                })
+                registry.pipeline.bake(
+                    key,
+                    BakeCtx {
+                        world: subject_world,
+                        track,
+                        action_world: &mut self.action_world,
+                        accessor_registry: &registry.accessor,
+                    },
+                );
             }
         }
     }
 
+    /// Determines which actions are active at the current target time
+    /// and marks them for sampling.
+    ///
+    /// This step is intentionally separate from
+    /// [`Self::sample_queued_actions`] so that multiple timelines can
+    /// queue concurrently. Queuing only requires `&mut self`, whereas
+    /// sampling requires `&mut W`, which would prevent parallel
+    /// execution across timelines sharing the same world.
     pub fn queue_actions(&mut self) {
         if self.tracks.is_empty() {
             return;
@@ -224,15 +231,14 @@ impl<W: 'static> Timeline<W> {
         subject_world: &mut W,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
-            let Some(pipeline) = registry.pipeline.get(key) else {
-                continue;
-            };
-
-            pipeline.sample(SampleCtx {
-                world: subject_world,
-                action_world: &self.action_world,
-                accessor_registry: &registry.accessor,
-            });
+            registry.pipeline.sample(
+                key,
+                SampleCtx {
+                    world: subject_world,
+                    action_world: &self.action_world,
+                    accessor_registry: &registry.accessor,
+                },
+            );
         }
     }
 

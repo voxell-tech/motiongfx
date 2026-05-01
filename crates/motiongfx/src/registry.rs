@@ -5,7 +5,8 @@ use field_path::field_accessor::FieldAccessor;
 
 use crate::ThreadSafe;
 use crate::pipeline::{
-    Pipeline, PipelineHandle, PipelineKey, PipelineUntyped,
+    BakeCtx, Pipeline, PipelineHandle, PipelineKey, PipelineUntyped,
+    SampleCtx,
 };
 use crate::prelude::{SubjectSource, TimelineBuilder};
 use crate::subject::SubjectId;
@@ -101,8 +102,22 @@ impl PipelineRegistry {
         }
     }
 
-    pub fn get(&self, key: &PipelineKey) -> Option<&PipelineUntyped> {
-        self.pipelines.get(key)
+    pub(crate) fn bake<W>(&self, key: &PipelineKey, ctx: BakeCtx<W>) {
+        if let Some(pipeline) = self.pipelines.get(key) {
+            // SAFETY: key encodes W's TypeId; lookup guarantees W matches.
+            unsafe { pipeline.bake(ctx) };
+        }
+    }
+
+    pub(crate) fn sample<W>(
+        &self,
+        key: &PipelineKey,
+        ctx: SampleCtx<W>,
+    ) {
+        if let Some(pipeline) = self.pipelines.get(key) {
+            // SAFETY: key encodes W's TypeId; lookup guarantees W matches.
+            unsafe { pipeline.sample(ctx) };
+        }
     }
 
     /// Register a pipeline. Skips pipelines already registered.
@@ -119,7 +134,7 @@ impl PipelineRegistry {
         }
 
         self.pipelines
-            .insert(key, Pipeline::<I, S, T>::new::<W>().untyped());
+            .insert(key, Pipeline::<W, I, S, T>::new().untyped());
         self
     }
 }

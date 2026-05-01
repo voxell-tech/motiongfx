@@ -10,6 +10,7 @@ use crate::action::{
     ActionClip, ActionKey, ActionWorld, EaseStorage, InterpStorage,
     SampleMode, Segment,
 };
+use crate::pipeline::func_pointers::{BakeFn, SampleFn};
 use crate::registry::AccessorRegistry;
 use crate::subject::SubjectId;
 use crate::track::Track;
@@ -19,26 +20,20 @@ pub struct PipelineHandle<W, I, S, T> {
     _marker: PhantomData<fn() -> (W, I, S, T)>,
 }
 
-impl<W, I, S, T> PipelineHandle<W, I, S, T> {
-    pub fn new() -> Self
-    where
-        W: 'static,
-        I: SubjectId,
-        S: 'static,
-        T: 'static,
-    {
+impl<W, I, S, T> PipelineHandle<W, I, S, T>
+where
+    W: 'static,
+    I: SubjectId,
+    S: 'static,
+    T: 'static,
+{
+    pub fn new() -> Self {
         Self {
             _marker: PhantomData,
         }
     }
 
-    pub fn as_key(&self) -> PipelineKey
-    where
-        W: 'static,
-        I: SubjectId,
-        S: 'static,
-        T: 'static,
-    {
+    pub fn as_key(&self) -> PipelineKey {
         PipelineKey::new::<W, I, S, T>()
     }
 }
@@ -115,15 +110,15 @@ pub trait SubjectSource<I: SubjectId, S: 'static> {
 /// A pipeline for baking and sampling actions of type `(I, S, T)`.
 /// The world type `W` is erased at storage; it must match at call sites.
 #[derive(Debug, Clone, Copy)]
-pub struct Pipeline<I, S, T> {
-    bake: BakeFnPtr,
-    sample: SampleFnPtr,
+pub struct Pipeline<W, I, S, T> {
+    bake: BakeFn<W>,
+    sample: SampleFn<W>,
     #[expect(clippy::complexity)]
     _marker: PhantomData<fn() -> (I, S, T)>,
 }
 
-impl<I, S, T> Pipeline<I, S, T> {
-    pub fn new<W>() -> Self
+impl<W, I, S, T> Pipeline<W, I, S, T> {
+    pub fn new() -> Self
     where
         W: SubjectSource<I, S>,
         I: SubjectId,
@@ -131,17 +126,29 @@ impl<I, S, T> Pipeline<I, S, T> {
         T: Clone + ThreadSafe,
     {
         Self {
-            bake: BakeFnPtr::new(bake::<W, I, S, T>),
-            sample: SampleFnPtr::new(sample::<W, I, S, T>),
+            bake: bake::<W, I, S, T>,
+            sample: sample::<W, I, S, T>,
             _marker: PhantomData,
         }
     }
 
     pub fn untyped(&self) -> PipelineUntyped {
         PipelineUntyped {
-            bake: self.bake,
-            sample: self.sample,
+            bake: BakeFnPtr::new(self.bake),
+            sample: SampleFnPtr::new(self.sample),
         }
+    }
+}
+
+impl<W, I, S, T> Default for Pipeline<W, I, S, T>
+where
+    W: SubjectSource<I, S>,
+    I: SubjectId,
+    S: 'static,
+    T: Clone + ThreadSafe,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -152,14 +159,18 @@ pub struct PipelineUntyped {
 }
 
 impl PipelineUntyped {
-    pub fn bake<W>(&self, ctx: BakeCtx<W>) {
-        // SAFETY: W matches the W passed to Pipeline::new.
+    /// # Safety
+    ///
+    /// `W` must match the type used when registering this pipeline.
+    pub(crate) unsafe fn bake<W>(&self, ctx: BakeCtx<W>) {
         let f = unsafe { self.bake.typed_unchecked::<W>() };
         f(ctx)
     }
 
-    pub fn sample<W>(&self, ctx: SampleCtx<W>) {
-        // SAFETY: W matches the W passed to Pipeline::new.
+    /// # Safety
+    ///
+    /// `W` must match the type used when registering this pipeline.
+    pub(crate) unsafe fn sample<W>(&self, ctx: SampleCtx<W>) {
         let f = unsafe { self.sample.typed_unchecked::<W>() };
         f(ctx)
     }
