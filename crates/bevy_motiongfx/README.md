@@ -48,9 +48,9 @@ fn build_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = motiongfx.create_bevy_builder();
     let track = b
-        .act_interp(entity, field!(<Transform>::translation::x), |x| {
+        .act_interp(entity, path!(<Transform>::translation::x), |x| {
             x + 6.0
         })
         .play(1.0)
@@ -82,12 +82,12 @@ fn build_timeline(
     commands.spawn(MeshMaterial3d(material.clone()));
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = motiongfx.create_bevy_builder();
     let track = b
         .act_interp(
           // AssetIds must be type-erased.
           material.untyped().id(),
-          field!(<StandardMaterial>::base_color),
+          path!(<StandardMaterial>::base_color),
           |_| Srgba::RED.into(),
         )
         .play(1.0)
@@ -115,7 +115,7 @@ fn build_timeline(
     mut motiongfx: ResMut<MotionGfxWorld>,
 ) {
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = motiongfx.create_bevy_builder();
     // Add tracks here...
     let timeline = b.compile();
 
