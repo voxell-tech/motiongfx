@@ -53,7 +53,7 @@ fn spawn_timeline(
     }
 
     // Build the timeline.
-    let mut b = motiongfx.create_bevy_builder();
+    let mut b = motiongfx.create_builder();
     let mut cube_tracks = Vec::with_capacity(CAPACITY);
 
     for w in 0..WIDTH {

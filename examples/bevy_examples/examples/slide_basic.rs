@@ -48,7 +48,7 @@ fn spawn_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = motiongfx.create_bevy_builder();
+    let mut b = motiongfx.create_builder();
 
     // Generate slide sequences.
     let slide0 = b

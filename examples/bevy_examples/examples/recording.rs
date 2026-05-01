@@ -107,7 +107,7 @@ fn spawn_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = motiongfx.create_bevy_builder();
+    let mut b = motiongfx.create_builder();
 
     let track = b
         .act(cube, path!(<Transform>::translation), |x| {

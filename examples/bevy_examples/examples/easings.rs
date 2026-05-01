@@ -71,7 +71,7 @@ fn spawn_timeline(
     }
 
     // Build the timeline.
-    let mut b = motiongfx.create_bevy_builder();
+    let mut b = motiongfx.create_builder();
 
     let track = easings
         .into_iter()

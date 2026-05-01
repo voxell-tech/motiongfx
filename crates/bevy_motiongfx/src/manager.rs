@@ -95,13 +95,7 @@ impl Default for MotionGfxManager {
 }
 
 impl MotionGfxManager {
-    pub fn create_builder<W: 'static>(
-        &mut self,
-    ) -> TimelineBuilder<'_, W> {
-        TimelineBuilder::new(&mut self.registry)
-    }
-
-    pub fn create_bevy_builder(&mut self) -> BevyTimelineBuilder<'_> {
+    pub fn create_builder(&mut self) -> BevyTimelineBuilder<'_> {
         TimelineBuilder::new(&mut self.registry)
     }
 
