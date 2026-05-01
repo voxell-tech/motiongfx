@@ -48,7 +48,7 @@ impl<W: 'static> Timeline<W> {
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
             for track in self.tracks.iter() {
-                registry.pipeline.bake(
+                let ok = registry.pipeline.bake(
                     key,
                     BakeCtx {
                         world: subject_world,
@@ -56,6 +56,10 @@ impl<W: 'static> Timeline<W> {
                         action_world: &mut self.action_world,
                         accessor_registry: &registry.accessor,
                     },
+                );
+                debug_assert!(
+                    ok,
+                    "pipeline not found for key {key:?}"
                 );
             }
         }
@@ -231,7 +235,7 @@ impl<W: 'static> Timeline<W> {
         subject_world: &mut W,
     ) {
         for key in self.pipeline_counts.iter().map(|(key, _)| key) {
-            registry.pipeline.sample(
+            let ok = registry.pipeline.sample(
                 key,
                 SampleCtx {
                     world: subject_world,
@@ -239,6 +243,7 @@ impl<W: 'static> Timeline<W> {
                     accessor_registry: &registry.accessor,
                 },
             );
+            debug_assert!(ok, "pipeline not found for key {key:?}");
         }
     }
 

@@ -1,3 +1,5 @@
+use core::any::TypeId;
+
 use bevy_platform::collections::HashMap;
 use field_path::accessor::{Accessor, UntypedAccessor};
 use field_path::field::UntypedField;
@@ -102,22 +104,40 @@ impl PipelineRegistry {
         }
     }
 
-    pub(crate) fn bake<W>(&self, key: &PipelineKey, ctx: BakeCtx<W>) {
-        if let Some(pipeline) = self.pipelines.get(key) {
-            // SAFETY: key encodes W's TypeId; lookup guarantees W matches.
-            unsafe { pipeline.bake(ctx) };
+    pub(crate) fn bake<W: 'static>(
+        &self,
+        key: &PipelineKey,
+        ctx: BakeCtx<W>,
+    ) -> bool {
+        if key.world_id() != TypeId::of::<W>() {
+            return false;
         }
+
+        if let Some(pipeline) = self.pipelines.get(key) {
+            // SAFETY: verified above that key.world_id == TypeId::of::<W>().
+            unsafe { pipeline.bake(ctx) };
+            return true;
+        }
+
+        false
     }
 
-    pub(crate) fn sample<W>(
+    pub(crate) fn sample<W: 'static>(
         &self,
         key: &PipelineKey,
         ctx: SampleCtx<W>,
-    ) {
-        if let Some(pipeline) = self.pipelines.get(key) {
-            // SAFETY: key encodes W's TypeId; lookup guarantees W matches.
-            unsafe { pipeline.sample(ctx) };
+    ) -> bool {
+        if key.world_id() != TypeId::of::<W>() {
+            return false;
         }
+
+        if let Some(pipeline) = self.pipelines.get(key) {
+            // SAFETY: verified above that key.world_id == TypeId::of::<W>().
+            unsafe { pipeline.sample(ctx) };
+            return true;
+        }
+
+        false
     }
 
     /// Register a pipeline. Skips pipelines already registered.

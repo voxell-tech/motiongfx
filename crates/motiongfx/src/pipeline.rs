@@ -94,6 +94,10 @@ impl PipelineKey {
             target_id: key.field().target_id(),
         }
     }
+
+    pub(crate) fn world_id(&self) -> TypeId {
+        self.world_id
+    }
 }
 
 /// Provides read and write access to a source type `S` by subject id `I`.
