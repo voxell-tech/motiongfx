@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::render::view::screenshot::{Screenshot, save_to_disk};
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
-use bevy_motiongfx::world::TimelineComplete;
+use bevy_motiongfx::manager::TimelineComplete;
 
 use crate::pipelines_ready::*;
 
