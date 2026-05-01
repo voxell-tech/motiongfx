@@ -14,7 +14,7 @@ fn main() {
 
 fn spawn_timeline(
     mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -112,7 +112,7 @@ fn setup(mut commands: Commands) {
 }
 
 fn slide_movement(
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut q_timelines: Query<(&TimelineId, &mut RealtimePlayer)>,
     keys: Res<ButtonInput<KeyCode>>,
 ) {

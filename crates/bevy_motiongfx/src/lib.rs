@@ -5,11 +5,11 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 
 use crate::controller::ControllerPlugin;
-use crate::world::MotionGfxWorldPlugin;
+use crate::manager::MotionGfxManagerPlugin;
 
 pub mod controller;
 pub mod interpolation;
-pub mod pipeline;
+pub mod manager;
 pub mod world;
 
 pub mod prelude {
@@ -19,8 +19,8 @@ pub mod prelude {
     pub use crate::interpolation::{
         ActionInterpTimelineExt, Interpolation,
     };
-    pub use crate::pipeline::{BevyTimeline, BevyTimelineBuilder};
-    pub use crate::world::{MotionGfxWorld, TimelineId};
+    pub use crate::manager::{MotionGfxManager, TimelineId};
+    pub use crate::world::{BevyTimeline, BevyTimelineBuilder};
 }
 
 pub use motiongfx;
@@ -42,7 +42,7 @@ impl Plugin for BevyMotionGfxPlugin {
             )
                 .chain(),
         );
-        app.add_plugins((MotionGfxWorldPlugin, ControllerPlugin));
+        app.add_plugins((MotionGfxManagerPlugin, ControllerPlugin));
     }
 }
 

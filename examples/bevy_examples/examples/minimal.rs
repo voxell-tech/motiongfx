@@ -32,7 +32,7 @@ fn log_complete(_: On<Add, TimelineComplete>) {
 /// Creates the timeline and plays it.
 fn build_timeline(
     mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
