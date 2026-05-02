@@ -21,16 +21,15 @@ fn spawn_timeline(
     const X_OFFSET: f32 = 2.0;
 
     // Spawn 3d models.
-    let cube_handle = materials.add(StandardMaterial {
-        base_color: palettes::tailwind::LIME_200.into(),
-        ..default()
-    });
-    let cube_mat = cube_handle.id().untyped();
+    let cube_mat_handle = materials.add(
+        StandardMaterial::from_color(palettes::tailwind::LIME_200),
+    );
+    let cube_mat_id = cube_mat_handle.id().untyped();
     let cube = commands
         .spawn((
             Mesh3d(meshes.add(Cuboid::default())),
             Transform::default().with_scale(Vec3::splat(0.0)),
-            MeshMaterial3d(cube_handle),
+            MeshMaterial3d(cube_mat_handle),
         ))
         .id();
 
@@ -67,7 +66,7 @@ fn spawn_timeline(
             .with_ease(ease::cubic::ease_out)
             .play(1.0),
             b.act_interp(
-                cube_mat,
+                cube_mat_id,
                 path!(<StandardMaterial>::base_color),
                 move |_| palettes::tailwind::ZINC_700.into(),
             )

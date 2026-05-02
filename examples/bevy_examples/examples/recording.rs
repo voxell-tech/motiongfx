@@ -92,16 +92,14 @@ fn spawn_timeline(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Spawn cube.
-    let mesh = meshes.add(Cuboid::default());
-    let mat = materials.add(StandardMaterial {
-        base_color: palettes::tailwind::LIME_200.into(),
-        ..default()
-    });
-
-    let cube = commands
+    let cube_id = commands
         .spawn((
-            Mesh3d(mesh),
-            MeshMaterial3d(mat),
+            Mesh3d(meshes.add(Cuboid::default())),
+            MeshMaterial3d(materials.add(
+                StandardMaterial::from_color(
+                    palettes::tailwind::LIME_200,
+                ),
+            )),
             Transform::from_xyz(-5.0, 0.0, 0.0),
         ))
         .id();
@@ -110,7 +108,7 @@ fn spawn_timeline(
     let mut b = motiongfx.create_builder();
 
     let track = b
-        .act(cube, path!(<Transform>::translation), |x| {
+        .act(cube_id, path!(<Transform>::translation), |x| {
             x + Vec3::ZERO.with_x(10.0).with_z(1.0)
         })
         .with_interp(|start, end, t| arc_lerp_3d(*start, *end, t))

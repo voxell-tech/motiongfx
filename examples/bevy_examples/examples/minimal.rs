@@ -36,13 +36,14 @@ fn build_timeline(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let material =
+    let cube_mat_handle =
         materials.add(StandardMaterial::from_color(Srgba::BLUE));
+    let cube_mat_id = cube_mat_handle.id().untyped();
     // Spawns the cube.
-    let cube = commands
+    let cube_id = commands
         .spawn((
             Mesh3d(meshes.add(Cuboid::default())),
-            MeshMaterial3d(material.clone()),
+            MeshMaterial3d(cube_mat_handle),
             Transform::from_xyz(-3.0, 0.0, 0.0),
         ))
         .id();
@@ -50,12 +51,14 @@ fn build_timeline(
     // Build the timeline.
     let mut b = motiongfx.create_builder();
     let track = [
-        b.act_interp(cube, path!(<Transform>::translation::x), |x| {
-            x + 6.0
-        })
+        b.act_interp(
+            cube_id,
+            path!(<Transform>::translation::x),
+            |x| x + 6.0,
+        )
         .play(1.0),
         b.act_interp(
-            material.untyped().id(),
+            cube_mat_id,
             path!(<StandardMaterial>::base_color),
             |_| Srgba::RED.into(),
         )
