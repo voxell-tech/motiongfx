@@ -516,6 +516,8 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     /// ## Panic
     ///
     /// Panics if the track is empty.
+    /// Use [`Self::try_compile`] to explicitly handle the case where
+    /// the track may be empty.
     pub fn compile(self) -> Timeline<W> {
         // TODO(nixon): What happens when track is empty?
         debug_assert!(
@@ -539,7 +541,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
         }
     }
 
-    /// Similar to [`Self::compile()`] but return `None` instead of
+    /// Similar to [`Self::compile`] but return `None` instead of
     /// panicking.
     pub fn try_compile(self) -> Option<Timeline<W>> {
         (!self.tracks.is_empty()).then(|| self.compile())
