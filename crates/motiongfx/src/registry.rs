@@ -39,6 +39,7 @@ impl Registry {
         self.pipeline.register::<W, I, S, T>();
     }
 
+    /// Create a [`TimelineBuilder`] for a specific `W` world.
     pub fn create_builder<W: 'static>(
         &mut self,
     ) -> TimelineBuilder<'_, W> {
@@ -63,7 +64,8 @@ impl AccessorRegistry {
         }
     }
 
-    /// Registers a field-accessor pair. Skips fields already registered.
+    /// Registers a [`FieldAccessor`] pair.
+    /// Skips fields already registered.
     #[inline]
     pub fn register<S: 'static, T: 'static>(
         &mut self,
@@ -140,7 +142,8 @@ impl PipelineRegistry {
         false
     }
 
-    /// Register a pipeline. Skips pipelines already registered.
+    /// Register a [`Pipeline`].
+    /// Skips pipelines already registered.
     pub fn register<W, I, S, T>(&mut self) -> &mut Self
     where
         W: SubjectSource<I, S> + 'static,
