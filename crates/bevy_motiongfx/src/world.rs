@@ -2,10 +2,14 @@ use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
-pub struct Bevy;
+/// Marker type for [`SubjectSource`] impls on [`World`].
+///
+/// Satisfies the orphan rule, allowing downstream crates to implement
+/// [`SubjectSource`] for [`World`] without owning it.
+pub struct BevyMarker;
 
 impl<S: Component<Mutability = Mutable>>
-    SubjectSource<Bevy, Entity, S> for World
+    SubjectSource<BevyMarker, Entity, S> for World
 {
     fn get_source(&self, id: Entity) -> Option<&S> {
         self.get::<S>(id)
@@ -22,7 +26,8 @@ impl<S: Component<Mutability = Mutable>>
 
 #[cfg(feature = "asset")]
 impl<S: bevy_asset::Asset>
-    SubjectSource<Bevy, bevy_asset::UntypedAssetId, S> for World
+    SubjectSource<BevyMarker, bevy_asset::UntypedAssetId, S>
+    for World
 {
     fn get_source(
         &self,
