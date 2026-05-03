@@ -3,22 +3,26 @@ use kurbo::{
     RoundedRectRadii, Size, Vec2,
 };
 
+/// Linearly interpolates between two `f64` values.
 #[inline]
 pub(crate) fn lerp_f64(a: f64, b: f64, t: f32) -> f64 {
     let t = f64::from(t);
     a * (1.0 - t) + b * t
 }
 
+/// Linearly interpolates between two [`Point`]s.
 #[inline]
 pub fn interp_point(a: &Point, b: &Point, t: f32) -> Point {
     Point::new(lerp_f64(a.x, b.x, t), lerp_f64(a.y, b.y, t))
 }
 
+/// Linearly interpolates between two [`Vec2`]s.
 #[inline]
 pub fn interp_vec2(a: &Vec2, b: &Vec2, t: f32) -> Vec2 {
     Vec2::new(lerp_f64(a.x, b.x, t), lerp_f64(a.y, b.y, t))
 }
 
+/// Linearly interpolates between two [`Size`]s.
 #[inline]
 pub fn interp_size(a: &Size, b: &Size, t: f32) -> Size {
     Size::new(
@@ -27,6 +31,9 @@ pub fn interp_size(a: &Size, b: &Size, t: f32) -> Size {
     )
 }
 
+/// Linearly interpolates between two [`Rect`]s.
+///
+/// Each corner coordinate is interpolated independently.
 #[inline]
 pub fn interp_rect(a: &Rect, b: &Rect, t: f32) -> Rect {
     Rect {
@@ -37,6 +44,9 @@ pub fn interp_rect(a: &Rect, b: &Rect, t: f32) -> Rect {
     }
 }
 
+/// Linearly interpolates between two [`Circle`]s.
+///
+/// Both the center position and radius are interpolated.
 #[inline]
 pub fn interp_circle(a: &Circle, b: &Circle, t: f32) -> Circle {
     Circle {
@@ -45,6 +55,7 @@ pub fn interp_circle(a: &Circle, b: &Circle, t: f32) -> Circle {
     }
 }
 
+/// Linearly interpolates between two [`Line`]s.
 #[inline]
 pub fn interp_line(a: &Line, b: &Line, t: f32) -> Line {
     Line {
@@ -53,6 +64,9 @@ pub fn interp_line(a: &Line, b: &Line, t: f32) -> Line {
     }
 }
 
+/// Linearly interpolates between two [`CubicBez`] curves.
+///
+/// Each of the four control points is interpolated independently.
 #[inline]
 pub fn interp_cubic_bez(
     a: &CubicBez,
@@ -67,6 +81,9 @@ pub fn interp_cubic_bez(
     )
 }
 
+/// Linearly interpolates between two [`QuadBez`] curves.
+///
+/// Each of the three control points is interpolated independently.
 #[inline]
 pub fn interp_quad_bez(a: &QuadBez, b: &QuadBez, t: f32) -> QuadBez {
     QuadBez::new(
@@ -76,6 +93,10 @@ pub fn interp_quad_bez(a: &QuadBez, b: &QuadBez, t: f32) -> QuadBez {
     )
 }
 
+/// Linearly interpolates between two [`RoundedRect`]s.
+///
+/// Both the bounding rect and each of the four corner radii are
+/// interpolated independently.
 #[inline]
 pub fn interp_rounded_rect(
     a: &RoundedRect,

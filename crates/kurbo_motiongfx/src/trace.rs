@@ -2,26 +2,27 @@ use kurbo::{
     BezPath, CubicBez, ParamCurve, PathEl, PathSeg, QuadBez,
 };
 
+/// Returns the prefix of a [`CubicBez`] traced from start to `t`.
 #[inline]
 pub fn trace_cubic_bez(curve: &CubicBez, t: f32) -> CubicBez {
     let t = t as f64;
     curve.subsegment(0.0..t)
 }
 
+/// Returns the prefix of a [`QuadBez`] traced from start to `t`.
 #[inline]
 pub fn trace_quad_bez(curve: &QuadBez, t: f32) -> QuadBez {
     let t = t as f64;
     curve.subsegment(0.0..t)
 }
 
-/// Returns the prefix of `path` traced from the start up to progress `t ∈ [0, 1]`.
+/// Returns the prefix of `path` traced from the start to `t`.
 ///
-/// Progress is distributed uniformly across segments (not arc-length
-/// parameterised). At `t = 0.0` the result is empty; at `t = 1.0` it
-/// is a full clone of `path`.
+/// Progress is distributed uniformly across segments (not
+/// arc-length parameterised).
 ///
-/// Only single-subpath paths are handled correctly. Multi-subpath paths
-/// will be traced as if they were a single continuous stroke.
+/// Only single-subpath paths are handled correctly. Multi-subpath
+/// paths will be traced as if they were a single continuous stroke.
 pub fn trace_bez_path(path: &BezPath, t: f32) -> BezPath {
     if t <= 0.0 {
         return BezPath::new();
@@ -47,11 +48,12 @@ pub fn trace_bez_path(path: &BezPath, t: f32) -> BezPath {
     for seg in path.segments().take(complete) {
         push_seg(&mut result, seg);
     }
-    if partial_t > 0.0 {
-        if let Some(seg) = path.segments().nth(complete) {
-            push_seg(&mut result, seg.subsegment(0.0..partial_t));
-        }
+    if partial_t > 0.0
+        && let Some(seg) = path.segments().nth(complete)
+    {
+        push_seg(&mut result, seg.subsegment(0.0..partial_t));
     }
+
     result
 }
 
