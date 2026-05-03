@@ -433,20 +433,20 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     }
 
     /// Add an [`Action`] without interpolation.
-    pub fn act<I, S, T>(
+    pub fn act<I, S, T, M>(
         &mut self,
         target: I,
         field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> ActionBuilder<'_, T>
     where
-        W: SubjectSource<I, S> + 'static,
+        W: SubjectSource<M, I, S> + 'static,
         I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
         let field = field_acc.field;
-        self.registry.register::<W, I, S, T>(field_acc);
+        self.registry.register::<W, I, S, T, M>(field_acc);
         let key = PipelineKey::new::<W, I, S, T>();
 
         match self.pipeline_counts.get_mut(&key) {
@@ -460,14 +460,14 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     }
 
     /// Add an [`Action`] using step interpolation.
-    pub fn act_step<I, S, T>(
+    pub fn act_step<I, S, T, M>(
         &mut self,
         target: I,
         field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
-        W: SubjectSource<I, S> + 'static,
+        W: SubjectSource<M, I, S> + 'static,
         I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
