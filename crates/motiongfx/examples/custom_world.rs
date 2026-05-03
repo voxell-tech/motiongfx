@@ -137,8 +137,6 @@ fn main() {
     );
 }
 
-// struct Marker;
-
 impl SubjectSource<Self, Id, Point> for SubjectWorld {
     fn get_source(&self, id: Id) -> Option<&Point> {
         match self.world.get(&id)? {

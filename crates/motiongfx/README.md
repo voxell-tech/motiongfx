@@ -14,7 +14,7 @@ modular foundation for procedural animations.
 ## Key Features
 
 - **Backend agnostic**: Works with any rendering backend.
-- **Procedural**: Write animations with code - loops, functions,
+- **Procedural**: Write animations with code, loops, functions,
   logic.
 - **Type-erased**: Powered by
   [Field Path](https://github.com/voxell-tech/field_path), allowing
@@ -29,13 +29,17 @@ modular foundation for procedural animations.
 ```rust
 use motiongfx::prelude::*;
 
-// The world holds all subject's `f32` values.
-struct World(Vec<f32>);
+// A marker is a plain unit struct, a type-level tag that identifies
+// this particular SubjectSource implementation. It holds no data.
+// You need it because you can't implement foreign traits (SubjectSource)
+// on foreign types (Vec<f32>) without a disambiguating marker.
+struct Marker;
 
-// Tell MotionGfx how to read and write `f32` values in `World`.
-impl SubjectSource<Self, usize, f32> for World {
+// The actual data lives in Vec<f32>. We teach MotionGfx how to read
+// and write f32 subjects from it, tagged by `Marker`.
+impl SubjectSource<Marker, usize, f32> for Vec<f32> {
     fn get_source(&self, id: usize) -> Option<&f32> {
-        self.0.get(id)
+        self.get(id)
     }
 
     fn apply_source<R>(
@@ -43,20 +47,21 @@ impl SubjectSource<Self, usize, f32> for World {
         id: usize,
         f: impl FnOnce(&mut f32) -> R,
     ) -> Option<R> {
-        self.0.get_mut(id).map(f)
+        self.get_mut(id).map(f)
     }
 }
 
-let mut world = World(vec![0.0]);
+let mut subjects = vec![0.0_f32];
 
 // The registry tracks which types are animated.
 let mut registry = Registry::new();
-let mut b = registry.create_builder::<World>();
+// The builder is typed on the data holder (Vec<f32>).
+let mut b = registry.create_builder::<Vec<f32>>();
 
 let id = 0;
 // Create an action with: id, field path, action fn.
 let action = b
-    // Animate subject 0 from its current value to +10.0
+    // Animate subject 0 from its current value to +10.0.
     .act(id, path!(<f32>), |x| x + 10.0)
     // Every action needs an interpolation function.
     .with_interp(|a, b, t| a + (b - a) * t);
@@ -71,35 +76,40 @@ b.add_tracks(track);
 let mut timeline = b.compile();
 
 // Bake must run once before sampling.
-timeline.bake_actions(&registry, &world);
+timeline.bake_actions(&registry, &subjects);
 
-// Sample at t = 0.5 - world.0[0] should now be 5.0.
+// Sample at t = 0.5, subjects[0] should now be 5.0.
 timeline.set_target_time(0.5);
 timeline.queue_actions();
-timeline.sample_queued_actions(&registry, &mut world);
+timeline.sample_queued_actions(&registry, &mut subjects);
 
-assert!((world.0[0] - 5.0).abs() < f32::EPSILON);
+assert!((subjects[0] - 5.0).abs() < f32::EPSILON);
 ```
 
 ## Creating your first animation
 
 ### The World
 
-Think of a **world** as a container for everything you want to
-animate. Each item inside it (called a **subject**) has an ID so
-MotionGfx can find it. To connect your world to MotionGfx, implement
-`SubjectSource` with two methods: one to read a subject by ID, and
-one to write to it.
+MotionGfx separates the **marker** from the **data holder**:
+
+- The **marker** (`M`) is a plain unit struct with no fields. It is a
+  type-level tag that identifies a specific `SubjectSource`
+  implementation. This lets you have multiple independent impls on the
+  same data type without conflicting, and works around the orphan rule
+  when the data type is not yours.
+- The **data holder** (`W`) is whatever owns the subjects, a `Vec`,
+  a `HashMap`, your own struct. This is the type you pass to
+  `bake_actions` and `sample_queued_actions`.
 
 ```rust
-use motiongfx::prelude::*;
+# use motiongfx::prelude::*;
+// The marker: no data, just a type-level tag.
+struct Marker;
 
-// A Vec is a simple world. Each f32 value is a subject, accessed by its index.
-struct World(Vec<f32>);
-
-impl SubjectSource<Self, usize, f32> for World {
+// The data holder: subjects are f32 values, keyed by index.
+impl SubjectSource<Marker, usize, f32> for Vec<f32> {
     fn get_source(&self, id: usize) -> Option<&f32> {
-        self.0.get(id)
+        self.get(id)
     }
 
     fn apply_source<R>(
@@ -107,7 +117,7 @@ impl SubjectSource<Self, usize, f32> for World {
         id: usize,
         f: impl FnOnce(&mut f32) -> R,
     ) -> Option<R> {
-        self.0.get_mut(id).map(f)
+        self.get_mut(id).map(f)
     }
 }
 ```
@@ -121,20 +131,21 @@ manually, just create one and pass it to the builder. Registration
 happens automatically the first time you add an animation.
 
 ```rust
-# use motiongfx::prelude::*;
+use motiongfx::prelude::*;
+
 let mut registry = Registry::new();
 ```
 
 ### The Timeline Builder
 
 The `TimelineBuilder` is where you describe your animations. Create
-one from the registry, typed to your world:
+one from the registry, typed to your data holder:
 
 ```rust
-# use motiongfx::prelude::*;
-# let mut registry = Registry::new();
-// Using `()` as a placeholder world type for this example.
-let mut b = registry.create_builder::<()>();
+# #[path = "docs/world.rs"] mod _doc;
+# use _doc::*;
+# let mut registry = registry();
+let mut b = registry.create_builder::<Vec<f32>>();
 ```
 
 ### Building the Timeline
@@ -148,14 +159,10 @@ Animations are built up in layers:
 4. A **timeline** combines all your tracks into one playable sequence.
 
 ```rust
-# use motiongfx::prelude::*;
-# struct World(Vec<f32>);
-# impl SubjectSource<Self, usize, f32> for World {
-#     fn get_source(&self, id: usize) -> Option<&f32> { self.0.get(id) }
-#     fn apply_source<R>(&mut self, id: usize, f: impl FnOnce(&mut f32) -> R) -> Option<R> { self.0.get_mut(id).map(f) }
-# }
-# let mut registry = Registry::new();
-# let mut b = registry.create_builder::<World>();
+# #[path = "docs/world.rs"] mod _doc;
+# use _doc::*;
+# let mut registry = registry();
+# let mut b = registry.create_builder::<Vec<f32>>();
 let id = 0;
 // Act: animate subject 0 from its current value to +10.0.
 let action = b
@@ -190,27 +197,19 @@ A timeline can also have multiple tracks, each acting as a chapter.
 Use `set_target_track` to jump between them.
 
 ```rust
-# use motiongfx::prelude::*;
-# struct World(Vec<f32>);
-# impl SubjectSource<Self, usize, f32> for World {
-#     fn get_source(&self, id: usize) -> Option<&f32> { self.0.get(id) }
-#     fn apply_source<R>(&mut self, id: usize, f: impl FnOnce(&mut f32) -> R) -> Option<R> { self.0.get_mut(id).map(f) }
-# }
-# let mut world = World(vec![0.0]);
-# let mut registry = Registry::new();
-# let mut b = registry.create_builder::<World>();
-# let track = b.act(0, path!(<f32>), |x| x + 10.0).with_interp(|a: &f32, b: &f32, t| a + (b - a) * t).play(1.0).compile();
-# b.add_tracks(track);
-# let mut timeline = b.compile();
+# #[path = "docs/world.rs"] mod _doc;
+# use _doc::*;
+# let mut subjects = vec![0.0_f32];
+# let (registry, mut timeline) = timeline();
 // Bake once after building the timeline.
-timeline.bake_actions(&registry, &world);
+timeline.bake_actions(&registry, &subjects);
 
 // Set target time, queue, then sample.
 timeline.set_target_time(0.5);
 timeline.queue_actions();
-timeline.sample_queued_actions(&registry, &mut world);
+timeline.sample_queued_actions(&registry, &mut subjects);
 
-assert!((world.0[0] - 5.0).abs() < f32::EPSILON);
+assert!((subjects[0] - 5.0).abs() < f32::EPSILON);
 ```
 
 ### Track Ordering
@@ -306,4 +305,3 @@ You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ).
 
 This means you can select the license you prefer!
 This dual-licensing approach is the de-facto standard in the Rust ecosystem and there are [very good reasons](https://github.com/bevyengine/bevy/issues/2373) to include both.
-
