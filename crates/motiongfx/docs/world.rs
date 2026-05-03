@@ -1,8 +1,10 @@
 pub use motiongfx::prelude::*;
 
+pub type World = Vec<f32>;
+
 pub struct Marker;
 
-impl SubjectSource<Marker, usize, f32> for Vec<f32> {
+impl SubjectSource<Marker, usize, f32> for World {
     fn get_source(&self, id: usize) -> Option<&f32> {
         self.get(id)
     }
@@ -16,13 +18,9 @@ impl SubjectSource<Marker, usize, f32> for Vec<f32> {
     }
 }
 
-pub fn registry() -> Registry {
-    Registry::new()
-}
-
-pub fn timeline() -> (Registry, Timeline<Vec<f32>>) {
+pub fn timeline() -> (Registry, Timeline<World>) {
     let mut registry = Registry::new();
-    let mut b = registry.create_builder::<Vec<f32>>();
+    let mut b = registry.create_builder::<World>();
     let track = b
         .act(0usize, path!(<f32>), |x| x + 10.0)
         .with_interp(|a: &f32, b: &f32, t| a + (b - a) * t)
