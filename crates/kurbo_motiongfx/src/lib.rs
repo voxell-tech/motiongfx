@@ -1,6 +1,7 @@
 #![no_std]
 
-pub mod interp;
+pub mod interpolation;
 pub mod trace;
 
-pub use motiongfx;
+/// Marker type for [`Interpolation`] impls on kurbo geometry types.
+pub struct Kurbo;

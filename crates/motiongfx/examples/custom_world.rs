@@ -66,16 +66,18 @@ fn main() {
     // Create the track.
     let track = [
         builder
-            .act(Id(0), path!(<Point>::x), |x| x + 72.0)
+            .act_builder(Id(0), path!(<Point>::x), |x| x + 72.0)
             .with_interp(linear_f32)
             .play(1.0),
         [
             builder
-                .act(Id(1), path!(<Line>::p0::y), |y| y + 42.0)
+                .act_builder(Id(1), path!(<Line>::p0::y), |y| {
+                    y + 42.0
+                })
                 .with_interp(linear_f32)
                 .play(2.0),
             builder
-                .act(Id(1), path!(<Line>::p1), |_| Point {
+                .act_builder(Id(1), path!(<Line>::p1), |_| Point {
                     x: 6.0,
                     y: 6.0,
                 })

@@ -63,32 +63,26 @@ fn spawn_timeline(
             let circ_ease = ease::circ::ease_in_out;
 
             let track = [
-                b.act_interp(
-                    cube_id,
-                    path!(<Transform>::scale),
-                    |_| Vec3::splat(0.9),
-                )
+                b.act(cube_id, path!(<Transform>::scale), |_| {
+                    Vec3::splat(0.9)
+                })
                 .with_ease(circ_ease)
                 .play(1.0),
-                b.act_interp(
+                b.act(
                     cube_id,
                     path!(<Transform>::translation::x),
                     |x| x + 1.0,
                 )
                 .with_ease(circ_ease)
                 .play(1.0),
-                b.act_interp(
-                    cube_id,
-                    path!(<Transform>::rotation),
-                    |_| {
-                        Quat::from_euler(
-                            EulerRot::XYZ,
-                            0.0,
-                            f32::to_radians(90.0),
-                            0.0,
-                        )
-                    },
-                )
+                b.act(cube_id, path!(<Transform>::rotation), |_| {
+                    Quat::from_euler(
+                        EulerRot::XYZ,
+                        0.0,
+                        f32::to_radians(90.0),
+                        0.0,
+                    )
+                })
                 .with_ease(circ_ease)
                 .play(1.0),
             ]

@@ -11,6 +11,7 @@ use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionWorld,
     InterpActionBuilder, SampleMode,
 };
+use crate::interpolation::Interpolation;
 use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
@@ -431,8 +432,47 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
         }
     }
 
-    /// Add an [`Action`] without interpolation.
-    pub fn act<I, S, T>(
+    /// Add an [`Action`] with interpolation using
+    /// [`Interpolation::interp`].
+    pub fn act<I, S, T, M>(
+        &mut self,
+        target: I,
+        field_acc: FieldAccessor<S, T>,
+        action: impl Action<T>,
+    ) -> InterpActionBuilder<'_, T>
+    where
+        W: SubjectSource<I, S> + 'static,
+        I: SubjectId,
+        S: 'static,
+        T: Interpolation<M> + Clone + ThreadSafe,
+    {
+        self.act_builder(target, field_acc, action)
+            .with_interp(T::interp)
+    }
+
+    /// Add an [`Action`] using step interpolation.
+    pub fn act_step<I, S, T>(
+        &mut self,
+        target: I,
+        field_acc: FieldAccessor<S, T>,
+        action: impl Action<T>,
+    ) -> InterpActionBuilder<'_, T>
+    where
+        W: SubjectSource<I, S> + 'static,
+        I: SubjectId,
+        S: 'static,
+        T: Clone + ThreadSafe,
+    {
+        self.act_builder(target, field_acc, action).with_interp(
+            |a, b, t| {
+                if t < 1.0 { a.clone() } else { b.clone() }
+            },
+        )
+    }
+
+    /// Add an [`Action`] without interpolation, returning an
+    /// [`ActionBuilder`] for manual configuration.
+    pub fn act_builder<I, S, T>(
         &mut self,
         target: I,
         field_acc: FieldAccessor<S, T>,
@@ -456,24 +496,6 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
         }
 
         self.action_world.add(target, field, action)
-    }
-
-    /// Add an [`Action`] using step interpolation.
-    pub fn act_step<I, S, T>(
-        &mut self,
-        target: I,
-        field_acc: FieldAccessor<S, T>,
-        action: impl Action<T>,
-    ) -> InterpActionBuilder<'_, T>
-    where
-        W: SubjectSource<I, S> + 'static,
-        I: SubjectId,
-        S: 'static,
-        T: Clone + ThreadSafe,
-    {
-        self.act(target, field_acc, action).with_interp(|a, b, t| {
-            if t < 1.0 { a.clone() } else { b.clone() }
-        })
     }
 
     /// Remove an [`Action`].

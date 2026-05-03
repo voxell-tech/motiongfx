@@ -1,52 +1,17 @@
 use bevy_math::*;
-use motiongfx::prelude::*;
-use motiongfx::subject::SubjectId;
+use motiongfx::prelude::Interpolation;
 
-pub trait ActionInterpTimelineExt<W> {
-    fn act_interp<I, S, T>(
-        &mut self,
-        target: I,
-        field_acc: FieldAccessor<S, T>,
-        action: impl Action<T>,
-    ) -> InterpActionBuilder<'_, T>
-    where
-        W: SubjectSource<I, S>,
-        I: SubjectId,
-        S: 'static,
-        T: Interpolation + Clone + ThreadSafe;
-}
+use crate::world::BevyMarker;
 
-impl<W: 'static> ActionInterpTimelineExt<W>
-    for TimelineBuilder<'_, W>
-{
-    /// Add an [`Action`] with interpolation using
-    /// [`Interpolation::interp`].
-    fn act_interp<I, S, T>(
-        &mut self,
-        target: I,
-        field_acc: FieldAccessor<S, T>,
-        action: impl Action<T>,
-    ) -> InterpActionBuilder<'_, T>
-    where
-        W: SubjectSource<I, S>,
-        I: SubjectId,
-        S: 'static,
-        T: Interpolation + Clone + ThreadSafe,
-    {
-        self.act(target, field_acc, action).with_interp(T::interp)
-    }
-}
-
-/// Trait for interpolating between 2 values based on a f32 `t` value.
-pub trait Interpolation<T = Self, U = Self> {
-    /// Linearly interpolate between 2 values based on a f32 `t` value.
-    fn interp(a: &Self, b: &T, t: f32) -> U;
-}
-
-#[macro_export]
+// TODO(nixon): Should we expose this? Move this into `motiongfx`?
+// #[macro_export]
 macro_rules! impl_float_interpolation {
     ($ty:ty, $base:ty) => {
-        impl $crate::interpolation::Interpolation for $ty {
+        impl
+            motiongfx::prelude::Interpolation<
+                $crate::world::BevyMarker,
+            > for $ty
+        {
             #[inline]
             fn interp(a: &Self, b: &Self, t: f32) -> Self {
                 let t = <$base>::from(t);
@@ -58,7 +23,11 @@ macro_rules! impl_float_interpolation {
 
 macro_rules! impl_slerp_interpolation {
     ($ty: ty, $base: ty) => {
-        impl $crate::interpolation::Interpolation for $ty {
+        impl
+            motiongfx::prelude::Interpolation<
+                $crate::world::BevyMarker,
+            > for $ty
+        {
             #[inline]
             fn interp(a: &Self, b: &Self, t: f32) -> Self {
                 let t = <$base>::from(t);
@@ -86,7 +55,7 @@ impl_slerp_interpolation!(Dir2, f32);
 impl_slerp_interpolation!(Dir3, f32);
 impl_slerp_interpolation!(Dir3A, f32);
 
-impl Interpolation for u8 {
+impl Interpolation<BevyMarker> for u8 {
     fn interp(a: &Self, b: &Self, t: f32) -> Self {
         let a = *a as f32;
         let b = *b as f32;
@@ -98,12 +67,13 @@ impl Interpolation for u8 {
 #[cfg(feature = "color")]
 pub mod color {
     use bevy_color::prelude::*;
+    use motiongfx::prelude::Interpolation;
 
-    use super::Interpolation;
+    use crate::world::BevyMarker;
 
     macro_rules! impl_color_interpolation {
         ($ty:ty) => {
-            impl $crate::interpolation::Interpolation for $ty {
+            impl Interpolation<BevyMarker> for $ty {
                 #[inline]
                 fn interp(a: &Self, b: &Self, t: f32) -> Self {
                     (*a) * (1.0 - t) + (*b) * t
@@ -118,7 +88,7 @@ pub mod color {
     impl_color_interpolation!(Srgba);
     impl_color_interpolation!(Xyza);
 
-    impl Interpolation for Color {
+    impl Interpolation<BevyMarker> for Color {
         #[inline]
         fn interp(a: &Self, b: &Self, t: f32) -> Self {
             Color::mix(a, b, t)
@@ -129,10 +99,11 @@ pub mod color {
 #[cfg(feature = "transform")]
 pub mod transform {
     use bevy_transform::components::Transform;
+    use motiongfx::prelude::Interpolation;
 
-    use super::Interpolation;
+    use crate::world::BevyMarker;
 
-    impl Interpolation for Transform {
+    impl Interpolation<BevyMarker> for Transform {
         fn interp(a: &Self, b: &Self, t: f32) -> Self {
             Self {
                 translation: Interpolation::interp(

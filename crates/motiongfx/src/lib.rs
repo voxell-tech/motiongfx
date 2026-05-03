@@ -5,6 +5,7 @@ extern crate alloc;
 
 pub mod action;
 pub mod ease;
+pub mod interpolation;
 pub mod pipeline;
 pub mod registry;
 pub mod sequence;
@@ -25,6 +26,7 @@ pub mod prelude {
         InterpFn,
     };
     pub use crate::ease;
+    pub use crate::interpolation::Interpolation;
     pub use crate::path;
     pub use crate::pipeline::PipelineKey;
     pub use crate::registry::{
