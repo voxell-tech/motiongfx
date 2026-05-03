@@ -33,7 +33,7 @@ use motiongfx::prelude::*;
 struct World(Vec<f32>);
 
 // Tell MotionGfx how to read and write `f32` values in `World`.
-impl SubjectSource<usize, f32> for World {
+impl SubjectSource<Self, usize, f32> for World {
     fn get_source(&self, id: usize) -> Option<&f32> {
         self.0.get(id)
     }
@@ -97,7 +97,7 @@ use motiongfx::prelude::*;
 // A Vec is a simple world. Each f32 value is a subject, accessed by its index.
 struct World(Vec<f32>);
 
-impl SubjectSource<usize, f32> for World {
+impl SubjectSource<Self, usize, f32> for World {
     fn get_source(&self, id: usize) -> Option<&f32> {
         self.0.get(id)
     }
@@ -150,13 +150,13 @@ Animations are built up in layers:
 ```rust
 # use motiongfx::prelude::*;
 # struct World(Vec<f32>);
-# impl SubjectSource<usize, f32> for World {
+# impl SubjectSource<Self, usize, f32> for World {
 #     fn get_source(&self, id: usize) -> Option<&f32> { self.0.get(id) }
 #     fn apply_source<R>(&mut self, id: usize, f: impl FnOnce(&mut f32) -> R) -> Option<R> { self.0.get_mut(id).map(f) }
 # }
 # let mut registry = Registry::new();
 # let mut b = registry.create_builder::<World>();
-let id = 0_usize;
+let id = 0;
 // Act: animate subject 0 from its current value to +10.0.
 let action = b
     .act(id, path!(<f32>), |x| x + 10.0)
@@ -192,14 +192,14 @@ Use `set_target_track` to jump between them.
 ```rust
 # use motiongfx::prelude::*;
 # struct World(Vec<f32>);
-# impl SubjectSource<usize, f32> for World {
+# impl SubjectSource<Self, usize, f32> for World {
 #     fn get_source(&self, id: usize) -> Option<&f32> { self.0.get(id) }
 #     fn apply_source<R>(&mut self, id: usize, f: impl FnOnce(&mut f32) -> R) -> Option<R> { self.0.get_mut(id).map(f) }
 # }
 # let mut world = World(vec![0.0]);
 # let mut registry = Registry::new();
 # let mut b = registry.create_builder::<World>();
-# let track = b.act(0_usize, path!(<f32>), |x| x + 10.0).with_interp(|a: &f32, b: &f32, t| a + (b - a) * t).play(1.0).compile();
+# let track = b.act(0, path!(<f32>), |x| x + 10.0).with_interp(|a: &f32, b: &f32, t| a + (b - a) * t).play(1.0).compile();
 # b.add_tracks(track);
 # let mut timeline = b.compile();
 // Bake once after building the timeline.
