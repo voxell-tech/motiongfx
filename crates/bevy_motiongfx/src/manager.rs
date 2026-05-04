@@ -9,7 +9,7 @@ use crate::MotionGfxSet;
 use crate::controller::FixedRatePlayer;
 use crate::controller::RealtimePlayer;
 use crate::prelude::BevyTimelineBuilder;
-use crate::world::BevyTimeline;
+use crate::world::{BevyTimeline, BevyWorld};
 
 pub struct MotionGfxManagerPlugin;
 
@@ -139,9 +139,12 @@ impl MotionGfxManager {
             .or_else(|| self.pending_timelines.get_mut(id))
     }
 
-    pub fn load_pending_timelines(&mut self, world: &mut World) {
+    pub fn load_pending_timelines(&mut self, world: &World) {
         for (id, mut timeline) in self.pending_timelines.drain() {
-            timeline.bake_actions(&self.registry, world);
+            timeline.bake_actions(
+                &self.registry,
+                BevyWorld::from_ref(world),
+            );
             self.timelines.insert(id, timeline);
         }
     }
@@ -151,7 +154,10 @@ impl MotionGfxManager {
             self.timelines.values_mut().filter(|t| t.mutated())
         {
             timeline.queue_actions();
-            timeline.sample_queued_actions(&self.registry, world);
+            timeline.sample_queued_actions(
+                &self.registry,
+                BevyWorld::from_mut(world),
+            );
             timeline.reset();
         }
     }

@@ -137,7 +137,7 @@ fn main() {
     );
 }
 
-impl SubjectSource<Self, Id, Point> for SubjectWorld {
+impl SubjectSource<Id, Point> for SubjectWorld {
     fn get_source(&self, id: Id) -> Option<&Point> {
         match self.world.get(&id)? {
             Subject::Point(point) => Some(point),
@@ -157,7 +157,7 @@ impl SubjectSource<Self, Id, Point> for SubjectWorld {
     }
 }
 
-impl SubjectSource<Self, Id, Line> for SubjectWorld {
+impl SubjectSource<Id, Line> for SubjectWorld {
     fn get_source(&self, id: Id) -> Option<&Line> {
         match self.world.get(&id)? {
             Subject::Line(line) => Some(line),

@@ -14,6 +14,7 @@ use crate::pipeline::func_pointers::{BakeFn, SampleFn};
 use crate::registry::AccessorRegistry;
 use crate::subject::SubjectId;
 use crate::track::Track;
+use crate::world::SubjectSource;
 
 pub struct PipelineHandle<W, I, S, T> {
     #[expect(clippy::complexity)]
@@ -100,21 +101,6 @@ impl PipelineKey {
     }
 }
 
-/// Provides read and write access to a source type `S` by subject id `I`.
-///
-/// The `M` marker parameter exists solely to satisfy the orphan rule:
-/// downstream crates can provide a local marker type to implement
-/// this trait for foreign `Self` types.
-pub trait SubjectSource<M, I: SubjectId, S: 'static> {
-    fn get_source(&self, id: I) -> Option<&S>;
-
-    fn apply_source<R>(
-        &mut self,
-        id: I,
-        f: impl FnOnce(&mut S) -> R,
-    ) -> Option<R>;
-}
-
 /// A pipeline for baking and sampling actions of type `(I, S, T)`.
 /// The world type `W` is erased at storage; it must match at call sites.
 #[derive(Debug, Clone, Copy)]
@@ -126,16 +112,16 @@ pub struct Pipeline<W, I, S, T> {
 }
 
 impl<W, I, S, T> Pipeline<W, I, S, T> {
-    pub fn new<M>() -> Self
+    pub fn new() -> Self
     where
-        W: SubjectSource<M, I, S>,
+        W: SubjectSource<I, S>,
         I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
         Self {
-            bake: bake::<W, I, S, T, M>,
-            sample: sample::<W, I, S, T, M>,
+            bake: bake::<W, I, S, T>,
+            sample: sample::<W, I, S, T>,
             _marker: PhantomData,
         }
     }
@@ -148,17 +134,17 @@ impl<W, I, S, T> Pipeline<W, I, S, T> {
     }
 }
 
-// impl<W, I, S, T> Default for Pipeline<W, I, S, T>
-// where
-//     W: SubjectSource<(), I, S>,
-//     I: SubjectId,
-//     S: 'static,
-//     T: Clone + ThreadSafe,
-// {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }
+impl<W, I, S, T> Default for Pipeline<W, I, S, T>
+where
+    W: SubjectSource<I, S>,
+    I: SubjectId,
+    S: 'static,
+    T: Clone + ThreadSafe,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct PipelineUntyped {
@@ -191,9 +177,9 @@ pub struct BakeCtx<'a, W> {
     pub accessor_registry: &'a AccessorRegistry,
 }
 
-pub fn bake<W, I, S, T, M>(ctx: BakeCtx<W>)
+pub fn bake<W, I, S, T>(ctx: BakeCtx<W>)
 where
-    W: SubjectSource<M, I, S>,
+    W: SubjectSource<I, S>,
     I: SubjectId,
     S: 'static,
     T: Clone + ThreadSafe,
@@ -239,9 +225,9 @@ pub struct SampleCtx<'a, W> {
     pub accessor_registry: &'a AccessorRegistry,
 }
 
-pub fn sample<W, I, S, T, M>(ctx: SampleCtx<W>)
+pub fn sample<W, I, S, T>(ctx: SampleCtx<W>)
 where
-    W: SubjectSource<M, I, S>,
+    W: SubjectSource<I, S>,
     I: SubjectId,
     S: 'static,
     T: Clone + ThreadSafe,

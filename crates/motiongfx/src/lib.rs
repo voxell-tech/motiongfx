@@ -11,6 +11,7 @@ pub mod sequence;
 pub mod subject;
 pub mod timeline;
 pub mod track;
+pub mod world;
 
 // Re-exports field_path as it is essential for motiongfx to work!
 pub use field_path;
@@ -25,12 +26,13 @@ pub mod prelude {
     };
     pub use crate::ease;
     pub use crate::path;
-    pub use crate::pipeline::{PipelineKey, SubjectSource};
+    pub use crate::pipeline::PipelineKey;
     pub use crate::registry::{
         AccessorRegistry, PipelineRegistry, Registry,
     };
     pub use crate::timeline::{Timeline, TimelineBuilder};
     pub use crate::track::{Track, TrackFragment, TrackOrdering};
+    pub use crate::world::SubjectSource;
 }
 
 /// See [`field_path::field_accessor!`].

@@ -11,12 +11,11 @@ use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionWorld,
     InterpActionBuilder, SampleMode,
 };
-use crate::pipeline::{
-    BakeCtx, PipelineKey, Range, SampleCtx, SubjectSource,
-};
+use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
 use crate::track::Track;
+use crate::world::SubjectSource;
 
 pub struct Timeline<W> {
     action_world: ActionWorld,
@@ -433,20 +432,20 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     }
 
     /// Add an [`Action`] without interpolation.
-    pub fn act<I, S, T, M>(
+    pub fn act<I, S, T>(
         &mut self,
         target: I,
         field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> ActionBuilder<'_, T>
     where
-        W: SubjectSource<M, I, S> + 'static,
+        W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
         let field = field_acc.field;
-        self.registry.register::<W, I, S, T, M>(field_acc);
+        self.registry.register::<W, I, S, T>(field_acc);
         let key = PipelineKey::new::<W, I, S, T>();
 
         match self.pipeline_counts.get_mut(&key) {
@@ -460,14 +459,14 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     }
 
     /// Add an [`Action`] using step interpolation.
-    pub fn act_step<I, S, T, M>(
+    pub fn act_step<I, S, T>(
         &mut self,
         target: I,
         field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
-        W: SubjectSource<M, I, S> + 'static,
+        W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,

@@ -1,12 +1,10 @@
 pub use motiongfx::prelude::*;
 
-pub type World = Vec<f32>;
+pub struct World(pub Vec<f32>);
 
-pub struct Marker;
-
-impl SubjectSource<Marker, usize, f32> for World {
+impl SubjectSource<usize, f32> for World {
     fn get_source(&self, id: usize) -> Option<&f32> {
-        self.get(id)
+        self.0.get(id)
     }
 
     fn apply_source<R>(
@@ -14,7 +12,7 @@ impl SubjectSource<Marker, usize, f32> for World {
         id: usize,
         f: impl FnOnce(&mut f32) -> R,
     ) -> Option<R> {
-        self.get_mut(id).map(f)
+        self.0.get_mut(id).map(f)
     }
 }
 

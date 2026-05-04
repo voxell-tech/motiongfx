@@ -2,17 +2,28 @@ use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
-/// Marker type for [`SubjectSource`] impls on [`World`].
-///
-/// Satisfies the orphan rule, allowing downstream crates to implement
-/// [`SubjectSource`] for [`World`] without owning it.
-pub struct BevyMarker;
+/// Newtype wrapper around [`World`] that is local to this crate,
+/// allowing [`SubjectSource`] impls without violating the orphan rule.
+#[repr(transparent)]
+pub struct BevyWorld(pub World);
 
-impl<S: Component<Mutability = Mutable>>
-    SubjectSource<BevyMarker, Entity, S> for World
+impl BevyWorld {
+    pub fn from_ref(world: &World) -> &Self {
+        // SAFETY: `BevyWorld` is repr(transparent) over `World`.
+        unsafe { &*(world as *const World as *const Self) }
+    }
+
+    pub fn from_mut(world: &mut World) -> &mut Self {
+        // SAFETY: `BevyWorld` is repr(transparent) over `World`.
+        unsafe { &mut *(world as *mut World as *mut Self) }
+    }
+}
+
+impl<S: Component<Mutability = Mutable>> SubjectSource<Entity, S>
+    for BevyWorld
 {
     fn get_source(&self, id: Entity) -> Option<&S> {
-        self.get::<S>(id)
+        self.0.get::<S>(id)
     }
 
     fn apply_source<R>(
@@ -20,20 +31,20 @@ impl<S: Component<Mutability = Mutable>>
         id: Entity,
         f: impl FnOnce(&mut S) -> R,
     ) -> Option<R> {
-        self.get_mut::<S>(id).map(|mut m| f(m.as_mut()))
+        self.0.get_mut::<S>(id).map(|mut m| f(m.as_mut()))
     }
 }
 
 #[cfg(feature = "asset")]
 impl<S: bevy_asset::Asset>
-    SubjectSource<BevyMarker, bevy_asset::UntypedAssetId, S>
-    for World
+    SubjectSource<bevy_asset::UntypedAssetId, S> for BevyWorld
 {
     fn get_source(
         &self,
         id: bevy_asset::UntypedAssetId,
     ) -> Option<&S> {
-        self.get_resource::<bevy_asset::Assets<S>>()?
+        self.0
+            .get_resource::<bevy_asset::Assets<S>>()?
             .get(id.typed::<S>())
     }
 
@@ -42,12 +53,13 @@ impl<S: bevy_asset::Asset>
         id: bevy_asset::UntypedAssetId,
         f: impl FnOnce(&mut S) -> R,
     ) -> Option<R> {
-        self.get_resource_mut::<bevy_asset::Assets<S>>()?
+        self.0
+            .get_resource_mut::<bevy_asset::Assets<S>>()?
             .into_inner()
             .get_mut(id.typed::<S>())
             .map(f)
     }
 }
 
-pub type BevyTimeline = Timeline<World>;
-pub type BevyTimelineBuilder<'a> = TimelineBuilder<'a, World>;
+pub type BevyTimeline = Timeline<BevyWorld>;
+pub type BevyTimelineBuilder<'a> = TimelineBuilder<'a, BevyWorld>;

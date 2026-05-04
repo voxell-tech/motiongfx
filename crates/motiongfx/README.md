@@ -30,18 +30,12 @@ modular foundation for procedural animations.
 use motiongfx::prelude::*;
 
 // A world is where you hold all your animatable subjects.
-// In this case, we're just using a type alias.
-type World = Vec<f32>;
+struct World(Vec<f32>);
 
-// You need a marker type when your target world is a foreign type to
-// workaround the orphan rule.
-struct Marker;
-
-// The actual data lives in `Vec<f32>`. We teach `motiongfx` how to
-// read and write `f32` subjects from it, tagged by `Marker`.
-impl SubjectSource<Marker, usize, f32> for World {
+// Teach `motiongfx` how to read and write `f32` subjects from `World`.
+impl SubjectSource<usize, f32> for World {
     fn get_source(&self, id: usize) -> Option<&f32> {
-        self.get(id)
+        self.0.get(id)
     }
 
     fn apply_source<R>(
@@ -49,11 +43,11 @@ impl SubjectSource<Marker, usize, f32> for World {
         id: usize,
         f: impl FnOnce(&mut f32) -> R,
     ) -> Option<R> {
-        self.get_mut(id).map(f)
+        self.0.get_mut(id).map(f)
     }
 }
 
-let mut world = vec![0.0];
+let mut world = World(vec![0.0]);
 
 // The registry tracks which types are animated.
 let mut registry = Registry::new();
@@ -81,12 +75,12 @@ let mut timeline = b.compile();
 // Bake must run once before sampling.
 timeline.bake_actions(&registry, &world);
 
-// Sample at t = 0.5, world[0] should now be 5.0.
+// Sample at t = 0.5, world.0[0] should now be 5.0.
 timeline.set_target_time(0.5);
 timeline.queue_actions();
 timeline.sample_queued_actions(&registry, &mut world);
 
-assert!((world[0] - 5.0).abs() < f32::EPSILON);
+assert!((world.0[0] - 5.0).abs() < f32::EPSILON);
 ```
 
 ## Creating your first animation
@@ -99,46 +93,18 @@ animate. Each item inside it (called a **subject**) has an ID so
 implement `SubjectSource` with two methods: one to read a subject by
 ID, and one to write to it.
 
+Because of Rust's orphan rule, `SubjectSource` must be implemented on
+a type local to your crate. If you cannot own the type directly, wrap
+it in a `#[repr(transparent)]` newtype, which lets you cast references
+to it with no overhead and no unsafe at the call site.
+
 ```rust
 # use motiongfx::prelude::*;
-// A Vec is a simple world.
+// Own your world so you can impl SubjectSource on it.
 // Each f32 value is a subject, accessed by its index.
-type World = Vec<f32>;
-
-// A marker is a plain unit struct that identifies `SubjectSource`
-// implementation.
-//
-// You need it because you can't implement foreign traits
-// (`SubjectSource`) on foreign types (`Vec<f32>`) without a
-// disambiguating marker.
-//
-// It is recommended to have only 1 marker per backend. Use it only
-// to workaround the orphan rule.
-struct Marker;
-
-// The data holder: subjects are f32 values, keyed by index.
-impl SubjectSource<Marker, usize, f32> for Vec<f32> {
-    fn get_source(&self, id: usize) -> Option<&f32> {
-        self.get(id)
-    }
-
-    fn apply_source<R>(
-        &mut self,
-        id: usize,
-        f: impl FnOnce(&mut f32) -> R,
-    ) -> Option<R> {
-        self.get_mut(id).map(f)
-    }
-}
-```
-
-If the target world is owned by you, simply use `Self` as the marker.
-
-```rust
-# use motiongfx::prelude::*;
 struct World(Vec<f32>);
 
-impl SubjectSource<Self, usize, f32> for World {
+impl SubjectSource<usize, f32> for World {
     fn get_source(&self, id: usize) -> Option<&f32> {
         self.0.get(id)
     }
@@ -194,6 +160,7 @@ Animations are built up in layers:
 # #[path = "docs/world.rs"] mod _doc; use _doc::*;
 # let mut registry = Registry::new();
 # let mut b = registry.create_builder::<World>();
+# let mut world = World(vec![0.0]);
 let id = 0;
 // Act: animate subject 0 from its current value to +10.0.
 let action = b
@@ -229,7 +196,7 @@ Use `set_target_track` to jump between them.
 
 ```rust
 # #[path = "docs/world.rs"] mod _doc; use _doc::*;
-# let mut subjects = vec![0.0];
+# let mut subjects = World(vec![0.0]);
 # let (registry, mut timeline) = timeline();
 // Bake once after building the timeline.
 timeline.bake_actions(&registry, &subjects);
@@ -239,7 +206,7 @@ timeline.set_target_time(0.5);
 timeline.queue_actions();
 timeline.sample_queued_actions(&registry, &mut subjects);
 
-assert!((subjects[0] - 5.0).abs() < f32::EPSILON);
+assert!((subjects.0[0] - 5.0).abs() < f32::EPSILON);
 ```
 
 ### Track Ordering

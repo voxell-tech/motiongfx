@@ -26,17 +26,17 @@ impl Registry {
         }
     }
 
-    pub fn register<W, I, S, T, M>(
+    pub fn register<W, I, S, T>(
         &mut self,
         field_acc: FieldAccessor<S, T>,
     ) where
-        W: SubjectSource<M, I, S> + 'static,
+        W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,
     {
         self.accessor.register(field_acc);
-        self.pipeline.register::<W, I, S, T, M>();
+        self.pipeline.register::<W, I, S, T>();
     }
 
     /// Create a [`TimelineBuilder`] for a specific `W` world.
@@ -144,9 +144,9 @@ impl PipelineRegistry {
 
     /// Register a [`Pipeline`].
     /// Skips pipelines already registered.
-    pub fn register<W, I, S, T, M>(&mut self) -> &mut Self
+    pub fn register<W, I, S, T>(&mut self) -> &mut Self
     where
-        W: SubjectSource<M, I, S> + 'static,
+        W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: 'static,
         T: Clone + ThreadSafe,

@@ -3,14 +3,14 @@ use motiongfx::prelude::*;
 use motiongfx::subject::SubjectId;
 
 pub trait ActionInterpTimelineExt<W> {
-    fn act_interp<I, S, T, M>(
+    fn act_interp<I, S, T>(
         &mut self,
         target: I,
         field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
-        W: SubjectSource<M, I, S>,
+        W: SubjectSource<I, S>,
         I: SubjectId,
         S: 'static,
         T: Interpolation + Clone + ThreadSafe;
@@ -21,14 +21,14 @@ impl<W: 'static> ActionInterpTimelineExt<W>
 {
     /// Add an [`Action`] with interpolation using
     /// [`Interpolation::interp`].
-    fn act_interp<I, S, T, M>(
+    fn act_interp<I, S, T>(
         &mut self,
         target: I,
         field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
-        W: SubjectSource<M, I, S>,
+        W: SubjectSource<I, S>,
         I: SubjectId,
         S: 'static,
         T: Interpolation + Clone + ThreadSafe,
