@@ -95,8 +95,7 @@ ID, and one to write to it.
 
 Because of Rust's orphan rule, `SubjectSource` must be implemented on
 a type local to your crate. If you cannot own the type directly, wrap
-it in a `#[repr(transparent)]` newtype, which lets you cast references
-to it with no overhead and no unsafe at the call site.
+it in a newtype.
 
 ```rust
 # use motiongfx::prelude::*;
