@@ -1,5 +1,5 @@
 use bevy_math::*;
-use motiongfx::prelude::Interpolation;
+use motiongfx::prelude::*;
 
 pub struct Bevy;
 
@@ -8,7 +8,7 @@ pub struct Bevy;
 macro_rules! impl_float_interpolation {
     ($ty:ty, $base:ty) => {
         impl
-            motiongfx::prelude::Interpolation<
+            ::motiongfx::interpolation::Interpolation<
                 $crate::interpolation::Bevy,
             > for $ty
         {
@@ -24,7 +24,7 @@ macro_rules! impl_float_interpolation {
 macro_rules! impl_slerp_interpolation {
     ($ty: ty, $base: ty) => {
         impl
-            motiongfx::prelude::Interpolation<
+            ::motiongfx::interpolation::Interpolation<
                 $crate::interpolation::Bevy,
             > for $ty
         {
@@ -98,7 +98,6 @@ pub mod color {
 #[cfg(feature = "transform")]
 pub mod transform {
     use bevy_transform::components::Transform;
-    use motiongfx::prelude::Interpolation;
 
     use super::*;
 
