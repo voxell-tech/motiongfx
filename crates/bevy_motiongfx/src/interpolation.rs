@@ -1,7 +1,7 @@
 use bevy_math::*;
 use motiongfx::prelude::Interpolation;
 
-use crate::world::BevyMarker;
+pub struct Bevy;
 
 // TODO(nixon): Should we expose this? Move this into `motiongfx`?
 // #[macro_export]
@@ -9,7 +9,7 @@ macro_rules! impl_float_interpolation {
     ($ty:ty, $base:ty) => {
         impl
             motiongfx::prelude::Interpolation<
-                $crate::world::BevyMarker,
+                $crate::interpolation::Bevy,
             > for $ty
         {
             #[inline]
@@ -25,7 +25,7 @@ macro_rules! impl_slerp_interpolation {
     ($ty: ty, $base: ty) => {
         impl
             motiongfx::prelude::Interpolation<
-                $crate::world::BevyMarker,
+                $crate::interpolation::Bevy,
             > for $ty
         {
             #[inline]
@@ -55,7 +55,7 @@ impl_slerp_interpolation!(Dir2, f32);
 impl_slerp_interpolation!(Dir3, f32);
 impl_slerp_interpolation!(Dir3A, f32);
 
-impl Interpolation<BevyMarker> for u8 {
+impl Interpolation<Bevy> for u8 {
     fn interp(a: &Self, b: &Self, t: f32) -> Self {
         let a = *a as f32;
         let b = *b as f32;
@@ -67,13 +67,12 @@ impl Interpolation<BevyMarker> for u8 {
 #[cfg(feature = "color")]
 pub mod color {
     use bevy_color::prelude::*;
-    use motiongfx::prelude::Interpolation;
 
-    use crate::world::BevyMarker;
+    use super::*;
 
     macro_rules! impl_color_interpolation {
         ($ty:ty) => {
-            impl Interpolation<BevyMarker> for $ty {
+            impl Interpolation<$crate::interpolation::Bevy> for $ty {
                 #[inline]
                 fn interp(a: &Self, b: &Self, t: f32) -> Self {
                     (*a) * (1.0 - t) + (*b) * t
@@ -88,7 +87,7 @@ pub mod color {
     impl_color_interpolation!(Srgba);
     impl_color_interpolation!(Xyza);
 
-    impl Interpolation<BevyMarker> for Color {
+    impl Interpolation<Bevy> for Color {
         #[inline]
         fn interp(a: &Self, b: &Self, t: f32) -> Self {
             Color::mix(a, b, t)
@@ -101,9 +100,9 @@ pub mod transform {
     use bevy_transform::components::Transform;
     use motiongfx::prelude::Interpolation;
 
-    use crate::world::BevyMarker;
+    use super::*;
 
-    impl Interpolation<BevyMarker> for Transform {
+    impl Interpolation<Bevy> for Transform {
         fn interp(a: &Self, b: &Self, t: f32) -> Self {
             Self {
                 translation: Interpolation::interp(
