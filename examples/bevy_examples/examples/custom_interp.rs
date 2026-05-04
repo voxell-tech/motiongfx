@@ -50,7 +50,7 @@ fn spawn_timeline(
     let timeline = b.compile();
     commands.spawn((
         motiongfx.add_timeline(timeline),
-        RealtimePlayer::new(),
+        RealtimePlayer::new().with_playing(true),
     ));
 }
 
