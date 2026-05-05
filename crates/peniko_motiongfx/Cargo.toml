@@ -1,6 +1,6 @@
 [package]
-name = "kurbo_motiongfx"
-description = "Kurbo geometry support for the MotionGfx framework."
+name = "peniko_motiongfx"
+description = "Peniko 2d graphics support for the MotionGfx framework."
 keywords = ["motion", "animation", "procedural", "kurbo"]
 categories = ["no-std", "multimedia", "graphics", "visualization"]
 version.workspace = true
@@ -9,16 +9,13 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-# motiongfx
 motiongfx = { workspace = true }
-
-# kurbo
-kurbo = { workspace = true }
+peniko = { workspace = true }
 
 [lints]
 workspace = true
 
 [features]
 default = ["std"]
-std = ["motiongfx/std", "kurbo/std"]
-libm = ["kurbo/libm"]
+std = ["motiongfx/std", "peniko/std"]
+libm = ["peniko/libm"]

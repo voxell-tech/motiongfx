@@ -1,6 +1,28 @@
-use kurbo::{
+use peniko::kurbo::{
     BezPath, CubicBez, ParamCurve, PathEl, PathSeg, QuadBez,
 };
+
+// pub trait Trace {
+//     fn trace(&self, t: f32) -> Self;
+// }
+
+// impl Trace for CubicBez {
+//     /// Returns the prefix of a [`CubicBez`] traced from start to `t`.
+//     #[inline]
+//     fn trace(&self, t: f32) -> Self {
+//         let t = t as f64;
+//         self.subsegment(0.0..t)
+//     }
+// }
+
+// impl Trace for QuadBez {
+//     /// Returns the prefix of a [`QuadBez`] traced from start to `t`.
+//     #[inline]
+//     fn trace(&self, t: f32) -> Self {
+//         let t = t as f64;
+//         self.subsegment(0.0..t)
+//     }
+// }
 
 /// Returns the prefix of a [`CubicBez`] traced from start to `t`.
 #[inline]

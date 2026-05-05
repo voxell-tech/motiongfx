@@ -1,25 +1,8 @@
 use bevy_math::*;
+use motiongfx::impl_float_interpolation;
 use motiongfx::prelude::*;
 
 pub struct Bevy;
-
-// TODO(nixon): Should we expose this? Move this into `motiongfx`?
-// #[macro_export]
-macro_rules! impl_float_interpolation {
-    ($ty:ty, $base:ty) => {
-        impl
-            ::motiongfx::interpolation::Interpolation<
-                $crate::interpolation::Bevy,
-            > for $ty
-        {
-            #[inline]
-            fn interp(a: &Self, b: &Self, t: f32) -> Self {
-                let t = <$base>::from(t);
-                (*a) * (1.0 - t) + (*b) * t
-            }
-        }
-    };
-}
 
 macro_rules! impl_slerp_interpolation {
     ($ty: ty, $base: ty) => {
@@ -37,16 +20,14 @@ macro_rules! impl_slerp_interpolation {
     };
 }
 
-impl_float_interpolation!(f32, f32);
-impl_float_interpolation!(Vec2, f32);
-impl_float_interpolation!(Vec3, f32);
-impl_float_interpolation!(Vec3A, f32);
-impl_float_interpolation!(Vec4, f32);
+impl_float_interpolation!(Vec2, f32, Bevy);
+impl_float_interpolation!(Vec3, f32, Bevy);
+impl_float_interpolation!(Vec3A, f32, Bevy);
+impl_float_interpolation!(Vec4, f32, Bevy);
 
-impl_float_interpolation!(f64, f64);
-impl_float_interpolation!(DVec2, f64);
-impl_float_interpolation!(DVec3, f64);
-impl_float_interpolation!(DVec4, f64);
+impl_float_interpolation!(DVec2, f64, Bevy);
+impl_float_interpolation!(DVec3, f64, Bevy);
+impl_float_interpolation!(DVec4, f64, Bevy);
 
 impl_slerp_interpolation!(Quat, f32);
 impl_slerp_interpolation!(DQuat, f64);

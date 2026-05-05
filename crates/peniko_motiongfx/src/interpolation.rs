@@ -1,10 +1,11 @@
-use kurbo::{
+use motiongfx::prelude::Interpolation;
+use peniko::Color;
+use peniko::kurbo::{
     Circle, CubicBez, Line, Point, QuadBez, Rect, RoundedRect,
     RoundedRectRadii, Size, Vec2,
 };
-use motiongfx::prelude::Interpolation;
 
-use crate::Kurbo;
+use crate::Peniko;
 
 /// Linearly interpolates between two `f64` values.
 #[inline]
@@ -23,7 +24,7 @@ pub(crate) const fn interp_point(
     Point::new(lerp_f64(a.x, b.x, t), lerp_f64(a.y, b.y, t))
 }
 
-impl Interpolation<Kurbo> for Point {
+impl Interpolation<Peniko> for Point {
     /// Linearly interpolates between two [`Point`]s.
     #[inline]
     fn interp(a: &Self, b: &Self, t: f32) -> Self {
@@ -31,7 +32,7 @@ impl Interpolation<Kurbo> for Point {
     }
 }
 
-impl Interpolation<Kurbo> for Vec2 {
+impl Interpolation<Peniko> for Vec2 {
     /// Linearly interpolates between two [`Vec2`]s.
     #[inline]
     fn interp(a: &Self, b: &Self, t: f32) -> Self {
@@ -39,7 +40,7 @@ impl Interpolation<Kurbo> for Vec2 {
     }
 }
 
-impl Interpolation<Kurbo> for Size {
+impl Interpolation<Peniko> for Size {
     /// Linearly interpolates between two [`Size`]s.
     #[inline]
     fn interp(a: &Self, b: &Self, t: f32) -> Self {
@@ -50,7 +51,7 @@ impl Interpolation<Kurbo> for Size {
     }
 }
 
-impl Interpolation<Kurbo> for Rect {
+impl Interpolation<Peniko> for Rect {
     /// Linearly interpolates between two [`Rect`]s.
     ///
     /// Each corner coordinate is interpolated independently.
@@ -65,7 +66,7 @@ impl Interpolation<Kurbo> for Rect {
     }
 }
 
-impl Interpolation<Kurbo> for Circle {
+impl Interpolation<Peniko> for Circle {
     /// Linearly interpolates between two [`Circle`]s.
     ///
     /// Both the center position and radius are interpolated.
@@ -78,7 +79,7 @@ impl Interpolation<Kurbo> for Circle {
     }
 }
 
-impl Interpolation<Kurbo> for Line {
+impl Interpolation<Peniko> for Line {
     /// Linearly interpolates between two [`Line`]s.
     #[inline]
     fn interp(a: &Self, b: &Self, t: f32) -> Self {
@@ -89,7 +90,7 @@ impl Interpolation<Kurbo> for Line {
     }
 }
 
-impl Interpolation<Kurbo> for CubicBez {
+impl Interpolation<Peniko> for CubicBez {
     /// Linearly interpolates between two [`CubicBez`] curves.
     ///
     /// Each of the four control points is interpolated independently.
@@ -104,7 +105,7 @@ impl Interpolation<Kurbo> for CubicBez {
     }
 }
 
-impl Interpolation<Kurbo> for QuadBez {
+impl Interpolation<Peniko> for QuadBez {
     /// Linearly interpolates between two [`QuadBez`] curves.
     ///
     /// Each of the three control points is interpolated independently.
@@ -118,7 +119,7 @@ impl Interpolation<Kurbo> for QuadBez {
     }
 }
 
-impl Interpolation<Kurbo> for RoundedRect {
+impl Interpolation<Peniko> for RoundedRect {
     /// Linearly interpolates between two [`RoundedRect`]s.
     ///
     /// Both the bounding rect and each of the four corner radii are
@@ -135,5 +136,11 @@ impl Interpolation<Kurbo> for RoundedRect {
             lerp_f64(ra.bottom_left, rb.bottom_left, t),
         );
         RoundedRect::from_rect(rect, radii)
+    }
+}
+
+impl Interpolation<Peniko> for Color {
+    fn interp(a: &Self, b: &Self, t: f32) -> Self {
+        a.lerp_rect(*b, t)
     }
 }
