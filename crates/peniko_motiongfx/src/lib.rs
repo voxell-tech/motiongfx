@@ -4,9 +4,13 @@ pub mod interpolation;
 pub mod trace;
 
 pub mod prelude {
-    pub use crate::Peniko;
     pub use peniko;
     pub use peniko::kurbo;
+
+    pub use crate::Peniko;
+    pub use crate::trace::{
+        CubicTracer, LineTracer, PathTracer, QuadTracer, Trace,
+    };
 }
 
 /// Marker for [`Interpolation<Peniko>`] impls on [`peniko`] types.
