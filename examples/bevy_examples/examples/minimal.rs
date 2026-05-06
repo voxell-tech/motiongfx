@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
+use bevy_motiongfx::manager::TimelineComplete;
 use bevy_motiongfx::prelude::*;
-use bevy_motiongfx::world::TimelineComplete;
 
 fn main() {
     App::new()
@@ -32,33 +32,34 @@ fn log_complete(_: On<Add, TimelineComplete>) {
 /// Creates the timeline and plays it.
 fn build_timeline(
     mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let material =
+    let cube_mat_handle =
         materials.add(StandardMaterial::from_color(Srgba::BLUE));
+    let cube_mat_id = cube_mat_handle.id().untyped();
     // Spawns the cube.
-    let cube = commands
+    let cube_id = commands
         .spawn((
             Mesh3d(meshes.add(Cuboid::default())),
-            MeshMaterial3d(material.clone()),
+            MeshMaterial3d(cube_mat_handle),
             Transform::from_xyz(-3.0, 0.0, 0.0),
         ))
         .id();
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = motiongfx.create_builder();
     let track = [
         b.act_interp(
-            cube,
-            field!(<Transform>::translation::x),
+            cube_id,
+            path!(<Transform>::translation::x),
             |x| x + 6.0,
         )
         .play(1.0),
         b.act_interp(
-            material.untyped().id(),
-            field!(<StandardMaterial>::base_color),
+            cube_mat_id,
+            path!(<StandardMaterial>::base_color),
             |_| Srgba::RED.into(),
         )
         .play(1.0),

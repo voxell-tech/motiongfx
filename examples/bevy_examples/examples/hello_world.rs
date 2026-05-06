@@ -15,7 +15,7 @@ fn main() {
 
 fn spawn_timeline(
     mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
@@ -25,12 +25,11 @@ fn spawn_timeline(
     const CAPACITY: usize = WIDTH * HEIGHT;
 
     // Spawn cubes.
-    let mut cubes = Vec::with_capacity(CAPACITY);
+    let mut cube_ids = Vec::with_capacity(CAPACITY);
     let mesh_handle = meshes.add(Cuboid::default());
-    let material_handle = materials.add(StandardMaterial {
-        base_color: palettes::tailwind::LIME_200.into(),
-        ..default()
-    });
+    let material_handle = materials.add(
+        StandardMaterial::from_color(palettes::tailwind::LIME_200),
+    );
 
     for w in 0..WIDTH {
         for h in 0..HEIGHT {
@@ -48,39 +47,39 @@ fn spawn_timeline(
                     MeshMaterial3d(material_handle.clone()),
                 ))
                 .id();
-            cubes.push(id);
+            cube_ids.push(id);
         }
     }
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = motiongfx.create_builder();
     let mut cube_tracks = Vec::with_capacity(CAPACITY);
 
     for w in 0..WIDTH {
         for h in 0..HEIGHT {
             let c = w * WIDTH + h;
-            let cube = cubes[c];
+            let cube_id = cube_ids[c];
 
             let circ_ease = ease::circ::ease_in_out;
 
             let track = [
                 b.act_interp(
-                    cube,
-                    field!(<Transform>::scale),
+                    cube_id,
+                    path!(<Transform>::scale),
                     |_| Vec3::splat(0.9),
                 )
                 .with_ease(circ_ease)
                 .play(1.0),
                 b.act_interp(
-                    cube,
-                    field!(<Transform>::translation::x),
+                    cube_id,
+                    path!(<Transform>::translation::x),
                     |x| x + 1.0,
                 )
                 .with_ease(circ_ease)
                 .play(1.0),
                 b.act_interp(
-                    cube,
-                    field!(<Transform>::rotation),
+                    cube_id,
+                    path!(<Transform>::rotation),
                     |_| {
                         Quat::from_euler(
                             EulerRot::XYZ,

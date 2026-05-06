@@ -3,16 +3,14 @@ use std::collections::HashMap;
 use motiongfx::prelude::*;
 
 struct World {
-    accessor_registry: FieldAccessorRegistry,
-    pipeline_registry: PipelineRegistry<SubjectWorld>,
+    registry: Registry,
     subject_world: SubjectWorld,
 }
 
 impl World {
     pub fn new() -> Self {
         Self {
-            accessor_registry: FieldAccessorRegistry::new(),
-            pipeline_registry: PipelineRegistry::new(),
+            registry: Registry::new(),
             subject_world: SubjectWorld {
                 world: HashMap::new(),
             },
@@ -53,11 +51,6 @@ struct Line {
 fn main() {
     let mut world = World::new();
 
-    // Register the accessors.
-    register_accessors(&mut world.accessor_registry);
-    // Regsitre the pipelines.
-    register_pipelines(&mut world.pipeline_registry);
-
     // Spawn in some subjects.
     world
         .subject_world
@@ -68,21 +61,21 @@ fn main() {
         .world
         .insert(Id(1), Subject::Line(Line::default()));
 
-    let mut builder = TimelineBuilder::new();
+    let mut builder = world.registry.create_builder();
 
     // Create the track.
     let track = [
         builder
-            .act(Id(0), field!(<Point>::x), |x| x + 72.0)
+            .act(Id(0), path!(<Point>::x), |x| x + 72.0)
             .with_interp(linear_f32)
             .play(1.0),
         [
             builder
-                .act(Id(1), field!(<Line>::p0::y), |y| y + 42.0)
+                .act(Id(1), path!(<Line>::p0::y), |y| y + 42.0)
                 .with_interp(linear_f32)
                 .play(2.0),
             builder
-                .act(Id(1), field!(<Line>::p1), |_| Point {
+                .act(Id(1), path!(<Line>::p1), |_| Point {
                     x: 6.0,
                     y: 6.0,
                 })
@@ -98,11 +91,7 @@ fn main() {
     let mut timeline = builder.compile();
 
     // Bake actions into segments.
-    timeline.bake_actions(
-        &world.accessor_registry,
-        &world.pipeline_registry,
-        &world.subject_world,
-    );
+    timeline.bake_actions(&world.registry, &world.subject_world);
 
     // Change the target time.
     timeline.set_target_time(1.5);
@@ -113,8 +102,7 @@ fn main() {
     // Queue and sample the actions.
     timeline.queue_actions();
     timeline.sample_queued_actions(
-        &world.accessor_registry,
-        &world.pipeline_registry,
+        &world.registry,
         &mut world.subject_world,
     );
 
@@ -138,8 +126,7 @@ fn main() {
     // Queue and sample the actions.
     timeline.queue_actions();
     timeline.sample_queued_actions(
-        &world.accessor_registry,
-        &world.pipeline_registry,
+        &world.registry,
         &mut world.subject_world,
     );
 
@@ -150,130 +137,44 @@ fn main() {
     );
 }
 
-fn register_pipelines(
-    pipeline_registry: &mut PipelineRegistry<SubjectWorld>,
-) {
-    pipeline_registry.register_unchecked(
-        PipelineKey::new::<Id, Point, f32>(),
-        Pipeline::new(
-            |world, ctx| {
-                ctx.bake::<Id, Point, f32>(|id| {
-                    let subject = world.world.get(&id)?;
-                    match subject {
-                        Subject::Point(point) => Some(point),
-                        Subject::Line(_) => None,
-                    }
-                });
-            },
-            |world, ctx| {
-                ctx.sample::<Id, Point, f32>(
-                    |id, target, accessor| {
-                        let Some(subject) = world.world.get_mut(&id)
-                        else {
-                            return;
-                        };
+impl SubjectSource<Id, Point> for SubjectWorld {
+    fn get_source(&self, id: Id) -> Option<&Point> {
+        match self.world.get(&id)? {
+            Subject::Point(point) => Some(point),
+            Subject::Line(_) => None,
+        }
+    }
 
-                        if let Subject::Point(point) = subject {
-                            *accessor.get_mut(point) = target;
-                        }
-                    },
-                );
-            },
-        ),
-    );
-
-    pipeline_registry.register_unchecked(
-        PipelineKey::new::<Id, Line, Point>(),
-        Pipeline::new(
-            |world, ctx| {
-                ctx.bake::<Id, Line, Point>(|id| {
-                    let subject = world.world.get(&id)?;
-                    match subject {
-                        Subject::Line(line) => Some(line),
-                        Subject::Point(_) => None,
-                    }
-                });
-            },
-            |world, ctx| {
-                ctx.sample::<Id, Line, Point>(
-                    |id, target, accessor| {
-                        let Some(subject) = world.world.get_mut(&id)
-                        else {
-                            return;
-                        };
-
-                        if let Subject::Line(line) = subject {
-                            *accessor.get_mut(line) = target;
-                        }
-                    },
-                );
-            },
-        ),
-    );
-
-    // TODO: This looks almost exactly the same as above, could
-    // pipeline be simplified enough to ignore the target field?
-    pipeline_registry.register_unchecked(
-        PipelineKey::new::<Id, Line, f32>(),
-        Pipeline::new(
-            |world, ctx| {
-                ctx.bake::<Id, Line, f32>(|id| {
-                    let subject = world.world.get(&id)?;
-                    match subject {
-                        Subject::Line(line) => Some(line),
-                        Subject::Point(_) => None,
-                    }
-                });
-            },
-            |world, ctx| {
-                ctx.sample::<Id, Line, f32>(
-                    |id, target, accessor| {
-                        let Some(subject) = world.world.get_mut(&id)
-                        else {
-                            return;
-                        };
-
-                        if let Subject::Line(line) = subject {
-                            *accessor.get_mut(line) = target;
-                        }
-                    },
-                );
-            },
-        ),
-    );
+    fn apply_source<R>(
+        &mut self,
+        id: Id,
+        f: impl FnOnce(&mut Point) -> R,
+    ) -> Option<R> {
+        match self.world.get_mut(&id)? {
+            Subject::Point(point) => Some(f(point)),
+            Subject::Line(_) => None,
+        }
+    }
 }
 
-fn register_accessors(accessor_registry: &mut FieldAccessorRegistry) {
-    // In real use cases, a macro should be used!
-    // Refer to `bevy_motiongfx` for now...
+impl SubjectSource<Id, Line> for SubjectWorld {
+    fn get_source(&self, id: Id) -> Option<&Line> {
+        match self.world.get(&id)? {
+            Subject::Line(line) => Some(line),
+            Subject::Point(_) => None,
+        }
+    }
 
-    // Point -> f32.
-    accessor_registry
-        .register_typed(field!(<Point>::x), accessor!(<Point>::x));
-    accessor_registry
-        .register_typed(field!(<Point>::y), accessor!(<Point>::y));
-    // Line -> Point.
-    accessor_registry
-        .register_typed(field!(<Line>::p0), accessor!(<Line>::p0));
-    accessor_registry
-        .register_typed(field!(<Line>::p1), accessor!(<Line>::p1));
-    // Line -> Point -> f32.
-    accessor_registry.register_typed(
-        field!(<Line>::p0::x),
-        accessor!(<Line>::p0::x),
-    );
-    accessor_registry.register_typed(
-        field!(<Line>::p0::y),
-        accessor!(<Line>::p0::y),
-    );
-    accessor_registry.register_typed(
-        field!(<Line>::p1::x),
-        accessor!(<Line>::p1::x),
-    );
-    accessor_registry.register_typed(
-        field!(<Line>::p1::y),
-        accessor!(<Line>::p1::y),
-    );
+    fn apply_source<R>(
+        &mut self,
+        id: Id,
+        f: impl FnOnce(&mut Line) -> R,
+    ) -> Option<R> {
+        match self.world.get_mut(&id)? {
+            Subject::Line(line) => Some(f(line)),
+            Subject::Point(_) => None,
+        }
+    }
 }
 
 fn linear_f32(a: &f32, b: &f32, t: f32) -> f32 {

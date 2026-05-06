@@ -14,21 +14,22 @@ fn main() {
 
 fn spawn_timeline(
     mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     const X_OFFSET: f32 = 2.0;
 
     // Spawn 3d models.
+    let cube_mat_handle = materials.add(
+        StandardMaterial::from_color(palettes::tailwind::LIME_200),
+    );
+    let cube_mat_id = cube_mat_handle.id().untyped();
     let cube = commands
         .spawn((
             Mesh3d(meshes.add(Cuboid::default())),
             Transform::default().with_scale(Vec3::splat(0.0)),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: palettes::tailwind::LIME_200.into(),
-                ..default()
-            })),
+            MeshMaterial3d(cube_mat_handle),
         ))
         .id();
 
@@ -46,11 +47,11 @@ fn spawn_timeline(
         .id();
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = motiongfx.create_builder();
 
     // Generate slide sequences.
     let slide0 = b
-        .act_interp(cube, field!(<Transform>::scale), |_| Vec3::ONE)
+        .act_interp(cube, path!(<Transform>::scale), |_| Vec3::ONE)
         .with_ease(ease::cubic::ease_out)
         .play(1.0)
         .compile();
@@ -59,21 +60,21 @@ fn spawn_timeline(
         [
             b.act_interp(
                 cube,
-                field!(<Transform>::translation::x),
+                path!(<Transform>::translation::x),
                 move |_| -X_OFFSET,
             )
             .with_ease(ease::cubic::ease_out)
             .play(1.0),
             b.act_interp(
-                cube,
-                field!(<StandardMaterial>::base_color),
+                cube_mat_id,
+                path!(<StandardMaterial>::base_color),
                 move |_| palettes::tailwind::ZINC_700.into(),
             )
             .with_ease(ease::cubic::ease_out)
             .play(1.0),
         ]
         .ord_all(),
-        b.act_interp(sphere, field!(<Transform>::scale), |_| {
+        b.act_interp(sphere, path!(<Transform>::scale), |_| {
             Vec3::ONE
         })
         .with_ease(ease::cubic::ease_out)
@@ -84,8 +85,9 @@ fn spawn_timeline(
 
     b.add_tracks([slide0, slide1]);
 
+    let timeline = b.compile();
     commands.spawn((
-        motiongfx.add_timeline(b.compile()),
+        motiongfx.add_timeline(timeline),
         RealtimePlayer::new().with_playing(true),
     ));
 }
@@ -109,7 +111,7 @@ fn setup(mut commands: Commands) {
 }
 
 fn slide_movement(
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut q_timelines: Query<(&TimelineId, &mut RealtimePlayer)>,
     keys: Res<ButtonInput<KeyCode>>,
 ) {

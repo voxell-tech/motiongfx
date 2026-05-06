@@ -17,7 +17,7 @@ fn main() {
 
 fn spawn_timeline(
     mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -41,8 +41,8 @@ fn spawn_timeline(
     let red = LinearRgba::from(palettes::tailwind::ROSE_400) * 100.0;
 
     // Spawn spheres.
-    let mut spheres = Vec::with_capacity(capacity);
-    let mut sphere_mats = Vec::with_capacity(capacity);
+    let mut sphere_ids = Vec::with_capacity(capacity);
+    let mut sphere_mat_ids = Vec::with_capacity(capacity);
     let mesh_handle = meshes.add(Sphere::default());
     let material = StandardMaterial {
         base_color: Color::WHITE,
@@ -51,11 +51,12 @@ fn spawn_timeline(
     };
 
     for i in 0..capacity {
-        let sphere_mat = materials.add(material.clone());
+        let sphere_mat_handle = materials.add(material.clone());
+        let sphere_mat_id = sphere_mat_handle.id().untyped();
         let sphere = commands
             .spawn((
                 Mesh3d(mesh_handle.clone()),
-                MeshMaterial3d(sphere_mat.clone()),
+                MeshMaterial3d(sphere_mat_handle),
                 Transform::from_translation(Vec3::new(
                     -5.0,
                     (i as f32) - (capacity as f32) * 0.5,
@@ -66,29 +67,28 @@ fn spawn_timeline(
             ))
             .id();
 
-        spheres.push(sphere);
-        sphere_mats.push(sphere_mat.untyped().id());
+        sphere_ids.push(sphere);
+        sphere_mat_ids.push(sphere_mat_id);
     }
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = motiongfx.create_builder();
 
     let track = easings
         .into_iter()
         .enumerate()
-        // .zip(easings)
         .map(|(i, ease_fn)| {
             [
                 b.act_interp(
-                    spheres[i],
-                    field!(<Transform>::translation::x),
+                    sphere_ids[i],
+                    path!(<Transform>::translation::x),
                     |x| x + 10.0,
                 )
                 .with_ease(ease_fn)
                 .play(1.0),
                 b.act_interp(
-                    sphere_mats[i],
-                    field!(<StandardMaterial>::emissive),
+                    sphere_mat_ids[i],
+                    path!(<StandardMaterial>::emissive),
                     move |_| red,
                 )
                 .with_ease(ease_fn)
@@ -100,8 +100,9 @@ fn spawn_timeline(
 
     b.add_tracks(track.compile());
 
+    let timeline = b.compile();
     commands.spawn((
-        motiongfx.add_timeline(b.compile()),
+        motiongfx.add_timeline(timeline),
         RealtimePlayer::new().with_playing(true),
     ));
 }

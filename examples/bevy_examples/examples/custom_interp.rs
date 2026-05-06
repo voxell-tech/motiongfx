@@ -16,27 +16,28 @@ fn main() {
 
 fn spawn_timeline(
     mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Spawn cube.
-    let cube = commands
+    let cube_id = commands
         .spawn((
             Mesh3d(meshes.add(Cuboid::default())),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: palettes::tailwind::LIME_200.into(),
-                ..default()
-            })),
+            MeshMaterial3d(materials.add(
+                StandardMaterial::from_color(
+                    palettes::tailwind::LIME_200,
+                ),
+            )),
             Transform::from_xyz(-5.0, 0.0, 0.0),
         ))
         .id();
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = motiongfx.create_builder();
 
     let track = b
-        .act(cube, field!(<Transform>::translation), |x| {
+        .act(cube_id, path!(<Transform>::translation), |x| {
             x + Vec3::ZERO.with_x(10.0).with_z(1.0)
         })
         .with_interp(|start, end, t| arc_lerp_3d(*start, *end, t))
@@ -46,9 +47,10 @@ fn spawn_timeline(
 
     b.add_tracks(track);
 
+    let timeline = b.compile();
     commands.spawn((
-        motiongfx.add_timeline(b.compile()),
-        RealtimePlayer::new(),
+        motiongfx.add_timeline(timeline),
+        RealtimePlayer::new().with_playing(true),
     ));
 }
 
@@ -71,7 +73,7 @@ fn setup(mut commands: Commands) {
     ));
 }
 
-// TODO: Optimize this.
+// TODO(nixon): Optimize this.
 pub fn arc_lerp_3d(start: Vec3, end: Vec3, t: f32) -> Vec3 {
     let center = (start + end) * 0.5;
 

@@ -28,7 +28,7 @@ bevy_sprite = { version = "0.18.1", default-features = false }
 bevy_pbr = { version = "0.18.1", default-features = false }
 
 # other
-field_path = "0.3"
+field_path = "0.4.1"
 nonempty = { version = "0.12", default-features = false }
 
 [workspace.lints.clippy]

@@ -2,34 +2,38 @@ use bevy_math::*;
 use motiongfx::prelude::*;
 use motiongfx::subject::SubjectId;
 
-pub trait ActionInterpTimelineExt {
+pub trait ActionInterpTimelineExt<W> {
     fn act_interp<I, S, T>(
         &mut self,
         target: I,
-        field: Field<S, T>,
+        field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
+        W: SubjectSource<I, S>,
         I: SubjectId,
         S: 'static,
-        T: Interpolation + ThreadSafe;
+        T: Interpolation + Clone + ThreadSafe;
 }
 
-impl ActionInterpTimelineExt for TimelineBuilder {
+impl<W: 'static> ActionInterpTimelineExt<W>
+    for TimelineBuilder<'_, W>
+{
     /// Add an [`Action`] with interpolation using
     /// [`Interpolation::interp`].
     fn act_interp<I, S, T>(
         &mut self,
         target: I,
-        field: Field<S, T>,
+        field_acc: FieldAccessor<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
+        W: SubjectSource<I, S>,
         I: SubjectId,
         S: 'static,
-        T: Interpolation + ThreadSafe,
+        T: Interpolation + Clone + ThreadSafe,
     {
-        self.act(target, field, action).with_interp(T::interp)
+        self.act(target, field_acc, action).with_interp(T::interp)
     }
 }
 

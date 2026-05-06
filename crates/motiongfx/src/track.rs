@@ -352,7 +352,7 @@ mod tests {
 
     fn key(path: &'static str) -> ActionKey {
         ActionKey::new(
-            UntypedSubjectId::placeholder(),
+            UntypedSubjectId::PLACEHOLDER,
             UntypedField::placeholder_with_path(path),
         )
     }

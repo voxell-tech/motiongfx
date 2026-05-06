@@ -14,29 +14,32 @@ fn main() {
 
 fn spawn_timeline(
     mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxWorld>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Spawn cube.
-    let cube = commands
+    let cube_id = commands
         .spawn((
             Mesh3d(meshes.add(Cuboid::default())),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: palettes::tailwind::LIME_200.into(),
-                ..default()
-            })),
+            MeshMaterial3d(materials.add(
+                StandardMaterial::from_color(
+                    palettes::tailwind::LIME_200,
+                ),
+            )),
             Transform::from_xyz(-5.0, 0.0, 0.0),
         ))
         .id();
 
     // Build the timeline.
-    let mut b = TimelineBuilder::new();
+    let mut b = motiongfx.create_builder();
 
     let track = b
-        .act_interp(cube, field!(<Transform>::translation::x), |x| {
-            x + 10.0
-        })
+        .act_interp(
+            cube_id,
+            path!(<Transform>::translation::x),
+            |x| x + 10.0,
+        )
         // A custom 10 step easing.
         .with_ease(|t| ((t * 10.0) as u32) as f32 / 10.0)
         .play(1.0)
@@ -44,8 +47,9 @@ fn spawn_timeline(
 
     b.add_tracks(track);
 
+    let timeline = b.compile();
     commands.spawn((
-        motiongfx.add_timeline(b.compile()),
+        motiongfx.add_timeline(timeline),
         RealtimePlayer::new().with_playing(true),
     ));
 }
