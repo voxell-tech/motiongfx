@@ -32,12 +32,9 @@ bevy_pbr = { version = "0.18.1", default-features = false }
 field_path = "0.4.1"
 nonempty = { version = "0.12", default-features = false }
 peniko = { version = "0.6", default-features = false }
-vello = "0.8"
+vello = "0.7.0"
 winit = "0.30"
 pollster = "0.4"
-# Enables termcolor feature so naga's DiagnosticBuffer compiles correctly
-# when naga is compiled without bevy's feature flags.
-naga = { version = "28", features = ["termcolor"] }
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
