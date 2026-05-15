@@ -18,7 +18,7 @@ macro_rules! impl_float_interpolation {
             #[inline]
             fn interp(a: &Self, b: &Self, t: f32) -> Self {
                 let t = <$base>::from(t);
-                (*a) * (1.0 - t) + (*b) * t
+                (*a) + (*b - *a) * t
             }
         }
     };

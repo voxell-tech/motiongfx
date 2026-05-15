@@ -2,6 +2,7 @@ use bevy_math::*;
 use motiongfx::impl_float_interpolation;
 use motiongfx::prelude::*;
 
+#[derive(Debug)]
 pub struct Bevy;
 
 macro_rules! impl_slerp_interpolation {
@@ -85,17 +86,17 @@ pub mod transform {
     impl Interpolation<Bevy> for Transform {
         fn interp(a: &Self, b: &Self, t: f32) -> Self {
             Self {
-                translation: Interpolation::interp(
+                translation: <_ as Interpolation<Bevy>>::interp(
                     &a.translation,
                     &b.translation,
                     t,
                 ),
-                rotation: Interpolation::interp(
+                rotation: <_ as Interpolation<Bevy>>::interp(
                     &a.rotation,
                     &b.rotation,
                     t,
                 ),
-                scale: Interpolation::interp(&a.scale, &b.scale, t),
+                scale: <_ as Interpolation<Bevy>>::interp(&a.scale, &b.scale, t),
             }
         }
     }
