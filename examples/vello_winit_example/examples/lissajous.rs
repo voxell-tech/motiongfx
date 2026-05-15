@@ -118,8 +118,7 @@ impl LissajousTableDemo {
                     for i in 1..=samples {
                         let t = i as f64 / samples as f64
                             * f64::consts::TAU;
-                        let (px, py) =
-                            lissajous_pt(a, b, t, cx, cy);
+                        let (px, py) = lissajous_pt(a, b, t, cx, cy);
                         path.line_to((px, py));
                     }
                     CurveState {
@@ -330,9 +329,9 @@ impl VelloDemo for LissajousTableDemo {
                 &kurbo::Line::new((cx - REF_R, cy), (cx + REF_R, cy)),
             );
             // x-component of curve tip: sin(a * t_end + DELTA)
-            let t_end =
-                self.world.curves[curve_id(c, 1)].tracer.t_end as f64
-                    * f64::consts::TAU;
+            let t_end = self.world.curves[curve_id(c, 1)].tracer.t_end
+                as f64
+                * f64::consts::TAU;
             let angle = a * t_end + DELTA - f64::consts::FRAC_PI_2;
             scene.fill(
                 Fill::NonZero,
@@ -375,9 +374,9 @@ impl VelloDemo for LissajousTableDemo {
                 &kurbo::Line::new((cx - REF_R, cy), (cx + REF_R, cy)),
             );
             // y-component of curve tip: sin(b * t_end)
-            let t_end =
-                self.world.curves[curve_id(1, r)].tracer.t_end as f64
-                    * f64::consts::TAU;
+            let t_end = self.world.curves[curve_id(1, r)].tracer.t_end
+                as f64
+                * f64::consts::TAU;
             let angle = b * t_end - f64::consts::FRAC_PI_2;
             scene.fill(
                 Fill::NonZero,

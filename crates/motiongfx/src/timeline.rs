@@ -201,7 +201,7 @@ impl<W: 'static> Timeline<W> {
                     };
                     // Skip if the the animation range does not
                     // overlap with the span range.
-                    if time_range.overlap(&clip_range) == false {
+                    if !time_range.overlap(&clip_range) {
                         continue;
                     }
 
