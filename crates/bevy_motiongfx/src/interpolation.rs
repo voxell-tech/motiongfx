@@ -96,7 +96,9 @@ pub mod transform {
                     &b.rotation,
                     t,
                 ),
-                scale: <_ as Interpolation<Bevy>>::interp(&a.scale, &b.scale, t),
+                scale: <_ as Interpolation<Bevy>>::interp(
+                    &a.scale, &b.scale, t,
+                ),
             }
         }
     }
