@@ -53,7 +53,7 @@ pub struct TimelineId(u64);
 #[derive(Component)]
 pub struct TimelineComplete;
 
-#[allow(clippy::type_complexity)]
+#[expect(clippy::type_complexity)]
 fn complete_timelines<T>(
     mut commands: Commands,
     motiongfx: Res<MotionGfxManager>,

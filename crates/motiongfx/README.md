@@ -56,11 +56,8 @@ let mut b = registry.create_builder::<World>();
 
 let id = 0;
 // Create an action with: id, field path, action fn.
-let action = b
-    // Animate subject 0 from its current value to +10.0.
-    .act(id, path!(<f32>), |x| x + 10.0)
-    // Every action needs an interpolation function.
-    .with_interp(|a, b, t| a + (b - a) * t);
+// Animate subject 0 from its current value to +10.0.
+let action = b.act(id, path!(<f32>), |x| x + 10.0);
 
 // "Play" the action into a `TrackFragment` with a duration.
 let frag = action.play(1.0);
@@ -164,8 +161,6 @@ let id = 0;
 // Act: animate subject 0 from its current value to +10.0.
 let action = b
     .act(id, path!(<f32>), |x| x + 10.0)
-    // Every action needs an interpolation function.
-    .with_interp(|a: &f32, b: &f32, t| a + (b - a) * t)
     // An optional easing function can be added.
     .with_ease(ease::cubic::ease_in_out);
 

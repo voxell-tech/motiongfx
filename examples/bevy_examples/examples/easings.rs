@@ -79,14 +79,14 @@ fn spawn_timeline(
         .enumerate()
         .map(|(i, ease_fn)| {
             [
-                b.act_interp(
+                b.act(
                     sphere_ids[i],
                     path!(<Transform>::translation::x),
                     |x| x + 10.0,
                 )
                 .with_ease(ease_fn)
                 .play(1.0),
-                b.act_interp(
+                b.act(
                     sphere_mat_ids[i],
                     path!(<StandardMaterial>::emissive),
                     move |_| red,

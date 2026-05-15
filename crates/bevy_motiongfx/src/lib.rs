@@ -16,9 +16,6 @@ pub mod prelude {
     pub use motiongfx::prelude::*;
 
     pub use crate::controller::{FixedRatePlayer, RealtimePlayer};
-    pub use crate::interpolation::{
-        ActionInterpTimelineExt, Interpolation,
-    };
     pub use crate::manager::{MotionGfxManager, TimelineId};
     pub use crate::world::{BevyTimeline, BevyTimelineBuilder};
 }

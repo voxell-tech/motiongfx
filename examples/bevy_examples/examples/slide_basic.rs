@@ -51,21 +51,21 @@ fn spawn_timeline(
 
     // Generate slide sequences.
     let slide0 = b
-        .act_interp(cube, path!(<Transform>::scale), |_| Vec3::ONE)
+        .act(cube, path!(<Transform>::scale), |_| Vec3::ONE)
         .with_ease(ease::cubic::ease_out)
         .play(1.0)
         .compile();
 
     let slide1 = [
         [
-            b.act_interp(
+            b.act(
                 cube,
                 path!(<Transform>::translation::x),
                 move |_| -X_OFFSET,
             )
             .with_ease(ease::cubic::ease_out)
             .play(1.0),
-            b.act_interp(
+            b.act(
                 cube_mat_id,
                 path!(<StandardMaterial>::base_color),
                 move |_| palettes::tailwind::ZINC_700.into(),
@@ -74,11 +74,9 @@ fn spawn_timeline(
             .play(1.0),
         ]
         .ord_all(),
-        b.act_interp(sphere, path!(<Transform>::scale), |_| {
-            Vec3::ONE
-        })
-        .with_ease(ease::cubic::ease_out)
-        .play(1.0),
+        b.act(sphere, path!(<Transform>::scale), |_| Vec3::ONE)
+            .with_ease(ease::cubic::ease_out)
+            .play(1.0),
     ]
     .ord_flow(0.1)
     .compile();

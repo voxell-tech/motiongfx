@@ -22,3 +22,7 @@ nonempty = { workspace = true }
 
 [lints]
 workspace = true
+
+[features]
+default = ["std"]
+std = ["bevy_ecs/std", "bevy_platform/std", "bevy_math/std"]

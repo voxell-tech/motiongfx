@@ -35,7 +35,7 @@ jobs:
           shared-key: ci
           save-if: false
       - run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
-      - run: cargo check --workspace --no-default-features
+      - run: cargo check --workspace --no-default-features --features libm
 
   clippy:
     runs-on: ubuntu-latest

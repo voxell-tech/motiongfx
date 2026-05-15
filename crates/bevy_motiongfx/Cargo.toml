@@ -24,8 +24,6 @@ bevy_time = { workspace = true }
 bevy_asset = { workspace = true, optional = true }
 bevy_transform = { workspace = true, optional = true }
 bevy_color = { workspace = true, optional = true }
-bevy_sprite = { workspace = true, optional = true }
-bevy_pbr = { workspace = true, optional = true }
 
 [dev-dependencies]
 bevy = { workspace = true, features = ["bevy_pbr"] }
@@ -34,9 +32,8 @@ bevy = { workspace = true, features = ["bevy_pbr"] }
 workspace = true
 
 [features]
-default = ["asset", "transform", "color", "sprite", "pbr"]
+default = ["std", "asset", "transform", "color"]
+std = ["motiongfx/std", "bevy_ecs/std", "bevy_app/std", "bevy_platform/std", "bevy_time/std"]
 asset = ["dep:bevy_asset"]
 transform = ["dep:bevy_transform"]
 color = ["dep:bevy_color"]
-sprite = ["dep:bevy_sprite", "asset"]
-pbr = ["dep:bevy_pbr", "asset"]

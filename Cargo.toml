@@ -12,6 +12,7 @@ repository = "https://github.com/voxell-tech/motiongfx"
 # motiongfx
 motiongfx = { version = "0.3.0", path = "crates/motiongfx" }
 bevy_motiongfx = { version = "0.3.0", path = "crates/bevy_motiongfx" }
+peniko_motiongfx = { version = "0.3.0", path = "crates/peniko_motiongfx" }
 
 # bevy
 bevy = { version = "0.18.1", default-features = false }
@@ -24,16 +25,17 @@ bevy_asset = { version = "0.18.1", default-features = false }
 bevy_time = { version = "0.18.1", default-features = false }
 bevy_transform = { version = "0.18.1", default-features = false, features = ["bevy-support"] }
 bevy_color = { version = "0.18.1", default-features = false }
-bevy_sprite = { version = "0.18.1", default-features = false }
-bevy_pbr = { version = "0.18.1", default-features = false }
 
 # other
 field_path = "0.4.1"
 nonempty = { version = "0.12", default-features = false }
+peniko = { version = "0.6", default-features = false }
+vello = "0.7.0"
+winit = "0.30"
+pollster = "0.4"
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
-bool_comparison = "allow"
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

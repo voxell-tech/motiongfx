@@ -1,0 +1,14 @@
+[package]
+name = "vello_winit_example"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+motiongfx = { workspace = true }
+peniko_motiongfx = { workspace = true }
+vello = { workspace = true }
+winit = { workspace = true }
+pollster = { workspace = true }

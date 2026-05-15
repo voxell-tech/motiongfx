@@ -37,7 +37,7 @@ fn spawn_timeline(
     let mut b = motiongfx.create_builder();
 
     let track = b
-        .act(cube_id, path!(<Transform>::translation), |x| {
+        .act_builder(cube_id, path!(<Transform>::translation), |x| {
             x + Vec3::ZERO.with_x(10.0).with_z(1.0)
         })
         .with_interp(|start, end, t| arc_lerp_3d(*start, *end, t))

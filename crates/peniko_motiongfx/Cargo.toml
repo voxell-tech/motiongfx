@@ -1,0 +1,21 @@
+[package]
+name = "peniko_motiongfx"
+description = "Peniko 2d graphics support for the MotionGfx framework."
+keywords = ["motion", "animation", "procedural", "kurbo"]
+categories = ["no-std", "multimedia", "graphics", "visualization"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+motiongfx = { workspace = true }
+peniko = { workspace = true }
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+std = ["motiongfx/std", "peniko/std"]
+libm = ["peniko/libm"]
