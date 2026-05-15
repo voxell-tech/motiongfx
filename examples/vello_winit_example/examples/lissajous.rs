@@ -45,8 +45,7 @@ struct GridLine {
 }
 
 struct CurveState {
-    t_start: f64,
-    t_end: f64,
+    tracer: PathTracer,
 }
 
 struct TableWorld {
@@ -105,14 +104,36 @@ impl LissajousTableDemo {
         let mut world = TableWorld {
             grid_lines: Vec::new(),
             curves: (0..N_X * N_Y)
-                .map(|_| CurveState {
-                    t_start: 0.0,
-                    t_end: 0.0,
+                .map(|id| {
+                    let c = id % N_X + 1;
+                    let r = id / N_X + 1;
+                    let a = c as f64;
+                    let b = r as f64;
+                    let cx = c as f64 * CELL_W + CELL_W / 2.0;
+                    let cy = r as f64 * CELL_H + CELL_H / 2.0;
+                    let samples = a.max(b) as usize * 80 + 2;
+                    let mut path = BezPath::new();
+                    let (px, py) = lissajous_pt(a, b, 0.0, cx, cy);
+                    path.move_to((px, py));
+                    for i in 1..=samples {
+                        let t = i as f64 / samples as f64
+                            * f64::consts::TAU;
+                        let (px, py) =
+                            lissajous_pt(a, b, t, cx, cy);
+                        path.line_to((px, py));
+                    }
+                    CurveState {
+                        tracer: PathTracer {
+                            path,
+                            t_start: 0.0,
+                            t_end: 0.0,
+                        },
+                    }
                 })
                 .collect(),
         };
 
-        // Grid lines — p1 starts at p0 (zero length) so they draw in.
+        // Grid lines: p1 starts at p0 (zero length) so they draw in.
         let grid_col = Color::from_rgba8(105, 105, 140, 255);
         let mut vert_entries: Vec<(usize, kurbo::Point)> = Vec::new();
         let mut horiz_entries: Vec<(usize, kurbo::Point)> =
@@ -181,16 +202,16 @@ impl LissajousTableDemo {
                         let draw_in = b
                             .act(
                                 id,
-                                path!(<CurveState>::t_end),
-                                |_| f64::consts::TAU,
+                                path!(<CurveState>::tracer::t_end),
+                                |_| 1.0f32,
                             )
                             .with_ease(ease::cubic::ease_in_out)
                             .play(DRAW_DUR);
                         let draw_out = b
                             .act(
                                 id,
-                                path!(<CurveState>::t_start),
-                                |_| f64::consts::TAU,
+                                path!(<CurveState>::tracer::t_start),
+                                |_| 1.0f32,
                             )
                             .with_ease(ease::cubic::ease_in_out)
                             .play(DRAW_DUR);
@@ -278,8 +299,7 @@ impl VelloDemo for LissajousTableDemo {
             );
         }
 
-        // Reference circles (always live, not driven by timeline)
-        let t = elapsed as f64;
+        // Reference circles: dot tracks the curve tip of row 1 / col 1.
         let xhair_col = Color::from_rgba8(90, 90, 110, 255);
         let xhair_st = kurbo::Stroke::new(0.5);
         let ref_st = kurbo::Stroke::new(1.0);
@@ -309,7 +329,11 @@ impl VelloDemo for LissajousTableDemo {
                 None,
                 &kurbo::Line::new((cx - REF_R, cy), (cx + REF_R, cy)),
             );
-            let angle = a * t - f64::consts::FRAC_PI_2;
+            // x-component of curve tip: sin(a * t_end + DELTA)
+            let t_end =
+                self.world.curves[curve_id(c, 1)].tracer.t_end as f64
+                    * f64::consts::TAU;
+            let angle = a * t_end + DELTA - f64::consts::FRAC_PI_2;
             scene.fill(
                 Fill::NonZero,
                 xf,
@@ -350,7 +374,11 @@ impl VelloDemo for LissajousTableDemo {
                 None,
                 &kurbo::Line::new((cx - REF_R, cy), (cx + REF_R, cy)),
             );
-            let angle = b * t - f64::consts::FRAC_PI_2;
+            // y-component of curve tip: sin(b * t_end)
+            let t_end =
+                self.world.curves[curve_id(1, r)].tracer.t_end as f64
+                    * f64::consts::TAU;
+            let angle = b * t_end - f64::consts::FRAC_PI_2;
             scene.fill(
                 Fill::NonZero,
                 xf,
@@ -366,48 +394,26 @@ impl VelloDemo for LissajousTableDemo {
             );
         }
 
-        // Lissajous curves — driven by timeline world state
+        // Lissajous curves driven by timeline world state
         for r in 1..=N_Y {
             for c in 1..=N_X {
-                let a = c as f64;
-                let b = r as f64;
                 let id = curve_id(c, r);
                 let state = &self.world.curves[id];
 
-                let t_start = state.t_start;
-                let t_end = state.t_end;
-                const MIN_ARC: f64 = 0.05;
-                if t_end - t_start < MIN_ARC
-                    || f64::consts::TAU - t_start < MIN_ARC
+                const MIN_ARC: f32 = 0.01;
+                if state.tracer.t_end - state.tracer.t_start < MIN_ARC
+                    || 1.0 - state.tracer.t_start < MIN_ARC
                 {
                     continue;
                 }
 
-                let cx = c as f64 * CELL_W + CELL_W / 2.0;
-                let cy = r as f64 * CELL_H + CELL_H / 2.0;
-                let samples = a.max(b) as usize * 80 + 2;
-                let dt = (t_end - t_start) / samples as f64;
-
-                let mut path = BezPath::new();
-                let (px, py) = lissajous_pt(a, b, t_start, cx, cy);
-                path.move_to((px, py));
-                for i in 1..=samples {
-                    let (px, py) = lissajous_pt(
-                        a,
-                        b,
-                        t_start + i as f64 * dt,
-                        cx,
-                        cy,
-                    );
-                    path.line_to((px, py));
-                }
-
+                let visible = state.tracer.trace();
                 scene.stroke(
                     &kurbo::Stroke::new(2.0),
                     xf,
                     curve_color(c),
                     None,
-                    &path,
+                    &visible,
                 );
             }
         }

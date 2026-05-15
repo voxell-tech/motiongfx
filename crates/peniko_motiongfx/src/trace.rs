@@ -9,66 +9,77 @@ pub type PathTracer = Tracer<BezPath>;
 pub struct Tracer<T: Trace> {
     /// The original full path.
     pub path: T,
-    /// The `t` value to trace `path`.
-    pub t: f32,
+    /// Normalized start of the visible range (0..1).
+    pub t_start: f32,
+    /// Normalized end of the visible range (0..1).
+    pub t_end: f32,
 }
 
 impl<T: Trace> Tracer<T> {
     pub fn trace(&self) -> T {
-        self.path.trace(self.t)
+        self.path.trace_range(self.t_start, self.t_end)
     }
 }
 
 pub trait Trace {
-    fn trace(&self, t: f32) -> Self;
+    /// Returns the slice of `self` from `t_start` to `t_end` (both in 0..1).
+    fn trace_range(&self, t_start: f32, t_end: f32) -> Self;
+
+    /// Returns the prefix of `self` from 0 to `t`.
+    fn trace(&self, t: f32) -> Self
+    where
+        Self: Sized,
+    {
+        self.trace_range(0.0, t)
+    }
 }
 
 impl Trace for Line {
-    /// Returns the prefix of a [`Line`] traced from start to `t`.
     #[inline]
-    fn trace(&self, t: f32) -> Self {
-        let t = t.clamp(0.0, 1.0) as f64;
-        self.subsegment(0.0..t)
+    fn trace_range(&self, t_start: f32, t_end: f32) -> Self {
+        let t_start = t_start.clamp(0.0, 1.0) as f64;
+        let t_end = t_end.clamp(0.0, 1.0) as f64;
+        self.subsegment(t_start..t_end)
     }
 }
 
 impl Trace for QuadBez {
-    /// Returns the prefix of a [`QuadBez`] traced from start to `t`.
     #[inline]
-    fn trace(&self, t: f32) -> Self {
-        let t = t.clamp(0.0, 1.0) as f64;
-        self.subsegment(0.0..t)
+    fn trace_range(&self, t_start: f32, t_end: f32) -> Self {
+        let t_start = t_start.clamp(0.0, 1.0) as f64;
+        let t_end = t_end.clamp(0.0, 1.0) as f64;
+        self.subsegment(t_start..t_end)
     }
 }
 
 impl Trace for CubicBez {
-    /// Returns the prefix of a [`CubicBez`] traced from start to `t`.
     #[inline]
-    fn trace(&self, t: f32) -> Self {
-        let t = t.clamp(0.0, 1.0) as f64;
-        self.subsegment(0.0..t)
+    fn trace_range(&self, t_start: f32, t_end: f32) -> Self {
+        let t_start = t_start.clamp(0.0, 1.0) as f64;
+        let t_end = t_end.clamp(0.0, 1.0) as f64;
+        self.subsegment(t_start..t_end)
     }
 }
 
 impl Trace for BezPath {
-    /// See [`trace_bez_path`].
     #[inline]
-    fn trace(&self, t: f32) -> Self {
-        trace_bez_path(self, t)
+    fn trace_range(&self, t_start: f32, t_end: f32) -> Self {
+        trace_bez_path_range(self, t_start, t_end)
     }
 }
 
-/// Returns the prefix of `path` traced from the start to `t`.
-///
-/// Progress is distributed uniformly across segments (not
-/// arc-length parameterised).
-///
-/// Trace multiple paths as if they were a single continuous stroke.
-pub fn trace_bez_path(path: &BezPath, t: f32) -> BezPath {
-    if t <= 0.0 {
+fn trace_bez_path_range(
+    path: &BezPath,
+    t_start: f32,
+    t_end: f32,
+) -> BezPath {
+    let t_start = t_start.clamp(0.0, 1.0) as f64;
+    let t_end = t_end.clamp(0.0, 1.0) as f64;
+
+    if t_start >= t_end {
         return BezPath::new();
     }
-    if t >= 1.0 {
+    if t_start <= 0.0 && t_end >= 1.0 {
         return path.clone();
     }
 
@@ -77,23 +88,35 @@ pub fn trace_bez_path(path: &BezPath, t: f32) -> BezPath {
         return BezPath::new();
     }
 
-    let t = f64::from(t);
-    let scaled = t * n as f64;
-    let complete = scaled.floor() as usize;
-    let partial_t = scaled - complete as f64;
+    let start_scaled = t_start * n as f64;
+    let end_scaled = t_end * n as f64;
+    let start_seg = start_scaled.floor() as usize;
+    let start_frac = start_scaled - start_seg as f64;
+    let end_seg = end_scaled.floor() as usize;
+    let end_frac = end_scaled - end_seg as f64;
 
     let mut result = BezPath::new();
-    result.move_to(
-        path.get_seg(0).map(|s| s.start()).unwrap_or_default(),
-    );
-    for seg in path.segments().take(complete) {
-        result.push(seg.as_path_el());
+    for (i, seg) in path.segments().enumerate() {
+        if i < start_seg {
+            continue;
+        }
+        if i > end_seg {
+            break;
+        }
+        let lo = if i == start_seg { start_frac } else { 0.0 };
+        let hi = if i == end_seg {
+            if end_frac == 0.0 {
+                break;
+            }
+            end_frac
+        } else {
+            1.0
+        };
+        let sub = seg.subsegment(lo..hi);
+        if result.is_empty() {
+            result.move_to(sub.start());
+        }
+        result.push(sub.as_path_el());
     }
-    if partial_t > 0.0
-        && let Some(seg) = path.segments().nth(complete)
-    {
-        result.push(seg.subsegment(0.0..partial_t).as_path_el());
-    }
-
     result
 }
