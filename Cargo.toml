@@ -36,7 +36,6 @@ pollster = "0.4"
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
-bool_comparison = "allow"
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

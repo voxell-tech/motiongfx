@@ -13,6 +13,9 @@ pub mod prelude {
     };
 }
 
+pub use motiongfx;
+pub use peniko;
+
 /// Marker for [`Interpolation<Peniko>`] impls on [`peniko`] types.
 ///
 /// [`Interpolation<Peniko>`]: motiongfx::interpolation::Interpolation
