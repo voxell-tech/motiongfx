@@ -1,0 +1,1915 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+	<key>author</key>
+	<string>Monokai</string>
+	<key>name</key>
+	<string>Monokai Pro</string>
+	<key>settings</key>
+	<array>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>lineDiffAdded</key>
+				<string>#a9dc76</string>
+				<key>background</key>
+				<string>#2d2a2e</string>
+				<key>accent</key>
+				<string>#ffd866</string>
+				<key>guide</key>
+				<string>#403e41</string>
+				<key>stackGuide</key>
+				<string>#403e41</string>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+				<key>findHighlight</key>
+				<string>#fc9867</string>
+				<key>selectionCornerRadius</key>
+				<string>0</string>
+				<key>selectionBorderWidth</key>
+				<string>0</string>
+				<key>lineDiffModified</key>
+				<string>#ffd866</string>
+				<key>lineDiffWidth</key>
+				<string>2</string>
+				<key>misspelling</key>
+				<string>#ff6188</string>
+				<key>popupCss</key>
+				<string>#2d2a2e</string>
+				<key>selectionBorder</key>
+				<string>#000000</string>
+				<key>inactiveSelectionForeground</key>
+				<string>#000000</string>
+				<key>lineHighlight</key>
+				<string>#fcfcfa0c</string>
+				<key>activeGuide</key>
+				<string>#5b595c</string>
+				<key>shadow</key>
+				<string>#00000000</string>
+				<key>bracketContentsOptions</key>
+				<string>underline</string>
+				<key>foldMarker</key>
+				<string>#ffd866</string>
+				<key>gutter</key>
+				<string>#2d2a2e</string>
+				<key>highlight</key>
+				<string>#ffd866</string>
+				<key>invisibles</key>
+				<string>#5b595c</string>
+				<key>lineDiffDeleted</key>
+				<string>#ff6188</string>
+				<key>gutterForeground</key>
+				<string>#5b595c</string>
+				<key>findHighlightForeground</key>
+				<string>#000000</string>
+				<key>selectionForeground</key>
+				<string>#000000</string>
+				<key>selection</key>
+				<string>#fc9867</string>
+				<key>caret</key>
+				<string>#fcfcfa</string>
+				<key>selectionCornerStyle</key>
+				<string>square</string>
+				<key>inactiveSelection</key>
+				<string>#fc9867</string>
+				<key>blockCaret</key>
+				<string>#939293</string>
+				<key>tagsOptions</key>
+				<string>stippled_underline</string>
+				<key>shadowWidth</key>
+				<string>0</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#727072</string>
+			</dict>
+			<key>name</key>
+			<string>Comments and overrides inside comments</string>
+			<key>scope</key>
+			<string>comment, comment keyword, comment markup.underline.link, comment string, comment punctuation.definition, comment punctuation, comment text</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#727072</string>
+			</dict>
+			<key>name</key>
+			<string>JSDoc storage type</string>
+			<key>scope</key>
+			<string>comment storage.type</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#c1c0c0</string>
+			</dict>
+			<key>name</key>
+			<string>JSDoc entity name</string>
+			<key>scope</key>
+			<string>comment entity.name.type</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#c1c0c0</string>
+			</dict>
+			<key>name</key>
+			<string>JSDoc variable</string>
+			<key>scope</key>
+			<string>comment variable, comment variable.other</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Comment TODO / FIXME (at least in VSCode Python)</string>
+			<key>scope</key>
+			<string>comment keyword.codetag.notation</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>git status remote</string>
+			<key>scope</key>
+			<string>comment.git-status.header.remote</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>git status local</string>
+			<key>scope</key>
+			<string>comment.git-status.header.local</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>git status remote</string>
+			<key>scope</key>
+			<string>comment.other.git-status.head</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Constant</string>
+			<key>scope</key>
+			<string>constant</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Constant</string>
+			<key>scope</key>
+			<string>constant.other</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Constant</string>
+			<key>scope</key>
+			<string>constant.other.php</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Constant as property</string>
+			<key>scope</key>
+			<string>constant.other.property</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Constant in latex</string>
+			<key>scope</key>
+			<string>constant.other.citation.latex</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Constant as color (in css / sass)</string>
+			<key>scope</key>
+			<string>constant.other.color</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Constant as character class escape (e.g. in regex)</string>
+			<key>scope</key>
+			<string>constant.other.character-class.escape</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Constant as key (e.g. in puppet manifests)</string>
+			<key>scope</key>
+			<string>constant.other.key</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>Constant as symbol (e.g. in ruby)</string>
+			<key>scope</key>
+			<string>constant.other.symbol</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Constants in elm</string>
+			<key>scope</key>
+			<string>constant.other.elm</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Number</string>
+			<key>scope</key>
+			<string>constant.numeric</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Constant</string>
+			<key>scope</key>
+			<string>constant.language</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Character escape</string>
+			<key>scope</key>
+			<string>constant.character.escape</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#5b595c</string>
+			</dict>
+			<key>name</key>
+			<string>Search result line numbers</string>
+			<key>scope</key>
+			<string>constant.numeric.line-number.find-in-files</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ffd866</string>
+			</dict>
+			<key>name</key>
+			<string>Search result matched line numbes</string>
+			<key>scope</key>
+			<string>constant.numeric.line-number.match.find-in-files</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ffd866</string>
+			</dict>
+			<key>name</key>
+			<string>Sections</string>
+			<key>scope</key>
+			<string>entity.name.section</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Functions</string>
+			<key>scope</key>
+			<string>entity.name.function, entity.name.function.templated</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Functions</string>
+			<key>scope</key>
+			<string>entity.name.function.member.static</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Class template</string>
+			<key>scope</key>
+			<string>entity.name.type.class.templated, entity.name.type.class.generic, entity.name.type.namespace</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>label</string>
+			<key>scope</key>
+			<string>entity.name.label</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Macros</string>
+			<key>scope</key>
+			<string>entity.name.function.preprocessor</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Entity name</string>
+			<key>scope</key>
+			<string>entity.name</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Class name</string>
+			<key>scope</key>
+			<string>entity.name.class</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Constant name</string>
+			<key>scope</key>
+			<string>entity.name.constant</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Namespace</string>
+			<key>scope</key>
+			<string>entity.name.namespace</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Inherited class</string>
+			<key>scope</key>
+			<string>entity.other.inherited-class</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Function name</string>
+			<key>scope</key>
+			<string>entity.name.function</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Tag name</string>
+			<key>scope</key>
+			<string>entity.name.tag, entity.name.tag.js.jsx support.class.component.js.jsx, entity.name.tag support.class.component</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Operator</string>
+			<key>scope</key>
+			<string>entity.name.function.operator</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Entity name type</string>
+			<key>scope</key>
+			<string>entity.name.type, entity.name.type.class.reference, entity.name.type.class.value</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Tag attribute</string>
+			<key>scope</key>
+			<string>entity.other.attribute-name</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>CSS class</string>
+			<key>scope</key>
+			<string>entity.other.attribute-name.class.css, entity.other.attribute-name.parent-selector-suffix.css, entity.other.attribute-name.parent-selector-suffix.css punctuation.definition.entity.css, entity.other.attribute-name.css, entity.other.animation-name.css</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>CSS id</string>
+			<key>scope</key>
+			<string>entity.other.attribute-name.id.css</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>CSS pseudo class</string>
+			<key>scope</key>
+			<string>entity.other.attribute-name.pseudo-class.css, entity.other.pseudo-class.css, entity.other.pseudo-element.css</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Function names / calls</string>
+			<key>scope</key>
+			<string>entity.name.function, support.function</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>git status commit hex</string>
+			<key>scope</key>
+			<string>entity.other.git-status.hex</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>jinja delimiters</string>
+			<key>scope</key>
+			<string>entity.other.jinja2.delimiter</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>custom literal</string>
+			<key>scope</key>
+			<string>entity.name.operator.custom-literal</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ffd866</string>
+			</dict>
+			<key>name</key>
+			<string>custom literal string</string>
+			<key>scope</key>
+			<string>entity.name.operator.custom-literal.string</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>custom literal number</string>
+			<key>scope</key>
+			<string>entity.name.operator.custom-literal.number</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific</string>
+			<key>scope</key>
+			<string>entity.name.type.rust</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific</string>
+			<key>scope</key>
+			<string>entity.name.lifetime.rust</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+			</dict>
+			<key>name</key>
+			<string>Invalid</string>
+			<key>scope</key>
+			<string>invalid</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Keyword</string>
+			<key>scope</key>
+			<string>keyword</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Control keywords examples include if, try, end and while. Some syntaxes prefer to mark if and else with the conditional variant. The import variant is often used in appropriate situations.</string>
+			<key>scope</key>
+			<string>keyword.control</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>keyword control directive</string>
+			<key>scope</key>
+			<string>keyword.control.directive</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Operator</string>
+			<key>scope</key>
+			<string>keyword.operator, keyword.operator.member, keyword.operator.new</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>Substitution string</string>
+			<key>scope</key>
+			<string>keyword.other.substitution</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Template literal begin / end</string>
+			<key>scope</key>
+			<string>keyword.other.template.begin, keyword.other.template.end</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>RestructuredText heading, table markup</string>
+			<key>scope</key>
+			<string>keyword.operator.heading.restructuredtext, keyword.operator.table.row.restructuredtext keyword.operator.table.data.restructuredtext</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>elm parenthesis</string>
+			<key>scope</key>
+			<string>keyword.other.parenthesis.elm</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific</string>
+			<key>scope</key>
+			<string>keyword.other.fn.rust, keyword.other.rust, keyword.other.unsafe.rust, keyword.other.where.rust</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific</string>
+			<key>scope</key>
+			<string>keyword.control.rust, keyword.operator.misc.rust</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+			</dict>
+			<key>name</key>
+			<string>Italic</string>
+			<key>scope</key>
+			<string>markup.italic</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>bold</string>
+			</dict>
+			<key>name</key>
+			<string>Bold</string>
+			<key>scope</key>
+			<string>markup.bold</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ffd866</string>
+			</dict>
+			<key>name</key>
+			<string>Heading</string>
+			<key>scope</key>
+			<string>markup.heading</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>Raw</string>
+			<key>scope</key>
+			<string>markup.raw</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>underline</string>
+			</dict>
+			<key>name</key>
+			<string>Underline</string>
+			<key>scope</key>
+			<string>markup.underline</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Link</string>
+			<key>scope</key>
+			<string>markup.underline.link</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Diff inserted</string>
+			<key>scope</key>
+			<string>markup.inserted, markup.inserted punctuation.definition.inserted</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Diff deleted</string>
+			<key>scope</key>
+			<string>markup.deleted, markup.deleted punctuation.definition.deleted</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ffd866</string>
+			</dict>
+			<key>name</key>
+			<string>Diff changed</string>
+			<key>scope</key>
+			<string>markup.changed, markup.changed punctuation.definition.changed</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>Diff ignored</string>
+			<key>scope</key>
+			<string>markup.ignored, markup.ignored punctuation.definition.ignored</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>Diff untracked</string>
+			<key>scope</key>
+			<string>markup.untracked</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+			</dict>
+			<key>name</key>
+			<string>Markup quote</string>
+			<key>scope</key>
+			<string>markup.quote</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>Braces, delimiters</string>
+			<key>scope</key>
+			<string>meta.brace.round, meta.brace.square, meta.brace.curly, meta.delimiter.comma.js, meta.function-call.without-arguments.js, meta.function-call.method.without-arguments.js</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Function call (vs)</string>
+			<key>scope</key>
+			<string>meta.function-call.generic.python, support.function.builtin.python</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Function arguments (vs)</string>
+			<key>scope</key>
+			<string>meta.function-call.python meta.function-call.arguments.python</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Constructor (new MyClass())</string>
+			<key>scope</key>
+			<string>meta.instance.constructor</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Class string name (i.e. in html attributes)</string>
+			<key>scope</key>
+			<string>meta.attribute-with-value.class string, meta.attribute.class.html string</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>ID string name (i.e. in html attributes)</string>
+			<key>scope</key>
+			<string>meta.attribute-with-value.id string, meta.attribute.id.html string</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>JSON keys (and invisibles)</string>
+			<key>scope</key>
+			<string>source.json meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary, source.json meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string, source.json meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary string</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ffd866</string>
+			</dict>
+			<key>name</key>
+			<string>JSON values</string>
+			<key>scope</key>
+			<string>source.json meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string, source.json meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value meta.structure.dictionary meta.structure.dictionary.value string</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Object members</string>
+			<key>scope</key>
+			<string>meta.object.member</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>SCSS Variable</string>
+			<key>scope</key>
+			<string>meta.property-list.css variable.other</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Preprocessor</string>
+			<key>scope</key>
+			<string>entity.name.constant.preprocessor, meta.preprocessor</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ffd866</string>
+			</dict>
+			<key>name</key>
+			<string>git diff header</string>
+			<key>scope</key>
+			<string>meta.diff.git-diff.header</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific (brackets and certain type names)</string>
+			<key>scope</key>
+			<string>meta.type_params.rust</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#c1c0c0</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific (variable.language.rust is 'self' keyword.</string>
+			<key>scope</key>
+			<string>meta.attribute.rust, meta.annotation.rust, variable.language.rust, variable.annotation.rust, meta.annotation.rust string, meta.annotation.rust keyword, meta.annotation.rust keyword.operator, meta.attribute.rust string</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>Punctuation</string>
+			<key>scope</key>
+			<string>punctuation</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>Punctuation tags</string>
+			<key>scope</key>
+			<string>punctuation.definition.tag, punctuation.definition.tag source, punctuation.definition.group.begin.ruby, punctuation.definition.group.end.ruby, punctuation.definition.group.begin.css, punctuation.definition.group.end.css, punctuation.definition.string.end.html source.css</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Group (i.e. in regex)</string>
+			<key>scope</key>
+			<string>punctuation.definition.group</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#727072</string>
+			</dict>
+			<key>name</key>
+			<string>Comment start / end</string>
+			<key>scope</key>
+			<string>punctuation.definition.comment</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#c1c0c0</string>
+			</dict>
+			<key>name</key>
+			<string>Variable indicator (i.e. in php or in include directives in sass)</string>
+			<key>scope</key>
+			<string>punctuation.definition.variable, punctuation.definition.keyword.scss, punctuation.definition.entity.css</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>Punctuation section embedded (i.e. ?php blocks in html)</string>
+			<key>scope</key>
+			<string>punctuation.section.embedded, punctuation.section.embedded entity.name.tag, punctuation.section.embedded constant.other, punctuation.section.embedded source</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Punctuation template string (`example`)</string>
+			<key>scope</key>
+			<string>punctuation.template-string.element.begin, punctuation.template-string.element.end, punctuation.definition.string.template.begin, punctuation.definition.string.template.end, string.quoted.template punctuation.definition.string.begin, string.quoted.template punctuation.definition.string.end, punctuation.definition.template-expression.begin, punctuation.definition.template-expression.end</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Punctuation hard line break in Markdown</string>
+			<key>scope</key>
+			<string>meta.paragraph.markdown meta.dummy.line-break, meta.paragraph.markdown meta.hard-line-break.markdown</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#ff618859</string>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>region red color</string>
+			<key>scope</key>
+			<string>region.redish</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#fc986759</string>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>region orange color</string>
+			<key>scope</key>
+			<string>region.orangish</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#ffd86659</string>
+				<key>foreground</key>
+				<string>#ffd866</string>
+			</dict>
+			<key>name</key>
+			<string>region yellow color</string>
+			<key>scope</key>
+			<string>region.yellowish</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#a9dc7659</string>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>region green color</string>
+			<key>scope</key>
+			<string>region.greenish</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#78dce859</string>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>region blue color</string>
+			<key>scope</key>
+			<string>region.bluish</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#ab9df259</string>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>region purple color</string>
+			<key>scope</key>
+			<string>region.purplish</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#ff618859</string>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>region pink color</string>
+			<key>scope</key>
+			<string>region.pinkish</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#FFFFFF</string>
+			</dict>
+			<key>name</key>
+			<string>White for ST3 for non-colorized scheme</string>
+			<key>scope</key>
+			<string>region.whitish</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>source</string>
+			<key>scope</key>
+			<string>source</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>SASS, SCSS default</string>
+			<key>scope</key>
+			<string>source.scss, source.sass</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>SASS, SCSS and LESS variables</string>
+			<key>scope</key>
+			<string>source.sass variable.other, source.sass variable.sass, source.scss variable.other, source.scss variable.scss, source.scss variable.sass, source.css variable.other, source.css variable.scss, source.less variable.other, source.less variable.other.less, source.less variable.declaration.less</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>git</string>
+			<key>scope</key>
+			<string>source.git-show.commit.sha</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>git</string>
+			<key>scope</key>
+			<string>source.git-show.author, source.git-show.date, source.git-diff.command, source.git-diff.command meta.diff.git-diff.header.from-file, source.git-diff.command meta.diff.git-diff.header.to-file</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>git diff header hash</string>
+			<key>scope</key>
+			<string>source.git-show meta.diff.git-diff.header.extended.index.from-sha, source.git-show meta.diff.git-diff.header.extended.index.to-sha</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>git diff header range</string>
+			<key>scope</key>
+			<string>source.git-show meta.diff.range.unified</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>git diff header files</string>
+			<key>scope</key>
+			<string>source.git-show meta.diff.header.from-file, source.git-show meta.diff.header.to-file</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Storage</string>
+			<key>scope</key>
+			<string>storage</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Types and definition / declaration keywords should use the following scope. Examples include int, bool, char, func, function, class and def. Depending on the language and semantics, const may be this or storage.modifier.</string>
+			<key>scope</key>
+			<string>storage.type</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>normal</string>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Extends</string>
+			<key>scope</key>
+			<string>storage.type.extends</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>normal</string>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Fat arrow function</string>
+			<key>scope</key>
+			<string>storage.type.function.arrow</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>Keywords that affect the storage of a variable, function or data structure should use the following scope. Examples include static, inline, const, public and private.</string>
+			<key>scope</key>
+			<string>storage.modifier, storage.type.modifier</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>refs (Restructured text)</string>
+			<key>scope</key>
+			<string>storage.class.restructuredtext.ref</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific</string>
+			<key>scope</key>
+			<string>storage.modifier.visibility.rust, storage.modifier.lifetime.rust</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific</string>
+			<key>scope</key>
+			<string>storage.modifier.const.rust, storage.modifier.dyn.rust, storage.modifier.mut.rust, storage.modifier.static.rust, storage.type.rust, storage.type.core.rust, storage.class.std.rust</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific (adjust blue to red)</string>
+			<key>scope</key>
+			<string>storage.type.rust, storage.modifier.const.rust, storage.modifier.dyn.rust, storage.modifier.mut.rust, storage.modifier.static.rust, keyword.other.rust, keyword.other.where.rust</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ffd866</string>
+			</dict>
+			<key>name</key>
+			<string>String</string>
+			<key>scope</key>
+			<string>string</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>String label</string>
+			<key>scope</key>
+			<string>string.unquoted.label</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Source in template string</string>
+			<key>scope</key>
+			<string>string source</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>Embedded punctuation begin / end in template string</string>
+			<key>scope</key>
+			<string>string source punctuation.section.embedded</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>link title</string>
+			<key>scope</key>
+			<string>string.other.link.title, string.other.link.description</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>link description</string>
+			<key>scope</key>
+			<string>string.other.link.description.title</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>String regexp begin / end</string>
+			<key>scope</key>
+			<string>string.regexp punctuation.definition.string.begin, string.regexp punctuation.definition.string.end</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>refs (Restructured text)</string>
+			<key>scope</key>
+			<string>string.other.ref, string.other.restructuredtext.ref</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#c1c0c0</string>
+			</dict>
+			<key>name</key>
+			<string>git key in git status help text</string>
+			<key>scope</key>
+			<string>string.other.git-status.help.key</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ff6188</string>
+			</dict>
+			<key>name</key>
+			<string>git status remote</string>
+			<key>scope</key>
+			<string>string.other.git-status.remote</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Library constant</string>
+			<key>scope</key>
+			<string>support.constant</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>Handlebars start / end</string>
+			<key>scope</key>
+			<string>support.constant.handlebars</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#c1c0c0</string>
+			</dict>
+			<key>name</key>
+			<string>vendor prefix</string>
+			<key>scope</key>
+			<string>support.type.vendor-prefix.css</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Function name</string>
+			<key>scope</key>
+			<string>support.function</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>name</key>
+			<string>function brackets, comma's</string>
+			<key>scope</key>
+			<string>support.function.delimiter.elm</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Library type</string>
+			<key>scope</key>
+			<string>support.type, entity.name.type.object.console</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Support variables</string>
+			<key>scope</key>
+			<string>support.variable</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>normal</string>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Library type property</string>
+			<key>scope</key>
+			<string>support.type.property-name</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Library class</string>
+			<key>scope</key>
+			<string>support.class</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>rust specific</string>
+			<key>scope</key>
+			<string>support.constant.core.rust</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>text</string>
+			<key>scope</key>
+			<string>text</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Search result</string>
+			<key>scope</key>
+			<string>text.find-in-files</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Variable</string>
+			<key>scope</key>
+			<string>variable, variable.other</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>Function arguments</string>
+			<key>scope</key>
+			<string>variable.parameter, parameters variable.function</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>fontStyle</key>
+				<string>italic</string>
+				<key>foreground</key>
+				<string>#c1c0c0</string>
+			</dict>
+			<key>name</key>
+			<string>Reserved variable names that are specified by the language, such as this, self, super, arguments. Also in function arguments (e.g. like in Python)</string>
+			<key>scope</key>
+			<string>variable.language, variable.parameter.function.language.special.self.python, variable.parameter.function.language.special.cls.python</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Reserved variable names: 'arguments'</string>
+			<key>scope</key>
+			<string>variable.language.arguments</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#78dce8</string>
+			</dict>
+			<key>name</key>
+			<string>Library function</string>
+			<key>scope</key>
+			<string>variable.other.class</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Immutable variables, often via a const modifier, should receive the following scope. Depending on the language and semantics, entity.name.constant may be a better choice.</string>
+			<key>scope</key>
+			<string>variable.other.constant</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>read/write variables</string>
+			<key>scope</key>
+			<string>variable.other.readwrite</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Fields, properties, members and attributes of a class or other data structure should use:</string>
+			<key>scope</key>
+			<string>variable.other.member</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Enum member</string>
+			<key>scope</key>
+			<string>variable.other.enummember</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>name</key>
+			<string>Variable property</string>
+			<key>scope</key>
+			<string>variable.other.property, variable.other.property.static, variable.other.event</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>Function and method names should be scoped using the following, but only when they are being invoked. When defined, they should use entity.name.function.</string>
+			<key>scope</key>
+			<string>variable.function</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>Substitution (restructured text)</string>
+			<key>scope</key>
+			<string>variable.other.substitution</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ab9df2</string>
+			</dict>
+			<key>name</key>
+			<string>Ruby instance variables</string>
+			<key>scope</key>
+			<string>source.ruby variable.other.readwrite.instance.ruby, source.ruby variable.other.readwrite.class.ruby</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#a9dc76</string>
+			</dict>
+			<key>name</key>
+			<string>jinja2 variable block</string>
+			<key>scope</key>
+			<string>source.jinja2 variable.other.jinja2.block</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fc9867</string>
+			</dict>
+			<key>name</key>
+			<string>jinja2 variable</string>
+			<key>scope</key>
+			<string>source.jinja2 variable.other.jinja2</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>scope</key>
+			<string>entity.name.type</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>scope</key>
+			<string>meta.method.declaration entity.name.type</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>scope</key>
+			<string>support.variable.property</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>scope</key>
+			<string>entity.other.inherited-class</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#fcfcfa</string>
+			</dict>
+			<key>scope</key>
+			<string>meta.block meta.var.expr meta.var-single-variable.expr meta.definition.variable entity.name.function</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>scope</key>
+			<string>string.template meta.template.expression punctuation.definition.template-expression.begin, string.template meta.template.expression punctuation.definition.template-expression.end</string>
+		</dict>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#939293</string>
+			</dict>
+			<key>scope</key>
+			<string>punctuation.section.embedded.begin.tsx, punctuation.section.embedded.end.tsx</string>
+		</dict>
+	</array>
+</dict>
+</plist>
