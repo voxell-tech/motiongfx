@@ -33,6 +33,7 @@ peniko = { version = "0.6", default-features = false }
 vello = "0.7.0"
 winit = "0.30"
 pollster = "0.4"
+velyst = { git = "https://github.com/voxell-tech/velyst", rev = "611d46d" }
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"

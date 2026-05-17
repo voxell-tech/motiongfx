@@ -11,8 +11,8 @@ publish = false
 bevy_motiongfx = { workspace = true }
 peniko_motiongfx = { workspace = true }
 bevy = { workspace = true, default-features = true, features = ["file_watcher"] }
-velyst = { git = "https://github.com/voxell-tech/velyst", rev = "319430d" }
 bevy_vello = "0.13.1"
+velyst = { workspace = true }
 
 [lints]
 workspace = true
