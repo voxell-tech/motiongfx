@@ -3,9 +3,7 @@ use bevy_examples::timeline_movement;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
 use bevy_vello::prelude::VelloView;
-use bevy_vello::vello::kurbo::BezPath;
 use peniko_motiongfx::prelude::*;
-use velyst::kanva::KanvaFill;
 use velyst::prelude::*;
 
 fn main() {
@@ -117,7 +115,7 @@ fn animate_trace(
             continue;
         }
 
-        let indices: Vec<usize> = match &trace.group {
+        let range = match &trace.group {
             KanvaGroup::Wrap(start_name, end_name) => {
                 let (Some(start_idx), Some(end_idx)) = (
                     kanva.query_group(start_name),
@@ -130,7 +128,7 @@ fn animate_trace(
                 else {
                     continue;
                 };
-                range.collect()
+                range
             }
             KanvaGroup::Inner(name) => {
                 let Some(idx) = kanva.query_group(name) else {
@@ -140,18 +138,18 @@ fn animate_trace(
                 else {
                     continue;
                 };
-                range.collect()
+                range
             }
             KanvaGroup::All => {
                 let mut n = 0usize;
                 while kanva.get_path(n).is_some() {
                     n += 1;
                 }
-                (0..n).collect()
+                0..n
             }
         };
 
-        let n = indices.len();
+        let n = range.len();
         if n == 0 {
             continue;
         }
@@ -164,13 +162,13 @@ fn animate_trace(
             0.0
         };
 
-        let originals: Vec<BezPath> = indices
-            .iter()
-            .filter_map(|&i| Some(kanva.get_path(i)?.path.clone()))
-            .collect();
+        let originals = range
+            .clone()
+            .filter_map(|i| Some(kanva.get_path(i)?.path.clone()))
+            .collect::<Vec<_>>();
 
         for (i, (path_idx, orig)) in
-            indices.iter().zip(originals.iter()).enumerate()
+            range.zip(originals.iter()).enumerate()
         {
             let local_t = ((t - i as f32 * stagger) / path_window)
                 .clamp(0.0, 1.0);
@@ -180,7 +178,7 @@ fn animate_trace(
                 t_end: local_t,
             }
             .trace();
-            kanva.mod_path(*path_idx).shape(traced);
+            kanva.mod_path(path_idx).shape(traced);
         }
     }
 }
@@ -198,7 +196,7 @@ fn animate_trace_fade(
             continue;
         }
 
-        let indices: Vec<usize> = match &trace_fade.group {
+        let range = match &trace_fade.group {
             KanvaGroup::Wrap(start_name, end_name) => {
                 let (Some(start_idx), Some(end_idx)) = (
                     kanva.query_group(start_name),
@@ -211,7 +209,7 @@ fn animate_trace_fade(
                 else {
                     continue;
                 };
-                range.collect()
+                range
             }
             KanvaGroup::Inner(name) => {
                 let Some(idx) = kanva.query_group(name) else {
@@ -221,18 +219,18 @@ fn animate_trace_fade(
                 else {
                     continue;
                 };
-                range.collect()
+                range
             }
             KanvaGroup::All => {
                 let mut n = 0usize;
                 while kanva.get_path(n).is_some() {
                     n += 1;
                 }
-                (0..n).collect()
+                0..n
             }
         };
 
-        let n = indices.len();
+        let n = range.len();
         if n == 0 {
             continue;
         }
@@ -246,9 +244,9 @@ fn animate_trace_fade(
             0.0
         };
 
-        let originals: Vec<(BezPath, Option<KanvaFill>)> = indices
-            .iter()
-            .filter_map(|&i| {
+        let originals = range
+            .clone()
+            .filter_map(|i| {
                 let path = kanva.get_path(i)?;
                 let fill = path
                     .fill
@@ -256,10 +254,10 @@ fn animate_trace_fade(
                     .cloned();
                 Some((path.path.clone(), fill))
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         for (i, (path_idx, (orig, fill))) in
-            indices.iter().zip(originals.iter()).enumerate()
+            range.zip(originals.iter()).enumerate()
         {
             let local_t = ((t - i as f32 * stagger) / path_window)
                 .clamp(0.0, 1.0);
@@ -279,7 +277,7 @@ fn animate_trace_fade(
                 t_end: trace_t,
             }
             .trace();
-            kanva.mod_path(*path_idx).shape(traced).fill(faded_fill);
+            kanva.mod_path(path_idx).shape(traced).fill(faded_fill);
         }
     }
 }
@@ -287,7 +285,7 @@ fn animate_trace_fade(
 enum KanvaGroup {
     /// Explicit start and end group markers.
     Wrap(&'static str, &'static str),
-    /// Single group name; resolves "{name}-start" and "{name}-end".
+    /// Single group name.
     Inner(&'static str),
     /// All paths in the kanva.
     All,
