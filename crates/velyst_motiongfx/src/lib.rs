@@ -1,6 +1,11 @@
+#![doc = include_str!("../README.md")]
+
+use std::ops::Range;
+
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::prelude::*;
 use peniko_motiongfx::trace::Trace;
+use velyst::kanva::Kanva;
 use velyst::prelude::{VelystKanva, VelystSet};
 
 pub mod prelude {
@@ -74,6 +79,30 @@ impl Default for TraceFadeKanva {
     }
 }
 
+fn resolve_range(
+    group: &KanvaGroup,
+    kanva: &Kanva,
+) -> Option<Range<usize>> {
+    match group {
+        KanvaGroup::Wrap(start_name, end_name) => {
+            let start_idx = kanva.query_group(start_name)?;
+            let end_idx = kanva.query_group(end_name)?;
+            kanva.get_paths_between_groups(start_idx, end_idx)
+        }
+        KanvaGroup::Inner(name) => {
+            let idx = kanva.query_group(name)?;
+            kanva.get_group_path_range(idx)
+        }
+        KanvaGroup::All => {
+            let mut n = 0usize;
+            while kanva.get_path(n).is_some() {
+                n += 1;
+            }
+            (n > 0).then_some(0..n)
+        }
+    }
+}
+
 fn clear_kanva_mods(mut kanva_q: Query<&mut VelystKanva>) {
     for mut kanva in &mut kanva_q {
         kanva.clear_mods();
@@ -92,45 +121,11 @@ fn animate_trace(
         if kanva.is_empty() {
             continue;
         }
-        let range = match &trace.group {
-            KanvaGroup::Wrap(start_name, end_name) => {
-                let (Some(start_idx), Some(end_idx)) = (
-                    kanva.query_group(start_name),
-                    kanva.query_group(end_name),
-                ) else {
-                    continue;
-                };
-                let Some(range) =
-                    kanva.get_paths_between_groups(start_idx, end_idx)
-                else {
-                    continue;
-                };
-                range
-            }
-            KanvaGroup::Inner(name) => {
-                let Some(idx) = kanva.query_group(name) else {
-                    continue;
-                };
-                let Some(range) = kanva.get_group_path_range(idx)
-                else {
-                    continue;
-                };
-                range
-            }
-            KanvaGroup::All => {
-                let mut n = 0usize;
-                while kanva.get_path(n).is_some() {
-                    n += 1;
-                }
-                0..n
-            }
+        let Some(range) = resolve_range(&trace.group, &kanva) else {
+            continue;
         };
 
         let n = range.len();
-        if n == 0 {
-            continue;
-        }
-
         let t = trace.t;
         let path_window = trace.path_window;
         let stagger = if n > 1 {
@@ -167,45 +162,13 @@ fn animate_trace_fade(
         if kanva.is_empty() {
             continue;
         }
-        let range = match &trace_fade.group {
-            KanvaGroup::Wrap(start_name, end_name) => {
-                let (Some(start_idx), Some(end_idx)) = (
-                    kanva.query_group(start_name),
-                    kanva.query_group(end_name),
-                ) else {
-                    continue;
-                };
-                let Some(range) =
-                    kanva.get_paths_between_groups(start_idx, end_idx)
-                else {
-                    continue;
-                };
-                range
-            }
-            KanvaGroup::Inner(name) => {
-                let Some(idx) = kanva.query_group(name) else {
-                    continue;
-                };
-                let Some(range) = kanva.get_group_path_range(idx)
-                else {
-                    continue;
-                };
-                range
-            }
-            KanvaGroup::All => {
-                let mut n = 0usize;
-                while kanva.get_path(n).is_some() {
-                    n += 1;
-                }
-                0..n
-            }
+        let Some(range) =
+            resolve_range(&trace_fade.group, &kanva)
+        else {
+            continue;
         };
 
         let n = range.len();
-        if n == 0 {
-            continue;
-        }
-
         let t = trace_fade.t;
         let path_window = trace_fade.path_window;
         let trace_ratio = trace_fade.trace_ratio;

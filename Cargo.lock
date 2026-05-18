@@ -739,7 +739,6 @@ dependencies = [
  "bevy",
  "bevy_motiongfx",
  "bevy_vello",
- "peniko_motiongfx",
  "velyst",
  "velyst_motiongfx",
 ]

@@ -9,7 +9,6 @@ publish = false
 
 [dependencies]
 bevy_motiongfx = { workspace = true }
-peniko_motiongfx = { workspace = true }
 velyst_motiongfx = { workspace = true }
 bevy = { workspace = true, default-features = true, features = ["file_watcher"] }
 bevy_vello = "0.13.1"

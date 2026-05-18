@@ -14,7 +14,7 @@ use velyst_motiongfx::prelude::*;
 app.add_plugins(VelystMotionGfxPlugin);
 ```
 
-Spawn a traced animation on a Kanva entity:
+Spawn a traced animation on a Velyst scene entity:
 
 ```rust
 let scene = commands.spawn((
