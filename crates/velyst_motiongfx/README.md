@@ -1,8 +1,8 @@
 # velyst_motiongfx
 
-Velyst/Kanva animation support for the MotionGfx framework.
+Velyst animation support for the MotionGfx framework.
 
-This crate provides components and systems for animating Kanva graphics (from the Velyst typesetting renderer) using the MotionGfx timeline-based animation framework.
+This crate provides components and systems for animating Velyst typesetting graphics using the MotionGfx timeline-based animation framework.
 
 ## Quick Start
 
@@ -17,13 +17,13 @@ app.add_plugins(VelystMotionGfxPlugin);
 Spawn a traced animation on a Kanva entity:
 
 ```rust
-let kanva = commands.spawn((
+let scene = commands.spawn((
     VelystFunc::new(handle, MyTypstFunc::default()),
     VelystKanva::default(),
 )).id();
 
 let trace = commands.spawn(TraceKanva {
-    kanva: Some(kanva),
+    kanva: Some(scene),
     group: KanvaGroup::Wrap("grid-start", "grid-end"),
     ..default()
 }).id();
@@ -38,7 +38,7 @@ For paths that fade in while tracing:
 
 ```rust
 commands.spawn(TraceFadeKanva {
-    kanva: Some(kanva),
+    kanva: Some(scene),
     trace_ratio: 0.6,  // 60% tracing, 40% fading
     ..default()
 });
@@ -49,14 +49,14 @@ commands.spawn(TraceFadeKanva {
 - `TraceKanva` -- Draws paths with a moving trace point. Fields:
   - `t`: Current trace progress (0..1)
   - `path_window`: Visible trace window width (0..1)
-  - `kanva`: Target Kanva entity (uses self if None)
+  - `kanva`: Target entity with `VelystKanva` (uses self if None)
   - `group`: Which paths to animate
 
 - `TraceFadeKanva` -- Combines tracing with alpha fade-in. Fields:
   - `t`: Current animation progress
   - `path_window`: Animation window duration
   - `trace_ratio`: Fraction of window for trace phase (rest is fade)
-  - `kanva`: Target Kanva entity
+  - `kanva`: Target entity with `VelystKanva`
   - `group`: Which paths to animate
 
 ## Path Selection

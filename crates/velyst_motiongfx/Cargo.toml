@@ -1,6 +1,6 @@
 [package]
 name = "velyst_motiongfx"
-description = "Velyst/Kanva animation support for the MotionGfx framework."
+description = "Velyst animation support for the MotionGfx framework."
 keywords = ["motion", "animation", "procedural", "typst", "velyst"]
 categories = ["multimedia", "graphics", "visualization"]
 version.workspace = true
