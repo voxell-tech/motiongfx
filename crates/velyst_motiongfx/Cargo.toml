@@ -1,0 +1,18 @@
+[package]
+name = "velyst_motiongfx"
+description = "Velyst/Kanva animation support for the MotionGfx framework."
+keywords = ["motion", "animation", "procedural", "typst", "velyst"]
+categories = ["multimedia", "graphics", "visualization"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+peniko_motiongfx = { workspace = true }
+velyst = { workspace = true }
+bevy_ecs = { workspace = true }
+bevy_app = { workspace = true }
+
+[lints]
+workspace = true

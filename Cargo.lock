@@ -741,6 +741,7 @@ dependencies = [
  "bevy_vello",
  "peniko_motiongfx",
  "velyst",
+ "velyst_motiongfx",
 ]
 
 [[package]]
@@ -7277,6 +7278,16 @@ dependencies = [
  "typst_element",
  "typst_imaging",
  "ureq",
+]
+
+[[package]]
+name = "velyst_motiongfx"
+version = "0.3.0"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "peniko_motiongfx",
+ "velyst",
 ]
 
 [[package]]
