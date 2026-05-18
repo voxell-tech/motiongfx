@@ -11,7 +11,7 @@ pub trait TrackOrdering {
     fn ord_chain(self) -> TrackFragment;
     fn ord_all(self) -> TrackFragment;
     fn ord_any(self) -> TrackFragment;
-    fn ord_flow(self, delay: f32) -> TrackFragment;
+    fn ord_flow(self, t: f32) -> TrackFragment;
 }
 
 impl<T> TrackOrdering for T
@@ -30,8 +30,8 @@ where
         any(self)
     }
 
-    fn ord_flow(self, delay: f32) -> TrackFragment {
-        flow(delay, self)
+    fn ord_flow(self, t: f32) -> TrackFragment {
+        flow(t, self)
     }
 }
 
@@ -158,6 +158,10 @@ impl TrackFragment {
             duration: clip.duration,
             sequences: [(key, Sequence::new(clip))].into(),
         }
+    }
+
+    pub fn delay(self, t: f32) -> Self {
+        delay(t, self)
     }
 
     /// Updates or inserts a [`Sequence`] in a track.
