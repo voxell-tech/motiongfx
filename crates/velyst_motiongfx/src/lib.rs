@@ -31,7 +31,7 @@ impl Plugin for VelystMotionGfxPlugin {
 /// to target for animation.
 ///
 /// Add alongside [`TraceKanva`] or [`TraceFadeKanva`] to drive them.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct KanvaGroup {
     /// Target entity with [`VelystKanva`]. Uses self if `None`.
     pub kanva: Option<Entity>,
@@ -40,10 +40,7 @@ pub struct KanvaGroup {
 
 impl KanvaGroup {
     pub fn all(kanva: Entity) -> Self {
-        Self {
-            kanva: Some(kanva),
-            kind: KanvaGroupKind::All,
-        }
+        Self { kanva: Some(kanva), kind: KanvaGroupKind::All }
     }
 
     pub fn inner(kanva: Entity, name: &'static str) -> Self {
@@ -65,17 +62,10 @@ impl KanvaGroup {
     }
 }
 
-impl Default for KanvaGroup {
-    fn default() -> Self {
-        Self {
-            kanva: None,
-            kind: KanvaGroupKind::All,
-        }
-    }
-}
-
+#[derive(Default)]
 pub enum KanvaGroupKind {
     /// All paths in the kanva.
+    #[default]
     All,
     /// Paths inside a single labeled group.
     Inner(&'static str),
