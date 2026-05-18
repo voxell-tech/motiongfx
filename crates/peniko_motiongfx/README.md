@@ -18,13 +18,13 @@ Provides `Interpolation<Peniko>` implementations for common `peniko` and
 Animate `peniko` types like `Point`, `Circle`, `Color`, and curves:
 
 ```rust
-use motiongfx::prelude::*;
 use peniko_motiongfx::prelude::*;
 
-let mut b = registry.create_builder::<World>();
-let action = b.act(id, path!(<Point>), |p| {
-    Point::new(p.x + 100.0, p.y + 100.0)
-}).play(1.0).compile();
+let a = kurbo::Point::new(0.0, 0.0);
+let b = kurbo::Point::new(100.0, 100.0);
+let mid = kurbo::Point::interp(&a, &b, 0.5);
+
+assert_eq!(mid, kurbo::Point::new(50.0, 50.0));
 ```
 
 ## Tracing
