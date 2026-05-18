@@ -34,31 +34,35 @@ impl Plugin for VelystMotionGfxPlugin {
 #[derive(Component, Default)]
 pub struct KanvaGroup {
     /// Target entity with [`VelystKanva`]. Uses self if `None`.
-    pub kanva: Option<Entity>,
+    pub target: Option<Entity>,
     pub kind: KanvaGroupKind,
 }
 
 impl KanvaGroup {
-    pub fn all(kanva: Entity) -> Self {
-        Self { kanva: Some(kanva), kind: KanvaGroupKind::All }
+    pub fn all() -> Self {
+        Self {
+            kind: KanvaGroupKind::All,
+            ..Default::default()
+        }
     }
 
-    pub fn inner(kanva: Entity, name: &'static str) -> Self {
+    pub fn inner(name: &'static str) -> Self {
         Self {
-            kanva: Some(kanva),
             kind: KanvaGroupKind::Inner(name),
+            ..Default::default()
         }
     }
 
-    pub fn wrap(
-        kanva: Entity,
-        start: &'static str,
-        end: &'static str,
-    ) -> Self {
+    pub fn wrap(start: &'static str, end: &'static str) -> Self {
         Self {
-            kanva: Some(kanva),
             kind: KanvaGroupKind::Wrap(start, end),
+            ..Default::default()
         }
+    }
+
+    pub fn with_target(mut self, target: Entity) -> Self {
+        self.target = Some(target);
+        self
     }
 }
 
@@ -140,7 +144,7 @@ fn animate_trace(
     mut kanva_q: Query<&mut VelystKanva>,
 ) {
     for (entity, trace, group) in &q {
-        let kanva_entity = group.kanva.unwrap_or(entity);
+        let kanva_entity = group.target.unwrap_or(entity);
         let Ok(mut kanva) = kanva_q.get_mut(kanva_entity) else {
             continue;
         };
@@ -181,7 +185,7 @@ fn animate_trace_fade(
     mut kanva_q: Query<&mut VelystKanva>,
 ) {
     for (entity, trace_fade, group) in &q {
-        let kanva_entity = group.kanva.unwrap_or(entity);
+        let kanva_entity = group.target.unwrap_or(entity);
         let Ok(mut kanva) = kanva_q.get_mut(kanva_entity) else {
             continue;
         };

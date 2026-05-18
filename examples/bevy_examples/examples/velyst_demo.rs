@@ -62,39 +62,38 @@ fn setup(
             VelystKanva::default(),
             Transform::from_xyz(100.0, 300.0, 0.0),
             TraceFadeKanva::default(),
-            KanvaGroup::default(),
+            KanvaGroup::inner("coord"),
         ))
         .id();
 
     let grid = commands
         .spawn((
+            KanvaGroup::wrap("grid-start", "grid-end")
+                .with_target(plot),
             TraceKanva::default(),
-            KanvaGroup::wrap(plot, "grid-start", "grid-end"),
         ))
         .id();
 
     let circle = commands
         .spawn((
+            KanvaGroup::wrap("circle-start", "circle-end")
+                .with_target(plot),
             TraceFadeKanva::default(),
-            KanvaGroup::wrap(plot, "circle-start", "circle-end"),
         ))
         .id();
 
     let frag = [
-        [
-            b.act(grid, path!(<TraceKanva>::t), |_| 1.0)
-                .with_ease(ease::cubic::ease_in_out)
-                .play(3.0),
-            b.act(circle, path!(<TraceFadeKanva>::t), |_| 1.0)
-                .with_ease(ease::cubic::ease_in_out)
-                .play(3.0),
-        ]
-        .ord_flow(1.0),
+        b.act(grid, path!(<TraceKanva>::t), |_| 1.0)
+            .with_ease(ease::cubic::ease_in_out)
+            .play(3.0),
+        b.act(circle, path!(<TraceFadeKanva>::t), |_| 1.0)
+            .with_ease(ease::cubic::ease_in_out)
+            .play(1.0),
         b.act(equation, path!(<TraceFadeKanva>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
-            .play(2.0), // .delay(1.0),
+            .play(2.0),
     ]
-    .ord_chain();
+    .ord_flow(1.0);
 
     b.add_tracks(frag.compile());
 
