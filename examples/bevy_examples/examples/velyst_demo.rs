@@ -27,7 +27,8 @@ fn main() {
         .add_systems(Update, timeline_movement)
         .add_systems(
             PostUpdate,
-            (animate_trace_fade, animate_trace)
+            (clear_kanva_mods, (animate_trace_fade, animate_trace))
+                .chain()
                 .in_set(VelystSet::PostLayout),
         )
         .run();
@@ -102,6 +103,26 @@ fn setup(
     ));
 }
 
+typst_func!(
+    "equation",
+    #[derive(Default)]
+    struct EqFunc {},
+    positional_args {},
+);
+
+typst_func!(
+    "plot",
+    #[derive(Default)]
+    struct PlotFunc {},
+    positional_args {},
+);
+
+fn clear_kanva_mods(mut kanva_q: Query<&mut VelystKanva>) {
+    for mut kanva in &mut kanva_q {
+        kanva.clear_mods();
+    }
+}
+
 fn animate_trace(
     q: Query<(Entity, &TraceKanva)>,
     mut kanva_q: Query<&mut VelystKanva>,
@@ -114,7 +135,6 @@ fn animate_trace(
         if kanva.is_empty() {
             continue;
         }
-
         let range = match &trace.group {
             KanvaGroup::Wrap(start_name, end_name) => {
                 let (Some(start_idx), Some(end_idx)) = (
@@ -162,23 +182,18 @@ fn animate_trace(
             0.0
         };
 
-        let originals = range
-            .clone()
-            .filter_map(|i| Some(kanva.get_path(i)?.path.clone()))
-            .collect::<Vec<_>>();
-
-        for (i, (path_idx, orig)) in
-            range.zip(originals.iter()).enumerate()
-        {
-            let local_t = ((t - i as f32 * stagger) / path_window)
-                .clamp(0.0, 1.0);
-            let traced = PathTracer {
-                path: orig.clone(),
-                t_start: 0.0,
-                t_end: local_t,
+        for (i, path_idx) in range.enumerate() {
+            let local_t = (t - i as f32 * stagger) / path_window;
+            if local_t >= 1.0 {
+                continue;
             }
-            .trace();
-            kanva.mod_path(path_idx).shape(traced);
+            let local_t = local_t.max(0.0);
+            let Some(orig) =
+                kanva.get_path(path_idx).map(|p| p.path.clone())
+            else {
+                continue;
+            };
+            kanva.mod_path(path_idx).shape(orig.trace(local_t));
         }
     }
 }
@@ -195,7 +210,6 @@ fn animate_trace_fade(
         if kanva.is_empty() {
             continue;
         }
-
         let range = match &trace_fade.group {
             KanvaGroup::Wrap(start_name, end_name) => {
                 let (Some(start_idx), Some(end_idx)) = (
@@ -244,45 +258,37 @@ fn animate_trace_fade(
             0.0
         };
 
-        let originals = range
-            .clone()
-            .filter_map(|i| {
-                let path = kanva.get_path(i)?;
-                let fill = path
-                    .fill
-                    .and_then(|fi| kanva.get_fill(fi))
-                    .cloned();
-                Some((path.path.clone(), fill))
-            })
-            .collect::<Vec<_>>();
-
-        for (i, (path_idx, (orig, fill))) in
-            range.zip(originals.iter()).enumerate()
-        {
-            let local_t = ((t - i as f32 * stagger) / path_window)
-                .clamp(0.0, 1.0);
+        for (i, path_idx) in range.enumerate() {
+            let local_t = (t - i as f32 * stagger) / path_window;
+            if local_t >= 1.0 {
+                continue;
+            }
+            let local_t = local_t.max(0.0);
+            let Some(path) = kanva.get_path(path_idx) else {
+                continue;
+            };
+            let orig = path.path.clone();
+            let fill =
+                path.fill.and_then(|fi| kanva.get_fill(fi)).cloned();
 
             let trace_t = (local_t / trace_ratio).min(1.0);
             let fade_t = ((local_t - trace_ratio)
                 / (1.0 - trace_ratio))
                 .clamp(0.0, 1.0);
 
-            let faded_fill = fill.clone().map(|mut f| {
+            let faded_fill = fill.map(|mut f| {
                 f.brush = f.brush.with_alpha(fade_t);
                 f
             });
-            let traced = PathTracer {
-                path: orig.clone(),
-                t_start: 0.0,
-                t_end: trace_t,
-            }
-            .trace();
-            kanva.mod_path(path_idx).shape(traced).fill(faded_fill);
+            kanva
+                .mod_path(path_idx)
+                .shape(orig.trace(trace_t))
+                .fill(faded_fill);
         }
     }
 }
 
-enum KanvaGroup {
+pub enum KanvaGroup {
     /// Explicit start and end group markers.
     Wrap(&'static str, &'static str),
     /// Single group name.
@@ -292,11 +298,11 @@ enum KanvaGroup {
 }
 
 #[derive(Component)]
-struct TraceKanva {
-    t: f32,
-    path_window: f32,
-    kanva: Option<Entity>,
-    group: KanvaGroup,
+pub struct TraceKanva {
+    pub t: f32,
+    pub path_window: f32,
+    pub kanva: Option<Entity>,
+    pub group: KanvaGroup,
 }
 
 impl Default for TraceKanva {
@@ -311,12 +317,12 @@ impl Default for TraceKanva {
 }
 
 #[derive(Component)]
-struct TraceFadeKanva {
-    t: f32,
-    path_window: f32,
-    trace_ratio: f32,
-    kanva: Option<Entity>,
-    group: KanvaGroup,
+pub struct TraceFadeKanva {
+    pub t: f32,
+    pub path_window: f32,
+    pub trace_ratio: f32,
+    pub kanva: Option<Entity>,
+    pub group: KanvaGroup,
 }
 
 impl Default for TraceFadeKanva {
@@ -330,17 +336,3 @@ impl Default for TraceFadeKanva {
         }
     }
 }
-
-typst_func!(
-    "equation",
-    #[derive(Default)]
-    struct EqFunc {},
-    positional_args {},
-);
-
-typst_func!(
-    "plot",
-    #[derive(Default)]
-    struct PlotFunc {},
-    positional_args {},
-);
