@@ -5,7 +5,7 @@ pub type QuadTracer = Tracer<QuadBez>;
 pub type CubicTracer = Tracer<CubicBez>;
 pub type PathTracer = Tracer<BezPath>;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct Tracer<T: Trace> {
     /// The original full path.
     pub path: T,

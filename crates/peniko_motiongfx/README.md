@@ -34,13 +34,16 @@ Draw paths on screen by animating a visible range:
 ```rust
 use peniko_motiongfx::prelude::*;
 
-let tracer = CubicTracer {
-    path: kurbo::CubicBez::new((0., 0.), (30., 90.), (70., 90.), (100., 0.)),
+let mut tracer = LineTracer {
+    path: kurbo::Line::new((0., 0.), (100., 0.)),
     t_start: 0.0,
     t_end: 0.0,
 };
 
-// Animate t_end from 0 to 1 to draw the curve on screen.
+tracer.t_end = 0.5;
+let half_line = tracer.trace();
+
+assert_eq!(half_line, kurbo::Line::new((0., 0.), (50., 0.)));
 ```
 
 ## License
