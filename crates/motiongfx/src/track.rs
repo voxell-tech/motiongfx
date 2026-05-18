@@ -137,6 +137,7 @@ pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
         sequence.delay(delay);
     }
 
+    track.duration += delay;
     track
 }
 
@@ -455,6 +456,6 @@ mod tests {
 
         assert_eq!(seq_a.start(), 1.5);
         assert_eq!(seq_a.end(), 3.5);
-        assert_eq!(track.duration, 2.0);
+        assert_eq!(track.duration, 3.5);
     }
 }
