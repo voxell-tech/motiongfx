@@ -5,12 +5,12 @@ use std::ops::Range;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::prelude::*;
 use peniko_motiongfx::trace::Trace;
-use velyst::kanva::Kanva;
 use velyst::prelude::{VelystKanva, VelystSet};
 
 pub mod prelude {
     pub use crate::{
-        KanvaGroup, TraceKanva, TraceFadeKanva, VelystMotionGfxPlugin,
+        KanvaGroup, KanvaGroupKind, TraceFadeKanva, TraceKanva,
+        VelystMotionGfxPlugin,
     };
 }
 
@@ -20,40 +20,80 @@ impl Plugin for VelystMotionGfxPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (
-                clear_kanva_mods,
-                (animate_trace, animate_trace_fade),
-            )
+            (clear_kanva_mods, (animate_trace, animate_trace_fade))
                 .chain()
                 .in_set(VelystSet::PostLayout),
         );
     }
 }
 
-pub enum KanvaGroup {
-    /// Explicit start and end group markers.
-    Wrap(&'static str, &'static str),
-    /// Single group name.
-    Inner(&'static str),
-    /// All paths in the kanva.
-    All,
+/// Identifies which [`VelystKanva`] entity and which paths within it
+/// to target for animation.
+///
+/// Add alongside [`TraceKanva`] or [`TraceFadeKanva`] to drive them.
+#[derive(Component)]
+pub struct KanvaGroup {
+    /// Target entity with [`VelystKanva`]. Uses self if `None`.
+    pub kanva: Option<Entity>,
+    pub kind: KanvaGroupKind,
 }
 
-#[derive(Component)]
+impl KanvaGroup {
+    pub fn all(kanva: Entity) -> Self {
+        Self {
+            kanva: Some(kanva),
+            kind: KanvaGroupKind::All,
+        }
+    }
+
+    pub fn inner(kanva: Entity, name: &'static str) -> Self {
+        Self {
+            kanva: Some(kanva),
+            kind: KanvaGroupKind::Inner(name),
+        }
+    }
+
+    pub fn wrap(
+        kanva: Entity,
+        start: &'static str,
+        end: &'static str,
+    ) -> Self {
+        Self {
+            kanva: Some(kanva),
+            kind: KanvaGroupKind::Wrap(start, end),
+        }
+    }
+}
+
+impl Default for KanvaGroup {
+    fn default() -> Self {
+        Self {
+            kanva: None,
+            kind: KanvaGroupKind::All,
+        }
+    }
+}
+
+pub enum KanvaGroupKind {
+    /// All paths in the kanva.
+    All,
+    /// Paths inside a single labeled group.
+    Inner(&'static str),
+    /// Paths between two labeled group markers.
+    Wrap(&'static str, &'static str),
+}
+
+#[derive(Component, Default)]
 pub struct TraceKanva {
     pub t: f32,
     pub path_window: f32,
-    pub kanva: Option<Entity>,
-    pub group: KanvaGroup,
 }
 
-impl Default for TraceKanva {
-    fn default() -> Self {
+impl TraceKanva {
+    pub fn new(path_window: f32) -> Self {
         Self {
             t: 0.0,
-            path_window: 0.3,
-            kanva: None,
-            group: KanvaGroup::All,
+            path_window,
         }
     }
 }
@@ -63,8 +103,6 @@ pub struct TraceFadeKanva {
     pub t: f32,
     pub path_window: f32,
     pub trace_ratio: f32,
-    pub kanva: Option<Entity>,
-    pub group: KanvaGroup,
 }
 
 impl Default for TraceFadeKanva {
@@ -73,32 +111,30 @@ impl Default for TraceFadeKanva {
             t: 0.0,
             path_window: 0.5,
             trace_ratio: 0.6,
-            kanva: None,
-            group: KanvaGroup::All,
         }
     }
 }
 
 fn resolve_range(
-    group: &KanvaGroup,
-    kanva: &Kanva,
+    kind: &KanvaGroupKind,
+    kanva: &VelystKanva,
 ) -> Option<Range<usize>> {
-    match group {
-        KanvaGroup::Wrap(start_name, end_name) => {
-            let start_idx = kanva.query_group(start_name)?;
-            let end_idx = kanva.query_group(end_name)?;
-            kanva.get_paths_between_groups(start_idx, end_idx)
-        }
-        KanvaGroup::Inner(name) => {
-            let idx = kanva.query_group(name)?;
-            kanva.get_group_path_range(idx)
-        }
-        KanvaGroup::All => {
+    match kind {
+        KanvaGroupKind::All => {
             let mut n = 0usize;
             while kanva.get_path(n).is_some() {
                 n += 1;
             }
             (n > 0).then_some(0..n)
+        }
+        KanvaGroupKind::Inner(name) => {
+            let idx = kanva.query_group(name)?;
+            kanva.get_group_path_range(idx)
+        }
+        KanvaGroupKind::Wrap(start_name, end_name) => {
+            let start_idx = kanva.query_group(start_name)?;
+            let end_idx = kanva.query_group(end_name)?;
+            kanva.get_paths_between_groups(start_idx, end_idx)
         }
     }
 }
@@ -110,18 +146,18 @@ fn clear_kanva_mods(mut kanva_q: Query<&mut VelystKanva>) {
 }
 
 fn animate_trace(
-    q: Query<(Entity, &TraceKanva)>,
+    q: Query<(Entity, &TraceKanva, &KanvaGroup)>,
     mut kanva_q: Query<&mut VelystKanva>,
 ) {
-    for (entity, trace) in &q {
-        let kanva_entity = trace.kanva.unwrap_or(entity);
+    for (entity, trace, group) in &q {
+        let kanva_entity = group.kanva.unwrap_or(entity);
         let Ok(mut kanva) = kanva_q.get_mut(kanva_entity) else {
             continue;
         };
         if kanva.is_empty() {
             continue;
         }
-        let Some(range) = resolve_range(&trace.group, &kanva) else {
+        let Some(range) = resolve_range(&group.kind, &kanva) else {
             continue;
         };
 
@@ -151,20 +187,18 @@ fn animate_trace(
 }
 
 fn animate_trace_fade(
-    q: Query<(Entity, &TraceFadeKanva)>,
+    q: Query<(Entity, &TraceFadeKanva, &KanvaGroup)>,
     mut kanva_q: Query<&mut VelystKanva>,
 ) {
-    for (entity, trace_fade) in &q {
-        let kanva_entity = trace_fade.kanva.unwrap_or(entity);
+    for (entity, trace_fade, group) in &q {
+        let kanva_entity = group.kanva.unwrap_or(entity);
         let Ok(mut kanva) = kanva_q.get_mut(kanva_entity) else {
             continue;
         };
         if kanva.is_empty() {
             continue;
         }
-        let Some(range) =
-            resolve_range(&trace_fade.group, &kanva)
-        else {
+        let Some(range) = resolve_range(&group.kind, &kanva) else {
             continue;
         };
 

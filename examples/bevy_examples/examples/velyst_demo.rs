@@ -22,7 +22,7 @@ fn main() {
             BevyMotionGfxPlugin,
             VelystMotionGfxPlugin,
         ))
-        .register_typst_func::<EqFunc>()
+        .register_typst_func::<EquationFunc>()
         .register_typst_func::<PlotFunc>()
         .add_systems(Startup, setup)
         .add_systems(Update, timeline_movement)
@@ -47,7 +47,7 @@ fn setup(
 
     let mut b = motiongfx.create_builder();
 
-    let plot_kanva = commands
+    let plot = commands
         .spawn((
             VelystFunc::new(handle.clone(), PlotFunc::default()),
             WorldScene::default().with_anchor(Vec2::splat(0.5)),
@@ -55,37 +55,44 @@ fn setup(
         ))
         .id();
 
-    let eq_kanva = commands
+    let equation = commands
         .spawn((
-            VelystFunc::new(handle, EqFunc::default()),
+            VelystFunc::new(handle, EquationFunc::default()),
             WorldScene::default(),
             VelystKanva::default(),
             Transform::from_xyz(100.0, 300.0, 0.0),
+            TraceFadeKanva::default(),
+            KanvaGroup::default(),
         ))
         .id();
 
-    let plot_anim = commands
-        .spawn(TraceKanva {
-            kanva: Some(plot_kanva),
-            group: KanvaGroup::Wrap("grid-start", "grid-end"),
-            ..default()
-        })
+    let grid = commands
+        .spawn((
+            TraceKanva::default(),
+            KanvaGroup::wrap(plot, "grid-start", "grid-end"),
+        ))
         .id();
 
-    let eq_anim = commands
-        .spawn(TraceFadeKanva {
-            kanva: Some(eq_kanva),
-            ..default()
-        })
+    let circle = commands
+        .spawn((
+            TraceFadeKanva::default(),
+            KanvaGroup::wrap(plot, "circle-start", "circle-end"),
+        ))
         .id();
 
     let frag = [
-        b.act(plot_anim, path!(<TraceKanva>::t), |_| 1.0)
+        [
+            b.act(grid, path!(<TraceKanva>::t), |_| 1.0)
+                .with_ease(ease::cubic::ease_in_out)
+                .play(3.0),
+            b.act(circle, path!(<TraceFadeKanva>::t), |_| 1.0)
+                .with_ease(ease::cubic::ease_in_out)
+                .play(3.0),
+        ]
+        .ord_flow(1.0),
+        b.act(equation, path!(<TraceFadeKanva>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
-            .play(3.0),
-        b.act(eq_anim, path!(<TraceFadeKanva>::t), |_| 1.0)
-            .with_ease(ease::cubic::ease_in_out)
-            .play(3.0),
+            .play(2.0), // .delay(1.0),
     ]
     .ord_chain();
 
@@ -101,13 +108,15 @@ fn setup(
 typst_func!(
     "equation",
     #[derive(Default)]
-    struct EqFunc {},
-    positional_args {},
+    struct EquationFunc {},
 );
 
 typst_func!(
     "plot",
     #[derive(Default)]
     struct PlotFunc {},
-    positional_args {},
+    positional_args {
+        circle_x: f64,
+        circle_y: f64
+    }
 );
