@@ -7,11 +7,15 @@ use bevy_ecs::prelude::*;
 use peniko_motiongfx::trace::Trace;
 use velyst::prelude::{VelystKanva, VelystSet};
 
+pub use velyst;
+
 pub mod prelude {
     pub use crate::{
-        KanvaGroup, KanvaGroupKind, TraceFadeKanva, TraceKanva,
-        VelystMotionGfxPlugin,
+        FadeKanva, KanvaGroup, KanvaGroupKind, TraceFadeKanva,
+        TraceKanva, VelystMotionGfxPlugin,
     };
+
+    pub use velyst::prelude::*;
 }
 
 pub struct VelystMotionGfxPlugin;
@@ -20,7 +24,10 @@ impl Plugin for VelystMotionGfxPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (clear_kanva_mods, (animate_trace, animate_trace_fade))
+            (
+                clear_kanva_mods,
+                (animate_trace, animate_trace_fade, animate_fade),
+            )
                 .chain()
                 .in_set(VelystSet::PostLayout),
         );
@@ -77,17 +84,17 @@ pub enum KanvaGroupKind {
     Wrap(&'static str, &'static str),
 }
 
-#[derive(Component, Default)]
+#[derive(Component)]
 pub struct TraceKanva {
     pub t: f32,
     pub path_window: f32,
 }
 
-impl TraceKanva {
-    pub fn new(path_window: f32) -> Self {
+impl Default for TraceKanva {
+    fn default() -> Self {
         Self {
             t: 0.0,
-            path_window,
+            path_window: 0.5,
         }
     }
 }
@@ -105,6 +112,21 @@ impl Default for TraceFadeKanva {
             t: 0.0,
             path_window: 0.5,
             trace_ratio: 0.6,
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct FadeKanva {
+    pub t: f32,
+    pub path_window: f32,
+}
+
+impl Default for FadeKanva {
+    fn default() -> Self {
+        Self {
+            t: 0.0,
+            path_window: 0.5,
         }
     }
 }
@@ -223,7 +245,6 @@ fn animate_trace_fade(
             let fade_t = ((local_t - trace_ratio)
                 / (1.0 - trace_ratio))
                 .clamp(0.0, 1.0);
-
             let faded_fill = fill.map(|mut f| {
                 f.brush = f.brush.with_alpha(fade_t);
                 f
@@ -232,6 +253,42 @@ fn animate_trace_fade(
                 .mod_path(path_idx)
                 .shape(orig.trace(trace_t))
                 .fill(faded_fill);
+        }
+    }
+}
+
+fn animate_fade(
+    q: Query<(Entity, &FadeKanva, &KanvaGroup)>,
+    mut kanva_q: Query<&mut VelystKanva>,
+) {
+    for (entity, fade, group) in &q {
+        let kanva_entity = group.target.unwrap_or(entity);
+        let Ok(mut kanva) = kanva_q.get_mut(kanva_entity) else {
+            continue;
+        };
+        if kanva.is_empty() {
+            continue;
+        }
+        let Some(range) = resolve_range(&group.kind, &kanva) else {
+            continue;
+        };
+
+        let n = range.len();
+        let t = fade.t;
+        let path_window = fade.path_window;
+        let stagger = if n > 1 {
+            (1.0 - path_window) / (n - 1) as f32
+        } else {
+            0.0
+        };
+
+        for (i, path_idx) in range.enumerate() {
+            let local_t = (t - i as f32 * stagger) / path_window;
+            if local_t >= 1.0 {
+                continue;
+            }
+            let local_t = local_t.max(0.0);
+            kanva.mod_path(path_idx).alpha(local_t);
         }
     }
 }
