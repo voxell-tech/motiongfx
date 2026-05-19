@@ -11,8 +11,7 @@ publish = false
 bevy_motiongfx = { workspace = true }
 velyst_motiongfx = { workspace = true }
 bevy = { workspace = true, default-features = true, features = ["file_watcher"] }
-bevy_vello = "0.13.1"
-velyst = { workspace = true }
+bevy_vello = { workspace = true }
 
 [lints]
 workspace = true

@@ -26,6 +26,7 @@ bevy_asset = { version = "0.18.1", default-features = false }
 bevy_time = { version = "0.18.1", default-features = false }
 bevy_transform = { version = "0.18.1", default-features = false, features = ["bevy-support"] }
 bevy_color = { version = "0.18.1", default-features = false }
+bevy_vello = { version = "0.13.1", default-features = false }
 
 # other
 field_path = "0.4.1"

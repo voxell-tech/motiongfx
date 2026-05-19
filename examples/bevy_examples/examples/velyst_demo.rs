@@ -1,10 +1,16 @@
+use bevy::diagnostic::DiagnosticsStore;
 use bevy::prelude::*;
 use bevy_examples::timeline_movement;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
-use bevy_vello::prelude::VelloView;
-use velyst::prelude::*;
+use bevy_vello::VelloPlugin;
+use bevy_vello::prelude::*;
+use bevy_vello::render::diagnostics::{
+    PATH_COUNT, PATH_SEGMENTS_COUNT, UI_SCENE_COUNT,
+    WORLD_SCENE_COUNT,
+};
 use velyst_motiongfx::prelude::*;
+use velyst_motiongfx::velyst::VelystPlugin;
 
 fn main() {
     App::new()
@@ -17,14 +23,14 @@ fn main() {
                 .into(),
                 ..default()
             }),
-            bevy_vello::VelloPlugin::default(),
-            velyst::VelystPlugin,
+            VelloPlugin::default(),
+            VelystPlugin,
             BevyMotionGfxPlugin,
             VelystMotionGfxPlugin,
         ))
         .register_typst_func::<PlotFunc>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (timeline_movement, perf_metrics))
+        .add_systems(Update, (timeline_movement, metrics))
         .run();
 }
 
@@ -85,7 +91,7 @@ fn setup(
         .spawn((
             KanvaGroup::wrap("circle-start", "circle-end")
                 .with_target(plot),
-            TraceFadeKanva::default(),
+            FadeKanva::default(),
         ))
         .id();
 
@@ -93,7 +99,7 @@ fn setup(
         b.act(grid, path!(<TraceKanva>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(2.0),
-        b.act(circle, path!(<TraceFadeKanva>::t), |_| 1.0)
+        b.act(circle, path!(<FadeKanva>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(1.0),
         b.act(equation, path!(<TraceFadeKanva>::t), |_| 1.0)
@@ -120,14 +126,36 @@ fn setup(
 #[derive(Component)]
 struct PerfMetrics;
 
-fn perf_metrics(
+fn metrics(
     time: Res<Time>,
     mut q: Query<&mut Text, With<PerfMetrics>>,
+    diag: Res<DiagnosticsStore>,
 ) {
     let Ok(mut text) = q.single_mut() else { return };
     let fps = (1.0 / time.delta_secs_f64() * 100.0).round() / 100.0;
     let elapsed = (time.elapsed_secs_f64() * 100.0).round() / 100.0;
-    **text = format!("FPS: {fps}\nElapsed: {elapsed}");
+    let world_scenes = diag
+        .get(&WORLD_SCENE_COUNT)
+        .and_then(|d| d.value())
+        .unwrap_or(0.0);
+    let ui_scenes = diag
+        .get(&UI_SCENE_COUNT)
+        .and_then(|d| d.value())
+        .unwrap_or(0.0);
+    let paths =
+        diag.get(&PATH_COUNT).and_then(|d| d.value()).unwrap_or(0.0);
+    let path_segs = diag
+        .get(&PATH_SEGMENTS_COUNT)
+        .and_then(|d| d.value())
+        .unwrap_or(0.0);
+    **text = format!(
+        "FPS: {fps}\n\
+        Elapsed: {elapsed}\n\
+        Vello World Scenes: {world_scenes}\n\
+        Vello UI Scenes: {ui_scenes}\n\
+        Vello Paths: {paths}\n\
+        Vello Path Segs: {path_segs}",
+    );
 }
 
 type VPlotFunc = VelystFunc<PlotFunc>;
