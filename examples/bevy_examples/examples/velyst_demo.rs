@@ -22,10 +22,9 @@ fn main() {
             BevyMotionGfxPlugin,
             VelystMotionGfxPlugin,
         ))
-        .register_typst_func::<EquationFunc>()
         .register_typst_func::<PlotFunc>()
         .add_systems(Startup, setup)
-        .add_systems(Update, timeline_movement)
+        .add_systems(Update, (timeline_movement, perf_metrics))
         .run();
 }
 
@@ -45,6 +44,17 @@ fn setup(
 
     let handle = asset_server.load("typst/velyst_demo.typ");
 
+    commands.spawn((
+        Text::default(),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(10.0),
+            left: Val::Px(10.0),
+            ..default()
+        },
+        PerfMetrics,
+    ));
+
     let mut b = motiongfx.create_builder();
 
     let plot = commands
@@ -57,12 +67,9 @@ fn setup(
 
     let equation = commands
         .spawn((
-            VelystFunc::new(handle, EquationFunc::default()),
-            WorldScene::default(),
-            VelystKanva::default(),
-            Transform::from_xyz(100.0, 300.0, 0.0),
+            KanvaGroup::wrap("coord-start", "coord-end")
+                .with_target(plot),
             TraceFadeKanva::default(),
-            KanvaGroup::inner("coord"),
         ))
         .id();
 
@@ -85,15 +92,21 @@ fn setup(
     let frag = [
         b.act(grid, path!(<TraceKanva>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
-            .play(3.0),
+            .play(2.0),
         b.act(circle, path!(<TraceFadeKanva>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(1.0),
         b.act(equation, path!(<TraceFadeKanva>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(2.0),
+        b.act(plot, path!(<VPlotFunc>::data::circle_x), |_| 3.0)
+            .with_ease(ease::cubic::ease_in_out)
+            .play(2.0),
+        b.act(plot, path!(<VPlotFunc>::data::circle_y), |_| 4.0)
+            .with_ease(ease::cubic::ease_in_out)
+            .play(2.0),
     ]
-    .ord_flow(1.0);
+    .ord_chain();
 
     b.add_tracks(frag.compile());
 
@@ -104,11 +117,20 @@ fn setup(
     ));
 }
 
-typst_func!(
-    "equation",
-    #[derive(Default)]
-    struct EquationFunc {},
-);
+#[derive(Component)]
+struct PerfMetrics;
+
+fn perf_metrics(
+    time: Res<Time>,
+    mut q: Query<&mut Text, With<PerfMetrics>>,
+) {
+    let Ok(mut text) = q.single_mut() else { return };
+    let fps = (1.0 / time.delta_secs_f64() * 100.0).round() / 100.0;
+    let elapsed = (time.elapsed_secs_f64() * 100.0).round() / 100.0;
+    **text = format!("FPS: {fps}\nElapsed: {elapsed}");
+}
+
+type VPlotFunc = VelystFunc<PlotFunc>;
 
 typst_func!(
     "plot",

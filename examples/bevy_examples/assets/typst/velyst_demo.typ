@@ -6,6 +6,15 @@
   let half_h = 1000
   let grid_step = 40
 
+  let circle_size = 20
+  let matrix_offset = circle_size + 10
+
+  let circle_coord = (circle_x * grid_step, circle_y * grid_step)
+  let matrix_coord = (
+    circle_coord.at(0) + matrix_offset,
+    circle_coord.at(1) + matrix_offset,
+  )
+
   canvas(length: 1pt, padding: 0pt, {
     import draw: *
     content((0, 0), [#box() <grid-start>])
@@ -25,17 +34,35 @@
 
     content((0, 0), [#box() <circle-start>])
     circle(
-      (circle_x * grid_step, circle_y * grid_step),
-      radius: 20pt,
-      fill: red,
-      stroke: red.lighten(50%) + 2pt,
+      circle_coord,
+      radius: circle_size,
+      stroke: purple.lighten(50%) + 2pt,
+      fill: purple,
     )
     content((0, 0), [#box() <circle-end>])
+
+    if not (
+      circle_coord.at(0) < grid_step - circle_size
+        and circle_coord.at(1) < grid_step - circle_size
+    ) {
+      content((0, 0), [#box() <arrow-start>])
+      line(
+        (0, 0),
+        circle_coord,
+        mark: (end: ">"),
+        stroke: red + 10pt,
+      )
+      content((0, 0), [#box() <arrow-end>])
+    }
+
+    content((0, 0), [#box() <coord-start>])
+    content(
+      matrix_coord,
+      box(inset: (y: 1.2em))[
+        #set text(size: 24pt, fill: base8, stroke: 20pt + base8)
+        $mat(delim: "[", #calc.round(circle_x) ; #calc.round(circle_y))$
+      ],
+    )
+    content((0, 0), [#box() <coord-end>])
   })
 }
-
-#let equation() = box(inset: (y: 1.2em))[
-  #set text(size: 24pt, fill: base8, stroke: 20pt + base8)
-
-  #box()[$f(x) = frac(1, sigma sqrt(2 pi)) e^(-frac((x - mu)^2, 2 sigma^2))$] <coord>
-]
