@@ -58,9 +58,11 @@
     content((0, 0), [#box() <coord-start>])
     content(
       matrix_coord,
-      box(inset: (y: 1.2em))[
+      [
         #set text(size: 24pt, fill: base8, stroke: 20pt + base8)
-        $mat(delim: "[", #calc.round(circle_x) ; #calc.round(circle_y))$
+        #box(height: 3em)[
+          $mat(delim: "[", #calc.round(circle_x) ; #calc.round(circle_y))$
+        ]
       ],
     )
     content((0, 0), [#box() <coord-end>])

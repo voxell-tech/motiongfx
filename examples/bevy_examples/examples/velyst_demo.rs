@@ -15,14 +15,7 @@ use velyst_motiongfx::velyst::VelystPlugin;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(AssetPlugin {
-                file_path: concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets"
-                )
-                .into(),
-                ..default()
-            }),
+            DefaultPlugins,
             VelloPlugin::default(),
             VelystPlugin,
             BevyMotionGfxPlugin,
