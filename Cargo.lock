@@ -1086,6 +1086,7 @@ dependencies = [
  "bevy_color",
  "bevy_derive",
  "bevy_ecs",
+ "bevy_log",
  "bevy_math",
  "bevy_platform",
  "bevy_time",

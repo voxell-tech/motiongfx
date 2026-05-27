@@ -1,5 +1,6 @@
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
+use bevy_log::error;
 use motiongfx::prelude::*;
 
 /// Newtype wrapper around [`World`] that is local to this crate,
@@ -23,7 +24,14 @@ impl<S: Component<Mutability = Mutable>> SubjectSource<Entity, S>
     for BevyWorld
 {
     fn get_source(&self, id: Entity) -> Option<&S> {
-        self.0.get::<S>(id)
+        let source = self.0.get::<S>(id);
+        if source.is_none() {
+            error!(
+                "Entity {id:#?} does not have component {}",
+                core::any::type_name::<S>()
+            )
+        }
+        source
     }
 
     fn apply_source<R>(
