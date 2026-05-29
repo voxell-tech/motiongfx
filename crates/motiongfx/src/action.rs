@@ -427,6 +427,11 @@ impl<T> InterpActionBuilder<'_, T> {
             ),
         )
     }
+    /// Plays an animation instantaneously (shorthand for [`Self::play`]\ (0.0))
+    #[inline]
+    pub fn instant(self) -> TrackFragment {
+        self.play(0.0)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
