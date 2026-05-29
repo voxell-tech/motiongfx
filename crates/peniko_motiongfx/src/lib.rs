@@ -8,7 +8,7 @@ pub mod prelude {
     pub use peniko;
     pub use peniko::kurbo;
 
-    pub use motiongfx::interpolation::Interpolation;
+    pub use motiongfx::prelude::*;
 
     pub use crate::Peniko;
     pub use crate::trace::{
