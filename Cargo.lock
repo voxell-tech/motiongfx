@@ -3723,7 +3723,8 @@ checksum = "09e54e57b4c48b40f7aec75635392b12b3421fa26fe8b4332e63138ed278459c"
 [[package]]
 name = "imaging"
 version = "0.0.1"
-source = "git+https://github.com/forest-rs/imaging?rev=79f02ae#79f02aedf5b65b4cd151ef45d8b40013d7289ee2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39a5e8c7c22da30056963bac3deab021ce768df9e73a252d3c07f854f2664b4d"
 dependencies = [
  "kurbo 0.13.1",
  "peniko",
@@ -3732,7 +3733,8 @@ dependencies = [
 [[package]]
 name = "imaging_vello"
 version = "0.0.1"
-source = "git+https://github.com/forest-rs/imaging?rev=79f02ae#79f02aedf5b65b4cd151ef45d8b40013d7289ee2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8c6dc0ab80d17378f6cc85331f79db2da3685a510014be77589ed07a346fa09"
 dependencies = [
  "imaging",
  "imaging_wgpu",
@@ -3744,7 +3746,8 @@ dependencies = [
 [[package]]
 name = "imaging_wgpu"
 version = "0.0.1"
-source = "git+https://github.com/forest-rs/imaging?rev=79f02ae#79f02aedf5b65b4cd151ef45d8b40013d7289ee2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64f8d1c8e08790c1780c2c9d42992156372a8416775e08861b322dbef654eece"
 dependencies = [
  "imaging",
  "wgpu",
@@ -3929,11 +3932,31 @@ dependencies = [
 [[package]]
 name = "kanva"
 version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?rev=611d46d#611d46d272a392f6bf96ea8863d3430d6fb55a78"
 dependencies = [
  "hashbrown 0.17.1",
  "imaging",
  "ttf-parser",
+]
+
+[[package]]
+name = "kanva_svg"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "kanva",
+ "usvg 0.47.0",
+]
+
+[[package]]
+name = "kanva_typst"
+version = "0.1.0"
+dependencies = [
+ "hayro-svg",
+ "kanva",
+ "kanva_svg",
+ "typst-library",
+ "typst_imaging",
+ "usvg 0.47.0",
 ]
 
 [[package]]
@@ -6081,7 +6104,8 @@ checksum = "0193cc4331cfd2f3d2011ef287590868599a2f33c3e69bc22c1a3d3acf9e02fb"
 [[package]]
 name = "svg_imaging"
 version = "0.0.1"
-source = "git+https://github.com/forest-rs/imaging?rev=79f02ae#79f02aedf5b65b4cd151ef45d8b40013d7289ee2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e44a74005d79358c9b53269a18d60010331fd313fe8d5f308a1b5e51df097c59"
 dependencies = [
  "hashbrown 0.17.1",
  "image",
@@ -6870,7 +6894,6 @@ dependencies = [
 [[package]]
 name = "typst_element"
 version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?rev=611d46d#611d46d272a392f6bf96ea8863d3430d6fb55a78"
 dependencies = [
  "paste",
  "typst",
@@ -6880,11 +6903,9 @@ dependencies = [
 [[package]]
 name = "typst_imaging"
 version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?rev=611d46d#611d46d272a392f6bf96ea8863d3430d6fb55a78"
 dependencies = [
  "hayro-svg",
  "imaging",
- "peniko",
  "svg_imaging",
  "typst-library",
 ]
@@ -7255,7 +7276,6 @@ dependencies = [
 [[package]]
 name = "velyst"
 version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?rev=611d46d#611d46d272a392f6bf96ea8863d3430d6fb55a78"
 dependencies = [
  "bevy",
  "bevy_vello",
@@ -7266,6 +7286,7 @@ dependencies = [
  "imaging",
  "imaging_vello",
  "kanva",
+ "kanva_typst",
  "smallvec",
  "tar",
  "thiserror 1.0.69",

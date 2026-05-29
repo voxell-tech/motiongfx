@@ -9,6 +9,7 @@ use bevy_vello::render::diagnostics::{
     PATH_COUNT, PATH_SEGMENTS_COUNT, UI_SCENE_COUNT,
     WORLD_SCENE_COUNT,
 };
+use velyst_motiongfx::VelystMotionGfxPlugin;
 use velyst_motiongfx::prelude::*;
 use velyst_motiongfx::velyst::VelystPlugin;
 
@@ -68,7 +69,7 @@ fn setup(
         .spawn((
             KanvaGroup::wrap("coord-start", "coord-end")
                 .with_target(plot),
-            TraceFadeKanva::default(),
+            KanvaAnim::trace_fade(0.5, 0.6),
         ))
         .id();
 
@@ -76,7 +77,7 @@ fn setup(
         .spawn((
             KanvaGroup::wrap("grid-start", "grid-end")
                 .with_target(plot),
-            TraceKanva::default(),
+            KanvaAnim::trace(0.5),
         ))
         .id();
 
@@ -84,18 +85,18 @@ fn setup(
         .spawn((
             KanvaGroup::wrap("circle-start", "circle-end")
                 .with_target(plot),
-            FadeKanva::default(),
+            KanvaAnim::scale_fade(0.3),
         ))
         .id();
 
     let frag = [
-        b.act(grid, path!(<TraceKanva>::t), |_| 1.0)
+        b.act(grid, path!(<KanvaAnim>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(2.0),
-        b.act(circle, path!(<FadeKanva>::t), |_| 1.0)
+        b.act(circle, path!(<KanvaAnim>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(1.0),
-        b.act(equation, path!(<TraceFadeKanva>::t), |_| 1.0)
+        b.act(equation, path!(<KanvaAnim>::t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(2.0),
         b.act(plot, path!(<VPlotFunc>::data::circle_x), |_| 3.0)
