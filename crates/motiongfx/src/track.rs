@@ -141,6 +141,7 @@ pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
     track
 }
 
+#[derive(Debug, Clone)]
 pub struct TrackFragment {
     sequences: HashMap<ActionKey, Sequence>,
     duration: f32,
