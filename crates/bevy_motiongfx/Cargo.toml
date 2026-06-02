@@ -28,6 +28,9 @@ bevy_log = { workspace = true, optional = true }
 
 [dev-dependencies]
 bevy = { workspace = true, features = ["bevy_pbr"] }
+tracing-test = {version= "0.2", features = ["no-env-filter"]}
+tracing = "0.1"
+rstest = "0.26"
 
 [lints]
 workspace = true

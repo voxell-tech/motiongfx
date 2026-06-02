@@ -24,14 +24,16 @@ impl<S: Component<Mutability = Mutable>> SubjectSource<Entity, S>
     for BevyWorld
 {
     fn get_source(&self, id: Entity) -> Option<&S> {
-        let source = self.0.get::<S>(id);
-        if source.is_none() {
+        self.0.get::<S>(id).or_else(|| {
+            // Log missing component from entity
             error!(
-                "Entity {id:#?} does not have component {}",
+                "Entity {:?} does not have component {}",
+                id,
                 core::any::type_name::<S>()
-            )
-        }
-        source
+            );
+
+            None
+        })
     }
 
     fn apply_source<R>(
@@ -39,6 +41,7 @@ impl<S: Component<Mutability = Mutable>> SubjectSource<Entity, S>
         id: Entity,
         f: impl FnOnce(&mut S) -> R,
     ) -> Option<R> {
+        // Logging not necessary assuming Self::get_source is called first
         self.0.get_mut::<S>(id).map(|mut m| f(m.as_mut()))
     }
 }
@@ -51,9 +54,25 @@ impl<S: bevy_asset::Asset>
         &self,
         id: bevy_asset::UntypedAssetId,
     ) -> Option<&S> {
-        self.0
-            .get_resource::<bevy_asset::Assets<S>>()?
-            .get(id.typed::<S>())
+        // Check that An asset type exists and is loaded as a resource
+        self.0.get_resource::<bevy_asset::Assets<S>>().or_else(|| {
+            // Bevy currently panics if the resou
+            error!(
+                "Asset type {:?} has not been loaded yet as a resource",
+                core::any::type_name::<bevy_asset::Assets<S>>()
+            );
+        None
+        })?
+        // Check that specific asset Id is registered in collection
+        .get(id.typed::<S>()).or_else(|| {
+            error!(
+                "Asset collection {} does not have asset_id {}",
+                core::any::type_name::<bevy_asset::Assets<S>>(),
+                id.typed::<S>()
+            );
+
+            None
+        })
     }
 
     fn apply_source<R>(
