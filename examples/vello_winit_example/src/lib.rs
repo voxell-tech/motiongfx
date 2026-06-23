@@ -78,11 +78,21 @@ impl<'s, D: VelloDemo> VelloWinitApp<'s, D> {
 
         let dev = &self.context.devices[surface.dev_id];
         let texture = match surface.surface.get_current_texture() {
-            Ok(t) => t,
-            Err(
-                wgpu::SurfaceError::Lost
-                | wgpu::SurfaceError::Outdated,
+            wgpu::CurrentSurfaceTexture::Success(surface_texture) => {
+                surface_texture
+            }
+            wgpu::CurrentSurfaceTexture::Suboptimal(
+                surface_texture,
             ) => {
+                self.context.resize_surface(
+                    surface,
+                    size.width,
+                    size.height,
+                );
+                surface_texture
+            }
+            wgpu::CurrentSurfaceTexture::Outdated
+            | wgpu::CurrentSurfaceTexture::Lost => {
                 self.context.resize_surface(
                     surface,
                     size.width,
@@ -90,11 +100,7 @@ impl<'s, D: VelloDemo> VelloWinitApp<'s, D> {
                 );
                 return;
             }
-            Err(wgpu::SurfaceError::Timeout) => return,
-            Err(wgpu::SurfaceError::OutOfMemory) => {
-                panic!("GPU out of memory")
-            }
-            Err(wgpu::SurfaceError::Other) => return,
+            _ => return,
         };
 
         self.renderer
