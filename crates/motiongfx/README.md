@@ -284,6 +284,7 @@ You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ).
 
 | Bevy    | MotionGfx  |
 | ------- | ---------- |
+| 0.19    | 0.3        |
 | 0.18    | 0.2        |
 | 0.17    | 0.1        |
 
