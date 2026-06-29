@@ -15,22 +15,22 @@ bevy_motiongfx = { version = "0.3.0", path = "crates/bevy_motiongfx" }
 peniko_motiongfx = { version = "0.3.0", path = "crates/peniko_motiongfx" }
 
 # bevy
-bevy = { version = "0.18.1", default-features = false }
-bevy_ecs = { version = "0.18.1", default-features = false }
-bevy_app = { version = "0.18.1", default-features = false }
-bevy_platform = { version = "0.18.1", default-features = false }
-bevy_derive = { version = "0.18.1", default-features = false }
-bevy_math = { version = "0.18.1", default-features = false, features = [ "libm" ] }
-bevy_asset = { version = "0.18.1", default-features = false }
-bevy_time = { version = "0.18.1", default-features = false }
-bevy_transform = { version = "0.18.1", default-features = false, features = ["bevy-support"] }
-bevy_color = { version = "0.18.1", default-features = false }
+bevy = { version = "0.19", default-features = false }
+bevy_ecs = { version = "0.19", default-features = false }
+bevy_app = { version = "0.19", default-features = false }
+bevy_platform = { version = "0.19", default-features = false }
+bevy_derive = { version = "0.19", default-features = false }
+bevy_math = { version = "0.19", default-features = false, features = [ "libm" ] }
+bevy_asset = { version = "0.19", default-features = false }
+bevy_time = { version = "0.19", default-features = false }
+bevy_transform = { version = "0.19", default-features = false, features = ["bevy-support"] }
+bevy_color = { version = "0.19", default-features = false }
 
 # other
 field_path = "0.4.1"
 nonempty = { version = "0.12", default-features = false }
 peniko = { version = "0.6", default-features = false }
-vello = "0.7.0"
+vello = "0.9.0"
 winit = "0.30"
 pollster = "0.4"
 

@@ -57,7 +57,7 @@ impl<S: bevy_asset::Asset>
             .get_resource_mut::<bevy_asset::Assets<S>>()?
             .into_inner()
             .get_mut(id.typed::<S>())
-            .map(f)
+            .map(|asset| f(asset.into_inner()))
     }
 }
 

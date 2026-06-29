@@ -29,11 +29,11 @@ impl Plugin for BevyMotionGfxPlugin {
         app.configure_sets(
             PostUpdate,
             (
-                MotionGfxSet::Controller,
+                MotionGfxSystems::Controller,
                 #[cfg(not(feature = "transform"))]
-                MotionGfxSet::Sample,
+                MotionGfxSystems::Sample,
                 #[cfg(feature = "transform")]
-                MotionGfxSet::Sample.before(
+                MotionGfxSystems::Sample.before(
                     bevy_transform::TransformSystems::Propagate,
                 ),
             )
@@ -44,7 +44,7 @@ impl Plugin for BevyMotionGfxPlugin {
 }
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum MotionGfxSet {
+pub enum MotionGfxSystems {
     /// [Controller](controller) update to the timeline.
     Controller,
     /// Sample keyframes and applies the value.
