@@ -178,6 +178,19 @@ impl KanvaAnim {
             ],
         }
     }
+
+    /// Pops each path up in scale then back down.
+    pub fn scale_pulse(path_window: f32) -> Self {
+        Self {
+            t: 0.0,
+            path_window,
+            phases: vec![KanvaPhase::new(
+                scale_pulse_phase,
+                0.0,
+                1.0,
+            )],
+        }
+    }
 }
 
 /// Progressively reveals the path geometry (stroke-based trace animation).
@@ -196,7 +209,7 @@ pub fn fill_fade_phase(kanva: &mut Kanva, path_idx: usize, t: f32) {
     };
     let fill = path.fill.and_then(|fi| kanva.get_fill(fi)).cloned();
     let faded = fill.map(|mut f| {
-        f.brush = f.brush.with_alpha(t);
+        f.brush = f.brush.multiply_alpha(t);
         f
     });
     kanva.mod_path(path_idx).fill(faded);
@@ -222,6 +235,9 @@ pub fn up_phase(kanva: &mut Kanva, path_idx: usize, t: f32) {
 }
 
 pub fn scale_phase(kanva: &mut Kanva, path_idx: usize, t: f32) {
+    if t >= 1.0 || t <= 0.0 {
+        return;
+    }
     let Some(path) = kanva.get_path(path_idx) else {
         return;
     };
@@ -230,6 +246,31 @@ pub fn scale_phase(kanva: &mut Kanva, path_idx: usize, t: f32) {
     let t = ease::cubic::ease_in(t);
     // Scale from the center.
     let scale = Interpolation::interp(&0.5_f64, &1.0_f64, t);
+    let center = path.path.bounding_box().center();
+    kanva.mod_path(path_idx).transform(
+        transform
+            .pre_translate(center.to_vec2())
+            .pre_scale(scale)
+            .pre_translate(-center.to_vec2()),
+    );
+}
+
+/// Scales each path up then back down about its center
+///
+/// The scale follows a half-sine: `1.0` at `t = 0` and `t = 1`,
+/// peaking at the midpoint.
+pub fn scale_pulse_phase(kanva: &mut Kanva, path_idx: usize, t: f32) {
+    if t >= 1.0 || t <= 0.0 {
+        return;
+    }
+    let Some(path) = kanva.get_path(path_idx) else {
+        return;
+    };
+
+    let transform = path.transform;
+    // Peak extra scale at the midpoint.
+    const AMP: f64 = 0.3;
+    let scale = 1.0 + AMP * (core::f32::consts::PI * t).sin() as f64;
     let center = path.path.bounding_box().center();
     kanva.mod_path(path_idx).transform(
         transform

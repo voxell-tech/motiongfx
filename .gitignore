@@ -1,3 +1,4 @@
 /target
 /frames/*.png
 **/typst_packages
+*.DS_Store
