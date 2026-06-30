@@ -2,8 +2,8 @@
 #import "monokai_pro.typ": *
 
 #let plot(circle_x, circle_y) = {
-  let half_w = 1000
-  let half_h = 1000
+  let half_w = 2000
+  let half_h = 2000
   let grid_step = 40
 
   let circle_size = 20

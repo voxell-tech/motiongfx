@@ -26,3 +26,29 @@ macro_rules! impl_float_interpolation {
 
 impl_float_interpolation!(f32, f32);
 impl_float_interpolation!(f64, f64);
+
+/// Interpolate an integer type by lerping in `f64` and rounding, so animated
+/// integer fields (e.g. counts) step smoothly between values.
+#[macro_export]
+macro_rules! impl_int_interpolation {
+    ($ty:ty) => {
+        $crate::impl_int_interpolation!($ty, ());
+    };
+
+    ($ty:ty, $marker:ty) => {
+        impl $crate::interpolation::Interpolation<$marker> for $ty {
+            #[inline]
+            fn interp(a: &Self, b: &Self, t: f32) -> Self {
+                let a = *a as f64;
+                let b = *b as f64;
+                (a + (b - a) * t as f64).round() as $ty
+            }
+        }
+    };
+}
+
+impl_int_interpolation!(i32);
+impl_int_interpolation!(u32);
+impl_int_interpolation!(i64);
+impl_int_interpolation!(u64);
+impl_int_interpolation!(usize);
