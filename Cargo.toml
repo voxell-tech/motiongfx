@@ -27,7 +27,7 @@ bevy_time = { version = "0.19", default-features = false }
 bevy_transform = { version = "0.19", default-features = false, features = ["bevy-support"] }
 bevy_color = { version = "0.19", default-features = false }
 # bevy_vello = { version = "0.13.1", default-features = false }
-bevy_vello = { git = "https://github.com/pyscape/bevy_vello", branch = "port/bevy-0.19", default-features = false }
+bevy_vello = { git = "https://github.com/linebender/bevy_vello", branch = "nixon/bevy-0.19", default-features = false }
 
 # other
 field_path = "0.4.1"
@@ -36,8 +36,7 @@ peniko = { version = "0.6", default-features = false }
 vello = "0.9.0"
 winit = "0.30"
 pollster = "0.4"
-velyst = { path = "../velyst/crates/velyst" }
-# velyst = { git = "https://github.com/voxell-tech/velyst", rev = "611d46d" }
+velyst = { git = "https://github.com/voxell-tech/velyst", branch = "nixon/bevy-0.19" }
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"

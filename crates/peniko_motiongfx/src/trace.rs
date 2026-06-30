@@ -1,4 +1,6 @@
-use peniko::kurbo::{BezPath, CubicBez, Line, ParamCurve, Point, QuadBez};
+use peniko::kurbo::{
+    BezPath, CubicBez, Line, ParamCurve, Point, QuadBez,
+};
 
 pub type LineTracer = Tracer<Line>;
 pub type QuadTracer = Tracer<QuadBez>;
@@ -118,8 +120,8 @@ fn trace_bez_path_range(
             1.0
         };
         let sub = seg.subsegment(lo..hi);
-        let new_subpath =
-            last_end.is_none_or(|end| (sub.start() - end).hypot() > 1e-9);
+        let new_subpath = last_end
+            .is_none_or(|end| (sub.start() - end).hypot() > 1e-9);
         if new_subpath {
             result.move_to(sub.start());
         }
