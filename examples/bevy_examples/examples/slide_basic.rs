@@ -1,6 +1,6 @@
+use bevy::camera::Hdr;
 use bevy::color::palettes;
 use bevy::prelude::*;
-use bevy::render::view::Hdr;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
 

@@ -5,7 +5,7 @@ use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 use motiongfx::prelude::*;
 
-use crate::MotionGfxSet;
+use crate::MotionGfxSystems;
 use crate::controller::FixedRatePlayer;
 use crate::controller::RealtimePlayer;
 use crate::prelude::BevyTimelineBuilder;
@@ -18,12 +18,12 @@ impl Plugin for MotionGfxManagerPlugin {
         app.init_resource::<MotionGfxManager>().add_systems(
             PostUpdate,
             (
-                sample_timelines.in_set(MotionGfxSet::Sample),
+                sample_timelines.in_set(MotionGfxSystems::Sample),
                 (
                     complete_timelines::<RealtimePlayer>,
                     complete_timelines::<FixedRatePlayer>,
                 )
-                    .after(MotionGfxSet::Sample),
+                    .after(MotionGfxSystems::Sample),
             ),
         );
     }

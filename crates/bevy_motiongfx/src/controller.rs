@@ -2,7 +2,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_time::prelude::*;
 
-use crate::MotionGfxSet;
+use crate::MotionGfxSystems;
 use crate::manager::{MotionGfxManager, TimelineId};
 
 pub struct ControllerPlugin;
@@ -12,7 +12,7 @@ impl Plugin for ControllerPlugin {
         app.add_systems(
             PostUpdate,
             (fixed_rate_player_timing, realtime_player_timing)
-                .in_set(MotionGfxSet::Controller),
+                .in_set(MotionGfxSystems::Controller),
         );
     }
 }
