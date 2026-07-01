@@ -127,6 +127,44 @@ fn build_timeline(
 }
 ```
 
+### Velyst Animation (`velyst` feature)
+
+Enabling the `velyst` feature adds `VelystMotionGfxPlugin`, which
+animates [Velyst](https://github.com/voxell-tech/velyst) typesetting
+graphics (paths inside a `VelystKanva`) via `KanvaAnim` and
+`KanvaGroup` components.
+
+```toml
+bevy_motiongfx = { version = "0.3", features = ["velyst"] }
+```
+
+```rust,no_run
+use bevy::prelude::*;
+use bevy_motiongfx::VelystMotionGfxPlugin;
+use bevy_motiongfx::prelude::*;
+
+App::new()
+    .add_plugins((DefaultPlugins, VelystMotionGfxPlugin))
+    // Add systems here...
+    .run();
+```
+
+```rust
+use bevy::prelude::*;
+use bevy_motiongfx::prelude::*;
+
+fn spawn_kanva_anim(mut commands: Commands, scene: Entity) {
+    // Traces every path inside a `grid-start`..`grid-end` group.
+    commands.spawn((
+        KanvaGroup::wrap("grid-start", "grid-end").with_target(scene),
+        KanvaAnim::trace(0.5),
+    ));
+}
+```
+
+Drive `KanvaAnim::t` from `0.0` to `1.0` with the `Timeline` API to
+play the animation.
+
 ## Version Matrix
 
 | Bevy    | MotionGfx  | Bevy MotionGfx  |

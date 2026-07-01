@@ -1,6 +1,8 @@
 #![doc = include_str!("../README.md")]
 #![no_std]
 
+extern crate alloc;
+
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 
@@ -9,6 +11,8 @@ use crate::manager::MotionGfxManagerPlugin;
 
 pub mod controller;
 pub mod interpolation;
+#[cfg(feature = "velyst")]
+pub mod kanva;
 pub mod manager;
 pub mod world;
 
@@ -18,9 +22,20 @@ pub mod prelude {
     pub use crate::controller::{FixedRatePlayer, RealtimePlayer};
     pub use crate::manager::{MotionGfxManager, TimelineId};
     pub use crate::world::{BevyTimeline, BevyTimelineBuilder};
+
+    #[cfg(feature = "velyst")]
+    pub use crate::kanva::{
+        KanvaAnim, KanvaGroup, KanvaGroupKind, KanvaPhase,
+    };
+    #[cfg(feature = "velyst")]
+    pub use velyst::prelude::*;
 }
 
 pub use motiongfx;
+#[cfg(feature = "velyst")]
+pub use velyst;
+#[cfg(feature = "velyst")]
+pub use crate::kanva::VelystMotionGfxPlugin;
 
 pub struct BevyMotionGfxPlugin;
 

@@ -1,6 +1,12 @@
-#![doc = include_str!("../README.md")]
+//! Velyst animation support for the MotionGfx framework.
+//!
+//! Provides components and systems for animating Velyst typesetting
+//! graphics using the MotionGfx timeline-based animation framework.
+//! Enabled via the `velyst` feature.
 
-use std::ops::Range;
+use alloc::vec;
+use alloc::vec::Vec;
+use core::ops::Range;
 
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::prelude::*;
@@ -8,16 +14,6 @@ use peniko_motiongfx::prelude::*;
 use velyst::imaging::kurbo::{Shape, Vec2};
 use velyst::kanva::Kanva;
 use velyst::prelude::{VelystKanva, VelystSet};
-
-pub use velyst;
-
-pub mod prelude {
-    pub use crate::{
-        KanvaAnim, KanvaGroup, KanvaGroupKind, KanvaPhase,
-    };
-
-    pub use velyst::prelude::*;
-}
 
 pub struct VelystMotionGfxPlugin;
 

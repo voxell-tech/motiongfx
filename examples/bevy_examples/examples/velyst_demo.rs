@@ -2,16 +2,15 @@ use bevy::diagnostic::DiagnosticsStore;
 use bevy::prelude::*;
 use bevy_examples::timeline_movement;
 use bevy_motiongfx::BevyMotionGfxPlugin;
+use bevy_motiongfx::VelystMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
+use bevy_motiongfx::velyst::VelystPlugin;
 use bevy_vello::VelloPlugin;
 use bevy_vello::prelude::*;
 use bevy_vello::render::diagnostics::{
     PATH_COUNT, PATH_SEGMENTS_COUNT, UI_SCENE_COUNT,
     WORLD_SCENE_COUNT,
 };
-use velyst_motiongfx::VelystMotionGfxPlugin;
-use velyst_motiongfx::prelude::*;
-use velyst_motiongfx::velyst::VelystPlugin;
 
 fn main() {
     App::new()
