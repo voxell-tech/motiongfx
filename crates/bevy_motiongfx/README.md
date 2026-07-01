@@ -129,24 +129,13 @@ fn build_timeline(
 
 ### Velyst Animation (`velyst` feature)
 
-Enabling the `velyst` feature adds `VelystMotionGfxPlugin`, which
-animates [Velyst](https://github.com/voxell-tech/velyst) typesetting
+Enabling the `velyst` feature adds integration for
+animating [Velyst](https://github.com/voxell-tech/velyst) typesetting
 graphics (paths inside a `VelystKanva`) via `KanvaAnim` and
 `KanvaGroup` components.
 
 ```toml
 bevy_motiongfx = { version = "0.3", features = ["velyst"] }
-```
-
-```rust,no_run
-use bevy::prelude::*;
-use bevy_motiongfx::VelystMotionGfxPlugin;
-use bevy_motiongfx::prelude::*;
-
-App::new()
-    .add_plugins((DefaultPlugins, VelystMotionGfxPlugin))
-    // Add systems here...
-    .run();
 ```
 
 ```rust
