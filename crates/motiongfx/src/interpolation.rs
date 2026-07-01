@@ -29,14 +29,9 @@ impl_float_interpolation!(f64, f64);
 
 /// Interpolate an integer type by lerping in `f64` and rounding, so animated
 /// integer fields (e.g. counts) step smoothly between values.
-#[macro_export]
 macro_rules! impl_int_interpolation {
     ($ty:ty) => {
-        $crate::impl_int_interpolation!($ty, ());
-    };
-
-    ($ty:ty, $marker:ty) => {
-        impl $crate::interpolation::Interpolation<$marker> for $ty {
+        impl $crate::interpolation::Interpolation<()> for $ty {
             #[inline]
             fn interp(a: &Self, b: &Self, t: f32) -> Self {
                 let a = *a as f64;
