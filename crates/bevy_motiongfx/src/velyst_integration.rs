@@ -15,9 +15,9 @@ use velyst::imaging::kurbo::{Shape, Vec2};
 use velyst::kanva::Kanva;
 use velyst::prelude::{VelystKanva, VelystSet};
 
-pub struct VelystMotionGfxPlugin;
+pub struct VelystIntegrationPlugin;
 
-impl Plugin for VelystMotionGfxPlugin {
+impl Plugin for VelystIntegrationPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,

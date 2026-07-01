@@ -2,7 +2,6 @@ use bevy::diagnostic::DiagnosticsStore;
 use bevy::prelude::*;
 use bevy_examples::timeline_movement;
 use bevy_motiongfx::BevyMotionGfxPlugin;
-use bevy_motiongfx::VelystMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
 use bevy_motiongfx::velyst::VelystPlugin;
 use bevy_vello::VelloPlugin;
@@ -19,7 +18,6 @@ fn main() {
             VelloPlugin::default(),
             VelystPlugin,
             BevyMotionGfxPlugin,
-            VelystMotionGfxPlugin,
         ))
         .register_typst_func::<PlotFunc>()
         .add_systems(Startup, setup)

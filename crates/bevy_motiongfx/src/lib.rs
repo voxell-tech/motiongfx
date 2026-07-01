@@ -8,12 +8,14 @@ use bevy_ecs::prelude::*;
 
 use crate::controller::ControllerPlugin;
 use crate::manager::MotionGfxManagerPlugin;
+#[cfg(feature = "velyst")]
+use crate::velyst_integration::VelystIntegrationPlugin;
 
 pub mod controller;
 pub mod interpolation;
-#[cfg(feature = "velyst")]
-pub mod kanva;
 pub mod manager;
+#[cfg(feature = "velyst")]
+pub mod velyst_integration;
 pub mod world;
 
 pub mod prelude {
@@ -24,7 +26,7 @@ pub mod prelude {
     pub use crate::world::{BevyTimeline, BevyTimelineBuilder};
 
     #[cfg(feature = "velyst")]
-    pub use crate::kanva::{
+    pub use crate::velyst_integration::{
         KanvaAnim, KanvaGroup, KanvaGroupKind, KanvaPhase,
     };
     #[cfg(feature = "velyst")]
@@ -34,8 +36,6 @@ pub mod prelude {
 pub use motiongfx;
 #[cfg(feature = "velyst")]
 pub use velyst;
-#[cfg(feature = "velyst")]
-pub use crate::kanva::VelystMotionGfxPlugin;
 
 pub struct BevyMotionGfxPlugin;
 
@@ -55,6 +55,9 @@ impl Plugin for BevyMotionGfxPlugin {
                 .chain(),
         );
         app.add_plugins((MotionGfxManagerPlugin, ControllerPlugin));
+
+        #[cfg(feature = "velyst")]
+        app.add_plugins(VelystIntegrationPlugin);
     }
 }
 
