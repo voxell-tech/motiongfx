@@ -18,7 +18,7 @@ impl Plugin for ControllerPlugin {
 }
 
 fn realtime_player_timing(
-    mut motiongfx: ResMut<MotionGfxManager>,
+    mut motiongfx: NonSendMut<MotionGfxManager>,
     q_timelines: Query<(&TimelineId, &RealtimePlayer)>,
     time: Res<Time>,
 ) {
@@ -35,7 +35,7 @@ fn realtime_player_timing(
 }
 
 fn fixed_rate_player_timing(
-    mut motiongfx: ResMut<MotionGfxManager>,
+    mut motiongfx: NonSendMut<MotionGfxManager>,
     mut q_timelines: Query<(&TimelineId, &mut FixedRatePlayer)>,
 ) {
     for (id, mut player) in

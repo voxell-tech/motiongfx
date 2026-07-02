@@ -15,7 +15,7 @@ pub struct MotionGfxManagerPlugin;
 
 impl Plugin for MotionGfxManagerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<MotionGfxManager>().add_systems(
+        app.init_non_send::<MotionGfxManager>().add_systems(
             PostUpdate,
             (
                 sample_timelines.in_set(MotionGfxSystems::Sample),
@@ -37,12 +37,20 @@ impl Plugin for MotionGfxManagerPlugin {
 ///
 /// Panics if the [`Timeline`] component is sampling itself.
 fn sample_timelines(world: &mut World) {
-    world.try_resource_scope::<MotionGfxManager, _>(
-        |world, mut motiongfx| {
-            motiongfx.load_pending_timelines(world);
-            motiongfx.sample_timelines(world);
-        },
-    );
+    // `MotionGfxManager` is a non-send resource, so there is no
+    // `resource_scope` equivalent to borrow it and `&mut World`
+    // simultaneously; take it out, use `world` freely, then restore
+    // it once done.
+    let Some(mut motiongfx) =
+        world.remove_non_send::<MotionGfxManager>()
+    else {
+        return;
+    };
+
+    motiongfx.load_pending_timelines(world);
+    motiongfx.sample_timelines(world);
+
+    world.insert_non_send(motiongfx);
 }
 
 /// A unique Id for a [`Timeline`].
@@ -56,7 +64,7 @@ pub struct TimelineComplete;
 #[expect(clippy::type_complexity)]
 fn complete_timelines<T>(
     mut commands: Commands,
-    motiongfx: Res<MotionGfxManager>,
+    motiongfx: NonSend<MotionGfxManager>,
     timelines: Query<
         (Entity, &TimelineId),
         (With<T>, Without<TimelineComplete>),
@@ -75,7 +83,12 @@ fn complete_timelines<T>(
 }
 
 /// Resources that the [`motiongfx`] framework operates on.
-#[derive(Resource)]
+///
+/// Stored as a non-send resource: `ActionTable` (transitively owned
+/// through each [`BevyTimeline`]) is backed by `typarena::TypeTable`,
+/// which makes no `Send`/`Sync` guarantee about its type-erased
+/// columns. Systems touching this resource run on the main thread
+/// only (see [`NonSend`]/[`NonSendMut`]).
 pub struct MotionGfxManager {
     id: TimelineId,
     pending_timelines: HashMap<TimelineId, MutDetect<BevyTimeline>>,

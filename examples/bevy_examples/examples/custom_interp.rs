@@ -16,7 +16,7 @@ fn main() {
 
 fn spawn_timeline(
     mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxManager>,
+    mut motiongfx: NonSendMut<MotionGfxManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {

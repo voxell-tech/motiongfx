@@ -2920,6 +2920,8 @@ version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 dependencies = [
+ "allocator-api2",
+ "equivalent",
  "foldhash 0.2.0",
 ]
 
@@ -3446,11 +3448,11 @@ dependencies = [
 name = "motiongfx"
 version = "0.3.0"
 dependencies = [
- "bevy_ecs",
  "bevy_math",
- "bevy_platform",
  "field_path",
+ "hashbrown 0.17.1",
  "nonempty",
+ "typarena",
 ]
 
 [[package]]
@@ -4731,6 +4733,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sparse_map"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea8f483b9159a7efadd9a82915dc40fdc9cfef7985651bbb83a8db20b12bf629"
+
+[[package]]
 name = "spin"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5083,6 +5091,15 @@ name = "twox-hash"
 version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
+
+[[package]]
+name = "typarena"
+version = "0.1.0"
+dependencies = [
+ "hashbrown 0.16.1",
+ "indexmap",
+ "sparse_map",
+]
 
 [[package]]
 name = "typeid"

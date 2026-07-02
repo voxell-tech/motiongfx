@@ -7,8 +7,8 @@ use func_pointers::{BakeFnPtr, SampleFnPtr};
 
 use crate::ThreadSafe;
 use crate::action::{
-    ActionClip, ActionKey, ActionWorld, EaseStorage, InterpStorage,
-    SampleMode, Segment,
+    ActionClip, ActionKey, ActionTable, InterpStorage, SampleMode,
+    Segment,
 };
 use crate::pipeline::func_pointers::{BakeFn, SampleFn};
 use crate::registry::AccessorRegistry;
@@ -173,7 +173,7 @@ impl PipelineUntyped {
 pub struct BakeCtx<'a, W> {
     pub world: &'a W,
     pub track: &'a Track,
-    pub action_world: &'a mut ActionWorld,
+    pub action_world: &'a mut ActionTable,
     pub accessor_registry: &'a AccessorRegistry,
 }
 
@@ -204,7 +204,7 @@ where
         let mut start = accessor.get_ref(source).clone();
 
         for ActionClip { id, .. } in ctx.track.clips(*span) {
-            let Some(action) = ctx.action_world.get_action::<T>(*id)
+            let Some(action) = ctx.action_world.get_action::<T>(id)
             else {
                 continue;
             };
@@ -221,7 +221,7 @@ where
 
 pub struct SampleCtx<'a, W> {
     pub world: &'a mut W,
-    pub action_world: &'a ActionWorld,
+    pub action_world: &'a ActionTable,
     pub accessor_registry: &'a AccessorRegistry,
 }
 
@@ -232,19 +232,30 @@ where
     S: 'static,
     T: Clone + ThreadSafe,
 {
-    let Some(mut q) = ctx.action_world.world().try_query::<(
-        &ActionKey,
-        &SampleMode,
-        &Segment<T>,
-        &InterpStorage<T>,
-        Option<&EaseStorage>,
-    )>() else {
+    let table = ctx.action_world.table();
+    let Some(segment_col) = table.type_column::<Segment<T>>() else {
+        return;
+    };
+    let Some(interp_col) = table.type_column::<InterpStorage<T>>()
+    else {
         return;
     };
 
-    for (key, sample_mode, segment, interp, ease) in
-        q.iter(ctx.action_world.world())
-    {
+    for (id, sample_mode) in table.iter::<SampleMode>() {
+        let Some(key) = ctx.action_world.key(id) else {
+            continue;
+        };
+        let Some(segment) =
+            table.get_by_column::<Segment<T>>(segment_col, id)
+        else {
+            continue;
+        };
+        let Some(interp) =
+            table.get_by_column::<InterpStorage<T>>(interp_col, id)
+        else {
+            continue;
+        };
+        let ease = ctx.action_world.ease(id);
         let Some(accessor) =
             ctx.accessor_registry.get::<S, T>(key.field())
         else {
@@ -291,7 +302,101 @@ impl Range {
 
 #[cfg(test)]
 mod tests {
+    use crate::interpolation::Interpolation;
+
     use super::*;
+
+    struct MockWorld(f32);
+
+    impl SubjectSource<u32, f32> for MockWorld {
+        fn get_source(&self, _id: u32) -> Option<&f32> {
+            Some(&self.0)
+        }
+
+        fn apply_source<R>(
+            &mut self,
+            _id: u32,
+            f: impl FnOnce(&mut f32) -> R,
+        ) -> Option<R> {
+            Some(f(&mut self.0))
+        }
+    }
+
+    fn sample_mock(
+        action_world: &ActionTable,
+        accessor_registry: &AccessorRegistry,
+        world: &mut MockWorld,
+    ) {
+        sample::<MockWorld, u32, f32, f32>(SampleCtx {
+            world,
+            action_world,
+            accessor_registry,
+        });
+    }
+
+    /// Exercises the hand-rolled multi-column probe in `sample`:
+    /// `ActionKey`, `Segment<T>` and `InterpStorage<T>` are required
+    /// columns, driven from the `SampleMode` column.
+    #[test]
+    fn sample_join_reads_all_required_columns() {
+        let field_acc = crate::path!(<f32>);
+        let field = field_acc.field.untyped();
+
+        let mut accessor_registry = AccessorRegistry::new();
+        accessor_registry.register(field_acc);
+
+        let mut action_world = ActionTable::new();
+        let id = action_world
+            .add(0u32, field, |x: &f32| *x + 10.0)
+            .with_interp(<f32 as Interpolation<()>>::interp)
+            .id();
+        action_world
+            .edit_action(id)
+            .set_segment(Segment::new(0.0f32, 10.0f32));
+
+        let mut world = MockWorld(0.0);
+
+        action_world.edit_action(id).mark(SampleMode::Start);
+        sample_mock(&action_world, &accessor_registry, &mut world);
+        assert_eq!(world.0, 0.0);
+
+        action_world.edit_action(id).mark(SampleMode::End);
+        sample_mock(&action_world, &accessor_registry, &mut world);
+        assert_eq!(world.0, 10.0);
+
+        action_world.edit_action(id).mark(SampleMode::Interp(0.5));
+        sample_mock(&action_world, &accessor_registry, &mut world);
+        assert!((world.0 - 5.0).abs() < f32::EPSILON);
+    }
+
+    /// The optional `EaseStorage` column must be probed too: a
+    /// present column should reshape `t` before interpolating.
+    #[test]
+    fn sample_join_applies_custom_ease() {
+        let field_acc = crate::path!(<f32>);
+        let field = field_acc.field.untyped();
+
+        let mut accessor_registry = AccessorRegistry::new();
+        accessor_registry.register(field_acc);
+
+        let mut action_world = ActionTable::new();
+        let id = action_world
+            .add(0u32, field, |x: &f32| *x + 10.0)
+            .with_interp(<f32 as Interpolation<()>>::interp)
+            .with_ease(crate::ease::quad::ease_in)
+            .id();
+        action_world
+            .edit_action(id)
+            .set_segment(Segment::new(0.0f32, 10.0f32))
+            .mark(SampleMode::Interp(0.5));
+
+        let mut world = MockWorld(0.0);
+        sample_mock(&action_world, &accessor_registry, &mut world);
+
+        // quad::ease_in(0.5) == 0.25, so the eased target is 2.5,
+        // not the unmodified-t value of 5.0.
+        assert!((world.0 - 2.5).abs() < f32::EPSILON);
+    }
 
     #[test]
     fn range_overlap_behavior() {

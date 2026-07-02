@@ -3,12 +3,12 @@ use core::marker::PhantomData;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use bevy_platform::collections::HashMap;
 use field_path::field_accessor::FieldAccessor;
+use hashbrown::HashMap;
 
 use crate::ThreadSafe;
 use crate::action::{
-    Action, ActionBuilder, ActionId, ActionKey, ActionWorld,
+    Action, ActionBuilder, ActionId, ActionKey, ActionTable,
     InterpActionBuilder, SampleMode,
 };
 use crate::interpolation::Interpolation;
@@ -19,7 +19,7 @@ use crate::track::Track;
 use crate::world::SubjectSource;
 
 pub struct Timeline<W> {
-    action_world: ActionWorld,
+    action_world: ActionTable,
     pipeline_counts: Box<[(PipelineKey, u32)]>,
     /// Track length is guaranteed to be at least 1 by construction.
     /// See [`TimelineBuilder::compile()`].
@@ -398,7 +398,7 @@ impl QueueCache {
         &mut self,
         key: ActionKey,
         id: ActionId,
-        action_world: &mut ActionWorld,
+        action_world: &mut ActionTable,
     ) {
         if let Some(prev_id) = self.cache.insert(key, id) {
             action_world.edit_action(prev_id).clear_mark();
@@ -414,7 +414,7 @@ impl Default for QueueCache {
 
 pub struct TimelineBuilder<'a, W> {
     registry: &'a mut Registry,
-    action_world: ActionWorld,
+    action_world: ActionTable,
     pipeline_counts: HashMap<PipelineKey, u32>,
     tracks: Vec<Track>,
     _marker: PhantomData<fn() -> W>,
@@ -425,7 +425,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     pub fn new(registry: &'a mut Registry) -> Self {
         Self {
             registry,
-            action_world: ActionWorld::new(),
+            action_world: ActionTable::new(),
             pipeline_counts: HashMap::new(),
             tracks: Vec::new(),
             _marker: PhantomData,

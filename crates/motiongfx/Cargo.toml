@@ -12,17 +12,17 @@ repository.workspace = true
 
 [dependencies]
 # bevy
-bevy_ecs = { workspace = true }
-bevy_platform = { workspace = true }
 bevy_math = { workspace = true }
 
 # other
 field_path = { workspace = true }
+hashbrown = { workspace = true }
 nonempty = { workspace = true }
+typarena = { path = "../../../fynix/crates/typarena" }
 
 [lints]
 workspace = true
 
 [features]
 default = ["std"]
-std = ["bevy_ecs/std", "bevy_platform/std", "bevy_math/std"]
+std = ["bevy_math/std"]
