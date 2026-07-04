@@ -37,7 +37,7 @@ impl Plugin for MotionGfxManagerPlugin {
 ///
 /// Panics if the [`Timeline`] component is sampling itself.
 fn sample_timelines(world: &mut World) {
-    world.try_resource_scope::<MotionGfxManager, ()>(
+    world.resource_scope::<MotionGfxManager, _>(
         |world, mut motiongfx| {
             motiongfx.load_pending_timelines(world);
             motiongfx.sample_timelines(world);

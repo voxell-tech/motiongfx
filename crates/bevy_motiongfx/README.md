@@ -40,7 +40,7 @@ use bevy_motiongfx::prelude::*;
 
 fn build_timeline(
     mut commands: Commands,
-    mut motiongfx: NonSendMut<MotionGfxManager>,
+    mut motiongfx: ResMut<MotionGfxManager>,
 ) {
     // Spawn the Entity.
     let entity = commands
@@ -72,7 +72,7 @@ use bevy_motiongfx::prelude::*;
 
 fn build_timeline(
     mut commands: Commands,
-    mut motiongfx: NonSendMut<MotionGfxManager>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut materials: ResMut<Assets<StandardMaterial>>
 ) {
     // Create the asset.
@@ -112,7 +112,7 @@ use bevy_motiongfx::prelude::*;
 
 fn build_timeline(
     mut commands: Commands,
-    mut motiongfx: NonSendMut<MotionGfxManager>,
+    mut motiongfx: ResMut<MotionGfxManager>,
 ) {
     // Build the timeline.
     let mut b = motiongfx.create_builder();
