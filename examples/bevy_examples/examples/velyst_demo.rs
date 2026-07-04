@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use bevy_examples::timeline_movement;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
-use bevy_motiongfx::velyst::VelystPlugin;
 use bevy_vello::VelloPlugin;
 use bevy_vello::prelude::*;
 use bevy_vello::render::diagnostics::{
@@ -16,7 +15,6 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             VelloPlugin::default(),
-            VelystPlugin,
             BevyMotionGfxPlugin,
         ))
         .register_typst_func::<PlotFunc>()
