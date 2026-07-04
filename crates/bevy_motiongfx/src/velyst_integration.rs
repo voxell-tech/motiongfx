@@ -7,6 +7,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 use core::ops::Range;
+use velyst::VelystPlugin;
 
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::prelude::*;
@@ -19,7 +20,7 @@ pub struct VelystIntegrationPlugin;
 
 impl Plugin for VelystIntegrationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_plugins(VelystPlugin).add_systems(
             PostUpdate,
             (clear_kanva_mods, animate_kanva_anim)
                 .chain()
