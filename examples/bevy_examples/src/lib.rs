@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_motiongfx::prelude::*;
 
 pub fn timeline_movement(
-    mut motiongfx: NonSendMut<MotionGfxManager>,
+    mut motiongfx: ResMut<MotionGfxManager>,
     mut q_timelines: Query<(&TimelineId, &mut RealtimePlayer)>,
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,

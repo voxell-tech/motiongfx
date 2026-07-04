@@ -18,7 +18,7 @@ bevy_math = { workspace = true }
 field_path = { workspace = true }
 hashbrown = { workspace = true }
 nonempty = { workspace = true }
-typarena = { path = "../../../fynix/crates/typarena" }
+typarena = { workspace = true }
 
 [lints]
 workspace = true
