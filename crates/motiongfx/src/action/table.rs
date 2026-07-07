@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use core::any::TypeId;
 use core::marker::PhantomData;
 
@@ -12,8 +11,7 @@ use super::id_registry::{
 };
 use super::{
     Action, ActionClip, ActionKey, ActionStorage, EaseFn,
-    EaseStorage, InterpFn, InterpStorage, SampleMode, Segment,
-    UntypedSubjectId,
+    EaseStorage, InterpFn, InterpStorage, Segment, UntypedSubjectId,
 };
 use crate::ThreadSafe;
 use crate::resources::Resources;
@@ -30,19 +28,11 @@ pub type ActionId = GenId<ActionMarker>;
 
 /// Heterogeneous storage for every action spawned via
 /// [`Self::add`], keyed by [`ActionId`].
-///
-/// Each action's [`ActionKey`], [`ActionStorage`], and any optional
-/// [`InterpStorage`]/[`EaseStorage`]/[`Segment`]/[`SampleMode`] live
-/// in their own [`TypeTable`] column under the same id.
 pub struct ActionTable {
     table: TypeTable<ActionId>,
     id_gen: IdGenerator<ActionMarker>,
     resources: Resources,
-    // Cached `ColumnId`s for the non-generic columns touched on
-    // every `add`/`remove`/mark, so those hot paths skip re-hashing
-    // each `TypeId`.
     key_col: ColumnId,
-    sample_mode_col: ColumnId,
     ease_col: ColumnId,
 }
 
@@ -50,7 +40,6 @@ impl ActionTable {
     pub fn new() -> Self {
         let mut table = TypeTable::new();
         let key_col = table.ensure_column::<ActionKey>();
-        let sample_mode_col = table.ensure_column::<SampleMode>();
         let ease_col = table.ensure_column::<EaseStorage>();
 
         Self {
@@ -58,7 +47,6 @@ impl ActionTable {
             id_gen: IdGenerator::new(),
             resources: Resources::default(),
             key_col,
-            sample_mode_col,
             ease_col,
         }
     }
@@ -146,81 +134,45 @@ impl ActionTable {
         self.table.get_by_column::<EaseStorage>(self.ease_col, id)
     }
 
-    /// Create an [`ActionCommand`] from an [`ActionId`].
-    pub(crate) fn edit_action(
+    /// Get-or-create the [`Segment<T>`] column, cached by bake.
+    pub(crate) fn ensure_segment_column<T: ThreadSafe>(
         &mut self,
-        id: ActionId,
-    ) -> ActionCommand<'_> {
-        ActionCommand {
-            table: &mut self.table,
-            id,
-            sample_mode_col: self.sample_mode_col,
-        }
+    ) -> ColumnId {
+        self.table.ensure_column::<Segment<T>>()
     }
 
-    /// Remove [`SampleMode`] from all marked actions.
-    pub(crate) fn clear_all_marks(&mut self) {
-        let marked = self
-            .table
-            .iter::<SampleMode>()
-            .map(|(id, _)| *id)
-            .collect::<Vec<_>>();
+    /// The [`ActionStorage<T>`] column, if any `T` action exists.
+    pub(crate) fn action_column<T: ThreadSafe>(
+        &self,
+    ) -> Option<ColumnId> {
+        self.table.type_column::<ActionStorage<T>>()
+    }
 
-        for id in marked {
-            self.table.remove_by_column::<SampleMode>(
-                &id,
-                self.sample_mode_col,
-            );
-        }
+    /// Read an action through a cached [`ActionStorage`] column.
+    pub(crate) fn get_action_by_column<T: ThreadSafe>(
+        &self,
+        col: ColumnId,
+        id: &ActionId,
+    ) -> Option<&impl Action<T>> {
+        self.table
+            .get_by_column::<ActionStorage<T>>(col, id)
+            .map(|a| &a.action)
+    }
+
+    /// Write a segment through a cached [`Segment`] column.
+    pub(crate) fn set_segment_by_column<T: ThreadSafe>(
+        &mut self,
+        id: ActionId,
+        segment: Segment<T>,
+        col: ColumnId,
+    ) {
+        self.table.insert_by_column(id, segment, col);
     }
 }
 
 impl Default for ActionTable {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-pub(crate) struct ActionCommand<'w> {
-    table: &'w mut TypeTable<ActionId>,
-    id: ActionId,
-    sample_mode_col: ColumnId,
-}
-
-impl ActionCommand<'_> {
-    pub(crate) fn mark(
-        &mut self,
-        sample_mode: SampleMode,
-    ) -> &mut Self {
-        debug_assert!(self.table.contains_row(&self.id));
-        self.table.insert_by_column(
-            self.id,
-            sample_mode,
-            self.sample_mode_col,
-        );
-        self
-    }
-
-    pub(crate) fn clear_mark(&mut self) -> &mut Self {
-        debug_assert!(self.table.contains_row(&self.id));
-        self.table.remove_by_column::<SampleMode>(
-            &self.id,
-            self.sample_mode_col,
-        );
-        self
-    }
-
-    /// Add or replace the segment of the action.
-    pub(crate) fn set_segment<T>(
-        &mut self,
-        segment: Segment<T>,
-    ) -> &mut Self
-    where
-        T: ThreadSafe,
-    {
-        debug_assert!(self.table.contains_row(&self.id));
-        self.table.insert(self.id, segment);
-        self
     }
 }
 
@@ -346,24 +298,5 @@ mod tests {
         // Last instance gone: the `Cleanup` closure must have
         // dropped the (now-empty) `IdRegistry<u32>` entry.
         assert_eq!(world.get_id::<u32>(&uid), None);
-    }
-
-    #[test]
-    fn clear_all_marks_removes_all_sample_modes() {
-        let mut world = ActionTable::new();
-
-        let id1 = world.add(1u32, field(), |x: &f32| *x).id();
-        let id2 = world.add(2u32, field(), |x: &f32| *x).id();
-
-        world.edit_action(id1).mark(SampleMode::Start);
-        world.edit_action(id2).mark(SampleMode::End);
-
-        assert!(world.table().contains::<SampleMode>(&id1));
-        assert!(world.table().contains::<SampleMode>(&id2));
-
-        world.clear_all_marks();
-
-        assert!(!world.table().contains::<SampleMode>(&id1));
-        assert!(!world.table().contains::<SampleMode>(&id2));
     }
 }

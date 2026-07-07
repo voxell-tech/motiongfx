@@ -7,8 +7,8 @@ use func_pointers::{BakeFnPtr, SampleFnPtr};
 
 use crate::ThreadSafe;
 use crate::action::{
-    ActionClip, ActionKey, ActionTable, InterpStorage, SampleMode,
-    Segment,
+    ActionClip, ActionId, ActionKey, ActionTable, InterpStorage,
+    SampleMode, Segment,
 };
 use crate::pipeline::func_pointers::{BakeFn, SampleFn};
 use crate::registry::AccessorRegistry;
@@ -173,7 +173,7 @@ impl PipelineUntyped {
 pub struct BakeCtx<'a, W> {
     pub world: &'a W,
     pub track: &'a Track,
-    pub action_world: &'a mut ActionTable,
+    pub action_table: &'a mut ActionTable,
     pub accessor_registry: &'a AccessorRegistry,
 }
 
@@ -184,6 +184,14 @@ where
     S: 'static,
     T: Clone + ThreadSafe,
 {
+    // Resolve the per-`T` columns once so the clip loop doesn't
+    // re-hash the `TypeId` on every access. No `T` action, no bake.
+    let Some(action_col) = ctx.action_table.action_column::<T>()
+    else {
+        return;
+    };
+    let segment_col = ctx.action_table.ensure_segment_column::<T>();
+
     for (key, span) in ctx.track.sequences_spans() {
         let Some(accessor) =
             ctx.accessor_registry.get::<S, T>(key.field())
@@ -192,7 +200,7 @@ where
         };
 
         let Some(&id) =
-            ctx.action_world.get_id(&key.subject_id().uid())
+            ctx.action_table.get_id(&key.subject_id().uid())
         else {
             continue;
         };
@@ -204,7 +212,9 @@ where
         let mut start = accessor.get_ref(source).clone();
 
         for ActionClip { id, .. } in ctx.track.clips(*span) {
-            let Some(action) = ctx.action_world.get_action::<T>(id)
+            let Some(action) = ctx
+                .action_table
+                .get_action_by_column::<T>(action_col, id)
             else {
                 continue;
             };
@@ -212,7 +222,11 @@ where
             let end = action(&start);
             let segment = Segment::new(start.clone(), end.clone());
 
-            ctx.action_world.edit_action(*id).set_segment(segment);
+            ctx.action_table.set_segment_by_column(
+                *id,
+                segment,
+                segment_col,
+            );
 
             start = end;
         }
@@ -221,8 +235,11 @@ where
 
 pub struct SampleCtx<'a, W> {
     pub world: &'a mut W,
-    pub action_world: &'a ActionTable,
+    pub action_table: &'a ActionTable,
     pub accessor_registry: &'a AccessorRegistry,
+    /// The queued actions for this pipeline, each with its
+    /// [`SampleMode`] resolved at queue time.
+    pub samples: &'a [(ActionId, SampleMode)],
 }
 
 pub fn sample<W, I, S, T>(ctx: SampleCtx<W>)
@@ -232,7 +249,7 @@ where
     S: 'static,
     T: Clone + ThreadSafe,
 {
-    let table = ctx.action_world.table();
+    let table = ctx.action_table.table();
     let Some(segment_col) = table.type_column::<Segment<T>>() else {
         return;
     };
@@ -241,29 +258,30 @@ where
         return;
     };
 
-    for (id, sample_mode) in table.iter::<SampleMode>() {
-        let Some(key) = ctx.action_world.key(id) else {
-            continue;
-        };
+    for &(id, sample_mode) in ctx.samples {
         let Some(segment) =
-            table.get_by_column::<Segment<T>>(segment_col, id)
+            table.get_by_column::<Segment<T>>(segment_col, &id)
         else {
             continue;
         };
         let Some(interp) =
-            table.get_by_column::<InterpStorage<T>>(interp_col, id)
+            table.get_by_column::<InterpStorage<T>>(interp_col, &id)
         else {
             continue;
         };
-        let ease = ctx.action_world.ease(id);
+
+        let Some(key) = ctx.action_table.key(&id) else {
+            continue;
+        };
+        let ease = ctx.action_table.ease(&id);
         let Some(accessor) =
             ctx.accessor_registry.get::<S, T>(key.field())
         else {
             continue;
         };
 
-        let Some(&id) =
-            ctx.action_world.get_id(&key.subject_id().uid())
+        let Some(&sid) =
+            ctx.action_table.get_id(&key.subject_id().uid())
         else {
             continue;
         };
@@ -273,15 +291,15 @@ where
             SampleMode::End => segment.end.clone(),
             SampleMode::Interp(t) => {
                 let t = match ease {
-                    Some(ease) => ease.0(*t),
-                    None => *t,
+                    Some(ease) => ease.0(t),
+                    None => t,
                 };
 
                 interp.0(&segment.start, &segment.end, t)
             }
         };
 
-        ctx.world.apply_source(id, |source| {
+        ctx.world.apply_source(sid, |source| {
             *accessor.get_mut(source) = target;
         });
     }
@@ -323,20 +341,22 @@ mod tests {
     }
 
     fn sample_mock(
-        action_world: &ActionTable,
+        action_table: &ActionTable,
         accessor_registry: &AccessorRegistry,
         world: &mut MockWorld,
+        samples: &[(ActionId, SampleMode)],
     ) {
         sample::<MockWorld, u32, f32, f32>(SampleCtx {
             world,
-            action_world,
+            action_table,
             accessor_registry,
+            samples,
         });
     }
 
-    /// Exercises the hand-rolled multi-column probe in `sample`:
-    /// `ActionKey`, `Segment<T>` and `InterpStorage<T>` are required
-    /// columns, driven from the `SampleMode` column.
+    /// Exercises the multi-column probe in `sample`: `ActionKey`,
+    /// `Segment<T>` and `InterpStorage<T>` are read per queued action,
+    /// with the `SampleMode` supplied by the queue.
     #[test]
     fn sample_join_reads_all_required_columns() {
         let field_acc = crate::path!(<f32>);
@@ -345,27 +365,42 @@ mod tests {
         let mut accessor_registry = AccessorRegistry::new();
         accessor_registry.register(field_acc);
 
-        let mut action_world = ActionTable::new();
-        let id = action_world
+        let mut action_table = ActionTable::new();
+        let id = action_table
             .add(0u32, field, |x: &f32| *x + 10.0)
             .with_interp(<f32 as Interpolation<()>>::interp)
             .id();
-        action_world
-            .edit_action(id)
-            .set_segment(Segment::new(0.0f32, 10.0f32));
+        let seg_col = action_table.ensure_segment_column::<f32>();
+        action_table.set_segment_by_column(
+            id,
+            Segment::new(0.0f32, 10.0f32),
+            seg_col,
+        );
 
         let mut world = MockWorld(0.0);
 
-        action_world.edit_action(id).mark(SampleMode::Start);
-        sample_mock(&action_world, &accessor_registry, &mut world);
+        sample_mock(
+            &action_table,
+            &accessor_registry,
+            &mut world,
+            &[(id, SampleMode::Start)],
+        );
         assert_eq!(world.0, 0.0);
 
-        action_world.edit_action(id).mark(SampleMode::End);
-        sample_mock(&action_world, &accessor_registry, &mut world);
+        sample_mock(
+            &action_table,
+            &accessor_registry,
+            &mut world,
+            &[(id, SampleMode::End)],
+        );
         assert_eq!(world.0, 10.0);
 
-        action_world.edit_action(id).mark(SampleMode::Interp(0.5));
-        sample_mock(&action_world, &accessor_registry, &mut world);
+        sample_mock(
+            &action_table,
+            &accessor_registry,
+            &mut world,
+            &[(id, SampleMode::Interp(0.5))],
+        );
         assert!((world.0 - 5.0).abs() < f32::EPSILON);
     }
 
@@ -379,19 +414,25 @@ mod tests {
         let mut accessor_registry = AccessorRegistry::new();
         accessor_registry.register(field_acc);
 
-        let mut action_world = ActionTable::new();
-        let id = action_world
+        let mut action_table = ActionTable::new();
+        let id = action_table
             .add(0u32, field, |x: &f32| *x + 10.0)
             .with_interp(<f32 as Interpolation<()>>::interp)
             .with_ease(crate::ease::quad::ease_in)
             .id();
-        action_world
-            .edit_action(id)
-            .set_segment(Segment::new(0.0f32, 10.0f32))
-            .mark(SampleMode::Interp(0.5));
-
+        let seg_col = action_table.ensure_segment_column::<f32>();
+        action_table.set_segment_by_column(
+            id,
+            Segment::new(0.0f32, 10.0f32),
+            seg_col,
+        );
         let mut world = MockWorld(0.0);
-        sample_mock(&action_world, &accessor_registry, &mut world);
+        sample_mock(
+            &action_table,
+            &accessor_registry,
+            &mut world,
+            &[(id, SampleMode::Interp(0.5))],
+        );
 
         // quad::ease_in(0.5) == 0.25, so the eased target is 2.5,
         // not the unmodified-t value of 5.0.
