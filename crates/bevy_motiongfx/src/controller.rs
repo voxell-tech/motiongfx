@@ -11,13 +11,17 @@ impl Plugin for ControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (fixed_rate_player_timing, realtime_player_timing)
+            (
+                fixed_rate_player_update,
+                realtime_player_update,
+                passive_player_update,
+            )
                 .in_set(MotionGfxSystems::Controller),
         );
     }
 }
 
-fn realtime_player_timing(
+fn realtime_player_update(
     mut motiongfx: ResMut<MotionGfxManager>,
     q_timelines: Query<(&TimelineId, &RealtimePlayer)>,
     time: Res<Time>,
@@ -34,7 +38,7 @@ fn realtime_player_timing(
     }
 }
 
-fn fixed_rate_player_timing(
+fn fixed_rate_player_update(
     mut motiongfx: ResMut<MotionGfxManager>,
     mut q_timelines: Query<(&TimelineId, &mut FixedRatePlayer)>,
 ) {
@@ -48,6 +52,21 @@ fn fixed_rate_player_timing(
 
             timeline.set_target_time(target_time);
             player.curr_frame += 1;
+        }
+    }
+}
+
+fn passive_player_update(
+    mut motiongfx: ResMut<MotionGfxManager>,
+    passive_players: Query<
+        (&TimelineId, &PassivePlayer),
+        Changed<PassivePlayer>,
+    >,
+) {
+    for (id, player) in passive_players.iter() {
+        if let Some(timeline) = motiongfx.get_timeline_mut(id) {
+            timeline.set_target_time(player.time);
+            timeline.set_target_track(player.track_index);
         }
     }
 }
@@ -169,5 +188,30 @@ impl FixedRatePlayer {
     ) -> &mut Self {
         self.is_playing = is_playing;
         self
+    }
+}
+#[derive(Default, Component)]
+pub struct PassivePlayer {
+    time: f32,
+    track_index: usize,
+}
+
+impl PassivePlayer {
+    #[inline]
+    pub fn set_time(&mut self, time: f32) {
+        self.time = time;
+    }
+
+    #[inline]
+    pub fn set_track_index(&mut self, track_index: usize) {
+        self.track_index = track_index;
+    }
+
+    pub fn get_time(&self) -> f32 {
+        self.time
+    }
+
+    pub fn get_track(&self) -> usize {
+        self.track_index
     }
 }
