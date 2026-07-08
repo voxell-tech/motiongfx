@@ -65,8 +65,10 @@ fn passive_player_update(
 ) {
     for (id, player) in passive_players.iter() {
         if let Some(timeline) = motiongfx.get_timeline_mut(id) {
-            timeline.set_target_time(player.time);
+            // Switch tracks first so that `set_target_time` clamps
+            // against the new track's duration, not the stale one.
             timeline.set_target_track(player.track_index);
+            timeline.set_target_time(player.time);
         }
     }
 }

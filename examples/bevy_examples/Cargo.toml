@@ -9,7 +9,8 @@ publish = false
 
 [dependencies]
 bevy_motiongfx = { workspace = true }
-bevy = { workspace = true, default-features = true , features = ["bevy_feathers"]} # TODO remember to move feathers when creating crate or module for timeline
+motiongfx_editor = { workspace = true }
+bevy = { workspace = true, default-features = true, features = ["debug"] }
 
 [lints]
 workspace = true

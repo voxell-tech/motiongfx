@@ -13,6 +13,7 @@ repository = "https://github.com/voxell-tech/motiongfx"
 motiongfx = { version = "0.3.0", path = "crates/motiongfx" }
 bevy_motiongfx = { version = "0.3.0", path = "crates/bevy_motiongfx" }
 peniko_motiongfx = { version = "0.3.0", path = "crates/peniko_motiongfx" }
+motiongfx_editor = { version = "0.3.0", path = "crates/motiongfx_editor" }
 
 # bevy
 bevy = { version = "0.19", default-features = false }
