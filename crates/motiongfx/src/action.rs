@@ -421,8 +421,16 @@ impl<T> InterpActionBuilder<'_, T> {
     pub fn play(self, duration: f32) -> TrackFragment {
         TrackFragment::single(
             self.inner.key,
-            ActionClip::new(self.id(), duration),
+            ActionClip::new(
+                self.id(),
+                duration.max(f32::MIN_POSITIVE),
+            ),
         )
+    }
+    /// Plays an animation instantaneously (shorthand for [`Self::play`]\ (0.0))
+    #[inline]
+    pub fn instant(self) -> TrackFragment {
+        self.play(0.0)
     }
 }
 
