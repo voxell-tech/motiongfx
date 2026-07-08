@@ -20,7 +20,7 @@ mod ui;
 use bevy::camera::{ClearColorConfig, Viewport};
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::{ThemeBackgroundColor, UiTheme};
-use bevy::feathers::{tokens, FeathersPlugins};
+use bevy::feathers::{FeathersPlugins, tokens};
 use bevy::prelude::*;
 use bevy::ui::{ScrollPosition, UiTargetCamera};
 use bevy::ui_widgets::{
@@ -177,8 +177,12 @@ fn setup_editor_ui(mut commands: Commands) {
                     ..default()
                 })
                 .with_children(|bar| {
-                    bar.spawn(themed_button(PlayPauseButton, 84.0, 26.0))
-                        .with_child(label(PlayPauseLabel, "Play"));
+                    bar.spawn(themed_button(
+                        PlayPauseButton,
+                        84.0,
+                        26.0,
+                    ))
+                    .with_child(label(PlayPauseLabel, "Play"));
                     bar.spawn(label(TimeLabel, "0.00s"));
                 });
 
@@ -231,7 +235,9 @@ fn setup_editor_ui(mut commands: Commands) {
                                 overflow: Overflow::scroll(),
                                 ..default()
                             },
-                            ThemeBackgroundColor(tokens::PANE_BODY_BG),
+                            ThemeBackgroundColor(
+                                tokens::PANE_BODY_BG,
+                            ),
                         ))
                         .with_children(|viewport| {
                             viewport
@@ -318,7 +324,9 @@ fn build_track_view(
         commands.entity(name_panel_id).with_child((
             Node {
                 height: Val::Px(ROW_HEIGHT),
-                margin: UiRect::bottom(Val::Px(ROW_STRIDE - ROW_HEIGHT)),
+                margin: UiRect::bottom(Val::Px(
+                    ROW_STRIDE - ROW_HEIGHT,
+                )),
                 align_items: AlignItems::Center,
                 ..default()
             },
@@ -471,12 +479,13 @@ fn update_camera_viewport(
 
     // `ComputedNode::size` and `Window::physical_*` are both in
     // physical pixels, which is what `Viewport` expects.
-    let win = UVec2::new(
-        window.physical_width(),
-        window.physical_height(),
-    );
+    let win =
+        UVec2::new(window.physical_width(), window.physical_height());
     let panel_h = panel.size().y.round() as u32;
-    let size = UVec2::new(win.x.max(1), win.y.saturating_sub(panel_h).max(1));
+    let size = UVec2::new(
+        win.x.max(1),
+        win.y.saturating_sub(panel_h).max(1),
+    );
 
     for mut camera in &mut q_camera {
         let unchanged = camera.viewport.as_ref().is_some_and(|v| {

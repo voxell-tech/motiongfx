@@ -13,7 +13,8 @@ use bevy::picking::events::{Drag, Pointer};
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui_widgets::{
-    Button, Slider, SliderOrientation, SliderRange, SliderValue, TrackClick,
+    Button, Slider, SliderOrientation, SliderRange, SliderValue,
+    TrackClick,
 };
 use bevy::window::SystemCursorIcon;
 
@@ -224,8 +225,8 @@ pub fn on_divider_drag(
         return;
     };
     if let Val::Px(w) = panel_node.width {
-        let new_w =
-            (w + delta).clamp(super::NAME_PANEL_MIN, super::NAME_PANEL_MAX);
+        let new_w = (w + delta)
+            .clamp(super::NAME_PANEL_MIN, super::NAME_PANEL_MAX);
         panel_node.width = Val::Px(new_w);
     }
 }
