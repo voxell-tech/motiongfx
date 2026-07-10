@@ -17,7 +17,7 @@
 
 mod ui;
 
-use bevy::camera::{ClearColorConfig, Viewport};
+use bevy::camera::{ClearColorConfig, RenderTarget, Viewport};
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::{ThemeBackgroundColor, UiTheme};
 use bevy::feathers::{FeathersPlugins, tokens};
@@ -33,11 +33,9 @@ use bevy_motiongfx::motiongfx::track::Span;
 use bevy_motiongfx::prelude::*;
 
 use ui::{
-    action_box, label, on_divider_drag, on_panel_resize,
-    playhead_line, row_color, scrub_slider, themed_button,
+    Divider, action_box, label, on_divider_drag, on_panel_resize,
+    playhead_line, row_color, row_label, scrub_slider, themed_button,
 };
-
-use crate::ui::Divider;
 
 /// Pixels per second of animation (horizontal zoom).
 const PIXELS_PER_SECOND: f32 = 160.0;
@@ -131,18 +129,20 @@ impl EditorPanel {
                         padding: UiRect::horizontal(Val::Px(4.0)),
                     }
                     Children [
-                        themed_button::<PlayPauseButton>(
-                            84.0,
-                            26.0,
-                        )
-                        Children [
-                            label::<PlayPauseLabel>( "Play")
-                            label::<TimeLabel>( "0.00s")
-                        ]
-
+                        (
+                            themed_button::<PlayPauseButton>(
+                                84.0,
+                                26.0,
+                            )
+                            Children [
+                                label::<PlayPauseLabel>("Play")
+                            ]
+                        ),
+                        (
+                            label::<TimeLabel>("0.00s")
+                        ),
                     ]
                 ),
-
 
             // --- Track area: name column | divider | scroll viewport. ---
 
@@ -198,14 +198,10 @@ pub struct TrackViewportCamera;
 
 /// Viewport where the Timeline, Track and action UI is displayed
 #[derive(SceneComponent, Default, Clone)]
-#[scene(TimelineViewProps)]
 struct TrackViewport;
 
-#[derive(Default)]
-struct TimelineViewProps;
-
 impl TrackViewport {
-    fn scene(props: TimelineViewProps) -> impl Scene {
+    fn scene() -> impl Scene {
         bsn! {
                 TrackViewport
                 ScrollArea
@@ -239,82 +235,12 @@ impl TrackViewport {
 
 /// The scrubbable track: a horizontal slider whose value is playback
 /// time in seconds. Holds the action boxes and the playhead thumb.
-#[derive(SceneComponent, Default, Clone)]
-#[scene(TimelineContentProps)]
+///
+/// The static skeleton is spawned by [`TrackViewport`]; its size, time
+/// range and action boxes are filled in by [`build_timeline_view`] once
+/// a timeline exists.
+#[derive(Component, Default, Clone)]
 struct TimelineContent;
-
-#[derive(Default)]
-struct TimelineContentProps {
-    tracks: Box<[Track]>,
-}
-
-impl TimelineContent {
-    fn scene(
-        TimelineContentProps { tracks }: TimelineContentProps,
-    ) -> impl Scene {
-        let (mut duration, mut row_count) = (0.0, 0);
-        let track_rows = tracks.iter().map(|track| {
-            duration += track.duration();
-
-            // Get Action keys and spans
-            row_count = row_count.max(track.sequences_spans().len());
-            let mut rows: Vec<(&ActionKey, &Span)> = track
-                .sequences_spans()
-                .iter()
-                .map(|(k, s)| (k, s))
-                .collect();
-            rows.sort_by(|a, b| {
-                let start = |span: &Span| {
-                    track
-                        .clips(*span)
-                        .first()
-                        .map(|c| c.start)
-                        .unwrap_or(f32::INFINITY)
-                };
-                start(a.1).total_cmp(&start(b.1))
-            });
-            // Order rows by first-clip start so the layout reads left-to-right.
-            // Ch
-            for (row, (key, span)) in rows.iter().enumerate() {
-                let color = row_color(row);
-                let top = TRACK_TOP_PADDING + row as f32 * ROW_STRIDE;
-
-                // NamePanel Child
-                let name_id = Box::new(bsn! {
-                    Node {
-                        height: Val::Px(ROW_HEIGHT),
-                        margin: UiRect::bottom(Val::Px(
-                            ROW_STRIDE - ROW_HEIGHT,
-                        )),
-                        align_items: AlignItems::Center,
-                    }
-                    label::<RowLabel>( key.field().field_path())
-                });
-                // Content child
-                for clip in track.clips(**span) {
-                    let left = clip.start * PIXELS_PER_SECOND;
-                    let width =
-                        (clip.duration * PIXELS_PER_SECOND).max(2.0);
-
-                    let action_boxes = Box::new(bsn! {
-                        action_box(
-                        left, top, width, ROW_HEIGHT, color,
-                    )});
-                }
-            }
-        });
-        let content_width = (duration * PIXELS_PER_SECOND).max(1.0);
-        let content_height =
-            TRACK_TOP_PADDING * 2.0 + row_count as f32 * ROW_STRIDE;
-
-        bsn! {
-            TimelineContent
-            SliderRange::new(0.0, duration.max(f32::EPSILON))
-        };
-
-        bsn! {}
-    }
-}
 
 #[derive(Component, Default, Clone)]
 pub struct NamePanel;
@@ -352,6 +278,11 @@ fn setup_editor_ui(mut commands: Commands) {
     });
 }
 
+/// Fills in the timeline view once a timeline exists. Runs every frame
+/// until it finds one (the timeline is built in the user's `Startup`),
+/// then latches via [`EditorState::built`].
+///
+/// Only the first track is shown.
 fn build_timeline_view(
     mut commands: Commands,
     mut state: ResMut<EditorState>,
@@ -361,7 +292,6 @@ fn build_timeline_view(
     q_content: Query<Entity, With<TimelineContent>>,
     q_name_panel: Query<Entity, With<NamePanel>>,
 ) {
-    // Every frame, check if the timeline is there.
     if state.built {
         return;
     }
@@ -372,29 +302,76 @@ fn build_timeline_view(
     let Some(timeline) = manager.get_timeline(&timeline_id) else {
         return;
     };
-    let tracks = timeline.tracks();
-
+    // Focus on the first track only.
+    let Some(track) = timeline.tracks().first() else {
+        return;
+    };
     let Ok(content) = q_content.single() else {
         return;
     };
-    let Ok(name_panel_id) = q_name_panel.single() else {
+    let Ok(name_panel) = q_name_panel.single() else {
         return;
     };
 
-    commands.spawn_scene(bsn! {
-        @TimelineContent {
-            @tracks: tracks
-        }
+    // Order rows by first-clip start so the layout reads left-to-right.
+    let mut rows: Vec<(&ActionKey, &Span)> = track
+        .sequences_spans()
+        .iter()
+        .map(|(k, s)| (k, s))
+        .collect();
+    rows.sort_by(|a, b| {
+        let start = |span: &Span| {
+            track
+                .clips(*span)
+                .first()
+                .map(|c| c.start)
+                .unwrap_or(f32::INFINITY)
+        };
+        start(a.1).total_cmp(&start(b.1))
     });
 
+    let duration = track.duration();
+    let content_width = (duration * PIXELS_PER_SECOND).max(1.0);
+    let content_height =
+        TRACK_TOP_PADDING * 2.0 + rows.len() as f32 * ROW_STRIDE;
+
+    // Size the slider track and give it the real time range.
+    if let Ok(mut node) = q_nodes.get_mut(content) {
+        node.width = Val::Px(content_width);
+        node.min_width = Val::Px(content_width);
+        node.height = Val::Px(content_height);
+        node.min_height = Val::Px(content_height);
+    }
+    commands
+        .entity(content)
+        .insert(SliderRange::new(0.0, duration.max(f32::EPSILON)));
+
+    // Spawn each row: a name-column label plus one box per clip.
+    // `ChildOf` appends, leaving the playhead thumb child intact.
+    for (row, (key, span)) in rows.iter().enumerate() {
+        let color = row_color(row);
+        let top = TRACK_TOP_PADDING + row as f32 * ROW_STRIDE;
+
+        commands
+            .spawn_scene(row_label(key.field().field_path()))
+            .insert(ChildOf(name_panel));
+
+        for clip in track.clips(**span) {
+            let left = clip.start * PIXELS_PER_SECOND;
+            let width = (clip.duration * PIXELS_PER_SECOND).max(2.0);
+
+            commands
+                .spawn_scene(action_box(
+                    left, top, width, ROW_HEIGHT, color,
+                ))
+                .insert(ChildOf(content));
+        }
+    }
+
     state.timeline = Some(timeline_id);
-    state.duration = tracks[0].duration(); //Only first track
+    state.duration = duration;
     state.built = true;
 }
-
-/// Marker for the row name labels in the left column.
-#[derive(Component, Clone, Default)]
-struct RowLabel;
 
 /// Scrub the timeline in response to slider drags.
 fn on_scrub(
@@ -503,13 +480,17 @@ fn update_play_label(
     }
 }
 
-/// Confine [`EditorViewportCamera`]s to the window region above the
-/// panel. The camera system re-derives the projection's aspect ratio
-/// from this viewport, so nothing is stretched.
+/// Confine every window-targeting scene camera (i.e. all but the
+/// editor's own [`TrackViewportCamera`]) to the region above the panel.
+/// The camera system re-derives the projection's aspect ratio from this
+/// viewport, so nothing is stretched.
 fn update_camera_viewport(
     q_panel: Query<&ComputedNode, With<EditorPanel>>,
     q_window: Query<&Window, With<PrimaryWindow>>,
-    mut q_camera: Query<&mut Camera, Without<TrackViewportCamera>>,
+    mut q_camera: Query<
+        (&mut Camera, Option<&RenderTarget>),
+        Without<TrackViewportCamera>,
+    >,
 ) {
     let Ok(panel) = q_panel.single() else {
         return;
@@ -528,7 +509,15 @@ fn update_camera_viewport(
         win.y.saturating_sub(panel_h).max(1),
     );
 
-    for mut camera in &mut q_camera {
+    for (mut camera, target) in &mut q_camera {
+        // Cameras rendering to a texture aren't sized by the window.
+        // An absent `RenderTarget` defaults to the primary window.
+        if target
+            .is_some_and(|t| !matches!(t, RenderTarget::Window(_)))
+        {
+            continue;
+        }
+
         let unchanged = camera.viewport.as_ref().is_some_and(|v| {
             v.physical_position == UVec2::ZERO
                 && v.physical_size == size

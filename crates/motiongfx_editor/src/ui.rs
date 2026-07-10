@@ -47,8 +47,8 @@ where
     bsn! {
         M
         Button
-        ButtonVariant
-        Hovered::default()
+        template_value(ButtonVariant::Normal)
+        Hovered
         Node {
             width: Val::Px(width),
             height: Val::Px(height),
@@ -73,6 +73,27 @@ pub fn label<M: Component + Default + Unpin + Clone>(
             font_size: FontSize::Px(13.0)
         }
 
+    }
+}
+
+/// Marker for the row name labels in the left column.
+#[derive(Component, Default, Clone)]
+pub struct RowLabel;
+
+/// One entry in the name column, sized to line up with the action-box
+/// row of the same index.
+pub fn row_label(text: &str) -> impl Scene {
+    let height = Val::Px(super::ROW_HEIGHT);
+    let margin =
+        UiRect::bottom(Val::Px(super::ROW_STRIDE - super::ROW_HEIGHT));
+
+    bsn! {
+        Node {
+            height,
+            margin,
+            align_items: AlignItems::Center,
+        }
+        label::<RowLabel>(text)
     }
 }
 
@@ -140,7 +161,6 @@ pub fn scrub_slider(width: f32, duration: f32) -> impl Scene {
 }
 
 pub const DIVIDER_WIDTH: f32 = 6.0;
-// pub const PANEL_HANDLE_HEIGHT: f32 = 6.0;
 
 #[derive(SceneComponent, Default, Clone)]
 #[scene(DividerProps)]
