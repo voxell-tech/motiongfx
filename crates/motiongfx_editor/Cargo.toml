@@ -1,0 +1,17 @@
+[package]
+name = "motiongfx_editor"
+description = "A bevy_ui based editor for the MotionGfx framework."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+bevy_motiongfx = { workspace = true }
+bevy = { workspace = true, default-features = true, features = [
+    "bevy_feathers",
+    "bevy_ui_widgets",
+] }
+
+[lints]
+workspace = true

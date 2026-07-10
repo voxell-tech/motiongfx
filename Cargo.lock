@@ -755,6 +755,7 @@ version = "0.3.0"
 dependencies = [
  "bevy",
  "bevy_motiongfx",
+ "motiongfx_editor",
 ]
 
 [[package]]
@@ -3451,6 +3452,14 @@ dependencies = [
  "bevy_platform",
  "field_path",
  "nonempty",
+]
+
+[[package]]
+name = "motiongfx_editor"
+version = "0.3.0"
+dependencies = [
+ "bevy",
+ "bevy_motiongfx",
 ]
 
 [[package]]
