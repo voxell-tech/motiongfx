@@ -71,6 +71,7 @@ impl Plugin for MotionGfxEditorPlugin {
                 (
                     build_timeline_view,
                     update_playhead,
+                    stop_at_track_end,
                     update_play_label,
                     sync_name_scroll,
                     update_camera_viewport,
@@ -103,12 +104,7 @@ impl EditorPanel {
                 width: Val::Percent(100.0),
                 height: Val::Px(PANEL_HEIGHT),
                 flex_direction: FlexDirection::Column,
-                padding: UiRect::new(
-                    Val::Px(PANEL_PADDING),
-                    Val::Px(PANEL_PADDING),
-                    Val::Px(0.0),
-                    Val::Px(PANEL_PADDING),
-                ),
+                padding: UiRect::bottom(Val::Px(PANEL_PADDING)),
             }
             EditorPanel
             ThemeBackgroundColor(tokens::WINDOW_BG)
@@ -126,7 +122,9 @@ impl EditorPanel {
                         flex_shrink: 0.0,
                         align_items: AlignItems::Center,
                         column_gap: Val::Px(12.0),
-                        padding: UiRect::horizontal(Val::Px(4.0)),
+                        padding: UiRect::horizontal(Val::Px(
+                            PANEL_PADDING,
+                        )),
                     }
                     Children [
                         (
@@ -155,6 +153,9 @@ impl EditorPanel {
                         // (flex items default to `min-height: auto`).
                         min_height: Val::Px(0.0),
                         flex_direction: FlexDirection::Row,
+                        padding: UiRect::horizontal(Val::Px(
+                            PANEL_PADDING,
+                        )),
                     }
 
                     Children [
@@ -461,6 +462,45 @@ fn update_playhead(
     }
     for mut text in &mut q_time_label {
         *text = Text::new(format!("{time:.2}s"));
+    }
+}
+
+/// Clear [`RealtimePlayer::is_playing`] once playback reaches the end
+/// of the current track.
+///
+/// [`Timeline::set_target_time`] clamps to the track's duration, so the
+/// player would otherwise keep "playing" against the clamp and the
+/// button would stay stuck on "Pause".
+///
+/// [`Timeline::set_target_time`]: bevy_motiongfx::prelude::Timeline::set_target_time
+fn stop_at_track_end(
+    state: Res<EditorState>,
+    manager: Res<MotionGfxManager>,
+    mut q_players: Query<&mut RealtimePlayer>,
+) {
+    let Some(timeline_id) = state.timeline else {
+        return;
+    };
+    let Some(timeline) = manager.get_timeline(&timeline_id) else {
+        return;
+    };
+    if state.duration <= 0.0 {
+        return;
+    }
+
+    // Playing backwards stops at the start instead.
+    for mut player in &mut q_players {
+        if !player.is_playing {
+            continue;
+        }
+        let at_end = if player.time_scale >= 0.0 {
+            timeline.target_time() >= state.duration
+        } else {
+            timeline.target_time() <= 0.0
+        };
+        if at_end {
+            player.is_playing = false;
+        }
     }
 }
 
