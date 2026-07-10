@@ -13,8 +13,8 @@ use bevy::picking::events::{Drag, Pointer};
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui_widgets::{
-    Button, Slider, SliderOrientation, SliderRange, SliderValue,
-    TrackClick,
+    Button, ControlOrientation, Slider, SliderOrientation,
+    SliderRange, SliderValue, TrackClick,
 };
 use bevy::window::SystemCursorIcon;
 
@@ -40,37 +40,40 @@ pub fn row_color(row: usize) -> Color {
 ///
 /// Emits [`bevy::ui_widgets::Activate`] when clicked or activated via
 /// the keyboard; observe that event on the spawned entity.
-pub fn themed_button<M: Component>(
-    marker: M,
-    width: f32,
-    height: f32,
-) -> impl Bundle {
-    (
-        marker,
-        Button,
-        ButtonVariant::Normal,
-        Hovered::default(),
+pub fn themed_button<M>(width: f32, height: f32) -> impl Scene
+where
+    M: Component + Default + Unpin + Clone,
+{
+    bsn! {
+        M
+        Button
+        ButtonVariant
+        Hovered::default()
         Node {
             width: Val::Px(width),
             height: Val::Px(height),
             align_items: AlignItems::Center,
             justify_content: JustifyContent::Center,
             border_radius: BorderRadius::all(Val::Px(6.0)),
-            ..default()
-        },
-        ThemeBackgroundColor(tokens::BUTTON_BG),
-        EntityCursor::System(SystemCursorIcon::Pointer),
-    )
+        }
+        ThemeBackgroundColor(tokens::BUTTON_BG)
+        EntityCursor::System(SystemCursorIcon::Pointer)
+    }
 }
 
 /// A theme-inheriting text label.
-pub fn label<M: Component>(marker: M, text: &str) -> impl Bundle {
-    (
-        marker,
-        Text::new(text),
-        ThemedText,
-        TextFont::from_font_size(13.0),
-    )
+pub fn label<M: Component + Default + Unpin + Clone>(
+    text: &str,
+) -> impl Scene {
+    bsn! {
+        M
+        Text({text})
+        ThemedText
+        TextFont {
+            font_size: FontSize::Px(13.0)
+        }
+
+    }
 }
 
 pub fn action_box(
@@ -79,8 +82,8 @@ pub fn action_box(
     width: f32,
     height: f32,
     color: Color,
-) -> impl Bundle {
-    (
+) -> impl Scene {
+    bsn! {
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px(left),
@@ -88,80 +91,106 @@ pub fn action_box(
             width: Val::Px(width),
             height: Val::Px(height),
             border_radius: BorderRadius::all(Val::Px(6.0)),
-            ..default()
-        },
-        BackgroundColor(color),
-    )
+        }
+        BackgroundColor(color)
+    }
 }
 
 /// The playhead line. Doubles as the [`Slider`]'s thumb so the headless
 /// slider drag math accounts for its width.
-pub fn playhead_line(left: f32) -> impl Bundle {
-    (
-        bevy::ui_widgets::SliderThumb,
+pub fn playhead_line(left: f32) -> impl Scene {
+    bsn! {
+        bevy::ui_widgets::SliderThumb
         Node {
             position_type: PositionType::Absolute,
             top: Val::Px(0.0),
             bottom: Val::Px(0.0),
             left: Val::Px(left),
             width: Val::Px(2.0),
-            ..default()
-        },
-        ZIndex(10),
-        BackgroundColor(PLAYHEAD_COLOR),
-    )
+        }
+        ZIndex(10)
+        BackgroundColor(PLAYHEAD_COLOR)
+    }
 }
 
 /// The scrubbable timeline track. The whole track is a horizontal
 /// [`Slider`] whose value is the playback time in seconds, so clicking
 /// or dragging anywhere on it scrubs. Emits
 /// [`bevy::ui_widgets::ValueChange<f32>`].
-pub fn scrub_slider(width: f32, duration: f32) -> impl Bundle {
-    (
+pub fn scrub_slider(width: f32, duration: f32) -> impl Scene {
+    bsn! {
         // `Snap` makes a click jump the value to the cursor; combined
         // with the controlled `SliderValue` writeback in `on_scrub`,
         // dragging then follows the cursor absolutely.
         Slider {
             track_click: TrackClick::Snap,
             orientation: SliderOrientation::Horizontal,
-        },
-        SliderValue(0.0),
-        SliderRange::new(0.0, duration.max(f32::EPSILON)),
-        Hovered::default(),
-        EntityCursor::System(SystemCursorIcon::Pointer),
+        }
+        SliderValue(0.0)
+        SliderRange::new(0.0, duration.max(f32::EPSILON))
+        Hovered
+        EntityCursor::System(SystemCursorIcon::Pointer)
         Node {
             position_type: PositionType::Relative,
             width: Val::Px(width),
             min_width: Val::Px(width),
             height: Val::Percent(100.0),
-            ..default()
-        },
-    )
+        }
+    }
 }
 
-pub const DIVIDER_WIDTH: f32 = 4.0;
-pub const PANEL_HANDLE_HEIGHT: f32 = 6.0;
+pub const DIVIDER_WIDTH: f32 = 6.0;
+// pub const PANEL_HANDLE_HEIGHT: f32 = 6.0;
 
-#[derive(Component)]
-pub struct ResizeDivider;
+#[derive(SceneComponent, Default, Clone)]
+#[scene(DividerProps)]
+pub struct Divider;
 
-#[derive(Component)]
-pub struct PanelResizeHandle;
+pub struct DividerProps {
+    pub thickness: Val,
+    pub orientation: ControlOrientation,
+}
 
-/// A full-width grab handle along the top edge of the panel. Dragging
-/// it resizes the (bottom-anchored) panel vertically.
-pub fn panel_resize_handle() -> impl Bundle {
-    (
-        PanelResizeHandle,
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Px(PANEL_HANDLE_HEIGHT),
-            flex_shrink: 0.0,
-            ..default()
-        },
-        ThemeBackgroundColor(tokens::PANE_HEADER_DIVIDER),
-        EntityCursor::System(SystemCursorIcon::NsResize),
-    )
+impl Default for DividerProps {
+    fn default() -> Self {
+        Self {
+            thickness: Val::Px(DIVIDER_WIDTH),
+            orientation: ControlOrientation::Horizontal,
+        }
+    }
+}
+
+impl Divider {
+    pub fn scene(
+        DividerProps {
+            thickness,
+            orientation,
+        }: DividerProps,
+    ) -> impl Scene {
+        let (height, width, cursor_icon) = match orientation {
+            ControlOrientation::Horizontal => (
+                thickness,
+                Val::Percent(100.0),
+                SystemCursorIcon::NsResize,
+            ),
+            ControlOrientation::Vertical => (
+                Val::Percent(100.0),
+                thickness,
+                SystemCursorIcon::EwResize,
+            ),
+        };
+        bsn! {
+            Divider
+            Node {
+                width,
+                height,
+                flex_shrink: 0.0,
+            }
+            ThemeBackgroundColor(tokens::PANE_HEADER_DIVIDER)
+            EntityCursor::System(cursor_icon)
+
+        }
+    }
 }
 
 /// Drag handler for the panel's top-edge resize handle.
@@ -192,20 +221,6 @@ pub fn on_panel_resize(
         let new_h = (h - delta).clamp(super::PANEL_MIN_HEIGHT, max);
         panel_node.height = Val::Px(new_h);
     }
-}
-
-pub fn resize_divider() -> impl Bundle {
-    (
-        ResizeDivider,
-        Node {
-            width: Val::Px(DIVIDER_WIDTH),
-            height: Val::Percent(100.0),
-            flex_shrink: 0.0,
-            ..default()
-        },
-        ThemeBackgroundColor(tokens::PANE_HEADER_DIVIDER),
-        EntityCursor::System(SystemCursorIcon::EwResize),
-    )
 }
 
 /// Drag handler for the name-panel / track resize divider.

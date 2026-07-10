@@ -24,7 +24,8 @@ use bevy::feathers::{FeathersPlugins, tokens};
 use bevy::prelude::*;
 use bevy::ui::{ScrollPosition, UiTargetCamera};
 use bevy::ui_widgets::{
-    Activate, ScrollArea, SliderRange, SliderValue, ValueChange,
+    Activate, ControlOrientation, ScrollArea, SliderRange,
+    SliderValue, ValueChange,
 };
 use bevy::window::PrimaryWindow;
 use bevy_motiongfx::motiongfx::action::ActionKey;
@@ -33,9 +34,10 @@ use bevy_motiongfx::prelude::*;
 
 use ui::{
     action_box, label, on_divider_drag, on_panel_resize,
-    panel_resize_handle, playhead_line, resize_divider, row_color,
-    scrub_slider, themed_button,
+    playhead_line, row_color, scrub_slider, themed_button,
 };
+
+use crate::ui::Divider;
 
 /// Pixels per second of animation (horizontal zoom).
 const PIXELS_PER_SECOND: f32 = 160.0;
@@ -69,7 +71,7 @@ impl Plugin for MotionGfxEditorPlugin {
             .add_systems(
                 Update,
                 (
-                    build_track_view,
+                    build_timeline_view,
                     update_playhead,
                     update_play_label,
                     sync_name_scroll,
@@ -77,8 +79,7 @@ impl Plugin for MotionGfxEditorPlugin {
                 )
                     .chain(),
             )
-            .add_observer(on_play_pause)
-            .add_observer(on_scrub);
+            .add_observer(on_play_pause);
     }
 }
 
@@ -90,55 +91,12 @@ struct EditorState {
 }
 
 /// Marker for the root panel node (its height is resizable).
-#[derive(Component)]
+#[derive(SceneComponent, Default, Clone)]
 pub struct EditorPanel;
 
-/// Add to a camera to confine its rendered view to the window area
-/// above the editor panel (aspect ratio is preserved automatically).
-#[derive(Component)]
-pub struct EditorViewportCamera;
-
-#[derive(Component)]
-struct TrackViewport;
-
-/// The scrubbable track: a horizontal slider whose value is playback
-/// time in seconds. Holds the action boxes and the playhead thumb.
-#[derive(Component)]
-struct TrackContent;
-
-#[derive(Component)]
-pub struct NamePanel;
-
-#[derive(Component)]
-struct Playhead;
-
-#[derive(Component)]
-struct PlayPauseButton;
-
-#[derive(Component)]
-struct PlayPauseLabel;
-
-#[derive(Component)]
-struct TimeLabel;
-
-fn setup_editor_ui(mut commands: Commands) {
-    // The editor UI renders to its own full-window 2D camera so that
-    // confining a scene camera's viewport (see `update_camera_viewport`)
-    // doesn't also shrink the UI. `ClearColorConfig::None` keeps the
-    // scene camera's output; `order: 1` draws the UI on top.
-    let ui_camera = commands
-        .spawn((
-            Camera2d,
-            Camera {
-                order: 1,
-                clear_color: ClearColorConfig::None,
-                ..default()
-            },
-        ))
-        .id();
-
-    commands
-        .spawn((
+impl EditorPanel {
+    fn scene() -> impl Scene {
+        bsn! {
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(0.0),
@@ -153,116 +111,257 @@ fn setup_editor_ui(mut commands: Commands) {
                     Val::Px(0.0),
                     Val::Px(PANEL_PADDING),
                 ),
-                ..default()
-            },
-            EditorPanel,
-            UiTargetCamera(ui_camera),
-            ThemeBackgroundColor(tokens::WINDOW_BG),
-        ))
-        .with_children(|panel| {
+            }
+            EditorPanel
+            ThemeBackgroundColor(tokens::WINDOW_BG)
+            Children [
             // --- Top-edge grab handle to resize the panel height. ---
-            panel
-                .spawn(panel_resize_handle())
-                .observe(on_panel_resize);
-
+                (
+                    @Divider
+                    on(on_panel_resize)
+                ),
             // --- Control bar: play/pause + time readout. ---
-            panel
-                .spawn(Node {
-                    width: Val::Percent(100.0),
-                    height: Val::Px(CONTROL_BAR_HEIGHT),
-                    flex_shrink: 0.0,
-                    align_items: AlignItems::Center,
-                    column_gap: Val::Px(12.0),
-                    padding: UiRect::horizontal(Val::Px(4.0)),
-                    ..default()
-                })
-                .with_children(|bar| {
-                    bar.spawn(themed_button(
-                        PlayPauseButton,
-                        84.0,
-                        26.0,
-                    ))
-                    .with_child(label(PlayPauseLabel, "Play"));
-                    bar.spawn(label(TimeLabel, "0.00s"));
-                });
+                (
+                    Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Px(CONTROL_BAR_HEIGHT),
+                        flex_shrink: 0.0,
+                        align_items: AlignItems::Center,
+                        column_gap: Val::Px(12.0),
+                        padding: UiRect::horizontal(Val::Px(4.0)),
+                    }
+                    Children [
+                        themed_button::<PlayPauseButton>(
+                            84.0,
+                            26.0,
+                        )
+                        Children [
+                            label::<PlayPauseLabel>( "Play")
+                            label::<TimeLabel>( "0.00s")
+                        ]
+
+                    ]
+                ),
+
 
             // --- Track area: name column | divider | scroll viewport. ---
-            panel
-                .spawn(Node {
-                    width: Val::Percent(100.0),
-                    flex_grow: 1.0,
-                    // Allow this flex item to shrink below its content
-                    // height so the viewport below can clip and scroll
-                    // (flex items default to `min-height: auto`).
-                    min_height: Val::Px(0.0),
-                    flex_direction: FlexDirection::Row,
-                    ..default()
-                })
-                .with_children(|track_area| {
-                    track_area.spawn((
-                        NamePanel,
-                        Node {
-                            width: Val::Px(NAME_PANEL_WIDTH),
-                            height: Val::Percent(100.0),
-                            min_height: Val::Px(0.0),
-                            flex_shrink: 0.0,
-                            flex_direction: FlexDirection::Column,
-                            overflow: Overflow::scroll_y(),
-                            padding: UiRect::top(Val::Px(
-                                TRACK_TOP_PADDING,
-                            )),
-                            ..default()
-                        },
-                        ThemeBackgroundColor(tokens::PANE_BODY_BG),
-                    ));
 
-                    track_area
-                        .spawn(resize_divider())
-                        .observe(on_divider_drag);
+                (
+                    Node {
+                        width: Val::Percent(100.0),
+                        flex_grow: 1.0,
+                        // Allow this flex item to shrink below its content
+                        // height so the viewport below can clip and scroll
+                        // (flex items default to `min-height: auto`).
+                        min_height: Val::Px(0.0),
+                        flex_direction: FlexDirection::Row,
+                    }
 
-                    track_area
-                        .spawn((
-                            TrackViewport,
-                            ScrollArea,
+                    Children [
+                        (
+                            NamePanel
                             Node {
-                                width: Val::Percent(100.0),
-                                flex_grow: 1.0,
-                                // `min: 0` lets the viewport shrink
-                                // below its (tall/wide) content so it
-                                // actually clips and scrolls.
-                                min_width: Val::Px(0.0),
+                                width: Val::Px(NAME_PANEL_WIDTH),
+                                height: Val::Percent(100.0),
                                 min_height: Val::Px(0.0),
-                                overflow: Overflow::scroll(),
-                                ..default()
-                            },
-                            ThemeBackgroundColor(
-                                tokens::PANE_BODY_BG,
-                            ),
-                        ))
-                        .with_children(|viewport| {
-                            viewport
-                                .spawn((
-                                    TrackContent,
-                                    scrub_slider(1.0, 1.0),
-                                ))
-                                .with_child((
-                                    Playhead,
-                                    playhead_line(0.0),
-                                ));
-                        });
-                });
-        });
+                                flex_shrink: 0.0,
+                                flex_direction: FlexDirection::Column,
+                                overflow: Overflow::scroll_y(),
+                                padding: UiRect::top(Val::Px(
+                                    TRACK_TOP_PADDING,
+                                )),
+                            }
+                            ThemeBackgroundColor(tokens::PANE_BODY_BG)
+                        ),
+                        (
+                            @Divider {
+                                @thickness: Val::Px(4.0),
+                                @orientation: ControlOrientation::Vertical
+                            }
+                            on(on_divider_drag)
+                        ),
+                        (
+                            @TrackViewport
+                        ),
+                    ]
+                )
+            ]
+        }
+    }
 }
 
-fn build_track_view(
+/// Marks camera which renders to the editor panel
+/// Other camera's are kept
+/// above the editor panel (aspect ratio is preserved automatically).
+#[derive(Component, Default, Clone)]
+pub struct TrackViewportCamera;
+
+/// Viewport where the Timeline, Track and action UI is displayed
+#[derive(SceneComponent, Default, Clone)]
+#[scene(TimelineViewProps)]
+struct TrackViewport;
+
+#[derive(Default)]
+struct TimelineViewProps;
+
+impl TrackViewport {
+    fn scene(props: TimelineViewProps) -> impl Scene {
+        bsn! {
+                TrackViewport
+                ScrollArea
+                Node {
+                    width: Val::Percent(100.0),
+                    flex_grow: 1.0,
+                    // `min: 0` lets the viewport shrink
+                    // below its (tall/wide) content so it
+                    // actually clips and scrolls.
+                    min_width: Val::Px(0.0),
+                    min_height: Val::Px(0.0),
+                    overflow: Overflow::scroll(),
+                }
+                ThemeBackgroundColor(
+                    tokens::PANE_BODY_BG,
+                )
+
+                Children [
+                    TimelineContent
+                    scrub_slider(1.0, 1.0)
+                    on(on_scrub)
+                    Children [
+                        Playhead
+                        playhead_line(0.0)
+                    ]
+                ]
+
+        }
+    }
+}
+
+/// The scrubbable track: a horizontal slider whose value is playback
+/// time in seconds. Holds the action boxes and the playhead thumb.
+#[derive(SceneComponent, Default, Clone)]
+#[scene(TimelineContentProps)]
+struct TimelineContent;
+
+#[derive(Default)]
+struct TimelineContentProps {
+    tracks: Box<[Track]>,
+}
+
+impl TimelineContent {
+    fn scene(
+        TimelineContentProps { tracks }: TimelineContentProps,
+    ) -> impl Scene {
+        let (mut duration, mut row_count) = (0.0, 0);
+        let track_rows = tracks.iter().map(|track| {
+            duration += track.duration();
+
+            // Get Action keys and spans
+            row_count = row_count.max(track.sequences_spans().len());
+            let mut rows: Vec<(&ActionKey, &Span)> = track
+                .sequences_spans()
+                .iter()
+                .map(|(k, s)| (k, s))
+                .collect();
+            rows.sort_by(|a, b| {
+                let start = |span: &Span| {
+                    track
+                        .clips(*span)
+                        .first()
+                        .map(|c| c.start)
+                        .unwrap_or(f32::INFINITY)
+                };
+                start(a.1).total_cmp(&start(b.1))
+            });
+            // Order rows by first-clip start so the layout reads left-to-right.
+            // Ch
+            for (row, (key, span)) in rows.iter().enumerate() {
+                let color = row_color(row);
+                let top = TRACK_TOP_PADDING + row as f32 * ROW_STRIDE;
+
+                // NamePanel Child
+                let name_id = Box::new(bsn! {
+                    Node {
+                        height: Val::Px(ROW_HEIGHT),
+                        margin: UiRect::bottom(Val::Px(
+                            ROW_STRIDE - ROW_HEIGHT,
+                        )),
+                        align_items: AlignItems::Center,
+                    }
+                    label::<RowLabel>( key.field().field_path())
+                });
+                // Content child
+                for clip in track.clips(**span) {
+                    let left = clip.start * PIXELS_PER_SECOND;
+                    let width =
+                        (clip.duration * PIXELS_PER_SECOND).max(2.0);
+
+                    let action_boxes = Box::new(bsn! {
+                        action_box(
+                        left, top, width, ROW_HEIGHT, color,
+                    )});
+                }
+            }
+        });
+        let content_width = (duration * PIXELS_PER_SECOND).max(1.0);
+        let content_height =
+            TRACK_TOP_PADDING * 2.0 + row_count as f32 * ROW_STRIDE;
+
+        bsn! {
+            TimelineContent
+            SliderRange::new(0.0, duration.max(f32::EPSILON))
+        };
+
+        bsn! {}
+    }
+}
+
+#[derive(Component, Default, Clone)]
+pub struct NamePanel;
+
+#[derive(Component, Default, Clone)]
+struct Playhead;
+
+#[derive(Component, Default, Clone)]
+struct PlayPauseButton;
+
+#[derive(Component, Default, Clone)]
+struct PlayPauseLabel;
+
+#[derive(Component, Default, Clone)]
+struct TimeLabel;
+
+fn setup_editor_ui(mut commands: Commands) {
+    // The editor UI renders to its own full-window 2D camera so that
+    // confining a scene camera's viewport (see `update_camera_viewport`)
+    // doesn't also shrink the UI. `ClearColorConfig::None` keeps the
+    // scene camera's output; `order: 1` draws the UI on top.
+
+    let ui_camera = commands
+        .spawn_scene(bsn! [
+            Camera2d
+            Camera {
+                order: 1,
+                clear_color: ClearColorConfig::None,
+            }
+            TrackViewportCamera
+        ])
+        .id();
+    commands.spawn(UiTargetCamera(ui_camera)).apply_scene(bsn! {
+        @EditorPanel
+    });
+}
+
+fn build_timeline_view(
     mut commands: Commands,
     mut state: ResMut<EditorState>,
     manager: Res<MotionGfxManager>,
     q_timelines: Query<&TimelineId>,
     mut q_nodes: Query<&mut Node, Without<Playhead>>,
-    q_content: Query<Entity, With<TrackContent>>,
+    q_content: Query<Entity, With<TimelineContent>>,
     q_name_panel: Query<Entity, With<NamePanel>>,
 ) {
+    // Every frame, check if the timeline is there.
     if state.built {
         return;
     }
@@ -273,9 +372,8 @@ fn build_track_view(
     let Some(timeline) = manager.get_timeline(&timeline_id) else {
         return;
     };
-    let Some(track) = timeline.tracks().first() else {
-        return;
-    };
+    let tracks = timeline.tracks();
+
     let Ok(content) = q_content.single() else {
         return;
     };
@@ -283,72 +381,19 @@ fn build_track_view(
         return;
     };
 
-    let duration = track.duration();
-    let content_width = (duration * PIXELS_PER_SECOND).max(1.0);
-    let row_count = track.sequences_spans().len();
-    let content_height =
-        TRACK_TOP_PADDING * 2.0 + row_count as f32 * ROW_STRIDE;
-
-    // Size the slider track and give it the real time range.
-    if let Ok(mut content_node) = q_nodes.get_mut(content) {
-        content_node.width = Val::Px(content_width);
-        content_node.min_width = Val::Px(content_width);
-        content_node.height = Val::Px(content_height);
-        content_node.min_height = Val::Px(content_height);
-    }
-    commands
-        .entity(content)
-        .insert(SliderRange::new(0.0, duration.max(f32::EPSILON)));
-
-    // Order rows by first-clip start so the layout reads left-to-right.
-    let mut rows: Vec<(&ActionKey, &Span)> = track
-        .sequences_spans()
-        .iter()
-        .map(|(k, s)| (k, s))
-        .collect();
-    rows.sort_by(|a, b| {
-        let start = |span: &Span| {
-            track
-                .clips(*span)
-                .first()
-                .map(|c| c.start)
-                .unwrap_or(f32::INFINITY)
-        };
-        start(a.1).total_cmp(&start(b.1))
+    commands.spawn_scene(bsn! {
+        @TimelineContent {
+            @tracks: tracks
+        }
     });
 
-    for (row, (key, span)) in rows.iter().enumerate() {
-        let color = row_color(row);
-        let top = TRACK_TOP_PADDING + row as f32 * ROW_STRIDE;
-
-        commands.entity(name_panel_id).with_child((
-            Node {
-                height: Val::Px(ROW_HEIGHT),
-                margin: UiRect::bottom(Val::Px(
-                    ROW_STRIDE - ROW_HEIGHT,
-                )),
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            label(RowLabel, key.field().field_path()),
-        ));
-
-        for clip in track.clips(**span) {
-            let left = clip.start * PIXELS_PER_SECOND;
-            let width = (clip.duration * PIXELS_PER_SECOND).max(2.0);
-            commands.entity(content).with_child(action_box(
-                left, top, width, ROW_HEIGHT, color,
-            ));
-        }
-    }
-
     state.timeline = Some(timeline_id);
-    state.duration = duration;
+    state.duration = tracks[0].duration(); //Only first track
     state.built = true;
 }
 
 /// Marker for the row name labels in the left column.
-#[derive(Component)]
+#[derive(Component, Clone, Default)]
 struct RowLabel;
 
 /// Scrub the timeline in response to slider drags.
@@ -357,12 +402,8 @@ fn on_scrub(
     state: Res<EditorState>,
     mut commands: Commands,
     mut manager: ResMut<MotionGfxManager>,
-    q_content: Query<(), With<TrackContent>>,
     mut q_players: Query<&mut RealtimePlayer>,
 ) {
-    if q_content.get(change.source).is_err() {
-        return;
-    }
     let Some(timeline_id) = state.timeline else {
         return;
     };
@@ -420,7 +461,7 @@ fn update_playhead(
     manager: Res<MotionGfxManager>,
     mut commands: Commands,
     mut q_playhead: Query<&mut Node, With<Playhead>>,
-    q_value: Query<(Entity, &SliderValue), With<TrackContent>>,
+    q_value: Query<(Entity, &SliderValue), With<TimelineContent>>,
     mut q_time_label: Query<&mut Text, With<TimeLabel>>,
 ) {
     let Some(timeline_id) = state.timeline else {
@@ -468,7 +509,7 @@ fn update_play_label(
 fn update_camera_viewport(
     q_panel: Query<&ComputedNode, With<EditorPanel>>,
     q_window: Query<&Window, With<PrimaryWindow>>,
-    mut q_camera: Query<&mut Camera, With<EditorViewportCamera>>,
+    mut q_camera: Query<&mut Camera, Without<TrackViewportCamera>>,
 ) {
     let Ok(panel) = q_panel.single() else {
         return;

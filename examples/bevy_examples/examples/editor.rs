@@ -10,7 +10,7 @@ use bevy::color::palettes;
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
-use motiongfx_editor::{EditorViewportCamera, MotionGfxEditorPlugin};
+use motiongfx_editor::{MotionGfxEditorPlugin, TrackViewportCamera};
 
 const CUBE_COUNT: usize = 6;
 
@@ -95,7 +95,6 @@ fn setup(mut commands: Commands) {
         },
         Camera3d::default(),
         // Confine the 3D view to the area above the timeline panel.
-        EditorViewportCamera,
         Transform::from_xyz(0.0, 2.0, 14.0)
             .looking_at(Vec3::ZERO, Vec3::Y),
     ));
