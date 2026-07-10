@@ -84,8 +84,9 @@ pub struct RowLabel;
 /// row of the same index.
 pub fn row_label(text: &str) -> impl Scene {
     let height = Val::Px(super::ROW_HEIGHT);
-    let margin =
-        UiRect::bottom(Val::Px(super::ROW_STRIDE - super::ROW_HEIGHT));
+    let margin = UiRect::bottom(Val::Px(
+        super::ROW_STRIDE - super::ROW_HEIGHT,
+    ));
 
     bsn! {
         Node {
