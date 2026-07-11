@@ -767,6 +767,7 @@ version = "0.3.0"
 dependencies = [
  "bevy",
  "bevy_motiongfx",
+ "motiongfx_editor",
 ]
 
 [[package]]
@@ -3599,6 +3600,14 @@ dependencies = [
  "hashbrown 0.17.1",
  "nonempty",
  "typarena",
+]
+
+[[package]]
+name = "motiongfx_editor"
+version = "0.3.0"
+dependencies = [
+ "bevy",
+ "bevy_motiongfx",
 ]
 
 [[package]]
