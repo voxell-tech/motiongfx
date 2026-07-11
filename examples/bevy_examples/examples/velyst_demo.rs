@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use bevy_examples::timeline_movement;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
-use bevy_vello::VelloPlugin;
-use bevy_vello::prelude::*;
-use bevy_vello::render::diagnostics::{
+use bevy_motiongfx::velyst::bevy_vello::VelloPlugin;
+use bevy_motiongfx::velyst::bevy_vello::prelude::*;
+use bevy_motiongfx::velyst::bevy_vello::render::diagnostics::{
     PATH_COUNT, PATH_SEGMENTS_COUNT, UI_SCENE_COUNT,
     WORLD_SCENE_COUNT,
 };
