@@ -271,7 +271,7 @@ impl Default for TrackFragment {
 /// A `Track` is created from a [`TrackFragment`] and provides an
 /// immutable, space-efficient layout. [`ActionClip`]s are stored
 /// in a flat array with spans for quick access.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Track {
     // TODO: Use this to optimized baking/sampling? (There are no
     // use case for the lookups atm!)
