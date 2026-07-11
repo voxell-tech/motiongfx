@@ -151,7 +151,6 @@ pub fn scrub_slider(width: f32, duration: f32) -> impl Scene {
         SliderValue(0.0)
         SliderRange::new(0.0, duration.max(f32::EPSILON))
         Hovered
-        EntityCursor::System(SystemCursorIcon::Pointer)
         Node {
             position_type: PositionType::Relative,
             width: Val::Px(width),
