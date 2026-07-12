@@ -5,11 +5,14 @@
 //! [`bevy::feathers`] theme so the editor matches the look of Bevy's
 //! own tooling.
 
+pub mod dock;
+pub mod inspector;
+
 use bevy::feathers::controls::ButtonVariant;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::feathers::theme::{ThemeBackgroundColor, ThemedText};
 use bevy::feathers::tokens;
-use bevy::picking::events::{Drag, Pointer};
+use bevy::ui::widget::ImageNode;
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui_widgets::{
@@ -18,23 +21,7 @@ use bevy::ui_widgets::{
 };
 use bevy::window::SystemCursorIcon;
 
-/// Background color of a single action box. Kept as a literal palette
-/// (rather than a theme token) so the different rows read as distinct
-/// clips regardless of theme.
-pub const ACTION_COLORS: [Color; 6] = [
-    Color::srgb(0.30, 0.62, 0.92),
-    Color::srgb(0.42, 0.78, 0.52),
-    Color::srgb(0.92, 0.66, 0.30),
-    Color::srgb(0.78, 0.44, 0.86),
-    Color::srgb(0.90, 0.44, 0.50),
-    Color::srgb(0.36, 0.78, 0.80),
-];
-
 pub const PLAYHEAD_COLOR: Color = Color::srgb(0.95, 0.30, 0.35);
-
-pub fn row_color(row: usize) -> Color {
-    ACTION_COLORS[row % ACTION_COLORS.len()]
-}
 
 /// A feathers-themed button carrying the headless [`Button`] behavior.
 ///
@@ -76,36 +63,27 @@ pub fn label<M: Component + Default + Unpin + Clone>(
     }
 }
 
-/// Marker for the row name labels in the left column.
+/// Marker for a generated clip box, so the boxes can be despawned on
+/// rebuild without disturbing the playhead thumb (also a content child).
 #[derive(Component, Default, Clone)]
-pub struct RowLabel;
+pub struct ActionBox;
 
-/// One entry in the name column, sized to line up with the action-box
-/// row of the same index.
-pub fn row_label(text: &str) -> impl Scene {
-    let height = Val::Px(super::ROW_HEIGHT);
-    let margin = UiRect::bottom(Val::Px(
-        super::ROW_STRIDE - super::ROW_HEIGHT,
-    ));
+/// Marker for the clip box's inline label text.
+#[derive(Component, Default, Clone)]
+pub struct ClipLabel;
 
-    bsn! {
-        Node {
-            height,
-            margin,
-            align_items: AlignItems::Center,
-        }
-        label::<RowLabel>(text)
-    }
-}
-
-pub fn action_box(
+/// A single action clip: a colored, rounded box positioned absolutely
+/// within the timeline content, with its field label inside.
+pub fn clip_box(
     left: f32,
     top: f32,
     width: f32,
     height: f32,
     color: Color,
+    text: &str,
 ) -> impl Scene {
     bsn! {
+        ActionBox
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px(left),
@@ -113,8 +91,107 @@ pub fn action_box(
             width: Val::Px(width),
             height: Val::Px(height),
             border_radius: BorderRadius::all(Val::Px(6.0)),
+            align_items: AlignItems::Center,
+            padding: UiRect::horizontal(Val::Px(6.0)),
+            overflow: Overflow::clip(),
         }
+        ZIndex(1)
         BackgroundColor(color)
+        Children [
+            (
+                ClipLabel
+                Text({text})
+                TextFont {
+                    font_size: FontSize::Px(11.0)
+                }
+                TextColor(Color::srgb(0.1, 0.1, 0.12))
+            )
+        ]
+    }
+}
+
+/// Marker for a generated group container, for teardown on rebuild.
+#[derive(Component, Default, Clone)]
+pub struct GroupBox;
+
+/// A container drawn behind the boxes of a concurrent group
+/// ([`Combinator::All`] / `Any` / `Flow`), grouping the rows that run
+/// together.
+///
+/// [`Combinator::All`]: bevy_motiongfx::prelude::Combinator
+pub fn group_box(
+    left: f32,
+    top: f32,
+    width: f32,
+    height: f32,
+) -> impl Scene {
+    let accent = Color::srgb(0.55, 0.60, 0.70);
+    let fill = accent.with_alpha(0.08);
+    bsn! {
+        GroupBox
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(left),
+            top: Val::Px(top),
+            width: Val::Px(width),
+            height: Val::Px(height),
+            border: UiRect::all(Val::Px(1.5)),
+            border_radius: BorderRadius::all(Val::Px(8.0)),
+        }
+        ZIndex(0)
+        BorderColor::all(accent)
+        BackgroundColor(fill)
+    }
+}
+
+/// A clickable collapse toggle for a concurrent group, tagged with the
+/// group's stable id. Built on the headless [`Button`] (which consumes
+/// the press, so clicking it does not scrub the timeline underneath).
+#[derive(Component, Clone, Default)]
+pub struct GroupToggle(pub usize);
+
+#[expect(clippy::too_many_arguments)]
+pub fn group_toggle(
+    gid: usize,
+    left: f32,
+    top: f32,
+    width: f32,
+    height: f32,
+    icon_path: &'static str,
+    text: &str,
+    bg: Color,
+) -> impl Scene {
+    bsn! {
+        GroupToggle(gid)
+        Button
+        Hovered
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(left),
+            top: Val::Px(top),
+            width: Val::Px(width),
+            height: Val::Px(height),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            column_gap: Val::Px(4.0),
+            padding: UiRect::horizontal(Val::Px(4.0)),
+            border_radius: BorderRadius::all(Val::Px(6.0)),
+            overflow: Overflow::clip(),
+        }
+        ZIndex(5)
+        BackgroundColor(bg)
+        EntityCursor::System(SystemCursorIcon::Pointer)
+        Children [
+            (
+                Node { height: Val::Px(12.0) }
+                ImageNode { image: icon_path }
+            ),
+            (
+                Text({text})
+                TextFont { font_size: FontSize::Px(11.0) }
+                TextColor(Color::srgb(0.9, 0.9, 0.92))
+            ),
+        ]
     }
 }
 
@@ -213,55 +290,3 @@ impl Divider {
     }
 }
 
-/// Drag handler for the panel's top-edge resize handle.
-pub fn on_panel_resize(
-    drag: On<Pointer<Drag>>,
-    q_panel: Query<Entity, With<super::EditorPanel>>,
-    q_window: Query<&Window>,
-    mut q_nodes: Query<&mut Node>,
-) {
-    let delta = drag.delta.y;
-    if delta == 0.0 {
-        return;
-    }
-    let Ok(panel) = q_panel.single() else {
-        return;
-    };
-    // Dragging up (negative delta) should grow the panel.
-    let max = q_window
-        .iter()
-        .next()
-        .map(|w| w.height() - super::CONTROL_BAR_HEIGHT)
-        .unwrap_or(super::PANEL_MAX_HEIGHT)
-        .min(super::PANEL_MAX_HEIGHT);
-    let Ok(mut panel_node) = q_nodes.get_mut(panel) else {
-        return;
-    };
-    if let Val::Px(h) = panel_node.height {
-        let new_h = (h - delta).clamp(super::PANEL_MIN_HEIGHT, max);
-        panel_node.height = Val::Px(new_h);
-    }
-}
-
-/// Drag handler for the name-panel / track resize divider.
-pub fn on_divider_drag(
-    drag: On<Pointer<Drag>>,
-    q_name_panel: Query<Entity, With<super::NamePanel>>,
-    mut q_nodes: Query<&mut Node>,
-) {
-    let delta = drag.delta.x;
-    if delta == 0.0 {
-        return;
-    }
-    let Ok(name_panel) = q_name_panel.single() else {
-        return;
-    };
-    let Ok(mut panel_node) = q_nodes.get_mut(name_panel) else {
-        return;
-    };
-    if let Val::Px(w) = panel_node.width {
-        let new_w = (w + delta)
-            .clamp(super::NAME_PANEL_MIN, super::NAME_PANEL_MAX);
-        panel_node.width = Val::Px(new_w);
-    }
-}

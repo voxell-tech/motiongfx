@@ -7,10 +7,12 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-bevy_motiongfx = { workspace = true }
+# `metadata`: the track composition tree we visualize in the timeline.
+bevy_motiongfx = { workspace = true, features = ["metadata"] }
 bevy = { workspace = true, default-features = true, features = [
     "bevy_feathers",
     "bevy_ui_widgets",
+    "bevy_settings",
 ] }
 
 [lints]
