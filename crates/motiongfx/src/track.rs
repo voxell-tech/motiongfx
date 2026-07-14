@@ -11,7 +11,7 @@ pub trait TrackOrdering {
     fn ord_chain(self) -> TrackFragment;
     fn ord_all(self) -> TrackFragment;
     fn ord_any(self) -> TrackFragment;
-    fn ord_flow(self, delay: f32) -> TrackFragment;
+    fn ord_flow(self, t: f32) -> TrackFragment;
 }
 
 impl<T> TrackOrdering for T
@@ -30,8 +30,8 @@ where
         any(self)
     }
 
-    fn ord_flow(self, delay: f32) -> TrackFragment {
-        flow(delay, self)
+    fn ord_flow(self, t: f32) -> TrackFragment {
+        flow(t, self)
     }
 }
 
@@ -137,9 +137,11 @@ pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
         sequence.delay(delay);
     }
 
+    track.duration += delay;
     track
 }
 
+#[derive(Debug, Clone)]
 pub struct TrackFragment {
     sequences: HashMap<ActionKey, Sequence>,
     duration: f32,
@@ -158,6 +160,10 @@ impl TrackFragment {
             duration: clip.duration,
             sequences: [(key, Sequence::new(clip))].into(),
         }
+    }
+
+    pub fn delay(self, t: f32) -> Self {
+        delay(t, self)
     }
 
     /// Updates or inserts a [`Sequence`] in a track.
@@ -451,6 +457,6 @@ mod tests {
 
         assert_eq!(seq_a.start(), 1.5);
         assert_eq!(seq_a.end(), 3.5);
-        assert_eq!(track.duration, 2.0);
+        assert_eq!(track.duration, 3.5);
     }
 }

@@ -65,6 +65,7 @@ fn start_recording(mut q_player: Query<&mut FixedRatePlayer>) {
 
     player.set_playing(true);
 }
+
 #[derive(Resource)]
 struct ExitDelayTimer(Timer);
 
@@ -222,7 +223,7 @@ mod pipelines_ready {
         let mut state =
             main_world.resource_mut::<NextState<PipelineState>>();
 
-        // If there are pipelines cerated and all of them are already
+        // If there are pipelines created and all of them are already
         // initialized.
         if pipelines.pipelines().count() > 0
             && pipelines.waiting_pipelines().count() == 0

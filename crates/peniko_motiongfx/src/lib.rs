@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![no_std]
 
 pub mod interpolation;
@@ -6,6 +7,8 @@ pub mod trace;
 pub mod prelude {
     pub use peniko;
     pub use peniko::kurbo;
+
+    pub use motiongfx::prelude::*;
 
     pub use crate::Peniko;
     pub use crate::trace::{

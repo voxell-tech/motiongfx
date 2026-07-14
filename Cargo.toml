@@ -26,6 +26,9 @@ bevy_asset = { version = "0.19", default-features = false }
 bevy_time = { version = "0.19", default-features = false }
 bevy_transform = { version = "0.19", default-features = false, features = ["bevy-support"] }
 bevy_color = { version = "0.19", default-features = false }
+# bevy_vello = { version = "0.13.1", default-features = false }
+bevy_vello = { git = "https://github.com/linebender/bevy_vello", branch = "nixon/bevy-0.19", default-features = false }
+velyst = { git = "https://github.com/voxell-tech/velyst", branch = "nixon/bevy-0.19" }
 
 # other
 field_path = "0.4.1"
