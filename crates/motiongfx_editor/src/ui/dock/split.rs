@@ -8,6 +8,7 @@
 use bevy::ecs::spawn::SpawnableList;
 use bevy::feathers::cursor::{CursorIconPlugin, EntityCursor, OverrideCursor};
 use bevy::prelude::*;
+use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
 
 pub struct SplitPanelPlugin;
@@ -44,6 +45,11 @@ pub struct Panel {
 
 #[derive(Component)]
 pub struct PanelHandle;
+
+/// Present on a handle while it's being dragged, so the hover
+/// highlight is suppressed until the drag ends.
+#[derive(Component)]
+struct HandleDragging;
 
 pub fn panel_group<C: SpawnableList<ChildOf> + Send + Sync + 'static>(
     min_ratio: f32,
@@ -169,10 +175,16 @@ fn on_handle_drag_start(
     handles: Query<&ChildOf, With<PanelHandle>>,
     nodes: Query<&Node>,
     mut override_cursor: ResMut<OverrideCursor>,
+    mut commands: Commands,
 ) {
-    let Ok(&ChildOf(parent)) = handles.get(trigger.event_target()) else {
+    let handle = trigger.event_target();
+    let Ok(&ChildOf(parent)) = handles.get(handle) else {
         return;
     };
+    // Hide the hover highlight for the duration of the drag.
+    commands
+        .entity(handle)
+        .insert((HandleDragging, BackgroundColor(Color::NONE)));
     let Ok(node) = nodes.get(parent) else {
         return;
     };
@@ -187,10 +199,13 @@ fn on_handle_drag_end(
     handles: Query<&ChildOf, With<PanelHandle>>,
     nodes: Query<&Node>,
     mut override_cursor: ResMut<OverrideCursor>,
+    mut commands: Commands,
 ) {
-    let Ok(&ChildOf(parent)) = handles.get(trigger.event_target()) else {
+    let handle = trigger.event_target();
+    let Ok(&ChildOf(parent)) = handles.get(handle) else {
         return;
     };
+    commands.entity(handle).remove::<HandleDragging>();
     let Ok(node) = nodes.get(parent) else {
         return;
     };
@@ -202,7 +217,7 @@ fn on_handle_drag_end(
 
 fn on_handle_hover(
     trigger: On<Pointer<Over>>,
-    handles: Query<(), With<PanelHandle>>,
+    handles: Query<(), (With<PanelHandle>, Without<HandleDragging>)>,
     mut commands: Commands,
 ) {
     if handles.get(trigger.event_target()).is_ok() {
@@ -227,16 +242,18 @@ fn on_handle_unhover(
 fn handle_panel_drag(
     mut drag: On<Pointer<Drag>>,
     handles: Query<&ChildOf, With<PanelHandle>>,
-    groups: Query<(&PanelGroup, &Node, &ComputedNode, &Children)>,
+    groups: Query<(&PanelGroup, &Node, &Children)>,
+    nodes: Query<(&ComputedNode, &UiGlobalTransform)>,
     bindings: Query<&super::reconcile::NodeBinding>,
     mut tree: ResMut<super::tree::DockTree>,
     mut panels: Query<&mut Panel>,
+    ui_scale: Res<UiScale>,
 ) {
     let handle_entity = drag.event_target();
     let Ok(&ChildOf(parent)) = handles.get(handle_entity) else {
         return;
     };
-    let Ok((group, node, computed, children)) = groups.get(parent) else {
+    let Ok((group, node, children)) = groups.get(parent) else {
         return;
     };
 
@@ -249,40 +266,73 @@ fn handle_panel_drag(
     let before_entity = children[handle_index - 1];
     let after_entity = children[handle_index + 1];
 
-    let logical_size = computed.size() * computed.inverse_scale_factor();
-    let (total_px, delta_px) = match node.flex_direction {
-        FlexDirection::Row | FlexDirection::RowReverse => (logical_size.x, drag.delta.x),
-        FlexDirection::Column | FlexDirection::ColumnReverse => (logical_size.y, drag.delta.y),
+    // Track the cursor's absolute position within the two panels'
+    // span, not accumulated delta — so dragging off-screen or past a
+    // limit just clamps and holds rather than banking up movement.
+    let (Ok((bc, bt)), Ok((ac, at))) =
+        (nodes.get(before_entity), nodes.get(after_entity))
+    else {
+        return;
     };
-    if total_px <= 0.0 {
+    let before_rect = super::drag::logical_rect(bc, bt);
+    let after_rect = super::drag::logical_rect(ac, at);
+    let cursor = drag.pointer_location.position / ui_scale.0;
+
+    let vertical = matches!(
+        node.flex_direction,
+        FlexDirection::Column | FlexDirection::ColumnReverse
+    );
+    let reverse = matches!(
+        node.flex_direction,
+        FlexDirection::RowReverse | FlexDirection::ColumnReverse
+    );
+    let (span_min, span_max, cur) = if vertical {
+        (
+            before_rect.min.y.min(after_rect.min.y),
+            before_rect.max.y.max(after_rect.max.y),
+            cursor.y,
+        )
+    } else {
+        (
+            before_rect.min.x.min(after_rect.min.x),
+            before_rect.max.x.max(after_rect.max.x),
+            cursor.x,
+        )
+    };
+    let span = span_max - span_min;
+    if span <= 0.0 {
         return;
     }
 
-    let total_ratio: f32 = panels.iter_many(children.iter()).map(|p| p.ratio).sum();
-    let delta_ratio = (delta_px / total_px) * total_ratio;
-
-    let Ok([mut before, mut after]) = panels.get_many_mut([before_entity, after_entity]) else {
-        return;
-    };
-
-    let new_before = before.ratio + delta_ratio;
-    let new_after = after.ratio - delta_ratio;
-
-    if new_before < group.min_ratio || new_after < group.min_ratio {
-        drag.propagate(false);
+    let total: f32 = panels
+        .get_many([before_entity, after_entity])
+        .map(|[b, a]| b.ratio + a.ratio)
+        .unwrap_or(0.0);
+    if total <= 0.0 {
         return;
     }
 
-    before.ratio = new_before;
-    after.ratio = new_after;
+    // `before`'s fraction of the span (flipped for reverse layouts),
+    // clamped so neither panel drops below `min_ratio`.
+    let mut p = (cur - span_min) / span;
+    if reverse {
+        p = 1.0 - p;
+    }
+    let min_p = (group.min_ratio / total).clamp(0.0, 0.5);
+    p = p.clamp(min_p, 1.0 - min_p);
 
-    // If this PanelGroup is bound to a tree split, mirror the new fraction
-    // into the tree so the reconciler stays in sync.
+    let Ok([mut before, mut after]) =
+        panels.get_many_mut([before_entity, after_entity])
+    else {
+        return;
+    };
+    before.ratio = total * p;
+    after.ratio = total * (1.0 - p);
+
+    // Mirror the fraction into a bound tree split so the reconciler
+    // stays in sync.
     if let Ok(binding) = bindings.get(parent) {
-        let total = new_before + new_after;
-        if total > 0.0 {
-            tree.set_fraction(binding.0, new_before / total);
-        }
+        tree.set_fraction(binding.0, p);
     }
 
     drag.propagate(false);
