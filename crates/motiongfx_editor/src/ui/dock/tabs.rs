@@ -79,7 +79,8 @@ pub fn spawn_tab_bar_world(
                 align_items: AlignItems::Center,
                 width: Val::Percent(100.0),
                 height: Val::Px(TAB_HEIGHT),
-                padding: UiRect::new(Val::Px(8.0), Val::Px(8.0), Val::Px(1.0), Val::ZERO),
+                // No left padding: first tab sits flush to the edge.
+                padding: UiRect::new(Val::ZERO, Val::Px(8.0), Val::Px(1.0), Val::ZERO),
                 flex_shrink: 0.0,
                 ..default()
             },
@@ -136,6 +137,56 @@ pub fn spawn_tab_bar_world(
     ));
 }
 
+/// The shared tab-tile layout (pill body: label + close slot). Used
+/// by real tabs and the drag ghost so they're pixel-identical.
+fn tab_tile_node() -> Node {
+    Node {
+        flex_direction: FlexDirection::Row,
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        column_gap: Val::Px(4.0),
+        padding: UiRect::horizontal(Val::Px(8.0)),
+        height: Val::Percent(100.0),
+        flex_shrink: 0.0,
+        ..default()
+    }
+}
+
+/// Spawn the label text of a tab tile under `tile`.
+fn spawn_tab_label(world: &mut World, tile: Entity, label: &str, color: Color) {
+    world.spawn((
+        Text::new(label.to_string()),
+        TextLayout::linebreak(LineBreak::NoWrap),
+        TextFont {
+            font_size: FontSize::Px(12.0),
+            weight: FontWeight::BOLD,
+            ..default()
+        },
+        TextColor(color),
+        ChildOf(tile),
+    ));
+}
+
+/// A drag-ghost copy of a tab tile: the same body + label, plus an
+/// inert close-slot spacer so its width matches a real tab. `wrapper`
+/// supplies the position + height (see [`super::drag`]).
+pub(super) fn spawn_ghost_tab(world: &mut World, wrapper: Entity, label: &str) {
+    let color = world.resource::<EditorTheme>().text_primary;
+    let tile = world
+        .spawn((tab_tile_node(), Glass::TabActive, ChildOf(wrapper)))
+        .id();
+    spawn_tab_label(world, tile, label, color);
+    // Matches the 14px close slot a real tab reserves.
+    world.spawn((
+        Node {
+            width: Val::Px(14.0),
+            height: Val::Px(14.0),
+            ..default()
+        },
+        ChildOf(tile),
+    ));
+}
+
 fn spawn_tab(
     world: &mut World,
     tab_row: Entity,
@@ -159,18 +210,7 @@ fn spawn_tab(
                 tab_id,
             },
             Interaction::default(),
-            Node {
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                column_gap: Val::Px(4.0),
-                padding: UiRect::horizontal(Val::Px(5.0)),
-                height: Val::Percent(100.0),
-                flex_shrink: 0.0,
-                // Slightly rounded, matching the timeline's clip boxes.
-                border_radius: BorderRadius::all(Val::Px(6.0)),
-                ..default()
-            },
+            tab_tile_node(),
             // Active pill vs invisible; swapped by `sync_leaf_visuals`.
             if is_active { Glass::TabActive } else { Glass::TabIdle },
             // Tabs are draggable: signal it on hover.
@@ -179,17 +219,7 @@ fn spawn_tab(
         ))
         .id();
 
-    world.spawn((
-        Text::new(label.to_string()),
-        TextLayout::linebreak(LineBreak::NoWrap),
-        TextFont {
-            font_size: FontSize::Px(12.0),
-            weight: FontWeight::BOLD,
-            ..default()
-        },
-        TextColor(text_color),
-        ChildOf(tab_entity),
-    ));
+    spawn_tab_label(world, tab_entity, label, text_color);
 
     // Close-button slot always reserves its 14x14 layout space so the
     // tab doesn't reflow on hover. The icon inside is alpha-toggled by

@@ -7,7 +7,6 @@ use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
 
 use crate::ui::glass::Glass;
-use crate::ui::theme::EditorTheme;
 
 use super::area::DockArea;
 use super::reconcile::NodeBinding;
@@ -132,7 +131,6 @@ fn on_drag_move(
     node_query: Query<(&ComputedNode, &UiGlobalTransform)>,
     parent_query: Query<&ChildOf>,
     ui_scale: Res<UiScale>,
-    theme: Res<EditorTheme>,
     mut override_cursor: ResMut<OverrideCursor>,
 ) {
     let drag_event = trigger.event();
@@ -167,29 +165,16 @@ fn on_drag_move(
                 ));
             }
 
+            // The ghost is the real tab tile, rebuilt via the shared
+            // builder so it's identical; hide the original meanwhile.
             let ghost = commands
-                .spawn((
-                    DragGhost,
-                    Node {
-                        position_type: PositionType::Absolute,
-                        left: Val::Px(cursor_pos_ui.x - 40.0),
-                        top: Val::Px(cursor_pos_ui.y - 12.0),
-                        padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
-                        border_radius: BorderRadius::all(Val::Px(4.0)),
-                        ..default()
-                    },
-                    Glass::Ghost,
-                    GlobalZIndex(200),
-                    children![(
-                        Text::new(window_name.clone()),
-                        TextFont {
-                            font_size: FontSize::Px(12.0),
-                            ..default()
-                        },
-                        TextColor(theme.text_primary),
-                    )],
-                ))
+                .spawn((DragGhost, ghost_node(cursor_pos_ui), GlobalZIndex(200)))
                 .id();
+            commands.entity(source_tab).insert(Visibility::Hidden);
+            let name = window_name.clone();
+            commands.queue(move |world: &mut World| {
+                super::tabs::spawn_ghost_tab(world, ghost, &name);
+            });
 
             *drag_state = DockDragState::Dragging {
                 source_tab,
@@ -213,14 +198,7 @@ fn on_drag_move(
             let ghost = *ghost_entity;
             let old_overlay = *overlay_entity;
 
-            commands.entity(ghost).insert(Node {
-                position_type: PositionType::Absolute,
-                left: Val::Px(cursor_pos_ui.x - 40.0),
-                top: Val::Px(cursor_pos_ui.y - 12.0),
-                padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
-                border_radius: BorderRadius::all(Val::Px(4.0)),
-                ..default()
-            });
+            commands.entity(ghost).insert(ghost_node(cursor_pos_ui));
 
             if let Some(old) = old_overlay {
                 commands.entity(old).despawn();
@@ -396,6 +374,7 @@ fn on_drag_end(
     let state = std::mem::take(&mut *drag_state);
     match state {
         DockDragState::Dragging {
+            source_tab,
             ghost_entity,
             overlay_entity,
             drop_target,
@@ -405,6 +384,9 @@ fn on_drag_end(
         } => {
             clear_grab_cursor(&mut override_cursor);
             commands.entity(ghost_entity).despawn();
+            // Reveal the original tab again (a consumed drop rebuilds
+            // the leaf and despawns it anyway, so this is best-effort).
+            commands.entity(source_tab).try_insert(Visibility::Inherited);
             if let Some(overlay) = overlay_entity {
                 commands.entity(overlay).despawn();
             }
@@ -449,6 +431,7 @@ fn cancel_drag_on_escape(
 
     let state = std::mem::take(&mut *drag_state);
     if let DockDragState::Dragging {
+        source_tab,
         ghost_entity,
         overlay_entity,
         ..
@@ -456,12 +439,25 @@ fn cancel_drag_on_escape(
     {
         clear_grab_cursor(&mut override_cursor);
         commands.entity(ghost_entity).despawn();
+        commands.entity(source_tab).try_insert(Visibility::Inherited);
         if let Some(overlay) = overlay_entity {
             commands.entity(overlay).despawn();
         }
     }
 
     *drag_state = DockDragState::Idle;
+}
+
+/// The drag-ghost wrapper node at `cursor` (logical px); its child is
+/// the reused tab tile, so it only carries position + height.
+fn ghost_node(cursor: Vec2) -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(cursor.x - 40.0),
+        top: Val::Px(cursor.y - 12.0),
+        height: Val::Px(super::TAB_HEIGHT),
+        ..default()
+    }
 }
 
 /// Drop the drag-wide grabbing cursor, if it's the one we set.
@@ -504,8 +500,11 @@ fn drop_on_edge(world: &mut World, tab: TabId, target_area: Entity, edge: DropEd
     }) else {
         return;
     };
-    tree.remove_tab(tab);
-    tree.split(binding.0, tree_edge, window_id);
+    // Split first (keeps the target leaf valid), then remove: the
+    // reverse can collapse the target when it's the tab's last leaf.
+    if tree.split(binding.0, tree_edge, window_id).is_some() {
+        tree.remove_tab(tab);
+    }
 }
 
 /// Drop the dragged tab onto the leaf bound to `tab_row` at slot
