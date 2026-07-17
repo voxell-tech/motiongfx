@@ -10,6 +10,25 @@ use bevy::feathers::cursor::{CursorIconPlugin, EntityCursor, OverrideCursor};
 use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
 
+pub struct SplitPanelPlugin;
+
+impl Plugin for SplitPanelPlugin {
+    fn build(&self, app: &mut App) {
+        if !app.is_plugin_added::<CursorIconPlugin>() {
+            app.add_plugins(CursorIconPlugin);
+        }
+
+        app.add_observer(on_panel_added)
+            .add_observer(on_handle_added)
+            .add_observer(on_handle_drag_start)
+            .add_observer(on_handle_drag_end)
+            .add_observer(on_handle_hover)
+            .add_observer(on_handle_unhover)
+            .add_observer(handle_panel_drag)
+            .add_systems(Update, recalculate_changed_panels);
+    }
+}
+
 const HANDLE_SIZE: f32 = 3.0;
 const HANDLE_HOVER_COLOR: Color = Color::srgba(1.0, 1.0, 1.0, 0.12);
 
@@ -47,25 +66,6 @@ pub fn panel_handle() -> impl Bundle {
         },
         BackgroundColor(Color::NONE),
     )
-}
-
-pub struct SplitPanelPlugin;
-
-impl Plugin for SplitPanelPlugin {
-    fn build(&self, app: &mut App) {
-        if !app.is_plugin_added::<CursorIconPlugin>() {
-            app.add_plugins(CursorIconPlugin);
-        }
-
-        app.add_observer(on_panel_added)
-            .add_observer(on_handle_added)
-            .add_observer(on_handle_drag_start)
-            .add_observer(on_handle_drag_end)
-            .add_observer(on_handle_hover)
-            .add_observer(on_handle_unhover)
-            .add_observer(handle_panel_drag)
-            .add_systems(Update, recalculate_changed_panels);
-    }
 }
 
 fn on_panel_added(

@@ -20,6 +20,29 @@ use bevy::reflect::{GetPath, ReflectRef};
 use bevy::ui::Checked;
 use bevy::ui_widgets::ValueChange;
 
+/// Registers the build / edit / sync systems for one resource type.
+pub struct ReflectInspectorPlugin<T>(PhantomData<T>);
+
+impl<T> Default for ReflectInspectorPlugin<T> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<T: Resource<Mutability = Mutable> + Reflect> Plugin
+    for ReflectInspectorPlugin<T>
+{
+    fn build(&self, app: &mut App) {
+        app.add_observer(build_inspector::<T>)
+            .add_observer(on_change_bool::<T>)
+            .add_observer(on_change_number::<T, f32>)
+            .add_observer(on_change_number::<T, f64>)
+            .add_observer(on_change_number::<T, i32>)
+            .add_observer(on_change_number::<T, i64>)
+            .add_systems(Update, sync_inspector::<T>);
+    }
+}
+
 /// Marker: build editable rows for resource `T` under this entity.
 #[derive(Component)]
 pub struct Inspector<T: Resource + Reflect>(PhantomData<T>);
@@ -43,29 +66,6 @@ impl<T: Resource + Reflect> InspectorField<T> {
             path,
             _marker: PhantomData,
         }
-    }
-}
-
-/// Registers the build / edit / sync systems for one resource type.
-pub struct ReflectInspectorPlugin<T>(PhantomData<T>);
-
-impl<T> Default for ReflectInspectorPlugin<T> {
-    fn default() -> Self {
-        Self(PhantomData)
-    }
-}
-
-impl<T: Resource<Mutability = Mutable> + Reflect> Plugin
-    for ReflectInspectorPlugin<T>
-{
-    fn build(&self, app: &mut App) {
-        app.add_observer(build_inspector::<T>)
-            .add_observer(on_change_bool::<T>)
-            .add_observer(on_change_number::<T, f32>)
-            .add_observer(on_change_number::<T, f64>)
-            .add_observer(on_change_number::<T, i32>)
-            .add_observer(on_change_number::<T, i64>)
-            .add_systems(Update, sync_inspector::<T>);
     }
 }
 

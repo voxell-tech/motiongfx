@@ -39,17 +39,6 @@ use bevy::settings::{
 };
 use bevy_motiongfx::prelude::TimelineId;
 
-/// Pixels per second of animation (horizontal zoom).
-pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
-pub(crate) const PANEL_PADDING: f32 = 12.0;
-pub(crate) const NAME_PANEL_WIDTH: f32 = 140.0;
-pub(crate) const NAME_PANEL_MIN: f32 = 60.0;
-pub(crate) const NAME_PANEL_MAX: f32 = 400.0;
-pub(crate) const CONTROL_BAR_HEIGHT: f32 = 40.0;
-pub(crate) const ROW_HEIGHT: f32 = 22.0;
-pub(crate) const ROW_STRIDE: f32 = ROW_HEIGHT + 8.0;
-pub(crate) const TRACK_TOP_PADDING: f32 = 12.0;
-
 /// Plugin that renders a timeline editor UI for the first
 /// [`Timeline`](bevy_motiongfx::prelude::BevyTimeline).
 pub struct MotionGfxEditorPlugin;
@@ -62,18 +51,6 @@ impl Plugin for MotionGfxEditorPlugin {
         .add_plugins(EditorUiPlugin)
         .add_systems(Startup, startup_test)
         .add_observer(on_save_settings);
-    }
-}
-
-/// Persist [`EditorSettings`] when the settings panel's Save button
-/// is pressed.
-fn on_save_settings(
-    activate: On<bevy::ui_widgets::Activate>,
-    q_button: Query<(), With<scene::SettingsSaveButton>>,
-    mut commands: Commands,
-) {
-    if q_button.get(activate.entity).is_ok() {
-        commands.queue(SaveSettingsSync::Always);
     }
 }
 
@@ -111,6 +88,29 @@ impl Plugin for EditorUiPlugin {
             .add_observer(playback::on_toggle_playback)
             .add_observer(layout::on_group_toggle)
             .add_observer(layout::on_timeline_content_added);
+    }
+}
+
+/// Pixels per second of animation (horizontal zoom).
+pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
+pub(crate) const PANEL_PADDING: f32 = 12.0;
+pub(crate) const NAME_PANEL_WIDTH: f32 = 140.0;
+pub(crate) const NAME_PANEL_MIN: f32 = 60.0;
+pub(crate) const NAME_PANEL_MAX: f32 = 400.0;
+pub(crate) const CONTROL_BAR_HEIGHT: f32 = 40.0;
+pub(crate) const ROW_HEIGHT: f32 = 22.0;
+pub(crate) const ROW_STRIDE: f32 = ROW_HEIGHT + 8.0;
+pub(crate) const TRACK_TOP_PADDING: f32 = 12.0;
+
+/// Persist [`EditorSettings`] when the settings panel's Save button
+/// is pressed.
+fn on_save_settings(
+    activate: On<bevy::ui_widgets::Activate>,
+    q_button: Query<(), With<scene::SettingsSaveButton>>,
+    mut commands: Commands,
+) {
+    if q_button.get(activate.entity).is_ok() {
+        commands.queue(SaveSettingsSync::Always);
     }
 }
 

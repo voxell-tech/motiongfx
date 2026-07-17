@@ -17,6 +17,17 @@ use super::split::{Panel, PanelGroup, PanelHandle};
 use super::tabs;
 use super::tree::{DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId, SplitAxis};
 
+pub struct ReconcilePlugin;
+
+impl Plugin for ReconcilePlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<DockTree>().add_systems(
+            Update,
+            (reconcile_tree, sync_leaf_visuals).chain(),
+        );
+    }
+}
+
 /// Marker for the single host entity the reconciler renders the dock
 /// tree underneath. Spawn one of these (typically the editor's main
 /// content area); the reconciler fills it with split / leaf entities
@@ -31,17 +42,6 @@ pub struct NodeBinding(pub NodeId);
 
 /// Alias kept for readability at call sites that only deal with leaves.
 pub type LeafBinding = NodeBinding;
-
-pub struct ReconcilePlugin;
-
-impl Plugin for ReconcilePlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<DockTree>().add_systems(
-            Update,
-            (reconcile_tree, sync_leaf_visuals).chain(),
-        );
-    }
-}
 
 fn reconcile_tree(world: &mut World) {
     if !world.is_resource_changed::<DockTree>() {
@@ -401,9 +401,9 @@ fn sync_leaf_visuals(
     parent_query: Query<&ChildOf>,
     children_query: Query<&Children>,
     mut nodes: Query<&mut Node>,
-    mut bgs: Query<&mut BackgroundColor>,
-    mut borders: Query<&mut BorderColor>,
     mut text_colors: Query<&mut TextColor>,
+    theme: Res<crate::ui::theme::EditorTheme>,
+    mut commands: Commands,
 ) {
     if !tree.is_changed() {
         return;
@@ -433,30 +433,19 @@ fn sync_leaf_visuals(
                 continue;
             }
             let is_active = leaf.active == Some(tab.tab_id);
-            if let Ok(mut bg) = bgs.get_mut(tab_entity) {
-                bg.0 = if is_active {
-                    super::TAB_ACTIVE_BG
-                } else {
-                    Color::NONE
-                };
-            }
-            if let Ok(mut bc) = borders.get_mut(tab_entity) {
-                *bc = BorderColor::all(if is_active {
-                    super::TAB_ACTIVE_BORDER
-                } else {
-                    Color::NONE
-                });
-            }
-            if let Ok(mut node) = nodes.get_mut(tab_entity) {
-                node.border.top = if is_active { Val::Px(2.0) } else { Val::ZERO };
-            }
+            // Re-inserting `Glass` swaps the tab's material preset.
+            commands.entity(tab_entity).insert(if is_active {
+                crate::ui::glass::Glass::TabActive
+            } else {
+                crate::ui::glass::Glass::TabIdle
+            });
             if let Ok(tab_children) = children_query.get(tab_entity) {
                 for child in tab_children.iter() {
                     if let Ok(mut tc) = text_colors.get_mut(child) {
                         tc.0 = if is_active {
-                            super::TEXT_MAIN
+                            theme.text_primary
                         } else {
-                            super::TAB_INACTIVE_TEXT
+                            theme.text_muted
                         };
                     }
                 }

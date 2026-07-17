@@ -11,18 +11,9 @@ use bevy::window::SystemCursorIcon;
 use super::area::{DockTab, DockTabBar, DockTabCloseButton};
 use super::reconcile::LeafBinding;
 use super::tree::{DockTree, TabId};
-use super::{
-    PANEL_BORDER, PANEL_HEADER_BG, TAB_ACTIVE_BG, TAB_ACTIVE_BORDER, TAB_HEIGHT,
-    TAB_INACTIVE_TEXT, TEXT_MAIN,
-};
-
-#[derive(Component)]
-pub struct DockTabAddButton {
-    pub area_entity: Entity,
-}
-
-#[derive(Component)]
-pub struct DockTabRow;
+use super::TAB_HEIGHT;
+use crate::ui::glass::Glass;
+use crate::ui::theme::EditorTheme;
 
 pub struct DockTabPlugin;
 
@@ -34,10 +25,42 @@ impl Plugin for DockTabPlugin {
                 handle_dock_tab_clicks,
                 handle_close_clicks,
                 show_close_on_hover,
+                hover_tabs,
             ),
         );
     }
 }
+
+/// Swap inactive tabs between the invisible idle pill and the faint
+/// hover pill. Re-inserting [`Glass`] triggers the material swap;
+/// active tabs keep [`Glass::TabActive`].
+fn hover_tabs(
+    q_tabs: Query<
+        (Entity, &Interaction, &Glass),
+        (Changed<Interaction>, With<DockTab>),
+    >,
+    mut commands: Commands,
+) {
+    for (entity, interaction, glass) in &q_tabs {
+        let next = match (interaction, glass) {
+            (Interaction::None, Glass::TabHover) => Glass::TabIdle,
+            (
+                Interaction::Hovered | Interaction::Pressed,
+                Glass::TabIdle,
+            ) => Glass::TabHover,
+            _ => continue,
+        };
+        commands.entity(entity).insert(next);
+    }
+}
+
+#[derive(Component)]
+pub struct DockTabAddButton {
+    pub area_entity: Entity,
+}
+
+#[derive(Component)]
+pub struct DockTabRow;
 
 pub fn spawn_tab_bar_world(
     world: &mut World,
@@ -45,6 +68,8 @@ pub fn spawn_tab_bar_world(
     tabs: &[(TabId, String, String)],
     active: Option<TabId>,
 ) {
+    // Glass chrome: the material draws body, rim and rounding, so no
+    // `BackgroundColor`/`BorderColor` here.
     let tab_bar = world
         .spawn((
             DockTabBar,
@@ -56,17 +81,9 @@ pub fn spawn_tab_bar_world(
                 height: Val::Px(TAB_HEIGHT),
                 padding: UiRect::new(Val::Px(8.0), Val::Px(8.0), Val::Px(1.0), Val::ZERO),
                 flex_shrink: 0.0,
-                border: UiRect {
-                    left: Val::Px(1.0),
-                    right: Val::Px(1.0),
-                    top: Val::Px(1.0),
-                    bottom: Val::ZERO,
-                },
-                border_radius: BorderRadius::top(Val::Px(6.0)),
                 ..default()
             },
-            BackgroundColor(PANEL_HEADER_BG),
-            BorderColor::all(PANEL_BORDER),
+            Glass::Bar,
             ChildOf(area_entity),
         ))
         .id();
@@ -94,6 +111,7 @@ pub fn spawn_tab_bar_world(
         spawn_tab(world, tab_row, *tab_id, window_id, label, is_active);
     }
 
+    let muted = world.resource::<EditorTheme>().text_muted;
     world.spawn((
         DockTabAddButton { area_entity },
         Interaction::default(),
@@ -113,7 +131,7 @@ pub fn spawn_tab_bar_world(
                 font_size: FontSize::Px(11.0),
                 ..default()
             },
-            TextColor(TAB_INACTIVE_TEXT),
+            TextColor(muted),
         )],
     ));
 }
@@ -126,10 +144,13 @@ fn spawn_tab(
     label: &str,
     is_active: bool,
 ) {
-    let tab_bg = if is_active { TAB_ACTIVE_BG } else { Color::NONE };
-    let border_top = if is_active { Val::Px(2.0) } else { Val::ZERO };
-    let border_color = if is_active { TAB_ACTIVE_BORDER } else { Color::NONE };
-    let text_color = if is_active { TEXT_MAIN } else { TAB_INACTIVE_TEXT };
+    let theme = world.resource::<EditorTheme>();
+    let text_color = if is_active {
+        theme.text_primary
+    } else {
+        theme.text_muted
+    };
+    let close_color = theme.text_muted.with_alpha(0.0);
 
     let tab_entity = world
         .spawn((
@@ -146,16 +167,12 @@ fn spawn_tab(
                 padding: UiRect::horizontal(Val::Px(5.0)),
                 height: Val::Percent(100.0),
                 flex_shrink: 0.0,
-                border: UiRect {
-                    top: border_top,
-                    ..default()
-                },
                 // Slightly rounded, matching the timeline's clip boxes.
                 border_radius: BorderRadius::all(Val::Px(6.0)),
                 ..default()
             },
-            BackgroundColor(tab_bg),
-            BorderColor::all(border_color),
+            // Active pill vs invisible; swapped by `sync_leaf_visuals`.
+            if is_active { Glass::TabActive } else { Glass::TabIdle },
             // Tabs are draggable: signal it on hover.
             EntityCursor::System(SystemCursorIcon::Grab),
             ChildOf(tab_row),
@@ -198,7 +215,7 @@ fn spawn_tab(
             DockTabCloseIcon,
             ImageNode {
                 image: close_icon,
-                color: TAB_INACTIVE_TEXT.with_alpha(0.0),
+                color: close_color,
                 ..default()
             },
             Node {

@@ -6,8 +6,6 @@ use std::sync::Arc;
 
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
-use bevy::feathers::theme::ThemeBackgroundColor;
-use bevy::feathers::tokens;
 use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
 use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
@@ -21,10 +19,9 @@ use crate::ui::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree, DockTreeHost,
     DockWindowDescriptor, Edge, WindowRegistry,
 };
+use crate::ui::glass::{Glass, glass_button};
 use crate::ui::inspector::Inspector;
-use crate::ui::{
-    Divider, label, playhead_line, scrub_slider, themed_button,
-};
+use crate::ui::{Divider, label, playhead_line, scrub_slider};
 use crate::{
     CONTROL_BAR_HEIGHT, EditorSettings, NAME_PANEL_MAX, NAME_PANEL_MIN,
     NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage, TRACK_TOP_PADDING,
@@ -100,7 +97,7 @@ impl EditorPanel {
                 padding: UiRect::bottom(Val::Px(PANEL_PADDING)),
             }
             EditorPanel
-            ThemeBackgroundColor(tokens::WINDOW_BG)
+            template_value(Glass::Panel)
             Children [
             // --- Control bar: play/pause + time readout. ---
                 (
@@ -116,7 +113,7 @@ impl EditorPanel {
                     }
                     Children [
                         (
-                            themed_button::<PlayPauseButton>(
+                            glass_button::<PlayPauseButton>(
                                 84.0,
                                 26.0,
                             )
@@ -158,7 +155,7 @@ impl EditorPanel {
                                     TRACK_TOP_PADDING,
                                 )),
                             }
-                            ThemeBackgroundColor(tokens::PANE_BODY_BG)
+                            template_value(Glass::Panel)
                         ),
                         (
                             @Divider {
@@ -191,7 +188,7 @@ impl TrackViewport {
                 min_height: Val::Px(0.0),
                 overflow: Overflow::scroll(),
             }
-            ThemeBackgroundColor(tokens::PANE_BODY_BG)
+            template_value(Glass::Panel)
             Children [
                 TimelineContent
                 scrub_slider(1.0, 1.0)
@@ -330,7 +327,7 @@ fn register_windows(
                     overflow: Overflow::scroll_y(),
                     ..default()
                 },
-                ThemeBackgroundColor(tokens::PANE_BODY_BG),
+                Glass::Panel,
             ));
             let panel_id = panel.id();
             panel.world_scope(|world| {
@@ -349,7 +346,7 @@ fn register_windows(
                 if let Ok(mut row) = world.spawn_scene(bsn! {
                     Node { flex_direction: FlexDirection::Row }
                     Children [(
-                        themed_button::<SettingsSaveButton>(64.0, 24.0)
+                        glass_button::<SettingsSaveButton>(64.0, 24.0)
                         Children [
                             label::<SettingsSaveLabel>("Save")
                         ]

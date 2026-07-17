@@ -6,11 +6,26 @@ use bevy::prelude::*;
 use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
 
+use crate::ui::glass::Glass;
+use crate::ui::theme::EditorTheme;
+
 use super::area::DockArea;
 use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabRow;
 use super::tree::{DockTree, Edge as TreeEdge, TabId};
+
+pub struct DockDragPlugin;
+
+impl Plugin for DockDragPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<DockDragState>()
+            .add_observer(on_tab_drag_start)
+            .add_observer(on_drag_move)
+            .add_observer(on_drag_end)
+            .add_systems(Update, cancel_drag_on_escape);
+    }
+}
 
 const DRAG_THRESHOLD: f32 = 5.0;
 
@@ -58,18 +73,6 @@ pub struct DragGhost;
 
 #[derive(Component)]
 pub struct DropOverlay;
-
-pub struct DockDragPlugin;
-
-impl Plugin for DockDragPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<DockDragState>()
-            .add_observer(on_tab_drag_start)
-            .add_observer(on_drag_move)
-            .add_observer(on_drag_end)
-            .add_systems(Update, cancel_drag_on_escape);
-    }
-}
 
 /// Node rect in logical (UI) coordinates. Shared with the add-popup.
 pub(super) fn logical_rect(
@@ -129,6 +132,7 @@ fn on_drag_move(
     node_query: Query<(&ComputedNode, &UiGlobalTransform)>,
     parent_query: Query<&ChildOf>,
     ui_scale: Res<UiScale>,
+    theme: Res<EditorTheme>,
     mut override_cursor: ResMut<OverrideCursor>,
 ) {
     let drag_event = trigger.event();
@@ -171,12 +175,10 @@ fn on_drag_move(
                         left: Val::Px(cursor_pos_ui.x - 40.0),
                         top: Val::Px(cursor_pos_ui.y - 12.0),
                         padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
-                        border: UiRect::all(Val::Px(1.0)),
                         border_radius: BorderRadius::all(Val::Px(4.0)),
                         ..default()
                     },
-                    BackgroundColor(super::MENU_BG),
-                    BorderColor::all(super::ACCENT_COLOR),
+                    Glass::Ghost,
                     GlobalZIndex(200),
                     children![(
                         Text::new(window_name.clone()),
@@ -184,7 +186,7 @@ fn on_drag_move(
                             font_size: FontSize::Px(12.0),
                             ..default()
                         },
-                        TextColor(super::TEXT_MAIN),
+                        TextColor(theme.text_primary),
                     )],
                 ))
                 .id();
@@ -216,7 +218,6 @@ fn on_drag_move(
                 left: Val::Px(cursor_pos_ui.x - 40.0),
                 top: Val::Px(cursor_pos_ui.y - 12.0),
                 padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
-                border: UiRect::all(Val::Px(1.0)),
                 border_radius: BorderRadius::all(Val::Px(4.0)),
                 ..default()
             });
@@ -299,12 +300,10 @@ fn on_drag_move(
                             top: Val::Px(overlay_pos.y),
                             width: Val::Px(overlay_size.x),
                             height: Val::Px(overlay_size.y),
-                            border: UiRect::all(Val::Px(2.0)),
                             border_radius: BorderRadius::all(Val::Px(4.0)),
                             ..Default::default()
                         },
-                        BackgroundColor(super::DROP_OVERLAY_BASE.with_alpha(0.25)),
-                        BorderColor::all(super::ACCENT_COLOR),
+                        Glass::Overlay,
                         GlobalZIndex(150),
                     ))
                     .id();
@@ -336,12 +335,10 @@ fn on_drag_move(
                                     top: Val::Px(overlay_rect.min.y),
                                     width: Val::Px(overlay_rect.size().x),
                                     height: Val::Px(overlay_rect.size().y),
-                                    border: UiRect::all(Val::Px(2.0)),
                                     border_radius: BorderRadius::all(Val::Px(4.0)),
                                     ..default()
                                 },
-                                BackgroundColor(super::DROP_OVERLAY_BASE.with_alpha(0.25)),
-                                BorderColor::all(super::ACCENT_COLOR),
+                                Glass::Overlay,
                                 GlobalZIndex(150),
                             ))
                             .id();
@@ -358,12 +355,10 @@ fn on_drag_move(
                                     top: Val::Px(area_rect.min.y),
                                     width: Val::Px(area_rect.size().x),
                                     height: Val::Px(area_rect.size().y),
-                                    border: UiRect::all(Val::Px(2.0)),
                                     border_radius: BorderRadius::all(Val::Px(4.0)),
                                     ..default()
                                 },
-                                BackgroundColor(super::DROP_OVERLAY_BASE.with_alpha(0.12)),
-                                BorderColor::all(super::ACCENT_COLOR),
+                                Glass::Overlay,
                                 GlobalZIndex(150),
                             ))
                             .id();

@@ -11,7 +11,19 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabAddButton;
 use super::tree::DockTree;
-use super::{MENU_BG, PANEL_BORDER, TAB_ACTIVE_BG, TAB_INACTIVE_TEXT};
+use crate::ui::glass::Glass;
+use crate::ui::theme::EditorTheme;
+
+pub struct AddWindowPopupPlugin;
+
+impl Plugin for AddWindowPopupPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            (handle_add_clicks, handle_item_clicks, hover_items),
+        );
+    }
+}
 
 const POPUP_WIDTH: f32 = 150.0;
 
@@ -32,17 +44,6 @@ pub struct AddWindowPopupItem {
     window_id: String,
     /// The dock area whose leaf receives the new tab.
     area: Entity,
-}
-
-pub struct AddWindowPopupPlugin;
-
-impl Plugin for AddWindowPopupPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (handle_add_clicks, handle_item_clicks, hover_items),
-        );
-    }
 }
 
 /// Open the popup under the pressed "+" button; pressing the same
@@ -66,6 +67,7 @@ fn handle_add_clicks(
     >,
     registry: Res<WindowRegistry>,
     tree: Res<DockTree>,
+    theme: Res<EditorTheme>,
     mut commands: Commands,
 ) {
     for (button_entity, button, interaction, computed, transform) in
@@ -113,12 +115,10 @@ fn handle_add_clicks(
                     width: Val::Px(POPUP_WIDTH),
                     flex_direction: FlexDirection::Column,
                     padding: UiRect::all(Val::Px(4.0)),
-                    border: UiRect::all(Val::Px(1.0)),
                     border_radius: BorderRadius::all(Val::Px(6.0)),
                     ..default()
                 },
-                BackgroundColor(MENU_BG),
-                BorderColor::all(PANEL_BORDER),
+                Glass::Popup,
                 GlobalZIndex(181),
             ))
             .id();
@@ -148,7 +148,7 @@ fn handle_add_clicks(
                         font_size: FontSize::Px(12.0),
                         ..default()
                     },
-                    TextColor(TAB_INACTIVE_TEXT),
+                    TextColor(theme.text_muted),
                 )],
             ));
         }
@@ -192,6 +192,7 @@ fn handle_item_clicks(
 
 /// Hover highlight for popup rows.
 fn hover_items(
+    theme: Res<EditorTheme>,
     mut q_items: Query<
         (&Interaction, &mut BackgroundColor),
         (With<AddWindowPopupItem>, Changed<Interaction>),
@@ -200,7 +201,7 @@ fn hover_items(
     for (interaction, mut bg) in &mut q_items {
         bg.0 = match interaction {
             Interaction::None => Color::NONE,
-            _ => TAB_ACTIVE_BG,
+            _ => theme.hover_fill,
         };
     }
 }
