@@ -1,12 +1,16 @@
 //! Resizable split panels: a [`PanelGroup`] arranges its [`Panel`]
-//! children along its flex axis according to each panel's `ratio`, with
-//! a draggable [`PanelHandle`] between adjacent panels. Dragging a
-//! handle also mirrors the new fraction into the [`DockTree`](super::tree::DockTree)
-//! split it's bound to (via [`super::reconcile::NodeBinding`]), so the
-//! reconciler and the live layout stay in sync.
+//! children along its flex axis according to each panel's `ratio`,
+//! with a draggable [`PanelHandle`] between adjacent panels. Dragging
+//! a handle also mirrors the new fraction into the
+//! [`DockTree`](super::tree::DockTree) split it's bound to (via
+//! [`super::reconcile::NodeBinding`]), so the reconciler and the live
+//! layout stay in sync.
 
 use bevy::ecs::spawn::SpawnableList;
-use bevy::feathers::cursor::{CursorIconPlugin, EntityCursor, OverrideCursor};
+use bevy::feathers::cursor::{
+    CursorIconPlugin, EntityCursor, OverrideCursor,
+};
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
@@ -46,12 +50,14 @@ pub struct Panel {
 #[derive(Component)]
 pub struct PanelHandle;
 
-/// Present on a handle while it's being dragged, so the hover
-/// highlight is suppressed until the drag ends.
+/// Present on a handle while it's being dragged, so the highlight
+/// stays visible for the whole drag even if the cursor leaves it.
 #[derive(Component)]
 struct HandleDragging;
 
-pub fn panel_group<C: SpawnableList<ChildOf> + Send + Sync + 'static>(
+pub fn panel_group<
+    C: SpawnableList<ChildOf> + Send + Sync + 'static,
+>(
     min_ratio: f32,
     panels: C,
 ) -> impl Bundle {
@@ -96,7 +102,7 @@ fn recalculate_changed_panels(
         Query<(&mut Node, &Panel)>,
     )>,
 ) {
-    let mut seen = std::collections::HashSet::new();
+    let mut seen = HashSet::new();
     for parent_ref in &changed {
         let parent = parent_ref.parent();
         if seen.insert(parent) {
@@ -120,7 +126,8 @@ fn recalculate_group(
     let child_entities: Vec<Entity> = children.iter().collect();
 
     // Sum only visible panels. Hidden (Display::None) panels are out
-    // of layout, so giving them a percentage steals space from siblings.
+    // of layout, so giving them a percentage steals space from
+    // siblings.
     let panels_ro = queries.p1();
     let total: f32 = panels_ro
         .iter_many(&child_entities)
@@ -181,10 +188,11 @@ fn on_handle_drag_start(
     let Ok(&ChildOf(parent)) = handles.get(handle) else {
         return;
     };
-    // Hide the hover highlight for the duration of the drag.
-    commands
-        .entity(handle)
-        .insert((HandleDragging, BackgroundColor(Color::NONE)));
+    // Keep the highlight shown for the whole drag.
+    commands.entity(handle).insert((
+        HandleDragging,
+        BackgroundColor(HANDLE_HOVER_COLOR),
+    ));
     let Ok(node) = nodes.get(parent) else {
         return;
     };
@@ -205,7 +213,11 @@ fn on_handle_drag_end(
     let Ok(&ChildOf(parent)) = handles.get(handle) else {
         return;
     };
-    commands.entity(handle).remove::<HandleDragging>();
+    // End of drag: drop the marker and clear the highlight.
+    commands
+        .entity(handle)
+        .remove::<HandleDragging>()
+        .insert(BackgroundColor(Color::NONE));
     let Ok(node) = nodes.get(parent) else {
         return;
     };
@@ -217,7 +229,7 @@ fn on_handle_drag_end(
 
 fn on_handle_hover(
     trigger: On<Pointer<Over>>,
-    handles: Query<(), (With<PanelHandle>, Without<HandleDragging>)>,
+    handles: Query<(), With<PanelHandle>>,
     mut commands: Commands,
 ) {
     if handles.get(trigger.event_target()).is_ok() {
@@ -229,7 +241,8 @@ fn on_handle_hover(
 
 fn on_handle_unhover(
     trigger: On<Pointer<Out>>,
-    handles: Query<(), With<PanelHandle>>,
+    // Skip while dragging so leaving the handle keeps the highlight.
+    handles: Query<(), (With<PanelHandle>, Without<HandleDragging>)>,
     mut commands: Commands,
 ) {
     if handles.get(trigger.event_target()).is_ok() {
@@ -257,7 +270,9 @@ fn handle_panel_drag(
         return;
     };
 
-    let Some(handle_index) = children.iter().position(|e| e == handle_entity) else {
+    let Some(handle_index) =
+        children.iter().position(|e| e == handle_entity)
+    else {
         return;
     };
     if handle_index == 0 || handle_index + 1 >= children.len() {
@@ -340,7 +355,11 @@ fn handle_panel_drag(
 
 fn get_drag_icon(direction: FlexDirection) -> SystemCursorIcon {
     match direction {
-        FlexDirection::Row | FlexDirection::RowReverse => SystemCursorIcon::ColResize,
-        FlexDirection::Column | FlexDirection::ColumnReverse => SystemCursorIcon::RowResize,
+        FlexDirection::Row | FlexDirection::RowReverse => {
+            SystemCursorIcon::ColResize
+        }
+        FlexDirection::Column | FlexDirection::ColumnReverse => {
+            SystemCursorIcon::RowResize
+        }
     }
 }

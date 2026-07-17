@@ -1,11 +1,13 @@
 //! Registry of the window kinds that can be docked: what to call them
 //! and how to build their content when a tab is materialized.
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
-pub type DockWindowBuildFn = Arc<dyn Fn(&mut ChildSpawner) + Send + Sync + 'static>;
+pub type DockWindowBuildFn =
+    Arc<dyn Fn(&mut ChildSpawner) + Send + Sync + 'static>;
 
 pub struct DockWindowDescriptor {
     pub id: String,
@@ -46,7 +48,9 @@ impl WindowRegistry {
         self.index.get(id).map(|&i| &self.windows[i])
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &DockWindowDescriptor> {
+    pub fn iter(
+        &self,
+    ) -> impl Iterator<Item = &DockWindowDescriptor> {
         self.windows.iter()
     }
 }

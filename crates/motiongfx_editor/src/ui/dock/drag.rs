@@ -1,18 +1,17 @@
-//! Drag/drop state machine: drag a tab to reorder it within a tab bar,
-//! merge it into another leaf, or split an area on drop.
+//! Drag/drop state machine: drag a tab to reorder it within a tab
+//! bar, merge it into another leaf, or split an area on drop.
 
 use bevy::feathers::cursor::{EntityCursor, OverrideCursor};
 use bevy::prelude::*;
 use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
 
-use crate::ui::glass::Glass;
-
 use super::area::DockArea;
 use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabRow;
 use super::tree::{DockTree, Edge as TreeEdge, TabId};
+use crate::ui::glass;
 
 pub struct DockDragPlugin;
 
@@ -80,7 +79,8 @@ pub(super) fn logical_rect(
 ) -> Rect {
     let inv = computed.inverse_scale_factor();
     let size = computed.size() * inv;
-    let (_scale, _angle, center) = transform.to_scale_angle_translation();
+    let (_scale, _angle, center) =
+        transform.to_scale_angle_translation();
     let center = center.trunc() * inv;
     Rect::from_center_size(center, size)
 }
@@ -116,7 +116,10 @@ fn on_drag_move(
     mut trigger: On<Pointer<Drag>>,
     mut drag_state: ResMut<DockDragState>,
     mut commands: Commands,
-    areas: Query<(Entity, &ComputedNode, &UiGlobalTransform), With<DockArea>>,
+    areas: Query<
+        (Entity, &ComputedNode, &UiGlobalTransform),
+        With<DockArea>,
+    >,
     tab_rows: Query<
         (
             Entity,
@@ -156,7 +159,8 @@ fn on_drag_move(
             let window_id = window_id.clone();
             let window_name = window_name.clone();
 
-            let source_area = find_parent_area(source_tab, &parent_query, &areas);
+            let source_area =
+                find_parent_area(source_tab, &parent_query, &areas);
 
             // Drag underway: show the grabbing cursor everywhere.
             if override_cursor.is_none() {
@@ -168,7 +172,11 @@ fn on_drag_move(
             // The ghost is the real tab tile, rebuilt via the shared
             // builder so it's identical; hide the original meanwhile.
             let ghost = commands
-                .spawn((DragGhost, ghost_node(cursor_pos_ui), GlobalZIndex(200)))
+                .spawn((
+                    DragGhost,
+                    ghost_node(cursor_pos_ui),
+                    GlobalZIndex(200),
+                ))
                 .id();
             commands.entity(source_tab).insert(Visibility::Hidden);
             let name = window_name.clone();
@@ -181,7 +189,8 @@ fn on_drag_move(
                 tab_id,
                 window_id,
                 window_name,
-                source_area: source_area.unwrap_or(Entity::PLACEHOLDER),
+                source_area: source_area
+                    .unwrap_or(Entity::PLACEHOLDER),
                 ghost_entity: ghost,
                 cursor_pos: cursor_pos_ui,
                 drop_target: None,
@@ -207,34 +216,71 @@ fn on_drag_move(
             let mut new_target = None;
             let mut new_overlay = None;
 
-            for (tab_row_entity, computed, node, ui_transform, children, parent) in &tab_rows {
+            for (
+                tab_row_entity,
+                computed,
+                node,
+                ui_transform,
+                children,
+                parent,
+            ) in &tab_rows
+            {
                 let row_rect = logical_rect(computed, ui_transform);
                 let parent_contains =
-                    node_query
-                        .get(parent.0)
-                        .is_ok_and(|(parent_computed, parent_transform)| {
-                            logical_rect(parent_computed, parent_transform).contains(cursor_pos_ui)
-                        });
-                if !row_rect.contains(cursor_pos_ui) && !parent_contains {
+                    node_query.get(parent.0).is_ok_and(
+                        |(parent_computed, parent_transform)| {
+                            logical_rect(
+                                parent_computed,
+                                parent_transform,
+                            )
+                            .contains(cursor_pos_ui)
+                        },
+                    );
+                if !row_rect.contains(cursor_pos_ui)
+                    && !parent_contains
+                {
                     continue;
                 }
-                let mut closest_child: Option<(Vec2, Vec2, usize, f32)> = None;
+                let mut closest_child: Option<(
+                    Vec2,
+                    Vec2,
+                    usize,
+                    f32,
+                )> = None;
                 for (index, child) in children.iter().enumerate() {
-                    let Ok((child_computed, _child_transform)) = node_query.get(child) else {
+                    let Ok((child_computed, _child_transform)) =
+                        node_query.get(child)
+                    else {
                         continue;
                     };
-                    let (_scale, _angle, center) = ui_transform.to_scale_angle_translation();
-                    let child_center = center.trunc() * computed.inverse_scale_factor();
-                    let child_size = child_computed.size() * child_computed.inverse_scale_factor();
-                    let distance = child_center.distance_squared(cursor_pos_ui);
-                    if closest_child.is_none_or(|(_, _, _, closest_dist)| distance < closest_dist) {
-                        closest_child = Some((child_center, child_size, index, distance));
+                    let (_scale, _angle, center) =
+                        ui_transform.to_scale_angle_translation();
+                    let child_center = center.trunc()
+                        * computed.inverse_scale_factor();
+                    let child_size = child_computed.size()
+                        * child_computed.inverse_scale_factor();
+                    let distance =
+                        child_center.distance_squared(cursor_pos_ui);
+                    if closest_child.is_none_or(
+                        |(_, _, _, closest_dist)| {
+                            distance < closest_dist
+                        },
+                    ) {
+                        closest_child = Some((
+                            child_center,
+                            child_size,
+                            index,
+                            distance,
+                        ));
                     }
                 }
-                let Some((child_center, child_size, mut index, _)) = closest_child else {
+                let Some((child_center, child_size, mut index, _)) =
+                    closest_child
+                else {
                     continue;
                 };
-                let (is_far_side, is_vertical) = is_far_side(cursor_pos_ui, child_center, node);
+                let (is_far_side, is_vertical) =
+                    is_far_side(cursor_pos_ui, child_center, node);
                 if is_far_side {
                     index += 1;
                 }
@@ -278,10 +324,12 @@ fn on_drag_move(
                             top: Val::Px(overlay_pos.y),
                             width: Val::Px(overlay_size.x),
                             height: Val::Px(overlay_size.y),
-                            border_radius: BorderRadius::all(Val::Px(4.0)),
+                            border_radius: BorderRadius::all(
+                                Val::Px(4.0),
+                            ),
                             ..Default::default()
                         },
-                        Glass::Overlay,
+                        glass::overlay(),
                         GlobalZIndex(150),
                     ))
                     .id();
@@ -292,51 +340,70 @@ fn on_drag_move(
 
             if new_target.is_none() {
                 for (area_entity, computed, ui_transform) in &areas {
-                    let area_rect = logical_rect(computed, ui_transform);
+                    let area_rect =
+                        logical_rect(computed, ui_transform);
                     if !area_rect.contains(cursor_pos_ui) {
                         continue;
                     }
 
-                    if let Some(edge) = cursor_edge(area_rect, cursor_pos_ui) {
+                    if let Some(edge) =
+                        cursor_edge(area_rect, cursor_pos_ui)
+                    {
                         new_target = Some(DropTarget::AreaEdge {
                             area: area_entity,
                             edge,
                         });
 
-                        let overlay_rect = edge_overlay_rect(area_rect, edge);
+                        let overlay_rect =
+                            edge_overlay_rect(area_rect, edge);
                         let overlay = commands
                             .spawn((
                                 DropOverlay,
                                 Node {
-                                    position_type: PositionType::Absolute,
+                                    position_type:
+                                        PositionType::Absolute,
                                     left: Val::Px(overlay_rect.min.x),
                                     top: Val::Px(overlay_rect.min.y),
-                                    width: Val::Px(overlay_rect.size().x),
-                                    height: Val::Px(overlay_rect.size().y),
-                                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                                    width: Val::Px(
+                                        overlay_rect.size().x,
+                                    ),
+                                    height: Val::Px(
+                                        overlay_rect.size().y,
+                                    ),
+                                    border_radius: BorderRadius::all(
+                                        Val::Px(4.0),
+                                    ),
                                     ..default()
                                 },
-                                Glass::Overlay,
+                                glass::overlay(),
                                 GlobalZIndex(150),
                             ))
                             .id();
                         new_overlay = Some(overlay);
                     } else {
-                        new_target = Some(DropTarget::Panel(area_entity));
+                        new_target =
+                            Some(DropTarget::Panel(area_entity));
 
                         let overlay = commands
                             .spawn((
                                 DropOverlay,
                                 Node {
-                                    position_type: PositionType::Absolute,
+                                    position_type:
+                                        PositionType::Absolute,
                                     left: Val::Px(area_rect.min.x),
                                     top: Val::Px(area_rect.min.y),
-                                    width: Val::Px(area_rect.size().x),
-                                    height: Val::Px(area_rect.size().y),
-                                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                                    width: Val::Px(
+                                        area_rect.size().x,
+                                    ),
+                                    height: Val::Px(
+                                        area_rect.size().y,
+                                    ),
+                                    border_radius: BorderRadius::all(
+                                        Val::Px(4.0),
+                                    ),
                                     ..default()
                                 },
-                                Glass::Overlay,
+                                glass::overlay(),
                                 GlobalZIndex(150),
                             ))
                             .id();
@@ -385,8 +452,11 @@ fn on_drag_end(
             clear_grab_cursor(&mut override_cursor);
             commands.entity(ghost_entity).despawn();
             // Reveal the original tab again (a consumed drop rebuilds
-            // the leaf and despawns it anyway, so this is best-effort).
-            commands.entity(source_tab).try_insert(Visibility::Inherited);
+            // the leaf and despawns it anyway, so this is
+            // best-effort).
+            commands
+                .entity(source_tab)
+                .try_insert(Visibility::Inherited);
             if let Some(overlay) = overlay_entity {
                 commands.entity(overlay).despawn();
             }
@@ -395,9 +465,15 @@ fn on_drag_end(
                 match target {
                     DropTarget::Panel(target_area) => {
                         if target_area != source_area {
-                            commands.queue(move |world: &mut World| {
-                                drop_on_area(world, tab_id, target_area);
-                            });
+                            commands.queue(
+                                move |world: &mut World| {
+                                    drop_on_area(
+                                        world,
+                                        tab_id,
+                                        target_area,
+                                    );
+                                },
+                            );
                         }
                     }
                     DropTarget::AreaEdge { area, edge } => {
@@ -407,7 +483,9 @@ fn on_drag_end(
                     }
                     DropTarget::TabRow { bar, index } => {
                         commands.queue(move |world: &mut World| {
-                            drop_on_tab_row(world, tab_id, bar, index);
+                            drop_on_tab_row(
+                                world, tab_id, bar, index,
+                            );
                         });
                     }
                 }
@@ -439,7 +517,9 @@ fn cancel_drag_on_escape(
     {
         clear_grab_cursor(&mut override_cursor);
         commands.entity(ghost_entity).despawn();
-        commands.entity(source_tab).try_insert(Visibility::Inherited);
+        commands
+            .entity(source_tab)
+            .try_insert(Visibility::Inherited);
         if let Some(overlay) = overlay_entity {
             commands.entity(overlay).despawn();
         }
@@ -471,7 +551,9 @@ fn clear_grab_cursor(override_cursor: &mut OverrideCursor) {
 
 /// Move the dragged tab into the leaf bound to `target_area`.
 fn drop_on_area(world: &mut World, tab: TabId, target_area: Entity) {
-    let Some(binding) = world.entity(target_area).get::<NodeBinding>().copied() else {
+    let Some(binding) =
+        world.entity(target_area).get::<NodeBinding>().copied()
+    else {
         return;
     };
     world.resource_mut::<DockTree>().move_tab(tab, binding.0);
@@ -481,8 +563,15 @@ fn drop_on_area(world: &mut World, tab: TabId, target_area: Entity) {
 /// dragged tab into the new sibling. The tab keeps its window kind
 /// but receives a fresh [`TabId`] (we remove + split rather than
 /// move, since `tree.split` builds the leaf from a window id).
-fn drop_on_edge(world: &mut World, tab: TabId, target_area: Entity, edge: DropEdge) {
-    let Some(binding) = world.entity(target_area).get::<NodeBinding>().copied() else {
+fn drop_on_edge(
+    world: &mut World,
+    tab: TabId,
+    target_area: Entity,
+    edge: DropEdge,
+) {
+    let Some(binding) =
+        world.entity(target_area).get::<NodeBinding>().copied()
+    else {
         return;
     };
     let tree_edge = match edge {
@@ -492,12 +581,14 @@ fn drop_on_edge(world: &mut World, tab: TabId, target_area: Entity, edge: DropEd
         DropEdge::Right => TreeEdge::Right,
     };
     let mut tree = world.resource_mut::<DockTree>();
-    let Some(window_id) = tree.find_leaf_for_tab(tab).and_then(|leaf_id| {
-        tree.get(leaf_id)
-            .and_then(|n| n.as_leaf())
-            .and_then(|l| l.windows.iter().find(|t| t.id == tab))
-            .map(|t| t.window_id.clone())
-    }) else {
+    let Some(window_id) =
+        tree.find_leaf_for_tab(tab).and_then(|leaf_id| {
+            tree.get(leaf_id)
+                .and_then(|n| n.as_leaf())
+                .and_then(|l| l.windows.iter().find(|t| t.id == tab))
+                .map(|t| t.window_id.clone())
+        })
+    else {
         return;
     };
     // Split first (keeps the target leaf valid), then remove: the
@@ -510,20 +601,29 @@ fn drop_on_edge(world: &mut World, tab: TabId, target_area: Entity, edge: DropEd
 /// Drop the dragged tab onto the leaf bound to `tab_row` at slot
 /// `index`. Reordering within the source leaf is allowed (drag a tab
 /// to reorder it).
-fn drop_on_tab_row(world: &mut World, tab: TabId, tab_row: Entity, index: usize) {
+fn drop_on_tab_row(
+    world: &mut World,
+    tab: TabId,
+    tab_row: Entity,
+    index: usize,
+) {
     let mut parent_query = world.query::<&ChildOf>();
     let parent_query = parent_query.query(world);
 
     let mut binding = None;
     for parent in parent_query.iter_ancestors(tab_row) {
-        if let Some(node_binding) = world.entity(parent).get::<NodeBinding>() {
+        if let Some(node_binding) =
+            world.entity(parent).get::<NodeBinding>()
+        {
             binding = Some(node_binding);
             break;
         }
     }
 
     let Some(binding) = binding.copied() else {
-        warn!("No `NodeBinding` found in parents of tab row {tab_row}");
+        warn!(
+            "No `NodeBinding` found in parents of tab row {tab_row}"
+        );
         return;
     };
 
@@ -534,7 +634,10 @@ fn drop_on_tab_row(world: &mut World, tab: TabId, tab_row: Entity, index: usize)
 fn find_parent_area(
     entity: Entity,
     parents: &Query<&ChildOf>,
-    areas: &Query<(Entity, &ComputedNode, &UiGlobalTransform), With<DockArea>>,
+    areas: &Query<
+        (Entity, &ComputedNode, &UiGlobalTransform),
+        With<DockArea>,
+    >,
 ) -> Option<Entity> {
     let mut current = entity;
     loop {
@@ -554,8 +657,9 @@ fn cursor_edge(rect: Rect, cursor: Vec2) -> Option<DropEdge> {
     let frac_y = rel.y / rect.size().y;
 
     // The center region is a no-op. The outer n% on each side are the
-    // drop edges. All four edges are equal: dropping on the top of any
-    // panel splits it vertically with the dragged window above.
+    // drop edges. All four edges are equal: dropping on the top of
+    // any panel splits it vertically with the dragged window
+    // above.
     const EDGE_PERCENT: f32 = 0.25;
 
     if frac_x < -EDGE_PERCENT {
@@ -573,25 +677,53 @@ fn cursor_edge(rect: Rect, cursor: Vec2) -> Option<DropEdge> {
 
 fn edge_overlay_rect(rect: Rect, edge: DropEdge) -> Rect {
     let (axis, factor) = match edge {
-        DropEdge::Top => (-Vec2::Y * rect.size().y, Vec2::new(1.0, 0.5)),
-        DropEdge::Bottom => (Vec2::Y * rect.size().y, Vec2::new(1.0, 0.5)),
-        DropEdge::Left => (-Vec2::X * rect.size().x, Vec2::new(0.5, 1.0)),
-        DropEdge::Right => (Vec2::X * rect.size().x, Vec2::new(0.5, 1.0)),
+        DropEdge::Top => {
+            (-Vec2::Y * rect.size().y, Vec2::new(1.0, 0.5))
+        }
+        DropEdge::Bottom => {
+            (Vec2::Y * rect.size().y, Vec2::new(1.0, 0.5))
+        }
+        DropEdge::Left => {
+            (-Vec2::X * rect.size().x, Vec2::new(0.5, 1.0))
+        }
+        DropEdge::Right => {
+            (Vec2::X * rect.size().x, Vec2::new(0.5, 1.0))
+        }
     };
-    // Half the axis length shifts the center by 25% of that axis so the
-    // overlay covers exactly half of the area along a given axis.
-    Rect::from_center_size(rect.center() + axis * 0.25, rect.size() * factor)
+    // Half the axis length shifts the center by 25% of that axis so
+    // the overlay covers exactly half of the area along a given
+    // axis.
+    Rect::from_center_size(
+        rect.center() + axis * 0.25,
+        rect.size() * factor,
+    )
 }
 
-fn is_far_side(mouse_pos: Vec2, child_pos: Vec2, parent: &Node) -> (bool, bool) {
+fn is_far_side(
+    mouse_pos: Vec2,
+    child_pos: Vec2,
+    parent: &Node,
+) -> (bool, bool) {
     return match parent.flex_direction {
-        FlexDirection::Row => (is_far_side(mouse_pos, child_pos, false), false),
-        FlexDirection::RowReverse => (!is_far_side(mouse_pos, child_pos, false), false),
-        FlexDirection::Column => (is_far_side(mouse_pos, child_pos, true), true),
-        FlexDirection::ColumnReverse => (!is_far_side(mouse_pos, child_pos, true), true),
+        FlexDirection::Row => {
+            (is_far_side(mouse_pos, child_pos, false), false)
+        }
+        FlexDirection::RowReverse => {
+            (!is_far_side(mouse_pos, child_pos, false), false)
+        }
+        FlexDirection::Column => {
+            (is_far_side(mouse_pos, child_pos, true), true)
+        }
+        FlexDirection::ColumnReverse => {
+            (!is_far_side(mouse_pos, child_pos, true), true)
+        }
     };
 
-    fn is_far_side(mouse_pos: Vec2, child_pos: Vec2, is_vertical: bool) -> bool {
+    fn is_far_side(
+        mouse_pos: Vec2,
+        child_pos: Vec2,
+        is_vertical: bool,
+    ) -> bool {
         let diff = if is_vertical {
             mouse_pos.y - child_pos.y
         } else {

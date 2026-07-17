@@ -1,26 +1,31 @@
-//! A timeline editor for MotionGfx, built on `bevy_ui` and styled with
-//! `bevy_feathers` on top of the headless `bevy_ui_widgets` behaviors.
+//! A timeline editor for MotionGfx, built on `bevy_ui` and styled
+//! with `bevy_feathers` on top of the headless `bevy_ui_widgets`
+//! behaviors.
 //!
-//! Renders a bottom-docked timeline panel focused on the first track of
-//! the first [`Timeline`] it finds:
+//! Renders a bottom-docked timeline panel focused on the first track
+//! of the first [`Timeline`] it finds:
 //! - every action is a clip box, positioned by its start/duration and
 //!   colored by its subject entity;
-//! - concurrent groups (all / any / flow) get a collapsible container;
+//! - concurrent groups (all / any / flow) get a collapsible
+//!   container;
 //! - the whole track is a [`Slider`] acting as the scrubber, with the
 //!   playhead as its thumb;
 //! - a feathers [`Button`] (or the spacebar) toggles play/pause;
-//! - the track scrolls (wheel / trackpad) via a [`ScrollArea`], with a
-//!   resizable name column.
+//! - the track scrolls (wheel / trackpad) via a [`ScrollArea`], with
+//!   a resizable name column.
 //!
 //! Modules: [`scene`] (component markers + `bsn!` tree + setup),
 //! [`layout`] (composition tree → clip/group/toggle placements),
-//! [`playback`] (play/pause, scrub, playhead), [`view`] (camera + scroll
-//! sync), and [`ui`] (reusable widget builders).
+//! [`playback`] (play/pause, scrub, playhead), [`view`] (camera +
+//! scroll sync), and [`ui`] (reusable widget builders).
 //!
 //! [`Timeline`]: bevy_motiongfx::prelude::BevyTimeline
 //! [`Slider`]: bevy::ui_widgets::Slider
 //! [`Button`]: bevy::ui_widgets::Button
 //! [`ScrollArea`]: bevy::ui_widgets::ScrollArea
+
+// Inherent to Bevy ECS: systems take many params and query tuples.
+#![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
 mod layout;
 mod playback;
@@ -54,18 +59,24 @@ impl Plugin for MotionGfxEditorPlugin {
     }
 }
 
-/// Wires the editor's UI layer: feathers theming, the editor scene, and
-/// the per-frame timeline/playback/preview systems. Lives here (not in
-/// [`ui`], which stays UI-only) because it references the domain modules.
+/// Wires the editor's UI layer: feathers theming, the editor scene,
+/// and the per-frame timeline/playback/preview systems. Lives here
+/// (not in [`ui`], which stays UI-only) because it references the
+/// domain modules.
 struct EditorUiPlugin;
 
 impl Plugin for EditorUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            FeathersPlugins,
-            ui::dock::DockPlugin,
-            ui::inspector::ReflectInspectorPlugin::<EditorSettings>::default(),
-        ))
+        app
+            .add_plugins(
+                (
+                    FeathersPlugins,
+                    ui::dock::DockPlugin,
+                    ui::inspector::ReflectInspectorPlugin::<
+                        EditorSettings,
+                    >::default(),
+                ),
+            )
             // Seed the feathers palette (its default theme is empty).
             .insert_resource(UiTheme(create_dark_theme()))
             .init_resource::<EditorState>()
@@ -123,14 +134,15 @@ fn startup_test(
 }
 
 /// The offscreen texture the composition's scene cameras render into.
-/// `bevy_ui` scales this image to fit the preview area above the timeline
-/// panel, so growing the panel shrinks the whole frame uniformly instead
-/// of distorting it. Sized from [`EditorSettings::physical_size`].
+/// `bevy_ui` scales this image to fit the preview area above the
+/// timeline panel, so growing the panel shrinks the whole frame
+/// uniformly instead of distorting it. Sized from
+/// [`EditorSettings::physical_size`].
 #[derive(Resource)]
 pub(crate) struct PreviewImage(pub(crate) Handle<Image>);
 
-/// Shared editor state: the focused timeline, whether the view is up to
-/// date, and which groups are collapsed.
+/// Shared editor state: the focused timeline, whether the view is up
+/// to date, and which groups are collapsed.
 #[derive(Resource, Default)]
 pub(crate) struct EditorState {
     pub(crate) timeline: Option<TimelineId>,

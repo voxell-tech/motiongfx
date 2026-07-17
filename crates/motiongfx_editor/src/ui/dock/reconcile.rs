@@ -4,18 +4,25 @@
 //! `DockTreeHost` entity, and the reconciler walks the tree from its
 //! single root and shapes the entity sub-tree to match: leaves become
 //! `DockArea`s with tab bar + content, splits become flex containers
-//! wrapping two child panel entities plus a `PanelHandle` between them.
+//! wrapping two child panel entities plus a `PanelHandle` between
+//! them.
 //!
 //! Drag/move/resize operations mutate the tree only; the reconciler
 //! rebuilds the affected entity sub-tree on the next frame.
 
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
-use super::area::{ActiveDockWindow, DockArea, DockTabContent, DockWindow};
+use super::area::{
+    ActiveDockWindow, DockArea, DockTabContent, DockWindow,
+};
 use super::registry::WindowRegistry;
 use super::split::{Panel, PanelGroup, PanelHandle};
 use super::tabs;
-use super::tree::{DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId, SplitAxis};
+use super::tree::{
+    DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId,
+    SplitAxis,
+};
 
 pub struct ReconcilePlugin;
 
@@ -35,12 +42,13 @@ impl Plugin for ReconcilePlugin {
 #[derive(Component, Clone, Debug, Default)]
 pub struct DockTreeHost;
 
-/// Binds an entity to a tree node. Present on both leaf-style entities
-/// (`DockArea`) and split wrapper entities (`PanelGroup`).
+/// Binds an entity to a tree node. Present on both leaf-style
+/// entities (`DockArea`) and split wrapper entities (`PanelGroup`).
 #[derive(Component, Copy, Clone, Debug)]
 pub struct NodeBinding(pub NodeId);
 
-/// Alias kept for readability at call sites that only deal with leaves.
+/// Alias kept for readability at call sites that only deal with
+/// leaves.
 pub type LeafBinding = NodeBinding;
 
 fn reconcile_tree(world: &mut World) {
@@ -67,31 +75,50 @@ fn reconcile_at(world: &mut World, entity: Entity, node_id: NodeId) {
         return;
     };
     match node {
-        DockNode::Leaf(leaf) => reconcile_leaf(world, entity, node_id, &leaf),
-        DockNode::Split(split) => reconcile_split(world, entity, node_id, &split),
+        DockNode::Leaf(leaf) => {
+            reconcile_leaf(world, entity, node_id, &leaf)
+        }
+        DockNode::Split(split) => {
+            reconcile_split(world, entity, node_id, &split)
+        }
     }
 }
 
-fn reconcile_leaf(world: &mut World, entity: Entity, node_id: NodeId, leaf: &DockLeaf) {
-    let current_binding = world.entity(entity).get::<NodeBinding>().map(|b| b.0);
+fn reconcile_leaf(
+    world: &mut World,
+    entity: Entity,
+    node_id: NodeId,
+    leaf: &DockLeaf,
+) {
+    let current_binding =
+        world.entity(entity).get::<NodeBinding>().map(|b| b.0);
     let was_split = world.entity(entity).contains::<PanelGroup>();
     let current_tabs = collect_content_tab_ids(world, entity);
-    let leaf_tabs: Vec<super::tree::TabId> = leaf.windows.iter().map(|t| t.id).collect();
+    let leaf_tabs: Vec<super::tree::TabId> =
+        leaf.windows.iter().map(|t| t.id).collect();
 
-    let needs_rebuild = was_split || current_binding != Some(node_id) || current_tabs != leaf_tabs;
+    let needs_rebuild = was_split
+        || current_binding != Some(node_id)
+        || current_tabs != leaf_tabs;
 
     if needs_rebuild {
         despawn_children(world, entity);
         world.entity_mut(entity).remove::<PanelGroup>();
 
         let direction = match leaf.style {
-            DockAreaStyle::TabBar | DockAreaStyle::Headless => FlexDirection::Column,
+            DockAreaStyle::TabBar | DockAreaStyle::Headless => {
+                FlexDirection::Column
+            }
         };
-        if let Some(mut node) = world.entity_mut(entity).get_mut::<Node>() {
+        if let Some(mut node) =
+            world.entity_mut(entity).get_mut::<Node>()
+        {
             node.flex_direction = direction;
         }
 
-        if let Some(mut area) = world.entity_mut(entity).get_mut::<DockArea>() {
+        if let Some(mut area) =
+            world.entity_mut(entity).get_mut::<DockArea>()
+        {
             area.id = leaf.area_id.clone();
             area.style = leaf.style.clone();
         } else {
@@ -117,25 +144,36 @@ fn reconcile_leaf(world: &mut World, entity: Entity, node_id: NodeId, leaf: &Doc
     set_host_visible(world, entity, visible);
 }
 
-fn reconcile_split(world: &mut World, entity: Entity, node_id: NodeId, split: &DockSplit) {
-    let current_binding = world.entity(entity).get::<NodeBinding>().map(|b| b.0);
+fn reconcile_split(
+    world: &mut World,
+    entity: Entity,
+    node_id: NodeId,
+    split: &DockSplit,
+) {
+    let current_binding =
+        world.entity(entity).get::<NodeBinding>().map(|b| b.0);
 
     let mut children = collect_split_children(world, entity);
-    let needs_rebuild = current_binding != Some(node_id) || children.is_none();
+    let needs_rebuild =
+        current_binding != Some(node_id) || children.is_none();
 
     if needs_rebuild {
         despawn_children(world, entity);
         world.entity_mut(entity).remove::<ActiveDockWindow>();
         world.entity_mut(entity).remove::<DockArea>();
 
-        if let Some(mut node) = world.entity_mut(entity).get_mut::<Node>() {
+        if let Some(mut node) =
+            world.entity_mut(entity).get_mut::<Node>()
+        {
             node.flex_direction = match split.axis {
                 SplitAxis::Horizontal => FlexDirection::Row,
                 SplitAxis::Vertical => FlexDirection::Column,
             };
         }
         if !world.entity(entity).contains::<PanelGroup>() {
-            world.entity_mut(entity).insert(PanelGroup { min_ratio: 0.05 });
+            world
+                .entity_mut(entity)
+                .insert(PanelGroup { min_ratio: 0.05 });
         }
 
         let child_node = || Node {
@@ -180,14 +218,16 @@ fn reconcile_split(world: &mut World, entity: Entity, node_id: NodeId, split: &D
         children = Some((child_a, handle, child_b));
     }
 
-    let (child_a, _handle, child_b) = children.expect("children exist after rebuild");
+    let (child_a, _handle, child_b) =
+        children.expect("children exist after rebuild");
 
     if let Some(mut p) = world.entity_mut(child_a).get_mut::<Panel>()
         && (p.ratio - split.fraction).abs() > f32::EPSILON
     {
         p.ratio = split.fraction;
     }
-    if let Some(mut p) = world.entity_mut(child_b).get_mut::<Panel>() {
+    if let Some(mut p) = world.entity_mut(child_b).get_mut::<Panel>()
+    {
         let other = 1.0 - split.fraction;
         if (p.ratio - other).abs() > f32::EPSILON {
             p.ratio = other;
@@ -220,18 +260,31 @@ fn spawn_leaf_ui(world: &mut World, entity: Entity, leaf: &DockLeaf) {
             .iter()
             .filter_map(|tab| {
                 let desc = registry.get(&tab.window_id)?;
-                Some((tab.id, desc.id.clone(), desc.name.clone(), desc.build.clone()))
+                Some((
+                    tab.id,
+                    desc.id.clone(),
+                    desc.name.clone(),
+                    desc.build.clone(),
+                ))
             })
             .collect()
     };
 
     match leaf.style {
         DockAreaStyle::TabBar => {
-            let tabs_data: Vec<(super::tree::TabId, String, String)> = snapshot
-                .iter()
-                .map(|(tab_id, id, name, _)| (*tab_id, id.clone(), name.clone()))
-                .collect();
-            tabs::spawn_tab_bar_world(world, entity, &tabs_data, leaf.active);
+            let tabs_data: Vec<(super::tree::TabId, String, String)> =
+                snapshot
+                    .iter()
+                    .map(|(tab_id, id, name, _)| {
+                        (*tab_id, id.clone(), name.clone())
+                    })
+                    .collect();
+            tabs::spawn_tab_bar_world(
+                world,
+                entity,
+                &tabs_data,
+                leaf.active,
+            );
         }
         DockAreaStyle::Headless => {}
     }
@@ -268,7 +321,10 @@ fn spawn_leaf_ui(world: &mut World, entity: Entity, leaf: &DockLeaf) {
     }
 }
 
-fn collect_content_tab_ids(world: &mut World, entity: Entity) -> Vec<super::tree::TabId> {
+fn collect_content_tab_ids(
+    world: &mut World,
+    entity: Entity,
+) -> Vec<super::tree::TabId> {
     let children: Vec<Entity> = world
         .entity(entity)
         .get::<Children>()
@@ -283,9 +339,12 @@ fn collect_content_tab_ids(world: &mut World, entity: Entity) -> Vec<super::tree
     out
 }
 
-/// If `entity` currently looks like a split host (`PanelGroup` with three
-/// children: panel, handle, panel), return them in order.
-fn collect_split_children(world: &mut World, entity: Entity) -> Option<(Entity, Entity, Entity)> {
+/// If `entity` currently looks like a split host (`PanelGroup` with
+/// three children: panel, handle, panel), return them in order.
+fn collect_split_children(
+    world: &mut World,
+    entity: Entity,
+) -> Option<(Entity, Entity, Entity)> {
     let children: Vec<Entity> = world
         .entity(entity)
         .get::<Children>()
@@ -300,21 +359,36 @@ fn collect_split_children(world: &mut World, entity: Entity) -> Option<(Entity, 
     if !world.entity(h).contains::<PanelHandle>() {
         return None;
     }
-    if !world.entity(a).contains::<Panel>() || !world.entity(b).contains::<Panel>() {
+    if !world.entity(a).contains::<Panel>()
+        || !world.entity(b).contains::<Panel>()
+    {
         return None;
     }
     Some((a, h, b))
 }
 
-/// Show or hide a host entity and its adjacent `PanelHandle` sibling so
-/// an empty leaf doesn't leave a stub panel + dangling resize handle.
-fn set_host_visible(world: &mut World, entity: Entity, visible: bool) {
-    let target = if visible { Display::Flex } else { Display::None };
+/// Show or hide a host entity and its adjacent `PanelHandle` sibling
+/// so an empty leaf doesn't leave a stub panel + dangling resize
+/// handle.
+fn set_host_visible(
+    world: &mut World,
+    entity: Entity,
+    visible: bool,
+) {
+    let target = if visible {
+        Display::Flex
+    } else {
+        Display::None
+    };
 
-    // Find the adjacent PanelHandle sibling (index +/-1 in the parent's
-    // children) so we can hide/show it alongside the host.
+    // Find the adjacent PanelHandle sibling (index +/-1 in the
+    // parent's children) so we can hide/show it alongside the
+    // host.
     let adjacent_handle = {
-        let parent = world.entity(entity).get::<ChildOf>().map(ChildOf::parent);
+        let parent = world
+            .entity(entity)
+            .get::<ChildOf>()
+            .map(ChildOf::parent);
         parent.and_then(|parent| {
             let siblings: Vec<Entity> = world
                 .entity(parent)
@@ -333,11 +407,13 @@ fn set_host_visible(world: &mut World, entity: Entity, visible: bool) {
     let mut any_changed = false;
 
     // Host: toggle Display and drive geometry only when the state
-    // actually transitions. Unconditionally setting width/height every
-    // reconcile pass would stomp on the ratio-based percentages that
-    // `recalculate_group` has already written for an already-visible
-    // panel, producing a panel that fills 100% of its Row parent.
-    if let Some(mut node) = world.entity_mut(entity).get_mut::<Node>() {
+    // actually transitions. Unconditionally setting width/height
+    // every reconcile pass would stomp on the ratio-based
+    // percentages that `recalculate_group` has already written
+    // for an already-visible panel, producing a panel that fills
+    // 100% of its Row parent.
+    if let Some(mut node) = world.entity_mut(entity).get_mut::<Node>()
+    {
         if node.display != target {
             node.display = target;
             any_changed = true;
@@ -362,7 +438,8 @@ fn set_host_visible(world: &mut World, entity: Entity, visible: bool) {
     // `PanelHandle`'s natural size is a 3px stripe along the flex
     // axis; forcing 100% would make it fill the parent.
     if let Some(handle) = adjacent_handle
-        && let Some(mut node) = world.entity_mut(handle).get_mut::<Node>()
+        && let Some(mut node) =
+            world.entity_mut(handle).get_mut::<Node>()
         && node.display != target
     {
         node.display = target;
@@ -372,7 +449,8 @@ fn set_host_visible(world: &mut World, entity: Entity, visible: bool) {
     // Flag the host's Panel as changed so `recalculate_group`
     // redistributes sibling widths this frame.
     if any_changed
-        && let Some(mut panel) = world.entity_mut(entity).get_mut::<Panel>()
+        && let Some(mut panel) =
+            world.entity_mut(entity).get_mut::<Panel>()
     {
         panel.set_changed();
     }
@@ -391,10 +469,13 @@ fn despawn_children(world: &mut World, entity: Entity) {
     }
 }
 
-/// On every Update, sync visual state (active tab bg/border/text colors,
-/// content `Display`) for leaf entities.
+/// On every Update, sync visual state (active tab bg/border/text
+/// colors, content `Display`) for leaf entities.
 fn sync_leaf_visuals(
-    leaves: Query<(Entity, &NodeBinding, &DockArea), Without<PanelGroup>>,
+    leaves: Query<
+        (Entity, &NodeBinding, &DockArea),
+        Without<PanelGroup>,
+    >,
     tree: Res<DockTree>,
     tabs: Query<(Entity, &super::area::DockTab, &ChildOf)>,
     contents: Query<(Entity, &DockTabContent, &ChildOf)>,
@@ -409,7 +490,6 @@ fn sync_leaf_visuals(
         return;
     }
 
-    use std::collections::HashMap;
     let mut tab_to_area: HashMap<Entity, Entity> = HashMap::new();
     for (tab_entity, _, child_of) in &tabs {
         let tab_row = child_of.parent();
@@ -424,7 +504,9 @@ fn sync_leaf_visuals(
     }
 
     for (area_entity, binding, _) in &leaves {
-        let Some(leaf) = tree.get(binding.0).and_then(|n| n.as_leaf()) else {
+        let Some(leaf) =
+            tree.get(binding.0).and_then(|n| n.as_leaf())
+        else {
             continue;
         };
 
@@ -433,12 +515,10 @@ fn sync_leaf_visuals(
                 continue;
             }
             let is_active = leaf.active == Some(tab.tab_id);
-            // Re-inserting `Glass` swaps the tab's material preset.
-            commands.entity(tab_entity).insert(if is_active {
-                crate::ui::glass::Glass::TabActive
-            } else {
-                crate::ui::glass::Glass::TabIdle
-            });
+            // Re-inserting the preset swaps the tab's material.
+            commands
+                .entity(tab_entity)
+                .insert(crate::ui::glass::tab(is_active));
             if let Ok(tab_children) = children_query.get(tab_entity) {
                 for child in tab_children.iter() {
                     if let Ok(mut tc) = text_colors.get_mut(child) {

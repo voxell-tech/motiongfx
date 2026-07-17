@@ -1,30 +1,29 @@
 //! The editor's UI component markers and the static `bsn!` scene tree
-//! (panel, control bar, name column, scroll viewport), plus the startup
-//! system that spawns it against a dedicated UI camera.
+//! (panel, control bar, name column, scroll viewport), plus the
+//! startup system that spawns it against a dedicated UI camera.
 
 use std::sync::Arc;
 
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
+use bevy::picking::events::{Drag, Pointer};
 use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
-use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 use bevy::ui::widget::ImageNode;
+use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 use bevy::ui_widgets::{ControlOrientation, ScrollArea};
-
-use bevy::picking::events::{Drag, Pointer};
 
 use crate::playback::on_scrub;
 use crate::ui::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree, DockTreeHost,
     DockWindowDescriptor, Edge, WindowRegistry,
 };
-use crate::ui::glass::{Glass, glass_button};
 use crate::ui::inspector::Inspector;
-use crate::ui::{Divider, label, playhead_line, scrub_slider};
+use crate::ui::{Divider, glass, label, playhead_line, scrub_slider};
 use crate::{
-    CONTROL_BAR_HEIGHT, EditorSettings, NAME_PANEL_MAX, NAME_PANEL_MIN,
-    NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage, TRACK_TOP_PADDING,
+    CONTROL_BAR_HEIGHT, EditorSettings, NAME_PANEL_MAX,
+    NAME_PANEL_MIN, NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage,
+    TRACK_TOP_PADDING,
 };
 
 /// Marker for the timeline panel node (fills its dock area).
@@ -43,8 +42,9 @@ pub(crate) struct TrackViewportCamera;
 #[derive(Component, Default, Clone)]
 pub(crate) struct PreviewArea;
 
-/// The [`ImageNode`] displaying the offscreen composition; sized to fit
-/// [`PreviewArea`] by [`fit_preview_image`](crate::view::fit_preview_image).
+/// The [`ImageNode`] displaying the offscreen composition; sized to
+/// fit [`PreviewArea`] by
+/// [`fit_preview_image`](crate::view::fit_preview_image).
 #[derive(Component, Default, Clone)]
 pub(crate) struct PreviewDisplay;
 
@@ -55,8 +55,8 @@ pub(crate) struct TrackViewport;
 /// The scrubbable track: a horizontal slider whose value is playback
 /// time in seconds. Holds the action boxes and the playhead thumb.
 ///
-/// The static skeleton is spawned by [`TrackViewport`]; its size, time
-/// range and action boxes are filled in by
+/// The static skeleton is spawned by [`TrackViewport`]; its size,
+/// time range and action boxes are filled in by
 /// [`build_timeline_view`](crate::layout::build_timeline_view) once a
 /// timeline exists.
 #[derive(Component, Default, Clone)]
@@ -97,7 +97,7 @@ impl EditorPanel {
                 padding: UiRect::bottom(Val::Px(PANEL_PADDING)),
             }
             EditorPanel
-            template_value(Glass::Panel)
+            template_value(glass::panel())
             Children [
             // --- Control bar: play/pause + time readout. ---
                 (
@@ -113,7 +113,7 @@ impl EditorPanel {
                     }
                     Children [
                         (
-                            glass_button::<PlayPauseButton>(
+                            glass::button::<PlayPauseButton>(
                                 84.0,
                                 26.0,
                             )
@@ -155,7 +155,7 @@ impl EditorPanel {
                                     TRACK_TOP_PADDING,
                                 )),
                             }
-                            template_value(Glass::Panel)
+                            template_value(glass::panel())
                         ),
                         (
                             @Divider {
@@ -188,7 +188,7 @@ impl TrackViewport {
                 min_height: Val::Px(0.0),
                 overflow: Overflow::scroll(),
             }
-            template_value(Glass::Panel)
+            template_value(glass::panel())
             Children [
                 TimelineContent
                 scrub_slider(1.0, 1.0)
@@ -218,10 +218,10 @@ pub(crate) fn setup_editor_ui(
     ));
     commands.insert_resource(PreviewImage(preview.clone()));
 
-    // Own render layer so this camera doesn't also pick up scene meshes
-    // (e.g. bevy_vello's composite quad, layer 0) full-window.
-    // `IsDefaultUiCamera` catches dock UI spawned without a target
-    // (drag ghosts, drop overlays).
+    // Own render layer so this camera doesn't also pick up scene
+    // meshes (e.g. bevy_vello's composite quad, layer 0)
+    // full-window. `IsDefaultUiCamera` catches dock UI spawned
+    // without a target (drag ghosts, drop overlays).
     let ui_camera = commands
         .spawn_scene(bsn! [
             Camera2d
@@ -241,7 +241,8 @@ pub(crate) fn setup_editor_ui(
     register_windows(&mut registry, preview);
 
     // Layout: viewport (+ settings tab) on top, timeline below.
-    // Leaves are not persistent: emptied areas collapse automatically.
+    // Leaves are not persistent: emptied areas collapse
+    // automatically.
     let viewport = tree.set_root_leaf(
         DockLeaf::new("viewport", DockAreaStyle::TabBar)
             .with_windows(vec!["viewport".into(), "settings".into()]),
@@ -280,7 +281,10 @@ fn register_windows(
         build: Arc::new(move |spawner| {
             let display = spawner
                 .world_mut()
-                .spawn((PreviewDisplay, ImageNode::new(preview.clone())))
+                .spawn((
+                    PreviewDisplay,
+                    ImageNode::new(preview.clone()),
+                ))
                 .id();
             spawner
                 .spawn((
@@ -327,7 +331,7 @@ fn register_windows(
                     overflow: Overflow::scroll_y(),
                     ..default()
                 },
-                Glass::Panel,
+                glass::panel(),
             ));
             let panel_id = panel.id();
             panel.world_scope(|world| {
@@ -346,7 +350,7 @@ fn register_windows(
                 if let Ok(mut row) = world.spawn_scene(bsn! {
                     Node { flex_direction: FlexDirection::Row }
                     Children [(
-                        glass_button::<SettingsSaveButton>(64.0, 24.0)
+                        glass::button::<SettingsSaveButton>(64.0, 24.0)
                         Children [
                             label::<SettingsSaveLabel>("Save")
                         ]

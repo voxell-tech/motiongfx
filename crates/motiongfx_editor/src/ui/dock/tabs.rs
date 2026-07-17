@@ -8,11 +8,11 @@ use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use bevy::window::SystemCursorIcon;
 
+use super::TAB_HEIGHT;
 use super::area::{DockTab, DockTabBar, DockTabCloseButton};
 use super::reconcile::LeafBinding;
 use super::tree::{DockTree, TabId};
-use super::TAB_HEIGHT;
-use crate::ui::glass::Glass;
+use crate::ui::glass::{self, Glass};
 use crate::ui::theme::EditorTheme;
 
 pub struct DockTabPlugin;
@@ -80,11 +80,16 @@ pub fn spawn_tab_bar_world(
                 width: Val::Percent(100.0),
                 height: Val::Px(TAB_HEIGHT),
                 // No left padding: first tab sits flush to the edge.
-                padding: UiRect::new(Val::ZERO, Val::Px(8.0), Val::Px(1.0), Val::ZERO),
+                padding: UiRect::new(
+                    Val::ZERO,
+                    Val::Px(8.0),
+                    Val::Px(1.0),
+                    Val::ZERO,
+                ),
                 flex_shrink: 0.0,
                 ..default()
             },
-            Glass::Bar,
+            glass::bar(),
             ChildOf(area_entity),
         ))
         .id();
@@ -109,7 +114,9 @@ pub fn spawn_tab_bar_world(
 
     for (tab_id, window_id, label) in tabs {
         let is_active = Some(*tab_id) == active;
-        spawn_tab(world, tab_row, *tab_id, window_id, label, is_active);
+        spawn_tab(
+            world, tab_row, *tab_id, window_id, label, is_active,
+        );
     }
 
     let muted = world.resource::<EditorTheme>().text_muted;
@@ -153,7 +160,12 @@ fn tab_tile_node() -> Node {
 }
 
 /// Spawn the label text of a tab tile under `tile`.
-fn spawn_tab_label(world: &mut World, tile: Entity, label: &str, color: Color) {
+fn spawn_tab_label(
+    world: &mut World,
+    tile: Entity,
+    label: &str,
+    color: Color,
+) {
     world.spawn((
         Text::new(label.to_string()),
         TextLayout::linebreak(LineBreak::NoWrap),
@@ -170,10 +182,14 @@ fn spawn_tab_label(world: &mut World, tile: Entity, label: &str, color: Color) {
 /// A drag-ghost copy of a tab tile: the same body + label, plus an
 /// inert close-slot spacer so its width matches a real tab. `wrapper`
 /// supplies the position + height (see [`super::drag`]).
-pub(super) fn spawn_ghost_tab(world: &mut World, wrapper: Entity, label: &str) {
+pub(super) fn spawn_ghost_tab(
+    world: &mut World,
+    wrapper: Entity,
+    label: &str,
+) {
     let color = world.resource::<EditorTheme>().text_primary;
     let tile = world
-        .spawn((tab_tile_node(), Glass::TabActive, ChildOf(wrapper)))
+        .spawn((tab_tile_node(), glass::tab(true), ChildOf(wrapper)))
         .id();
     spawn_tab_label(world, tile, label, color);
     // Matches the 14px close slot a real tab reserves.
@@ -211,8 +227,9 @@ fn spawn_tab(
             },
             Interaction::default(),
             tab_tile_node(),
-            // Active pill vs invisible; swapped by `sync_leaf_visuals`.
-            if is_active { Glass::TabActive } else { Glass::TabIdle },
+            // Active pill vs invisible; swapped by
+            // `sync_leaf_visuals`.
+            glass::tab(is_active),
             // Tabs are draggable: signal it on hover.
             EntityCursor::System(SystemCursorIcon::Grab),
             ChildOf(tab_row),
@@ -222,9 +239,10 @@ fn spawn_tab(
     spawn_tab_label(world, tab_entity, label, text_color);
 
     // Close-button slot always reserves its 14x14 layout space so the
-    // tab doesn't reflow on hover. The icon inside is alpha-toggled by
-    // `show_close_on_hover`.
-    let close_icon: Handle<Image> = world.resource::<AssetServer>().load(icons::X);
+    // tab doesn't reflow on hover. The icon inside is alpha-toggled
+    // by `show_close_on_hover`.
+    let close_icon: Handle<Image> =
+        world.resource::<AssetServer>().load(icons::X);
     world.spawn((
         DockTabCloseButton {
             window_id: window_id.to_string(),
@@ -263,7 +281,10 @@ fn spawn_tab(
 pub struct DockTabCloseIcon;
 
 fn handle_dock_tab_clicks(
-    tab_query: Query<(&DockTab, &Interaction, &ChildOf), Changed<Interaction>>,
+    tab_query: Query<
+        (&DockTab, &Interaction, &ChildOf),
+        Changed<Interaction>,
+    >,
     parent_query: Query<&ChildOf>,
     bindings: Query<&LeafBinding>,
     mut tree: ResMut<DockTree>,
@@ -313,24 +334,30 @@ fn handle_close_clicks(
 }
 
 fn show_close_on_hover(
-    tabs: Query<(Entity, &Interaction, &Children), (Changed<Interaction>, With<DockTab>)>,
+    tabs: Query<
+        (Entity, &Interaction, &Children),
+        (Changed<Interaction>, With<DockTab>),
+    >,
     drag_state: Option<Res<super::drag::DockDragState>>,
     close_buttons: Query<&Children, With<DockTabCloseButton>>,
     mut icon_colors: Query<&mut ImageNode, With<DockTabCloseIcon>>,
 ) {
-    let hide =
-        drag_state.is_none_or(|s| matches!(*s, super::drag::DockDragState::Dragging { .. }));
+    let hide = drag_state.is_none_or(|s| {
+        matches!(*s, super::drag::DockDragState::Dragging { .. })
+    });
 
     for (_tab_entity, interaction, children) in tabs.iter() {
-        let show =
-            (*interaction == Interaction::Hovered || *interaction == Interaction::Pressed) && !hide;
+        let show = (*interaction == Interaction::Hovered
+            || *interaction == Interaction::Pressed)
+            && !hide;
         let alpha = if show { 1.0 } else { 0.0 };
         for child in children.iter() {
             let Ok(close_children) = close_buttons.get(child) else {
                 continue;
             };
             for grandchild in close_children.iter() {
-                if let Ok(mut image) = icon_colors.get_mut(grandchild) {
+                if let Ok(mut image) = icon_colors.get_mut(grandchild)
+                {
                     image.color = image.color.with_alpha(alpha);
                 }
             }

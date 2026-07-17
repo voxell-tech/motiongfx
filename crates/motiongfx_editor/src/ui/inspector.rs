@@ -1,10 +1,11 @@
 //! Generic reflection-driven inspector.
 //!
-//! [`ReflectInspectorPlugin<T>`] renders a `Reflect` resource's fields
-//! as editable rows under any entity carrying [`Inspector<T>`]:
-//! `bool` becomes a feathers checkbox, numbers become number inputs.
-//! Edits are written back through reflect paths, and external changes
-//! to the resource are synced back into the widgets.
+//! [`ReflectInspectorPlugin<T>`] renders a `Reflect` resource's
+//! fields as editable rows under any entity carrying
+//! [`Inspector<T>`]: `bool` becomes a feathers checkbox, numbers
+//! become number inputs. Edits are written back through reflect
+//! paths, and external changes to the resource are synced back into
+//! the widgets.
 
 use std::marker::PhantomData;
 
@@ -13,12 +14,13 @@ use bevy::feathers::controls::{
     FeathersCheckbox, FeathersNumberInput, NumberFormat,
     NumberInputValue, UpdateNumberInput,
 };
-use bevy::feathers::theme::{ThemeBorderColor, ThemedText};
-use bevy::feathers::tokens;
+use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
 use bevy::reflect::{GetPath, ReflectRef};
 use bevy::ui::Checked;
 use bevy::ui_widgets::ValueChange;
+
+use crate::ui::glass;
 
 /// Registers the build / edit / sync systems for one resource type.
 pub struct ReflectInspectorPlugin<T>(PhantomData<T>);
@@ -53,7 +55,8 @@ impl<T: Resource + Reflect> Default for Inspector<T> {
     }
 }
 
-/// A widget bound to one reflect path (e.g. `physical_size.x`) of `T`.
+/// A widget bound to one reflect path (e.g. `physical_size.x`) of
+/// `T`.
 #[derive(Component)]
 pub struct InspectorField<T: Resource + Reflect> {
     pub path: String,
@@ -116,10 +119,9 @@ fn as_leaf(value: &dyn PartialReflect) -> Option<Leaf> {
         Some(Leaf::Number(F::I64, V::I64(*x)))
     } else if let Some(x) = v.try_downcast_ref::<u32>() {
         Some(Leaf::Number(F::I64, V::I64(*x as i64)))
-    } else if let Some(x) = v.try_downcast_ref::<u64>() {
-        Some(Leaf::Number(F::I64, V::I64(*x as i64)))
     } else {
-        None
+        v.try_downcast_ref::<u64>()
+            .map(|x| Leaf::Number(F::I64, V::I64(*x as i64)))
     }
 }
 
@@ -162,8 +164,12 @@ fn build_inspector<T: Resource + Reflect>(
             Leaf::Bool(checked) => {
                 let mut widget =
                     commands.spawn_scene(bsn! { @FeathersCheckbox });
-                widget
-                    .insert((InspectorField::<T>::new(path), ChildOf(row)));
+                widget.insert((
+                    InspectorField::<T>::new(path),
+                    // Glass the box (the checkbox's first child).
+                    glass::glassify_child(glass::field()),
+                    ChildOf(row),
+                ));
                 if checked {
                     widget.insert(Checked);
                 }
@@ -174,16 +180,18 @@ fn build_inspector<T: Resource + Reflect>(
                         @FeathersNumberInput {
                             @number_format: {format}
                         }
-                        // Box the input: it otherwise blends into the
-                        // panel background.
                         Node {
                             width: Val::Px(110.0),
                             flex_grow: 0.0,
-                            border: UiRect::all(Val::Px(1.0)),
                         }
-                        ThemeBorderColor(tokens::PANE_HEADER_DIVIDER)
                     })
-                    .insert((InspectorField::<T>::new(path), ChildOf(row)))
+                    .insert((
+                        InspectorField::<T>::new(path),
+                        // The number input's root is its themed fill
+                        // container; glass it directly.
+                        glass::field(),
+                        ChildOf(row),
+                    ))
                     .id();
                 // Seed the displayed value.
                 commands.trigger(UpdateNumberInput {
@@ -195,7 +203,8 @@ fn build_inspector<T: Resource + Reflect>(
     }
 }
 
-/// Checkbox toggled: write it back and drive the controlled `Checked`.
+/// Checkbox toggled: write it back and drive the controlled
+/// `Checked`.
 fn on_change_bool<T: Resource<Mutability = Mutable> + Reflect>(
     change: On<ValueChange<bool>>,
     q_field: Query<&InspectorField<T>>,
@@ -205,7 +214,8 @@ fn on_change_bool<T: Resource<Mutability = Mutable> + Reflect>(
     let Ok(field) = q_field.get(change.source) else {
         return;
     };
-    if let Ok(value) = res.as_mut().path_mut::<bool>(field.path.as_str())
+    if let Ok(value) =
+        res.as_mut().path_mut::<bool>(field.path.as_str())
     {
         *value = change.value;
     }
@@ -216,8 +226,8 @@ fn on_change_bool<T: Resource<Mutability = Mutable> + Reflect>(
     }
 }
 
-/// Number input edited: write the value back through the reflect path,
-/// casting to the field's concrete numeric type.
+/// Number input edited: write the value back through the reflect
+/// path, casting to the field's concrete numeric type.
 fn on_change_number<
     T: Resource<Mutability = Mutable> + Reflect,
     V: NumberValue,
@@ -229,7 +239,8 @@ fn on_change_number<
     let Ok(field) = q_field.get(change.source) else {
         return;
     };
-    let Ok(target) = res.as_mut().reflect_path_mut(field.path.as_str())
+    let Ok(target) =
+        res.as_mut().reflect_path_mut(field.path.as_str())
     else {
         return;
     };
@@ -289,7 +300,9 @@ fn sync_inspector<T: Resource + Reflect>(
                         if value {
                             commands.entity(entity).insert(Checked);
                         } else {
-                            commands.entity(entity).remove::<Checked>();
+                            commands
+                                .entity(entity)
+                                .remove::<Checked>();
                         }
                     }
                 }
@@ -306,7 +319,10 @@ fn sync_inspector<T: Resource + Reflect>(
     }
 }
 
-fn convert(value: NumberInputValue, format: NumberFormat) -> NumberInputValue {
+fn convert(
+    value: NumberInputValue,
+    format: NumberFormat,
+) -> NumberInputValue {
     use NumberInputValue as V;
     let v = match value {
         V::F32(x) => x as f64,

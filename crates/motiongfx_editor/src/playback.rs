@@ -1,5 +1,5 @@
-//! Playback control: play/pause (button + spacebar), scrubbing, and the
-//! playhead / time readout.
+//! Playback control: play/pause (button + spacebar), scrubbing, and
+//! the playhead / time readout.
 
 use bevy::prelude::*;
 use bevy::ui_widgets::{Activate, SliderValue, ValueChange};
@@ -11,8 +11,9 @@ use crate::scene::{
 };
 use crate::{EditorState, PIXELS_PER_SECOND};
 
-/// Command to flip playback, dispatched from the play/pause button and
-/// the spacebar hotkey and handled in one place ([`on_toggle_playback`]).
+/// Command to flip playback, dispatched from the play/pause button
+/// and the spacebar hotkey and handled in one place
+/// ([`on_toggle_playback`]).
 #[derive(Event)]
 pub(crate) struct TogglePlayback;
 
@@ -127,9 +128,9 @@ pub(crate) fn update_playhead(
 /// Clear [`RealtimePlayer::is_playing`] once playback reaches the end
 /// of the current track.
 ///
-/// [`Timeline::set_target_time`] clamps to the track's duration, so the
-/// player would otherwise keep "playing" against the clamp and the
-/// button would stay stuck on "Pause".
+/// [`Timeline::set_target_time`] clamps to the track's duration, so
+/// the player would otherwise keep "playing" against the clamp and
+/// the button would stay stuck on "Pause".
 ///
 /// [`Timeline::set_target_time`]: bevy_motiongfx::prelude::Timeline::set_target_time
 pub(crate) fn stop_at_track_end(

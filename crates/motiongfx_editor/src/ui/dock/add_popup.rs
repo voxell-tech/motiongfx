@@ -11,7 +11,7 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabAddButton;
 use super::tree::DockTree;
-use crate::ui::glass::Glass;
+use crate::ui::glass;
 use crate::ui::theme::EditorTheme;
 
 pub struct AddWindowPopupPlugin;
@@ -118,7 +118,7 @@ fn handle_add_clicks(
                     border_radius: BorderRadius::all(Val::Px(6.0)),
                     ..default()
                 },
-                Glass::Popup,
+                glass::popup(),
                 GlobalZIndex(181),
             ))
             .id();
@@ -158,8 +158,14 @@ fn handle_add_clicks(
 /// Item picked: add the tab to the area's leaf. Backdrop press just
 /// closes. Either way the popup is torn down.
 fn handle_item_clicks(
-    q_items: Query<(&AddWindowPopupItem, &Interaction), Changed<Interaction>>,
-    q_backdrop: Query<&Interaction, (With<AddWindowPopupBackdrop>, Changed<Interaction>)>,
+    q_items: Query<
+        (&AddWindowPopupItem, &Interaction),
+        Changed<Interaction>,
+    >,
+    q_backdrop: Query<
+        &Interaction,
+        (With<AddWindowPopupBackdrop>, Changed<Interaction>),
+    >,
     q_open: Query<
         Entity,
         Or<(With<AddWindowPopup>, With<AddWindowPopupBackdrop>)>,

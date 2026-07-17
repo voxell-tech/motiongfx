@@ -1,9 +1,9 @@
 //! Reusable UI component builders for the editor.
 //!
-//! Interactive widgets are built from the headless [`bevy::ui_widgets`]
-//! behaviors ([`Button`], [`Slider`], ...) and styled with the
-//! [`bevy::feathers`] theme so the editor matches the look of Bevy's
-//! own tooling.
+//! Interactive widgets are built from the headless
+//! [`bevy::ui_widgets`] behaviors ([`Button`], [`Slider`], ...) and
+//! styled with the [`bevy::feathers`] theme so the editor matches the
+//! look of Bevy's own tooling.
 
 pub mod dock;
 pub mod glass;
@@ -14,9 +14,9 @@ use bevy::feathers::controls::ButtonVariant;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::feathers::theme::{ThemeBackgroundColor, ThemedText};
 use bevy::feathers::tokens;
-use bevy::ui::widget::ImageNode;
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
+use bevy::ui::widget::ImageNode;
 use bevy::ui_widgets::{
     Button, ControlOrientation, Slider, SliderOrientation,
     SliderRange, SliderValue, TrackClick,
@@ -25,7 +25,8 @@ use bevy::window::SystemCursorIcon;
 
 pub const PLAYHEAD_COLOR: Color = Color::srgb(0.95, 0.30, 0.35);
 
-/// A feathers-themed button carrying the headless [`Button`] behavior.
+/// A feathers-themed button carrying the headless [`Button`]
+/// behavior.
 ///
 /// Emits [`bevy::ui_widgets::Activate`] when clicked or activated via
 /// the keyboard; observe that event on the spawned entity.
@@ -66,7 +67,8 @@ pub fn label<M: Component + Default + Unpin + Clone>(
 }
 
 /// Marker for a generated clip box, so the boxes can be despawned on
-/// rebuild without disturbing the playhead thumb (also a content child).
+/// rebuild without disturbing the playhead thumb (also a content
+/// child).
 #[derive(Component, Default, Clone)]
 pub struct ActionBox;
 
@@ -146,9 +148,10 @@ pub fn group_box(
     }
 }
 
-/// A clickable collapse toggle for a concurrent group, tagged with the
-/// group's stable id. Built on the headless [`Button`] (which consumes
-/// the press, so clicking it does not scrub the timeline underneath).
+/// A clickable collapse toggle for a concurrent group, tagged with
+/// the group's stable id. Built on the headless [`Button`] (which
+/// consumes the press, so clicking it does not scrub the timeline
+/// underneath).
 #[derive(Component, Clone, Default)]
 pub struct GroupToggle(pub usize);
 
@@ -197,8 +200,8 @@ pub fn group_toggle(
     }
 }
 
-/// The playhead line. Doubles as the [`Slider`]'s thumb so the headless
-/// slider drag math accounts for its width.
+/// The playhead line. Doubles as the [`Slider`]'s thumb so the
+/// headless slider drag math accounts for its width.
 pub fn playhead_line(left: f32) -> impl Scene {
     bsn! {
         bevy::ui_widgets::SliderThumb
@@ -215,8 +218,8 @@ pub fn playhead_line(left: f32) -> impl Scene {
 }
 
 /// The scrubbable timeline track. The whole track is a horizontal
-/// [`Slider`] whose value is the playback time in seconds, so clicking
-/// or dragging anywhere on it scrubs. Emits
+/// [`Slider`] whose value is the playback time in seconds, so
+/// clicking or dragging anywhere on it scrubs. Emits
 /// [`bevy::ui_widgets::ValueChange<f32>`].
 pub fn scrub_slider(width: f32, duration: f32) -> impl Scene {
     bsn! {
@@ -291,4 +294,3 @@ impl Divider {
         }
     }
 }
-

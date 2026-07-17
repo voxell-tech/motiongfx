@@ -1,6 +1,6 @@
 //! View-plumbing systems: retarget the composition's scene cameras to
-//! the offscreen preview image, fit that image above the panel, and keep
-//! the name column's scroll locked to the track.
+//! the offscreen preview image, fit that image above the panel, and
+//! keep the name column's scroll locked to the track.
 
 use bevy::camera::RenderTarget;
 use bevy::prelude::*;
@@ -13,9 +13,10 @@ use crate::scene::{
 use crate::{EditorSettings, PreviewImage};
 
 /// Point every scene camera (all but the editor's own
-/// [`TrackViewportCamera`]) at the offscreen [`PreviewImage`] instead of
-/// the window. `bevy_ui` then scales that image to fit the preview area,
-/// so growing the panel shrinks the whole composition uniformly.
+/// [`TrackViewportCamera`]) at the offscreen [`PreviewImage`] instead
+/// of the window. `bevy_ui` then scales that image to fit the preview
+/// area, so growing the panel shrinks the whole composition
+/// uniformly.
 pub(crate) fn retarget_scene_cameras(
     mut commands: Commands,
     preview: Res<PreviewImage>,
@@ -30,16 +31,16 @@ pub(crate) fn retarget_scene_cameras(
             Some(RenderTarget::Image(t)) if t.handle == preview.0,
         );
         if !done {
-            commands
-                .entity(entity)
-                .insert(RenderTarget::Image(preview.0.clone().into()));
+            commands.entity(entity).insert(RenderTarget::Image(
+                preview.0.clone().into(),
+            ));
         }
     }
 }
 
-/// Size the preview [`ImageNode`](bevy::ui::widget::ImageNode) to fit the
-/// available area above the panel while preserving the composition's
-/// aspect ratio (letterbox), so it never stretches.
+/// Size the preview [`ImageNode`](bevy::ui::widget::ImageNode) to fit
+/// the available area above the panel while preserving the
+/// composition's aspect ratio (letterbox), so it never stretches.
 pub(crate) fn fit_preview_image(
     settings: Res<EditorSettings>,
     q_area: Query<&ComputedNode, With<PreviewArea>>,
@@ -75,7 +76,8 @@ pub(crate) fn fit_preview_image(
     }
 }
 
-/// Keep the name column's vertical scroll locked to the track viewport.
+/// Keep the name column's vertical scroll locked to the track
+/// viewport.
 pub(crate) fn sync_name_scroll(
     q_viewport: Query<&ScrollPosition, With<TrackViewport>>,
     mut q_name_panel: Query<

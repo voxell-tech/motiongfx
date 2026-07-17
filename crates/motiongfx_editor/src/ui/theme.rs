@@ -1,7 +1,8 @@
 //! Editor theme: the raw Monokai Pro palette plus the semantic slots
 //! the UI actually reads (text, accent, glass tints).
 //!
-//! Palette mirrors `examples/bevy_examples/assets/typst/monokai_pro.typ`
+//! Palette mirrors
+//! `examples/bevy_examples/assets/typst/monokai_pro.typ`
 //! so typst-rendered content and the editor chrome share one look.
 //! Swap the [`EditorTheme`] resource to re-theme; glass materials are
 //! rebuilt from it at plugin build time.
