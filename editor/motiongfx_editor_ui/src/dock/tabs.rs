@@ -12,8 +12,8 @@ use super::TAB_HEIGHT;
 use super::area::{DockTab, DockTabBar, DockTabCloseButton};
 use super::reconcile::LeafBinding;
 use super::tree::{DockTree, TabId};
-use crate::ui::glass::Glass;
-use crate::ui::theme::EditorTheme;
+use crate::glass::Glass;
+use crate::theme::EditorTheme;
 
 pub struct DockTabPlugin;
 

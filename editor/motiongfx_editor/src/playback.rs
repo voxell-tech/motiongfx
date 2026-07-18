@@ -1,8 +1,9 @@
 //! Playback control: play/pause (button + spacebar), scrubbing, and
 //! the playhead / time readout.
 
+use bevy::picking::events::{Cancel, Drag, DragEnd, Pointer, Press};
 use bevy::prelude::*;
-use bevy::ui_widgets::{SliderValue, ValueChange};
+use bevy::ui::UiGlobalTransform;
 use bevy_motiongfx::prelude::*;
 
 use crate::scene::{
@@ -50,44 +51,121 @@ pub(crate) fn on_toggle_playback(
     }
 }
 
-/// Scrub the timeline in response to slider drags.
-pub(crate) fn on_scrub(
-    change: On<ValueChange<f32>>,
-    state: Res<EditorState>,
-    mut commands: Commands,
-    mut manager: ResMut<MotionGfxManager>,
-    mut q_players: Query<&mut RealtimePlayer>,
+/// Present on the timeline track while a scrub is in progress. A
+/// scrub is only ever started by a [`Pointer<Press>`] on the track
+/// itself, so drags that began anywhere else can't move the playhead.
+#[derive(Component)]
+pub(crate) struct Scrubbing;
+
+/// Time (seconds) under `cursor` for a track laid out at
+/// [`PIXELS_PER_SECOND`], clamped to the track's duration.
+fn time_at_cursor(
+    cursor: Vec2,
+    computed: &ComputedNode,
+    transform: &UiGlobalTransform,
+    duration: f32,
+) -> f32 {
+    let inv = computed.inverse_scale_factor();
+    let (_scale, _angle, center) =
+        transform.to_scale_angle_translation();
+    let rect =
+        Rect::from_center_size(center.trunc() * inv, computed.size() * inv);
+    ((cursor.x - rect.min.x) / PIXELS_PER_SECOND)
+        .clamp(0.0, duration.max(0.0))
+}
+
+/// Move the timeline to `time` and stop playback so the scrub isn't
+/// immediately overwritten by the player.
+fn scrub_to(
+    time: f32,
+    state: &EditorState,
+    manager: &mut MotionGfxManager,
+    q_players: &mut Query<&mut RealtimePlayer>,
 ) {
     let Some(timeline_id) = state.timeline else {
         return;
     };
-
-    // Stop playback so the scrub isn't immediately overwritten.
-    for mut player in &mut q_players {
+    for mut player in q_players {
         player.is_playing = false;
     }
-
-    // Write the value back (`SliderValue` is a controlled component):
-    // this keeps the slider's drag offset correct for absolute
-    // cursor-following.
-    commands
-        .entity(change.source)
-        .insert(SliderValue(change.value));
-
     if let Some(timeline) = manager.get_timeline_mut(&timeline_id) {
         timeline.set_target_track(0);
-        timeline.set_target_time(change.value);
+        timeline.set_target_time(time);
     }
 }
 
-/// Move the playhead / slider thumb to the current target time and
-/// update the time readout.
+/// Begin a scrub: jump the playhead to the press position and arm
+/// [`Scrubbing`] so subsequent drags keep following the cursor.
+pub(crate) fn on_track_press(
+    mut press: On<Pointer<Press>>,
+    state: Res<EditorState>,
+    ui_scale: Res<UiScale>,
+    q_track: Query<
+        (&ComputedNode, &UiGlobalTransform),
+        With<TimelineContent>,
+    >,
+    mut manager: ResMut<MotionGfxManager>,
+    mut q_players: Query<&mut RealtimePlayer>,
+    mut commands: Commands,
+) {
+    let track = press.entity;
+    let Ok((computed, transform)) = q_track.get(track) else {
+        return;
+    };
+    press.propagate(false);
+    commands.entity(track).insert(Scrubbing);
+
+    let cursor = press.pointer_location.position / ui_scale.0;
+    let time =
+        time_at_cursor(cursor, computed, transform, state.duration);
+    scrub_to(time, &state, &mut manager, &mut q_players);
+}
+
+/// Continue an armed scrub. Dragging past either end clamps, and a
+/// drag that never pressed the track is ignored.
+pub(crate) fn on_track_drag(
+    mut drag: On<Pointer<Drag>>,
+    state: Res<EditorState>,
+    ui_scale: Res<UiScale>,
+    q_track: Query<
+        (&ComputedNode, &UiGlobalTransform),
+        (With<TimelineContent>, With<Scrubbing>),
+    >,
+    mut manager: ResMut<MotionGfxManager>,
+    mut q_players: Query<&mut RealtimePlayer>,
+) {
+    let Ok((computed, transform)) = q_track.get(drag.entity) else {
+        return;
+    };
+    drag.propagate(false);
+
+    let cursor = drag.pointer_location.position / ui_scale.0;
+    let time =
+        time_at_cursor(cursor, computed, transform, state.duration);
+    scrub_to(time, &state, &mut manager, &mut q_players);
+}
+
+/// End a scrub on release / drag-end / cancel.
+pub(crate) fn on_track_release(
+    release: On<Pointer<DragEnd>>,
+    mut commands: Commands,
+) {
+    commands.entity(release.entity).remove::<Scrubbing>();
+}
+
+pub(crate) fn on_track_cancel(
+    cancel: On<Pointer<Cancel>>,
+    mut commands: Commands,
+) {
+    commands.entity(cancel.entity).remove::<Scrubbing>();
+}
+
+/// Move the playhead to the current target time and update the time
+/// readout.
 pub(crate) fn update_playhead(
     state: Res<EditorState>,
     manager: Res<MotionGfxManager>,
-    mut commands: Commands,
     mut q_playhead: Query<&mut Node, With<Playhead>>,
-    q_value: Query<(Entity, &SliderValue), With<TimelineContent>>,
     mut q_time_label: Query<&mut Text, With<TimeLabel>>,
 ) {
     let Some(timeline_id) = state.timeline else {
@@ -100,13 +178,6 @@ pub(crate) fn update_playhead(
 
     for mut node in &mut q_playhead {
         node.left = Val::Px(time * PIXELS_PER_SECOND);
-    }
-    // Keep the controlled slider value tracking playback so a grab
-    // mid-playback starts its drag from the right offset.
-    if let Ok((content, value)) = q_value.single()
-        && value.0 != time
-    {
-        commands.entity(content).insert(SliderValue(time));
     }
     for mut text in &mut q_time_label {
         *text = Text::new(format!("{time:.2}s"));

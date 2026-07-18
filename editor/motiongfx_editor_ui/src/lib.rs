@@ -1,9 +1,16 @@
-//! Reusable UI component builders for the editor.
+//! Reusable `bevy_ui` building blocks for the MotionGfx editor:
+//! widget builders here, plus [`dock`] (docking engine), [`glass`]
+//! (frosted-glass material), [`inspector`] (reflect inspector) and
+//! [`theme`].
 //!
-//! Interactive widgets are built from the headless
-//! [`bevy::ui_widgets`] behaviors ([`Button`], [`Slider`], ...) and
-//! styled with the [`bevy::feathers`] theme so the editor matches the
-//! look of Bevy's own tooling.
+//! **UI-only**: no `bevy_motiongfx` or editor domain deps, so the
+//! docking system is reusable standalone.
+//!
+//! Widgets build on the headless [`bevy::ui_widgets`] behaviors and
+//! the [`bevy::feathers`] theme.
+
+// Inherent to Bevy ECS: systems take many params and query tuples.
+#![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
 pub mod dock;
 pub mod glass;
@@ -16,10 +23,7 @@ use bevy::feathers::tokens;
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
-use bevy::ui_widgets::{
-    Button, ControlOrientation, Slider, SliderOrientation,
-    SliderRange, SliderValue, TrackClick,
-};
+use bevy::ui_widgets::{Button, ControlOrientation};
 use bevy::window::SystemCursorIcon;
 
 pub const PLAYHEAD_COLOR: Color = Color::srgb(0.95, 0.30, 0.35);
@@ -173,11 +177,9 @@ pub fn group_toggle(
     }
 }
 
-/// The playhead line. Doubles as the [`Slider`]'s thumb so the
-/// headless slider drag math accounts for its width.
+/// The playhead line, positioned by the editor's playhead system.
 pub fn playhead_line(left: f32) -> impl Scene {
     bsn! {
-        bevy::ui_widgets::SliderThumb
         Node {
             position_type: PositionType::Absolute,
             top: Val::Px(0.0),
@@ -190,22 +192,17 @@ pub fn playhead_line(left: f32) -> impl Scene {
     }
 }
 
-/// The scrubbable timeline track. The whole track is a horizontal
-/// [`Slider`] whose value is the playback time in seconds, so
-/// clicking or dragging anywhere on it scrubs. Emits
-/// [`bevy::ui_widgets::ValueChange<f32>`].
-pub fn scrub_slider(width: f32, duration: f32) -> impl Scene {
+/// The scrubbable timeline track: a plain node sized to the track's
+/// duration (`PIXELS_PER_SECOND` per second), so a clip at time `t`
+/// sits at `t * PIXELS_PER_SECOND` from its left edge.
+///
+/// Scrubbing is driven by pointer observers on this node (see
+/// the editor's track pointer observers) rather than a
+/// headless `Slider`: a scrub can only *begin* from a press that
+/// actually lands inside the track, so it can't be started from
+/// elsewhere in the window.
+pub fn timeline_track(width: f32) -> impl Scene {
     bsn! {
-        // `Snap` makes a click jump the value to the cursor; combined
-        // with the controlled `SliderValue` writeback in `on_scrub`,
-        // dragging then follows the cursor absolutely.
-        Slider {
-            track_click: TrackClick::Snap,
-            orientation: SliderOrientation::Horizontal,
-        }
-        SliderValue(0.0)
-        SliderRange::new(0.0, duration.max(f32::EPSILON))
-        Hovered
         Node {
             position_type: PositionType::Relative,
             width: Val::Px(width),

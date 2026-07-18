@@ -8,8 +8,8 @@
 //!   colored by its subject entity;
 //! - concurrent groups (all / any / flow) get a collapsible
 //!   container;
-//! - the whole track is a [`Slider`] acting as the scrubber, with the
-//!   playhead as its thumb;
+//! - pressing or dragging anywhere on the track scrubs, mapping the
+//!   cursor onto the timeline via `PIXELS_PER_SECOND`;
 //! - a feathers [`Button`] (or the spacebar) toggles play/pause;
 //! - the track scrolls (wheel / trackpad) via a [`ScrollArea`], with
 //!   a resizable name column.
@@ -17,20 +17,19 @@
 //! Modules: [`scene`] (component markers + `bsn!` tree + setup),
 //! [`layout`] (composition tree → clip/group/toggle placements),
 //! [`playback`] (play/pause, scrub, playhead), [`view`] (camera +
-//! scroll sync), and [`ui`] (reusable widget builders).
+//! scroll sync). Widgets live in `motiongfx_editor_ui`.
 //!
 //! [`Timeline`]: bevy_motiongfx::prelude::BevyTimeline
-//! [`Slider`]: bevy::ui_widgets::Slider
 //! [`Button`]: bevy::ui_widgets::Button
 //! [`ScrollArea`]: bevy::ui_widgets::ScrollArea
 
 // Inherent to Bevy ECS: systems take many params and query tuples.
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
+mod hierarchy;
 mod layout;
 mod playback;
 mod scene;
-pub mod ui;
 mod view;
 
 use bevy::feathers::FeathersPlugins;
@@ -42,6 +41,8 @@ use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
 };
 use bevy_motiongfx::prelude::TimelineId;
+use motiongfx_editor_ui::dock::DockPlugin;
+use motiongfx_editor_ui::inspector::ReflectInspectorPlugin;
 
 /// Plugin that renders a timeline editor UI for the first
 /// [`Timeline`](bevy_motiongfx::prelude::BevyTimeline).
@@ -56,32 +57,27 @@ impl Plugin for MotionGfxEditorPlugin {
     }
 }
 
-/// Wires the editor's UI layer: feathers theming, the editor scene,
-/// and the per-frame timeline/playback/preview systems. Lives here
-/// (not in [`ui`], which stays UI-only) because it references the
-/// domain modules.
+/// Wires feathers theming, the editor scene, and the per-frame
+/// timeline/playback/preview systems.
 struct EditorUiPlugin;
 
 impl Plugin for EditorUiPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_plugins(
-                (
-                    FeathersPlugins,
-                    ui::dock::DockPlugin,
-                    ui::inspector::ReflectInspectorPlugin::<
-                        EditorSettings,
-                    >::default(),
-                ),
-            )
+        app.add_plugins((
+            FeathersPlugins,
+            DockPlugin,
+            ReflectInspectorPlugin::<EditorSettings>::default(),
+        ))
             // Seed the feathers palette (its default theme is empty).
             .insert_resource(UiTheme(create_dark_theme()))
             .init_resource::<EditorState>()
+            .init_resource::<hierarchy::HierarchyState>()
             .add_systems(Startup, scene::setup_editor_ui)
             .add_systems(
                 Update,
                 (
                     layout::build_timeline_view,
+                    hierarchy::build_hierarchy_view,
                     playback::play_pause_hotkey,
                     playback::update_playhead,
                     playback::stop_at_track_end,

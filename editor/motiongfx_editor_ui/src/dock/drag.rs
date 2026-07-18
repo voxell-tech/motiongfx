@@ -11,7 +11,7 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabRow;
 use super::tree::{DockTree, Edge as TreeEdge, TabId};
-use crate::ui::glass::Glass;
+use crate::glass::Glass;
 
 pub struct DockDragPlugin;
 

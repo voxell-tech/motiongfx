@@ -19,7 +19,7 @@ use bevy::reflect::{GetPath, ReflectRef};
 use bevy::ui::Checked;
 use bevy::ui_widgets::ValueChange;
 
-use crate::ui::glass::{glass_checkbox, glass_number_field};
+use crate::glass::{glass_checkbox, glass_number_field};
 
 /// Registers the build / edit / sync systems for one resource type.
 pub struct ReflectInspectorPlugin<T>(PhantomData<T>);

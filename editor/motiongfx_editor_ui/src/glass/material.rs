@@ -82,6 +82,6 @@ impl GlassMaterial {
 
 impl UiMaterial for GlassMaterial {
     fn fragment_shader() -> ShaderRef {
-        "embedded://motiongfx_editor/ui/glass.wgsl".into()
+        "embedded://motiongfx_editor_ui/glass.wgsl".into()
     }
 }

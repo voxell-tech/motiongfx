@@ -1,5 +1,5 @@
 //! Demonstrates the standalone docking system in
-//! [`motiongfx_editor::ui::dock`].
+//! [`motiongfx_editor_ui::dock`].
 //!
 //! Three trivial panels ("Panel A/B/C") start as tabs in one full-window
 //! area. Try:
@@ -15,7 +15,7 @@ use bevy::feathers::FeathersPlugins;
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
-use motiongfx_editor::ui::dock::{
+use motiongfx_editor_ui::dock::{
     DockAreaStyle, DockLeaf, DockPlugin, DockTree, DockTreeHost,
     DockWindowDescriptor, WindowRegistry,
 };

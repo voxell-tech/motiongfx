@@ -24,13 +24,13 @@ pub use material::GlassMaterial;
 pub use preset::{Glass, GlassAssets};
 pub use widget::{glass_button, glass_checkbox, glass_number_field};
 
-use crate::ui::theme::EditorTheme;
+use crate::theme::EditorTheme;
 
 pub struct GlassPlugin;
 
 impl Plugin for GlassPlugin {
     fn build(&self, app: &mut App) {
-        // Keep the embedded shader path (`ui/glass.wgsl`) resolving
+        // Keep the embedded shader path (`glass.wgsl`) resolving
         // against this file; `GlassMaterial::fragment_shader`
         // matches.
         embedded_asset!(app, "glass.wgsl");

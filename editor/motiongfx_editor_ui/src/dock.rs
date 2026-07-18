@@ -6,7 +6,7 @@
 //!
 //! Ported from a sibling project's generic docking engine
 //! (`jackdaw_panels`). Not yet wired into
-//! [`crate::MotionGfxEditorPlugin`] or the timeline panel — register
+//! the editor app or the timeline panel — register
 //! [`DockPlugin`] explicitly, register window kinds on
 //! [`WindowRegistry`], spawn a [`DockTreeHost`] entity, and seed a
 //! [`DockTree`].
@@ -64,8 +64,8 @@ impl Plugin for DockPlugin {
     }
 }
 
-// Backgrounds come from the glass materials (`crate::ui::glass`) and
-// colors from the theme (`crate::ui::theme`); only metrics live here.
+// Backgrounds come from the glass materials (`crate::glass`) and
+// colors from the theme (`crate::theme`); only metrics live here.
 
 /// Tab-bar height, in px.
 pub(crate) const TAB_HEIGHT: f32 = 32.0;

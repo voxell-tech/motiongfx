@@ -10,11 +10,10 @@ use bevy::feathers::constants::icons;
 use bevy::picking::events::{Click, Pointer};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy::ui_widgets::SliderRange;
 use bevy_motiongfx::prelude::*;
 
 use crate::scene::{Playhead, TimelineContent};
-use crate::ui::{
+use motiongfx_editor_ui::{
     ActionBox, GroupBox, GroupToggle, clip_box, group_box,
     group_toggle,
 };
@@ -85,16 +84,14 @@ pub(crate) fn build_timeline_view(
     let content_height =
         TRACK_TOP_PADDING * 2.0 + rows as f32 * ROW_STRIDE;
 
-    // Size the slider track and give it the real time range.
+    // Size the track to the composition; scrubbing maps cursor x onto
+    // this span via `PIXELS_PER_SECOND`.
     if let Ok(mut node) = q_nodes.get_mut(content) {
         node.width = Val::Px(content_width);
         node.min_width = Val::Px(content_width);
         node.height = Val::Px(content_height);
         node.min_height = Val::Px(content_height);
     }
-    commands
-        .entity(content)
-        .insert(SliderRange::new(0.0, duration.max(f32::EPSILON)));
 
     // Containers first, then clips, then toggles, so each paints over
     // the previous. These use `ChildOf` rather than a `Children [..]`

@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::ui_render::prelude::MaterialNode;
 
 use super::material::GlassMaterial;
-use crate::ui::theme::EditorTheme;
+use crate::theme::EditorTheme;
 
 /// Declarative glass preset. Inserting one (or re-inserting a
 /// different variant) swaps the node's material accordingly. Prefer

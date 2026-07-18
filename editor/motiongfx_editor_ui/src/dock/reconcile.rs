@@ -23,7 +23,7 @@ use super::tree::{
     DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId,
     SplitAxis,
 };
-use crate::ui::glass::Glass;
+use crate::glass::Glass;
 
 pub struct ReconcilePlugin;
 
@@ -484,7 +484,7 @@ fn sync_leaf_visuals(
     children_query: Query<&Children>,
     mut nodes: Query<&mut Node>,
     mut text_colors: Query<&mut TextColor>,
-    theme: Res<crate::ui::theme::EditorTheme>,
+    theme: Res<crate::theme::EditorTheme>,
     mut commands: Commands,
 ) {
     if !tree.is_changed() {

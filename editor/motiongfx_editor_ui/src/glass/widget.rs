@@ -12,7 +12,7 @@ use bevy::ui_widgets::{Button, Checkbox};
 use bevy::window::SystemCursorIcon;
 
 use super::preset::Glass;
-use crate::ui::theme::EditorTheme;
+use crate::theme::EditorTheme;
 
 /// Glass button on the headless [`Button`]; append your own
 /// `Node`/`Children`/marker. Emits [`bevy::ui_widgets::Activate`].

@@ -15,14 +15,18 @@ use bevy::ui::widget::ImageNode;
 use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 use bevy::ui_widgets::{ControlOrientation, ScrollArea};
 
-use crate::playback::{TogglePlayback, on_scrub};
-use crate::ui::dock::{
+use crate::hierarchy::HierarchyPanel;
+use crate::playback::{
+    TogglePlayback, on_track_cancel, on_track_drag, on_track_press,
+    on_track_release,
+};
+use motiongfx_editor_ui::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree, DockTreeHost,
     DockWindowDescriptor, Edge, WindowRegistry,
 };
-use crate::ui::glass::{Glass, glass_button};
-use crate::ui::inspector::Inspector;
-use crate::ui::{Divider, label, playhead_line, scrub_slider};
+use motiongfx_editor_ui::glass::{Glass, glass_button};
+use motiongfx_editor_ui::inspector::Inspector;
+use motiongfx_editor_ui::{Divider, label, playhead_line, timeline_track};
 use crate::{
     CONTROL_BAR_HEIGHT, EditorSettings, NAME_PANEL_MAX,
     NAME_PANEL_MIN, NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage,
@@ -197,8 +201,11 @@ impl TrackViewport {
             template_value(Glass::Panel)
             Children [
                 TimelineContent
-                scrub_slider(1.0, 1.0)
-                on(on_scrub)
+                timeline_track(1.0)
+                on(on_track_press)
+                on(on_track_drag)
+                on(on_track_release)
+                on(on_track_cancel)
                 Children [
                     Playhead
                     playhead_line(0.0)
@@ -251,7 +258,11 @@ pub(crate) fn setup_editor_ui(
     // automatically.
     let viewport = tree.set_root_leaf(
         DockLeaf::new("viewport", DockAreaStyle::TabBar)
-            .with_windows(vec!["viewport".into(), "settings".into()]),
+            .with_windows(vec![
+                "viewport".into(),
+                "hierarchy".into(),
+                "settings".into(),
+            ]),
     );
     tree.split(viewport, Edge::Bottom, "timeline".into());
     let split = tree.root.expect("root split exists");
@@ -318,6 +329,29 @@ fn register_windows(
                 .spawn(())
                 .apply_scene(bsn! { @EditorPanel })
                 .expect("spawn timeline panel scene");
+        }),
+    });
+
+    // Hierarchy: rows are built by `build_hierarchy_view`.
+    registry.register(DockWindowDescriptor {
+        id: "hierarchy".into(),
+        name: "Hierarchy".into(),
+        icon: None,
+        build: Arc::new(|spawner| {
+            spawner.spawn((
+                HierarchyPanel,
+                Node {
+                    width: Val::Percent(100.0),
+                    flex_grow: 1.0,
+                    min_height: Val::Px(0.0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(2.0),
+                    padding: UiRect::all(Val::Px(PANEL_PADDING)),
+                    overflow: Overflow::scroll_y(),
+                    ..default()
+                },
+                Glass::Panel,
+            ));
         }),
     });
 

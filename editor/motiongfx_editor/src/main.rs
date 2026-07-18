@@ -1,21 +1,8 @@
-//! Demonstrates the [`MotionGfxEditorPlugin`] timeline editor.
+//! The MotionGfx editor binary.
 //!
-//! A row of cubes animates through a nested composition, so the editor
-//! shows several kinds of groups:
-//!
-//! ```text
-//! chain(
-//!     flow(grow),              // stagger each cube in
-//!     all(                     // concurrently:
-//!         flow(rise),          //   float up,
-//!         flow(spin),          //   and spin
-//!     ),
-//!     flow(shrink),            // stagger each cube out
-//! )
-//! ```
-//!
-//! Use play/pause, drag to scrub, and click a group's chevron to
-//! collapse/expand it.
+//! Spawns a demo composition — a row of cubes through a nested
+//! `chain(flow(grow), all(flow(rise), flow(spin)), flow(shrink))` — so
+//! the timeline shows every group kind.
 
 use bevy::color::palettes;
 use bevy::prelude::*;
@@ -42,7 +29,6 @@ fn spawn_timeline(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Spawn a row of cubes.
     let mesh = meshes.add(Cuboid::default());
     let mut cubes = Vec::with_capacity(CUBE_COUNT);
     for i in 0..CUBE_COUNT {
@@ -63,7 +49,6 @@ fn spawn_timeline(
 
     let mut b = motiongfx.create_builder();
 
-    // Stagger each cube growing in.
     let grow = cubes
         .iter()
         .map(|&cube| {
@@ -74,7 +59,6 @@ fn spawn_timeline(
         .collect::<Vec<_>>()
         .ord_flow(0.12);
 
-    // Concurrently: float up while spinning.
     let rise = cubes
         .iter()
         .map(|&cube| {
@@ -99,7 +83,6 @@ fn spawn_timeline(
         .collect::<Vec<_>>()
         .ord_flow(0.06);
 
-    // Stagger each cube shrinking out.
     let shrink = cubes
         .iter()
         .map(|&cube| {
@@ -112,7 +95,6 @@ fn spawn_timeline(
         .collect::<Vec<_>>()
         .ord_flow(0.1);
 
-    // chain(grow, all(rise, spin), shrink)
     let track =
         [grow, [rise, spin].ord_all(), shrink].ord_chain().compile();
     b.add_tracks(track);

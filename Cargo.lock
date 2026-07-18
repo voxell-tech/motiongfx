@@ -787,7 +787,7 @@ version = "0.3.0"
 dependencies = [
  "bevy",
  "bevy_motiongfx",
- "motiongfx_editor",
+ "motiongfx_editor_ui",
 ]
 
 [[package]]
@@ -3629,6 +3629,14 @@ version = "0.3.0"
 dependencies = [
  "bevy",
  "bevy_motiongfx",
+ "motiongfx_editor_ui",
+]
+
+[[package]]
+name = "motiongfx_editor_ui"
+version = "0.3.0"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]

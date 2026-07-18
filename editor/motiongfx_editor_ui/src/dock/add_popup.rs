@@ -10,8 +10,8 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabAddButton;
 use super::tree::DockTree;
-use crate::ui::glass::{Glass, glass_button};
-use crate::ui::theme::EditorTheme;
+use crate::glass::{Glass, glass_button};
+use crate::theme::EditorTheme;
 
 pub struct AddWindowPopupPlugin;
 
