@@ -20,17 +20,19 @@ use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_drag, on_track_press,
     on_track_release,
 };
+use crate::{
+    CONTROL_BAR_HEIGHT, EditorSettings, NAME_PANEL_MAX,
+    NAME_PANEL_MIN, NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage,
+    TRACK_TOP_PADDING,
+};
 use motiongfx_editor_ui::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree, DockTreeHost,
     DockWindowDescriptor, Edge, WindowRegistry,
 };
 use motiongfx_editor_ui::glass::{Glass, glass_button};
 use motiongfx_editor_ui::inspector::Inspector;
-use motiongfx_editor_ui::{Divider, label, playhead_line, timeline_track};
-use crate::{
-    CONTROL_BAR_HEIGHT, EditorSettings, NAME_PANEL_MAX,
-    NAME_PANEL_MIN, NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage,
-    TRACK_TOP_PADDING,
+use motiongfx_editor_ui::{
+    Divider, label, playhead_line, timeline_track,
 };
 
 /// Marker for the timeline panel node (fills its dock area).

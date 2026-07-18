@@ -7,7 +7,7 @@
 //! Usage: attach a preset with the [`widget`] builders
 //! (`glass::panel()`, `glass::button(...)`, ...); an observer swaps
 //! in the matching material. Don't also set
-//! `BackgroundColor`/`BorderColor` — the material replaces both.
+//! `BackgroundColor`/`BorderColor`: the material replaces both.
 //! Corner rounding comes from the node's own `BorderRadius`.
 
 mod backdrop;

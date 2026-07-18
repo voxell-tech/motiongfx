@@ -68,8 +68,10 @@ fn time_at_cursor(
     let inv = computed.inverse_scale_factor();
     let (_scale, _angle, center) =
         transform.to_scale_angle_translation();
-    let rect =
-        Rect::from_center_size(center.trunc() * inv, computed.size() * inv);
+    let rect = Rect::from_center_size(
+        center.trunc() * inv,
+        computed.size() * inv,
+    );
     ((cursor.x - rect.min.x) / PIXELS_PER_SECOND)
         .clamp(0.0, duration.max(0.0))
 }

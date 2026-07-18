@@ -13,13 +13,13 @@ use bevy::prelude::*;
 use bevy_motiongfx::prelude::*;
 
 use crate::scene::{Playhead, TimelineContent};
-use motiongfx_editor_ui::{
-    ActionBox, GroupBox, GroupToggle, clip_box, group_box,
-    group_toggle,
-};
 use crate::{
     EditorState, PIXELS_PER_SECOND, ROW_HEIGHT, ROW_STRIDE,
     TRACK_TOP_PADDING,
+};
+use motiongfx_editor_ui::{
+    ActionBox, GroupBox, GroupToggle, clip_box, group_box,
+    group_toggle,
 };
 
 /// Size of the chevron toggle shown on an expanded group.

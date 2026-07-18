@@ -68,28 +68,28 @@ impl Plugin for EditorUiPlugin {
             DockPlugin,
             ReflectInspectorPlugin::<EditorSettings>::default(),
         ))
-            // Seed the feathers palette (its default theme is empty).
-            .insert_resource(UiTheme(create_dark_theme()))
-            .init_resource::<EditorState>()
-            .init_resource::<hierarchy::HierarchyState>()
-            .add_systems(Startup, scene::setup_editor_ui)
-            .add_systems(
-                Update,
-                (
-                    layout::build_timeline_view,
-                    hierarchy::build_hierarchy_view,
-                    playback::play_pause_hotkey,
-                    playback::update_playhead,
-                    playback::stop_at_track_end,
-                    playback::update_play_label,
-                    view::sync_name_scroll,
-                    view::retarget_scene_cameras,
-                    view::fit_preview_image,
-                )
-                    .chain(),
+        // Seed the feathers palette (its default theme is empty).
+        .insert_resource(UiTheme(create_dark_theme()))
+        .init_resource::<EditorState>()
+        .init_resource::<hierarchy::HierarchyState>()
+        .add_systems(Startup, scene::setup_editor_ui)
+        .add_systems(
+            Update,
+            (
+                layout::build_timeline_view,
+                hierarchy::build_hierarchy_view,
+                playback::play_pause_hotkey,
+                playback::update_playhead,
+                playback::stop_at_track_end,
+                playback::update_play_label,
+                view::sync_name_scroll,
+                view::retarget_scene_cameras,
+                view::fit_preview_image,
             )
-            .add_observer(playback::on_toggle_playback)
-            .add_observer(layout::on_timeline_content_added);
+                .chain(),
+        )
+        .add_observer(playback::on_toggle_playback)
+        .add_observer(layout::on_timeline_content_added);
     }
 }
 

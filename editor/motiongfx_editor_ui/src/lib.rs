@@ -9,8 +9,11 @@
 //! Widgets build on the headless [`bevy::ui_widgets`] behaviors and
 //! the [`bevy::feathers`] theme.
 
-// Inherent to Bevy ECS: systems take many params and query tuples.
-#![allow(clippy::type_complexity, clippy::too_many_arguments)]
+#![allow(
+    clippy::type_complexity,
+    clippy::too_many_arguments,
+    reason = "Inherent to Bevy ECS: systems take many params and query tuples."
+)]
 
 pub mod dock;
 pub mod glass;

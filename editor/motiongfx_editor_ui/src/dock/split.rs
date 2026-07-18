@@ -282,7 +282,7 @@ fn handle_panel_drag(
     let after_entity = children[handle_index + 1];
 
     // Track the cursor's absolute position within the two panels'
-    // span, not accumulated delta — so dragging off-screen or past a
+    // span, not accumulated delta, so dragging off-screen or past a
     // limit just clamps and holds rather than banking up movement.
     let (Ok((bc, bt)), Ok((ac, at))) =
         (nodes.get(before_entity), nodes.get(after_entity))

@@ -42,7 +42,7 @@ impl GlassMaterial {
     pub fn new(tint: LinearRgba, rim: f32, frost: f32) -> Self {
         Self {
             tint,
-            // Defaults: near-opaque thin rim, no cursor glow — only
+            // Defaults: near-opaque thin rim, no cursor glow; only
             // interactable surfaces opt in via `glow_strength`.
             params: Vec4::new(rim, frost, 0.85, 0.0),
             glow: Vec4::new(f32::MIN, f32::MIN, 1.0, 1.0),

@@ -6,14 +6,14 @@
 //!
 //! Ported from a sibling project's generic docking engine
 //! (`jackdaw_panels`). Not yet wired into
-//! the editor app or the timeline panel — register
+//! the editor app or the timeline panel: register
 //! [`DockPlugin`] explicitly, register window kinds on
 //! [`WindowRegistry`], spawn a [`DockTreeHost`] entity, and seed a
 //! [`DockTree`].
 //!
 //! Deliberately out of scope for this first port: an icon-only
 //! sidebar area style, multi-workspace save/switch, and an "add
-//! window" popup menu — just splits, tabs, and drag/drop.
+//! window" popup menu; just splits, tabs, and drag/drop.
 
 mod add_popup;
 mod area;
@@ -46,7 +46,7 @@ pub use tree::{
 
 /// Assembles the docking engine: resizable splits, tab bars, the tree
 /// reconciler, and drag/drop. Does not seed a [`DockTree`] or
-/// register any [`WindowRegistry`] entries — callers do that after
+/// register any [`WindowRegistry`] entries; callers do that after
 /// adding this plugin.
 pub struct DockPlugin;
 

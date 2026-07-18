@@ -1,7 +1,7 @@
 //! Scene hierarchy browser: an indented list of the scene's entities.
 //!
-//! Only *scene* entities are listed — anything with a [`Transform`]
-//! that isn't part of the editor's own `bevy_ui` tree — so the panel
+//! Only *scene* entities are listed: anything with a [`Transform`]
+//! that isn't part of the editor's own `bevy_ui` tree, so the panel
 //! shows the composition's objects rather than the editor chrome.
 
 use bevy::prelude::*;
@@ -27,11 +27,8 @@ pub(crate) struct HierarchyState {
 }
 
 /// Scene entities: transform-bearing and not editor UI.
-type SceneEntity = (
-    With<Transform>,
-    Without<Node>,
-    Without<TrackViewportCamera>,
-);
+type SceneEntity =
+    (With<Transform>, Without<Node>, Without<TrackViewportCamera>);
 
 /// Rebuild the list when the scene's entities, their nesting, or their
 /// names change (or when the tab is re-materialized elsewhere).
