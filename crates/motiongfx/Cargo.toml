@@ -12,17 +12,24 @@ repository.workspace = true
 
 [dependencies]
 # bevy
-bevy_ecs = { workspace = true }
-bevy_platform = { workspace = true }
 bevy_math = { workspace = true }
 
 # other
 field_path = { workspace = true }
+hashbrown = { workspace = true }
 nonempty = { workspace = true }
+typarena = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "action_storage"
+harness = false
 
 [lints]
 workspace = true
 
 [features]
 default = ["std"]
-std = ["bevy_ecs/std", "bevy_platform/std", "bevy_math/std"]
+std = ["bevy_math/std"]

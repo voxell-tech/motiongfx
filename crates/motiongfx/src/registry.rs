@@ -1,9 +1,9 @@
 use core::any::TypeId;
 
-use bevy_platform::collections::HashMap;
 use field_path::accessor::{Accessor, UntypedAccessor};
 use field_path::field::UntypedField;
 use field_path::field_accessor::FieldAccessor;
+use hashbrown::HashMap;
 
 use crate::ThreadSafe;
 use crate::pipeline::{
