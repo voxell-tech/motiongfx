@@ -11,7 +11,7 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabRow;
 use super::tree::{DockTree, Edge as TreeEdge, TabId};
-use crate::ui::glass;
+use crate::ui::glass::Glass;
 
 pub struct DockDragPlugin;
 
@@ -329,7 +329,7 @@ fn on_drag_move(
                             ),
                             ..Default::default()
                         },
-                        glass::overlay(),
+                        Glass::Overlay,
                         GlobalZIndex(150),
                     ))
                     .id();
@@ -375,7 +375,7 @@ fn on_drag_move(
                                     ),
                                     ..default()
                                 },
-                                glass::overlay(),
+                                Glass::Overlay,
                                 GlobalZIndex(150),
                             ))
                             .id();
@@ -403,7 +403,7 @@ fn on_drag_move(
                                     ),
                                     ..default()
                                 },
-                                glass::overlay(),
+                                Glass::Overlay,
                                 GlobalZIndex(150),
                             ))
                             .id();

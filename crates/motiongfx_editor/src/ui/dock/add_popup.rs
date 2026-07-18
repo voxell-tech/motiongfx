@@ -1,27 +1,23 @@
 //! "+" button popup: lists registered windows; clicking one adds it
 //! as a tab to that area's leaf (the reconciler rebuilds the UI).
 
-use bevy::feathers::cursor::EntityCursor;
+use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
-use bevy::window::SystemCursorIcon;
 
 use super::drag::logical_rect;
 use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabAddButton;
 use super::tree::DockTree;
-use crate::ui::glass;
+use crate::ui::glass::{Glass, glass_button};
 use crate::ui::theme::EditorTheme;
 
 pub struct AddWindowPopupPlugin;
 
 impl Plugin for AddWindowPopupPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (handle_add_clicks, handle_item_clicks, hover_items),
-        );
+        app.add_systems(Update, handle_add_clicks);
     }
 }
 
@@ -37,14 +33,6 @@ pub struct AddWindowPopup {
 /// Full-screen click-catcher behind the popup.
 #[derive(Component)]
 pub struct AddWindowPopupBackdrop;
-
-/// One selectable window entry.
-#[derive(Component)]
-pub struct AddWindowPopupItem {
-    window_id: String,
-    /// The dock area whose leaf receives the new tab.
-    area: Entity,
-}
 
 /// Open the popup under the pressed "+" button; pressing the same
 /// button again closes it instead.
@@ -87,19 +75,38 @@ fn handle_add_clicks(
             continue;
         }
 
-        commands.spawn((
-            AddWindowPopupBackdrop,
-            Interaction::default(),
-            Node {
-                position_type: PositionType::Absolute,
-                left: Val::Px(0.0),
-                top: Val::Px(0.0),
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                ..default()
-            },
-            GlobalZIndex(180),
-        ));
+        commands
+            .spawn((
+                AddWindowPopupBackdrop,
+                // Catch the outside-click to close, but let hover/clicks
+                // pass through to the UI beneath instead of freezing it.
+                Pickable {
+                    should_block_lower: false,
+                    is_hoverable: true,
+                },
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(0.0),
+                    top: Val::Px(0.0),
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    ..default()
+                },
+                GlobalZIndex(180),
+            ))
+            .observe(
+                |mut click: On<Pointer<Click>>,
+                 q_open: Query<
+                    Entity,
+                    Or<(With<AddWindowPopup>, With<AddWindowPopupBackdrop>)>,
+                >,
+                 mut commands: Commands| {
+                    click.propagate(false);
+                    for open in &q_open {
+                        commands.entity(open).try_despawn();
+                    }
+                },
+            );
 
         // Right-align the popup to the button, just below it.
         let rect = logical_rect(computed, transform);
@@ -118,7 +125,7 @@ fn handle_add_clicks(
                     border_radius: BorderRadius::all(Val::Px(6.0)),
                     ..default()
                 },
-                glass::popup(),
+                Glass::Popup,
                 GlobalZIndex(181),
             ))
             .id();
@@ -128,86 +135,44 @@ fn handle_add_clicks(
             .iter()
             .filter(|d| tree.find_leaf_with_window(&d.id).is_none())
         {
-            commands.spawn((
-                AddWindowPopupItem {
-                    window_id: desc.id.clone(),
-                    area: button.area_entity,
-                },
-                Interaction::default(),
-                EntityCursor::System(SystemCursorIcon::Pointer),
+            // Each row is a full-width glass button; the click handler
+            // captures the window id + target area directly instead of
+            // going through a component (which would need `Entity`'s
+            // absent `Default` impl for the bsn template system).
+            let window_id = desc.id.clone();
+            let area = button.area_entity;
+            commands.spawn_scene(bsn! {
+                glass_button()
+                on(move |mut click: On<Pointer<Click>>,
+                         q_bindings: Query<&NodeBinding>,
+                         q_open: Query<
+                            Entity,
+                            Or<(With<AddWindowPopup>, With<AddWindowPopupBackdrop>)>,
+                         >,
+                         mut tree: ResMut<DockTree>,
+                         mut commands: Commands| {
+                    click.propagate(false);
+                    if let Ok(binding) = q_bindings.get(area) {
+                        tree.add_tab(binding.0, window_id.clone());
+                    }
+                    for open in &q_open {
+                        commands.entity(open).try_despawn();
+                    }
+                })
                 Node {
                     width: Val::Percent(100.0),
+                    justify_content: JustifyContent::FlexStart,
+                    align_items: AlignItems::Center,
                     padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
                     border_radius: BorderRadius::all(Val::Px(4.0)),
-                    ..default()
-                },
-                ChildOf(popup),
-                children![(
-                    Text::new(desc.name.clone()),
-                    TextFont {
-                        font_size: FontSize::Px(12.0),
-                        ..default()
-                    },
-                    TextColor(theme.text_muted),
-                )],
-            ));
+                }
+                ChildOf({popup})
+                Children [(
+                    Text({desc.name.clone()})
+                    TextFont { font_size: FontSize::Px(12.0) }
+                    TextColor({theme.text_primary})
+                )]
+            });
         }
-    }
-}
-
-/// Item picked: add the tab to the area's leaf. Backdrop press just
-/// closes. Either way the popup is torn down.
-fn handle_item_clicks(
-    q_items: Query<
-        (&AddWindowPopupItem, &Interaction),
-        Changed<Interaction>,
-    >,
-    q_backdrop: Query<
-        &Interaction,
-        (With<AddWindowPopupBackdrop>, Changed<Interaction>),
-    >,
-    q_open: Query<
-        Entity,
-        Or<(With<AddWindowPopup>, With<AddWindowPopupBackdrop>)>,
-    >,
-    q_bindings: Query<&NodeBinding>,
-    mut tree: ResMut<DockTree>,
-    mut commands: Commands,
-) {
-    let mut close = false;
-
-    for (item, interaction) in &q_items {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
-        if let Ok(binding) = q_bindings.get(item.area) {
-            tree.add_tab(binding.0, item.window_id.clone());
-        }
-        close = true;
-    }
-    if q_backdrop.iter().any(|i| *i == Interaction::Pressed) {
-        close = true;
-    }
-
-    if close {
-        for open in &q_open {
-            commands.entity(open).try_despawn();
-        }
-    }
-}
-
-/// Hover highlight for popup rows.
-fn hover_items(
-    theme: Res<EditorTheme>,
-    mut q_items: Query<
-        (&Interaction, &mut BackgroundColor),
-        (With<AddWindowPopupItem>, Changed<Interaction>),
-    >,
-) {
-    for (interaction, mut bg) in &mut q_items {
-        bg.0 = match interaction {
-            Interaction::None => Color::NONE,
-            _ => theme.hover_fill,
-        };
     }
 }

@@ -54,8 +54,7 @@ impl Plugin for MotionGfxEditorPlugin {
             "org.voxell.motiongfx.editor",
         ))
         .add_plugins(EditorUiPlugin)
-        .add_systems(Startup, startup_test)
-        .add_observer(on_save_settings);
+        .add_systems(Startup, startup_test);
     }
 }
 
@@ -95,9 +94,7 @@ impl Plugin for EditorUiPlugin {
                 )
                     .chain(),
             )
-            .add_observer(playback::on_play_pause)
             .add_observer(playback::on_toggle_playback)
-            .add_observer(layout::on_group_toggle)
             .add_observer(layout::on_timeline_content_added);
     }
 }
@@ -112,18 +109,6 @@ pub(crate) const CONTROL_BAR_HEIGHT: f32 = 40.0;
 pub(crate) const ROW_HEIGHT: f32 = 22.0;
 pub(crate) const ROW_STRIDE: f32 = ROW_HEIGHT + 8.0;
 pub(crate) const TRACK_TOP_PADDING: f32 = 12.0;
-
-/// Persist [`EditorSettings`] when the settings panel's Save button
-/// is pressed.
-fn on_save_settings(
-    activate: On<bevy::ui_widgets::Activate>,
-    q_button: Query<(), With<scene::SettingsSaveButton>>,
-    mut commands: Commands,
-) {
-    if q_button.get(activate.entity).is_ok() {
-        commands.queue(SaveSettingsSync::Always);
-    }
-}
 
 fn startup_test(
     mut commands: Commands,

@@ -6,20 +6,22 @@ use std::sync::Arc;
 
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
-use bevy::picking::events::{Drag, Pointer};
+use bevy::picking::events::{Click, Drag, Pointer};
 use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
+use bevy::settings::SaveSettingsSync;
 use bevy::ui::widget::ImageNode;
 use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 use bevy::ui_widgets::{ControlOrientation, ScrollArea};
 
-use crate::playback::on_scrub;
+use crate::playback::{TogglePlayback, on_scrub};
 use crate::ui::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree, DockTreeHost,
     DockWindowDescriptor, Edge, WindowRegistry,
 };
 use crate::ui::inspector::Inspector;
-use crate::ui::{Divider, glass, label, playhead_line, scrub_slider};
+use crate::ui::glass::{Glass, glass_button};
+use crate::ui::{Divider, label, playhead_line, scrub_slider};
 use crate::{
     CONTROL_BAR_HEIGHT, EditorSettings, NAME_PANEL_MAX,
     NAME_PANEL_MIN, NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage,
@@ -69,18 +71,10 @@ pub(crate) struct NamePanel;
 pub(crate) struct Playhead;
 
 #[derive(Component, Default, Clone)]
-pub(crate) struct PlayPauseButton;
-
-#[derive(Component, Default, Clone)]
 pub(crate) struct PlayPauseLabel;
 
 #[derive(Component, Default, Clone)]
 pub(crate) struct TimeLabel;
-
-/// The settings panel's Save button; observed by
-/// [`on_save_settings`](crate::on_save_settings).
-#[derive(Component, Default, Clone)]
-pub(crate) struct SettingsSaveButton;
 
 #[derive(Component, Default, Clone)]
 pub(crate) struct SettingsSaveLabel;
@@ -97,7 +91,7 @@ impl EditorPanel {
                 padding: UiRect::bottom(Val::Px(PANEL_PADDING)),
             }
             EditorPanel
-            template_value(glass::panel())
+            template_value(Glass::Panel)
             Children [
             // --- Control bar: play/pause + time readout. ---
                 (
@@ -113,10 +107,21 @@ impl EditorPanel {
                     }
                     Children [
                         (
-                            glass::button::<PlayPauseButton>(
-                                84.0,
-                                26.0,
-                            )
+                            glass_button()
+                            on(|mut click: On<Pointer<Click>>,
+                                mut commands: Commands| {
+                                click.propagate(false);
+                                commands.trigger(TogglePlayback);
+                            })
+                            Node {
+                                width: Val::Px(84.0),
+                                height: Val::Px(26.0),
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::Center,
+                                border_radius: BorderRadius::all(
+                                    Val::Px(6.0),
+                                ),
+                            }
                             Children [
                                 label::<PlayPauseLabel>("Play")
                             ]
@@ -155,7 +160,7 @@ impl EditorPanel {
                                     TRACK_TOP_PADDING,
                                 )),
                             }
-                            template_value(glass::panel())
+                            template_value(Glass::Panel)
                         ),
                         (
                             @Divider {
@@ -188,7 +193,7 @@ impl TrackViewport {
                 min_height: Val::Px(0.0),
                 overflow: Overflow::scroll(),
             }
-            template_value(glass::panel())
+            template_value(Glass::Panel)
             Children [
                 TimelineContent
                 scrub_slider(1.0, 1.0)
@@ -331,7 +336,7 @@ fn register_windows(
                     overflow: Overflow::scroll_y(),
                     ..default()
                 },
-                glass::panel(),
+                Glass::Panel,
             ));
             let panel_id = panel.id();
             panel.world_scope(|world| {
@@ -350,7 +355,19 @@ fn register_windows(
                 if let Ok(mut row) = world.spawn_scene(bsn! {
                     Node { flex_direction: FlexDirection::Row }
                     Children [(
-                        glass::button::<SettingsSaveButton>(64.0, 24.0)
+                        glass_button()
+                        on(|mut click: On<Pointer<Click>>,
+                            mut commands: Commands| {
+                            click.propagate(false);
+                            commands.queue(SaveSettingsSync::Always);
+                        })
+                        Node {
+                            width: Val::Px(64.0),
+                            height: Val::Px(24.0),
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            border_radius: BorderRadius::all(Val::Px(6.0)),
+                        }
                         Children [
                             label::<SettingsSaveLabel>("Save")
                         ]

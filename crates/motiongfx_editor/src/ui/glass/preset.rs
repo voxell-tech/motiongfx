@@ -53,6 +53,14 @@ pub struct GlassAssets {
     pub field: Handle<GlassMaterial>,
 }
 
+impl Glass {
+    /// The tab pill in its active (`true`) or invisible-idle
+    /// (`false`) state.
+    pub fn tab(active: bool) -> Self {
+        if active { Self::TabActive } else { Self::TabIdle }
+    }
+}
+
 impl GlassAssets {
     fn preset(&self, glass: Glass) -> Handle<GlassMaterial> {
         match glass {
@@ -182,25 +190,4 @@ pub(super) fn attach_glass(
         preset
     };
     commands.entity(insert.entity).insert(MaterialNode(handle));
-}
-
-/// Skins the first child of an entity once it exists. Lets us glass a
-/// widget whose background lives on a scene-spawned child we can't
-/// reach synchronously (e.g. a feathers checkbox's box). Consumed on
-/// success. Prefer
-/// [`widget::glassify_child`](super::widget::glassify_child).
-#[derive(Component)]
-pub struct GlassifyChild(pub Glass);
-
-pub(super) fn glassify_children(
-    q: Query<(Entity, &Children, &GlassifyChild)>,
-    mut commands: Commands,
-) {
-    for (entity, children, glassify) in &q {
-        let Some(child) = children.iter().next() else {
-            continue;
-        };
-        commands.entity(child).insert(glassify.0);
-        commands.entity(entity).remove::<GlassifyChild>();
-    }
 }

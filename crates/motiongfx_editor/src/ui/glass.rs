@@ -21,8 +21,8 @@ use bevy::asset::embedded_asset;
 use bevy::prelude::*;
 use bevy::ui_render::prelude::UiMaterialPlugin;
 pub use material::GlassMaterial;
-pub use preset::{Glass, GlassAssets, GlassifyChild};
-pub use widget::*;
+pub use preset::{Glass, GlassAssets};
+pub use widget::{glass_button, glass_checkbox, glass_field};
 
 use crate::ui::theme::EditorTheme;
 
@@ -43,7 +43,8 @@ impl Plugin for GlassPlugin {
                     glow::update_glass_buttons,
                     glow::update_glow,
                     backdrop::sync_backdrop,
-                    preset::glassify_children,
+                    widget::update_glass_checkmarks,
+                    widget::update_glass_field_cursors,
                 ),
             );
 

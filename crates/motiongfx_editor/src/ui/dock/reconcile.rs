@@ -23,6 +23,7 @@ use super::tree::{
     DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId,
     SplitAxis,
 };
+use crate::ui::glass::Glass;
 
 pub struct ReconcilePlugin;
 
@@ -518,7 +519,7 @@ fn sync_leaf_visuals(
             // Re-inserting the preset swaps the tab's material.
             commands
                 .entity(tab_entity)
-                .insert(crate::ui::glass::tab(is_active));
+                .insert(Glass::tab(is_active));
             if let Ok(tab_children) = children_query.get(tab_entity) {
                 for child in tab_children.iter() {
                     if let Ok(mut tc) = text_colors.get_mut(child) {

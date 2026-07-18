@@ -12,7 +12,7 @@ use super::TAB_HEIGHT;
 use super::area::{DockTab, DockTabBar, DockTabCloseButton};
 use super::reconcile::LeafBinding;
 use super::tree::{DockTree, TabId};
-use crate::ui::glass::{self, Glass};
+use crate::ui::glass::Glass;
 use crate::ui::theme::EditorTheme;
 
 pub struct DockTabPlugin;
@@ -89,7 +89,7 @@ pub fn spawn_tab_bar_world(
                 flex_shrink: 0.0,
                 ..default()
             },
-            glass::bar(),
+            Glass::Bar,
             ChildOf(area_entity),
         ))
         .id();
@@ -189,7 +189,7 @@ pub(super) fn spawn_ghost_tab(
 ) {
     let color = world.resource::<EditorTheme>().text_primary;
     let tile = world
-        .spawn((tab_tile_node(), glass::tab(true), ChildOf(wrapper)))
+        .spawn((tab_tile_node(), Glass::tab(true), ChildOf(wrapper)))
         .id();
     spawn_tab_label(world, tile, label, color);
     // Matches the 14px close slot a real tab reserves.
@@ -229,7 +229,7 @@ fn spawn_tab(
             tab_tile_node(),
             // Active pill vs invisible; swapped by
             // `sync_leaf_visuals`.
-            glass::tab(is_active),
+            Glass::tab(is_active),
             // Tabs are draggable: signal it on hover.
             EntityCursor::System(SystemCursorIcon::Grab),
             ChildOf(tab_row),

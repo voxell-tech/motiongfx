@@ -2,12 +2,11 @@
 //! the playhead / time readout.
 
 use bevy::prelude::*;
-use bevy::ui_widgets::{Activate, SliderValue, ValueChange};
+use bevy::ui_widgets::{SliderValue, ValueChange};
 use bevy_motiongfx::prelude::*;
 
 use crate::scene::{
-    PlayPauseButton, PlayPauseLabel, Playhead, TimeLabel,
-    TimelineContent,
+    PlayPauseLabel, Playhead, TimeLabel, TimelineContent,
 };
 use crate::{EditorState, PIXELS_PER_SECOND};
 
@@ -16,17 +15,6 @@ use crate::{EditorState, PIXELS_PER_SECOND};
 /// ([`on_toggle_playback`]).
 #[derive(Event)]
 pub(crate) struct TogglePlayback;
-
-/// Request a toggle when the play/pause button is activated.
-pub(crate) fn on_play_pause(
-    activate: On<Activate>,
-    mut commands: Commands,
-    q_button: Query<(), With<PlayPauseButton>>,
-) {
-    if q_button.get(activate.entity).is_ok() {
-        commands.trigger(TogglePlayback);
-    }
-}
 
 /// Request a toggle when the spacebar is pressed.
 pub(crate) fn play_pause_hotkey(

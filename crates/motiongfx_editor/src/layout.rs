@@ -9,7 +9,8 @@ use std::hash::DefaultHasher;
 use bevy::feathers::constants::icons;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy::ui_widgets::{Activate, SliderRange};
+use bevy::picking::events::{Click, Pointer};
+use bevy::ui_widgets::SliderRange;
 use bevy_motiongfx::prelude::*;
 
 use crate::scene::{Playhead, TimelineContent};
@@ -116,7 +117,8 @@ pub(crate) fn build_timeline_view(
                 t.gid, t.left, t.top, t.width, t.height, t.icon,
                 &t.label, t.bg,
             ))
-            .insert(ChildOf(content));
+            .insert(ChildOf(content))
+            .observe(on_group_toggle);
     }
 
     state.timeline = Some(timeline_id);
@@ -135,17 +137,27 @@ pub(crate) fn on_timeline_content_added(
     state.built = false;
 }
 
-/// Toggle a group's collapsed state and rebuild the view.
+/// Toggle a group's collapsed state and rebuild the view. Attached to
+/// each toggle; the click may hit a child (icon/label), so walk up.
 pub(crate) fn on_group_toggle(
-    activate: On<Activate>,
-    mut state: ResMut<EditorState>,
+    mut click: On<Pointer<Click>>,
     q_toggle: Query<&GroupToggle>,
+    q_parents: Query<&ChildOf>,
+    mut state: ResMut<EditorState>,
 ) {
-    let Ok(GroupToggle(gid)) = q_toggle.get(activate.entity) else {
-        return;
+    click.propagate(false);
+    let mut entity = click.entity;
+    let gid = loop {
+        if let Ok(GroupToggle(gid)) = q_toggle.get(entity) {
+            break *gid;
+        }
+        let Ok(parent) = q_parents.get(entity) else {
+            return;
+        };
+        entity = parent.parent();
     };
-    if !state.collapsed.remove(gid) {
-        state.collapsed.insert(*gid);
+    if !state.collapsed.remove(&gid) {
+        state.collapsed.insert(gid);
     }
     // Force `build_timeline_view` to rebuild with the new state.
     state.built = false;
