@@ -8,6 +8,7 @@ pub mod ease;
 pub mod interpolation;
 pub mod pipeline;
 pub mod registry;
+mod resources;
 pub mod sequence;
 pub mod subject;
 pub mod timeline;
