@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
+use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::picking::events::{Click, Drag, Pointer};
 use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
@@ -343,6 +344,7 @@ fn register_windows(
                 // Editable rows built by the reflect inspector.
                 world.spawn((
                     Inspector::<EditorSettings>::default(),
+                    TabGroup::new(0),
                     Node {
                         width: Val::Percent(100.0),
                         flex_direction: FlexDirection::Column,
