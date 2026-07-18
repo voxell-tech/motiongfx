@@ -39,8 +39,7 @@ use bevy::feathers::theme::UiTheme;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::settings::{
-    ReflectSettingsGroup, SaveSettingsSync, SettingsGroup,
-    SettingsPlugin,
+    ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
 };
 use bevy_motiongfx::prelude::TimelineId;
 
@@ -53,8 +52,7 @@ impl Plugin for MotionGfxEditorPlugin {
         app.add_plugins(SettingsPlugin::new(
             "org.voxell.motiongfx.editor",
         ))
-        .add_plugins(EditorUiPlugin)
-        .add_systems(Startup, startup_test);
+        .add_plugins(EditorUiPlugin);
     }
 }
 
@@ -109,14 +107,6 @@ pub(crate) const CONTROL_BAR_HEIGHT: f32 = 40.0;
 pub(crate) const ROW_HEIGHT: f32 = 22.0;
 pub(crate) const ROW_STRIDE: f32 = ROW_HEIGHT + 8.0;
 pub(crate) const TRACK_TOP_PADDING: f32 = 12.0;
-
-fn startup_test(
-    mut commands: Commands,
-    settings: ResMut<EditorSettings>,
-) {
-    commands.queue(SaveSettingsSync::Always);
-    println!("{:?}", settings);
-}
 
 /// The offscreen texture the composition's scene cameras render into.
 /// `bevy_ui` scales this image to fit the preview area above the

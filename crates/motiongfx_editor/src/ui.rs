@@ -10,7 +10,6 @@ pub mod glass;
 pub mod inspector;
 pub mod theme;
 
-use bevy::feathers::controls::ButtonVariant;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::feathers::theme::{ThemeBackgroundColor, ThemedText};
 use bevy::feathers::tokens;
@@ -24,32 +23,6 @@ use bevy::ui_widgets::{
 use bevy::window::SystemCursorIcon;
 
 pub const PLAYHEAD_COLOR: Color = Color::srgb(0.95, 0.30, 0.35);
-
-/// A feathers-themed button carrying the headless [`Button`]
-/// behavior.
-///
-/// Emits [`bevy::ui_widgets::Activate`] when clicked or activated via
-/// the keyboard; observe that event on the spawned entity.
-pub fn themed_button<M>(width: f32, height: f32) -> impl Scene
-where
-    M: Component + Default + Unpin + Clone,
-{
-    bsn! {
-        M
-        Button
-        template_value(ButtonVariant::Normal)
-        Hovered
-        Node {
-            width: Val::Px(width),
-            height: Val::Px(height),
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            border_radius: BorderRadius::all(Val::Px(6.0)),
-        }
-        ThemeBackgroundColor(tokens::BUTTON_BG)
-        EntityCursor::System(SystemCursorIcon::Pointer)
-    }
-}
 
 /// A theme-inheriting text label.
 pub fn label<M: Component + Default + Unpin + Clone>(

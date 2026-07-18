@@ -2,11 +2,11 @@
 //! you already built is the [`Glass`] marker component itself
 //! (`Glass::Panel`, `Glass::tab(active)`, ...), not a builder here.
 
+use bevy::feathers::controls::{FeathersNumberInput, NumberFormat};
 use bevy::feathers::cursor::EntityCursor;
-use bevy::input_focus::tab_navigation::TabIndex;
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
-use bevy::text::{EditableText, TextCursorStyle};
+use bevy::text::TextCursorStyle;
 use bevy::ui::Checked;
 use bevy::ui_widgets::{Button, Checkbox};
 use bevy::window::SystemCursorIcon;
@@ -60,40 +60,31 @@ pub fn glass_checkbox() -> impl Scene {
     }
 }
 
-/// Marks a [`glass_field`] text input, for cursor theming.
-#[derive(Component, Default, Clone)]
-pub(super) struct GlassField;
-
-/// A glass text input on the headless [`EditableText`]. Read its
-/// contents via `EditableText::value()`; observe
-/// [`TextEditChange`](bevy::text::TextEditChange) for edits.
-pub fn glass_field() -> impl Scene {
+/// A glass-styled number input: a [`FeathersNumberInput`] with
+/// `Glass::Field` on its own root (the feathers text-input container).
+pub fn glass_number_field(format: NumberFormat) -> impl Scene {
     bsn! {
-        GlassField
-        EditableText { cursor_width: 0.3 }
+        @FeathersNumberInput {
+            @number_format: {format}
+        }
         template_value(Glass::Field)
-        TextLayout { linebreak: LineBreak::NoWrap }
-        TextFont { font_size: FontSize::Px(12.0) }
-        TextCursorStyle::default()
-        TabIndex(0)
-        EntityCursor::System(SystemCursorIcon::Text)
         Node {
-            min_width: Val::Px(80.0),
-            align_items: AlignItems::Center,
-            padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
-            border_radius: BorderRadius::all(Val::Px(4.0)),
+            width: Val::Px(110.0),
+            flex_grow: 0.0,
         }
     }
 }
 
-/// Theme each text field's caret/selection from the accent color.
+/// Theme every text field's caret from `base7` and its selection
+/// highlight from the accent color.
 pub(super) fn update_glass_field_cursors(
     theme: Res<EditorTheme>,
-    mut q: Query<&mut TextCursorStyle, With<GlassField>>,
+    mut q: Query<&mut TextCursorStyle>,
 ) {
+    let caret = theme.palette.base[7];
     for mut style in &mut q {
-        if style.color != theme.accent {
-            style.color = theme.accent;
+        if style.color != caret {
+            style.color = caret;
             style.selection_color = theme.accent.with_alpha(0.3);
         }
     }

@@ -11,8 +11,7 @@ use std::marker::PhantomData;
 
 use bevy::ecs::component::Mutable;
 use bevy::feathers::controls::{
-    FeathersNumberInput, NumberFormat, NumberInputValue,
-    UpdateNumberInput,
+    NumberFormat, NumberInputValue, UpdateNumberInput,
 };
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
@@ -20,7 +19,7 @@ use bevy::reflect::{GetPath, ReflectRef};
 use bevy::ui::Checked;
 use bevy::ui_widgets::ValueChange;
 
-use crate::ui::glass::{Glass, glass_checkbox};
+use crate::ui::glass::{glass_checkbox, glass_number_field};
 
 /// Registers the build / edit / sync systems for one resource type.
 pub struct ReflectInspectorPlugin<T>(PhantomData<T>);
@@ -162,7 +161,8 @@ fn build_inspector<T: Resource + Reflect>(
 
         match leaf {
             Leaf::Bool(checked) => {
-                let mut widget = commands.spawn_scene(glass_checkbox());
+                let mut widget =
+                    commands.spawn_scene(glass_checkbox());
                 widget.insert((
                     InspectorField::<T>::new(path),
                     ChildOf(row),
@@ -173,20 +173,9 @@ fn build_inspector<T: Resource + Reflect>(
             }
             Leaf::Number(format, value) => {
                 let widget = commands
-                    .spawn_scene(bsn! {
-                        @FeathersNumberInput {
-                            @number_format: {format}
-                        }
-                        Node {
-                            width: Val::Px(110.0),
-                            flex_grow: 0.0,
-                        }
-                    })
+                    .spawn_scene(glass_number_field(format))
                     .insert((
                         InspectorField::<T>::new(path),
-                        // The number input's root is its themed fill
-                        // container; glass it directly.
-                        Glass::Field,
                         ChildOf(row),
                     ))
                     .id();

@@ -22,7 +22,7 @@ use bevy::prelude::*;
 use bevy::ui_render::prelude::UiMaterialPlugin;
 pub use material::GlassMaterial;
 pub use preset::{Glass, GlassAssets};
-pub use widget::{glass_button, glass_checkbox, glass_field};
+pub use widget::{glass_button, glass_checkbox, glass_number_field};
 
 use crate::ui::theme::EditorTheme;
 
