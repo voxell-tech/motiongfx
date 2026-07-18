@@ -1,7 +1,7 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use bevy_platform::collections::HashMap;
 use field_path::field::UntypedField;
+use hashbrown::HashMap;
 
 use crate::action::{ActionClip, ActionKey};
 use crate::sequence::Sequence;
@@ -344,11 +344,14 @@ pub struct Span {
 
 #[cfg(test)]
 mod tests {
-    use bevy_ecs::entity::Entity;
-
     use crate::action::{ActionId, IdRegistry, UntypedSubjectId};
 
     use super::*;
+
+    #[derive(
+        Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
+    )]
+    struct DummyId(u32);
 
     fn key(path: &'static str) -> ActionKey {
         ActionKey::new(
@@ -366,8 +369,8 @@ mod tests {
         // Sequence with 0 duration to prevent overlaps.
         const DUMMY_SEQ: Sequence = Sequence::new(clip(0.0));
 
-        let entity1 = Entity::from_raw_u32(1).unwrap();
-        let entity2 = Entity::from_raw_u32(2).unwrap();
+        let entity1 = DummyId(1);
+        let entity2 = DummyId(2);
         let field_u32_a = UntypedField::placeholder_with_path("a");
         let field_u32_b = UntypedField::placeholder_with_path("b");
 
@@ -376,15 +379,15 @@ mod tests {
         let id2 = id_registry.register_instance(entity2);
 
         let k1 = ActionKey::new(
-            UntypedSubjectId::new::<Entity>(id1),
+            UntypedSubjectId::new::<DummyId>(id1),
             field_u32_a,
         );
         let k2 = ActionKey::new(
-            UntypedSubjectId::new::<Entity>(id2),
+            UntypedSubjectId::new::<DummyId>(id2),
             field_u32_a,
         );
         let k3 = ActionKey::new(
-            UntypedSubjectId::new::<Entity>(id1),
+            UntypedSubjectId::new::<DummyId>(id1),
             field_u32_b,
         );
 

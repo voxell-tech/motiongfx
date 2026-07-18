@@ -3,12 +3,12 @@ use core::marker::PhantomData;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use bevy_platform::collections::HashMap;
 use field_path::field_accessor::FieldAccessor;
+use hashbrown::HashMap;
 
 use crate::ThreadSafe;
 use crate::action::{
-    Action, ActionBuilder, ActionId, ActionKey, ActionWorld,
+    Action, ActionBuilder, ActionId, ActionKey, ActionTable,
     InterpActionBuilder, SampleMode,
 };
 use crate::interpolation::Interpolation;
@@ -19,7 +19,7 @@ use crate::track::Track;
 use crate::world::SubjectSource;
 
 pub struct Timeline<W> {
-    action_world: ActionWorld,
+    action_table: ActionTable,
     pipeline_counts: Box<[(PipelineKey, u32)]>,
     /// Track length is guaranteed to be at least 1 by construction.
     /// See [`TimelineBuilder::compile()`].
@@ -29,6 +29,11 @@ pub struct Timeline<W> {
     /// This cache will be cleared everytime [`Timeline::queue_actions`]
     /// is called.
     queue_cache: QueueCache,
+    /// Queued actions grouped by pipeline, each carrying its resolved
+    /// [`SampleMode`]. Rebuilt from `queue_cache` every
+    /// [`Timeline::queue_actions`] so sampling touches only the marked
+    /// actions of each type, with no per-action column lookup.
+    sample_queue: HashMap<PipelineKey, Vec<(ActionId, SampleMode)>>,
     /// The current time of the current track.
     curr_time: f32,
     /// The target time of the target track.
@@ -53,7 +58,7 @@ impl<W: 'static> Timeline<W> {
                     BakeCtx {
                         world: subject_world,
                         track,
-                        action_world: &mut self.action_world,
+                        action_table: &mut self.action_table,
                         accessor_registry: &registry.accessor,
                     },
                 );
@@ -121,12 +126,8 @@ impl<W: 'static> Timeline<W> {
                     self.queue_cache.cache(
                         *key,
                         clip.id,
-                        &mut self.action_world,
+                        sample_mode,
                     );
-
-                    self.action_world
-                        .edit_action(clip.id)
-                        .mark(sample_mode);
                 }
             }
 
@@ -184,12 +185,8 @@ impl<W: 'static> Timeline<W> {
                     self.queue_cache.cache(
                         *key,
                         clip.id,
-                        &mut self.action_world,
+                        SampleMode::Interp(t),
                     );
-
-                    self.action_world
-                        .edit_action(clip.id)
-                        .mark(SampleMode::Interp(t));
                 }
                 // `target_time` is out of bounds.
                 Err(index) => {
@@ -205,25 +202,32 @@ impl<W: 'static> Timeline<W> {
                         continue;
                     }
 
+                    // Target time before the sequence -> Start,
+                    // otherwise it is past `index - 1` -> End (the
+                    // saturating sub above handles the indexing).
+                    let sample_mode = if index == 0 {
+                        SampleMode::Start
+                    } else {
+                        SampleMode::End
+                    };
+
                     self.queue_cache.cache(
                         *key,
                         clip.id,
-                        &mut self.action_world,
+                        sample_mode,
                     );
-                    let mut action_cmd =
-                        self.action_world.edit_action(clip.id);
-
-                    if index == 0 {
-                        // Target time is before the entire sequence.
-                        action_cmd.mark(SampleMode::Start);
-                    } else {
-                        // Target time is after `index - 1`.
-                        // Indexing taken care by the saturating sub
-                        // above.
-                        action_cmd.mark(SampleMode::End);
-                    }
                 }
             }
+        }
+
+        // Group the deduped queue by pipeline so each typed sampler
+        // iterates only its own actions, with the `SampleMode` in hand.
+        for (key, &(id, sample_mode)) in self.queue_cache.iter() {
+            let pkey = PipelineKey::from_action_key::<W>(*key);
+            self.sample_queue
+                .entry(pkey)
+                .or_default()
+                .push((id, sample_mode));
         }
 
         self.curr_time = self.target_time;
@@ -234,13 +238,17 @@ impl<W: 'static> Timeline<W> {
         registry: &Registry,
         subject_world: &mut W,
     ) {
-        for key in self.pipeline_counts.iter().map(|(key, _)| key) {
+        for (key, samples) in self.sample_queue.iter() {
+            if samples.is_empty() {
+                continue;
+            }
             let ok = registry.pipeline.sample(
                 key,
                 SampleCtx {
                     world: subject_world,
-                    action_world: &self.action_world,
+                    action_table: &self.action_table,
                     accessor_registry: &registry.accessor,
+                    samples,
                 },
             );
             debug_assert!(ok, "pipeline not found for key {key:?}");
@@ -249,7 +257,10 @@ impl<W: 'static> Timeline<W> {
 
     fn reset_queues(&mut self) {
         self.queue_cache.clear();
-        self.action_world.clear_all_marks();
+        // Retain the per-pipeline `Vec` capacities across frames.
+        for samples in self.sample_queue.values_mut() {
+            samples.clear();
+        }
     }
 }
 
@@ -359,7 +370,7 @@ impl<W> Timeline<W> {
 /// in an unordered manner.
 #[derive(Debug)]
 pub struct QueueCache {
-    cache: HashMap<ActionKey, ActionId>,
+    cache: HashMap<ActionKey, (ActionId, SampleMode)>,
 }
 
 impl QueueCache {
@@ -375,7 +386,8 @@ impl QueueCache {
 
     pub fn iter(
         &self,
-    ) -> impl Iterator<Item = (&ActionKey, &ActionId)> {
+    ) -> impl Iterator<Item = (&ActionKey, &(ActionId, SampleMode))>
+    {
         self.cache.iter()
     }
 
@@ -383,8 +395,8 @@ impl QueueCache {
         self.cache.keys()
     }
 
-    pub fn iter_ids(&self) -> impl Iterator<Item = &ActionId> {
-        self.cache.values()
+    pub fn iter_ids(&self) -> impl Iterator<Item = ActionId> + '_ {
+        self.cache.values().map(|(id, _)| *id)
     }
 
     /// Clear all the cached contents.
@@ -392,17 +404,15 @@ impl QueueCache {
         self.cache.clear();
     }
 
-    /// Cache an [`ActionKey`] while deduplicating the old cache if
-    /// it exists.
+    /// Cache an [`ActionKey`] with its [`SampleMode`], overwriting any
+    /// previous entry for the same key (dedup per field per subject).
     pub fn cache(
         &mut self,
         key: ActionKey,
         id: ActionId,
-        action_world: &mut ActionWorld,
+        sample_mode: SampleMode,
     ) {
-        if let Some(prev_id) = self.cache.insert(key, id) {
-            action_world.edit_action(prev_id).clear_mark();
-        }
+        self.cache.insert(key, (id, sample_mode));
     }
 }
 
@@ -414,7 +424,7 @@ impl Default for QueueCache {
 
 pub struct TimelineBuilder<'a, W> {
     registry: &'a mut Registry,
-    action_world: ActionWorld,
+    action_table: ActionTable,
     pipeline_counts: HashMap<PipelineKey, u32>,
     tracks: Vec<Track>,
     _marker: PhantomData<fn() -> W>,
@@ -425,7 +435,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     pub fn new(registry: &'a mut Registry) -> Self {
         Self {
             registry,
-            action_world: ActionWorld::new(),
+            action_table: ActionTable::new(),
             pipeline_counts: HashMap::new(),
             tracks: Vec::new(),
             _marker: PhantomData,
@@ -495,12 +505,12 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
             }
         }
 
-        self.action_world.add(target, field, action)
+        self.action_table.add(target, field, action)
     }
 
     /// Remove an [`Action`].
     pub fn unact(&mut self, id: ActionId) -> bool {
-        if let Some(key) = self.action_world.remove(id) {
+        if let Some(key) = self.action_table.remove(id) {
             let pipeline_key = PipelineKey::from_action_key::<W>(key);
 
             let count = self
@@ -547,13 +557,14 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
         );
 
         Timeline {
-            action_world: self.action_world,
+            action_table: self.action_table,
             pipeline_counts: self
                 .pipeline_counts
                 .into_iter()
                 .collect(),
             tracks: self.tracks.into_boxed_slice(),
             queue_cache: QueueCache::new(),
+            sample_queue: HashMap::new(),
             curr_time: 0.0,
             target_time: 0.0,
             curr_index: 0,
