@@ -98,7 +98,10 @@ fn handle_add_clicks(
                 |mut click: On<Pointer<Click>>,
                  q_open: Query<
                     Entity,
-                    Or<(With<AddWindowPopup>, With<AddWindowPopupBackdrop>)>,
+                    Or<(
+                        With<AddWindowPopup>,
+                        With<AddWindowPopupBackdrop>,
+                    )>,
                 >,
                  mut commands: Commands| {
                     click.propagate(false);

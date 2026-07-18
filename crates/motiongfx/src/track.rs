@@ -108,8 +108,11 @@ pub fn all(
     track.duration = max_duration;
     #[cfg(feature = "metadata")]
     {
-        track.meta =
-            FragmentMeta::group(Combinator::All, max_duration, children);
+        track.meta = FragmentMeta::group(
+            Combinator::All,
+            max_duration,
+            children,
+        );
     }
     track
 }
@@ -141,8 +144,11 @@ pub fn any(
     track.duration = min_duration;
     #[cfg(feature = "metadata")]
     {
-        track.meta =
-            FragmentMeta::group(Combinator::Any, min_duration, children);
+        track.meta = FragmentMeta::group(
+            Combinator::Any,
+            min_duration,
+            children,
+        );
     }
     track
 }
@@ -587,17 +593,16 @@ mod tests {
             // Second child: leaf c, chained after the all group (@2).
             let leaf_c = &children[1];
             assert_eq!((leaf_c.start, leaf_c.duration), (2.0, 1.0));
-            assert!(matches!(
-                leaf_c.kind,
-                FragmentKind::Leaf { .. }
-            ));
+            assert!(matches!(leaf_c.kind, FragmentKind::Leaf { .. }));
         }
 
         /// `delay` shifts the subtree without adding a group node.
         #[test]
         fn delay_shifts_leaf() {
-            let track =
-                delay(1.5, TrackFragment::single(key("a"), clip(2.0)));
+            let track = delay(
+                1.5,
+                TrackFragment::single(key("a"), clip(2.0)),
+            );
             assert_eq!(track.meta.start, 1.5);
             assert!(matches!(
                 track.meta.kind,

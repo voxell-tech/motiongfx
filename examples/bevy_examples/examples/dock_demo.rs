@@ -16,8 +16,8 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
 use motiongfx_editor::ui::dock::{
-    DockAreaStyle, DockLeaf, DockPlugin, DockTree, DockTreeHost, DockWindowDescriptor,
-    WindowRegistry,
+    DockAreaStyle, DockLeaf, DockPlugin, DockTree, DockTreeHost,
+    DockWindowDescriptor, WindowRegistry,
 };
 
 fn main() {
@@ -29,7 +29,11 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, mut registry: ResMut<WindowRegistry>, mut tree: ResMut<DockTree>) {
+fn setup(
+    mut commands: Commands,
+    mut registry: ResMut<WindowRegistry>,
+    mut tree: ResMut<DockTree>,
+) {
     commands.spawn(Camera2d);
 
     // Register three trivial window kinds. Each just fills its content
@@ -69,11 +73,13 @@ fn setup(mut commands: Commands, mut registry: ResMut<WindowRegistry>, mut tree:
 
     // Seed the layout: one root leaf holding all three panels as tabs.
     tree.set_root_leaf(
-        DockLeaf::new("root", DockAreaStyle::TabBar).with_windows(vec![
-            "panel_a".into(),
-            "panel_b".into(),
-            "panel_c".into(),
-        ]),
+        DockLeaf::new("root", DockAreaStyle::TabBar).with_windows(
+            vec![
+                "panel_a".into(),
+                "panel_b".into(),
+                "panel_c".into(),
+            ],
+        ),
     );
 
     // The reconciler materializes the tree under this full-window host.

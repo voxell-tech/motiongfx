@@ -517,9 +517,7 @@ fn sync_leaf_visuals(
             }
             let is_active = leaf.active == Some(tab.tab_id);
             // Re-inserting the preset swaps the tab's material.
-            commands
-                .entity(tab_entity)
-                .insert(Glass::tab(is_active));
+            commands.entity(tab_entity).insert(Glass::tab(is_active));
             if let Ok(tab_children) = children_query.get(tab_entity) {
                 for child in tab_children.iter() {
                     if let Ok(mut tc) = text_colors.get_mut(child) {

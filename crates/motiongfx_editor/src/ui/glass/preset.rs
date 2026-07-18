@@ -57,7 +57,11 @@ impl Glass {
     /// The tab pill in its active (`true`) or invisible-idle
     /// (`false`) state.
     pub fn tab(active: bool) -> Self {
-        if active { Self::TabActive } else { Self::TabIdle }
+        if active {
+            Self::TabActive
+        } else {
+            Self::TabIdle
+        }
     }
 }
 

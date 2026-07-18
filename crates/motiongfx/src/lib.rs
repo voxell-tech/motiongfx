@@ -34,9 +34,9 @@ pub mod prelude {
         AccessorRegistry, PipelineRegistry, Registry,
     };
     pub use crate::timeline::{Timeline, TimelineBuilder};
-    pub use crate::track::{Track, TrackFragment, TrackOrdering};
     #[cfg(feature = "metadata")]
     pub use crate::track::{Combinator, FragmentKind, FragmentMeta};
+    pub use crate::track::{Track, TrackFragment, TrackOrdering};
     pub use crate::world::SubjectSource;
 }
 

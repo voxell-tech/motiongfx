@@ -20,8 +20,8 @@ use crate::ui::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree, DockTreeHost,
     DockWindowDescriptor, Edge, WindowRegistry,
 };
-use crate::ui::inspector::Inspector;
 use crate::ui::glass::{Glass, glass_button};
+use crate::ui::inspector::Inspector;
 use crate::ui::{Divider, label, playhead_line, scrub_slider};
 use crate::{
     CONTROL_BAR_HEIGHT, EditorSettings, NAME_PANEL_MAX,

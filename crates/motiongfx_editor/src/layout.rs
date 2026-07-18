@@ -7,9 +7,9 @@ use core::hash::{Hash, Hasher};
 use std::hash::DefaultHasher;
 
 use bevy::feathers::constants::icons;
+use bevy::picking::events::{Click, Pointer};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy::picking::events::{Click, Pointer};
 use bevy::ui_widgets::SliderRange;
 use bevy_motiongfx::prelude::*;
 
@@ -97,28 +97,33 @@ pub(crate) fn build_timeline_view(
         .insert(SliderRange::new(0.0, duration.max(f32::EPSILON)));
 
     // Containers first, then clips, then toggles, so each paints over
-    // the previous. `ChildOf` appends, leaving the playhead thumb
-    // intact.
+    // the previous. These use `ChildOf` rather than a `Children [..]`
+    // list on `content`: applying a scene with `Children` writes a
+    // fresh (empty) collection onto the target first, which would
+    // orphan the playhead thumb already parented here.
     for g in &layout.groups {
-        commands
-            .spawn_scene(group_box(g.left, g.top, g.width, g.height))
-            .insert(ChildOf(content));
+        commands.spawn_scene(bsn! {
+            group_box(g.left, g.top, g.width, g.height)
+            ChildOf({content})
+        });
     }
     for c in &layout.clips {
-        commands
-            .spawn_scene(clip_box(
+        commands.spawn_scene(bsn! {
+            clip_box(
                 c.left, c.top, c.width, ROW_HEIGHT, c.color, c.label,
-            ))
-            .insert(ChildOf(content));
+            )
+            ChildOf({content})
+        });
     }
     for t in &layout.toggles {
-        commands
-            .spawn_scene(group_toggle(
+        commands.spawn_scene(bsn! {
+            group_toggle(
                 t.gid, t.left, t.top, t.width, t.height, t.icon,
                 &t.label, t.bg,
-            ))
-            .insert(ChildOf(content))
-            .observe(on_group_toggle);
+            )
+            ChildOf({content})
+            on(on_group_toggle)
+        });
     }
 
     state.timeline = Some(timeline_id);
