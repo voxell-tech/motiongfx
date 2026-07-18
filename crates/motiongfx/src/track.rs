@@ -6,11 +6,6 @@ use hashbrown::HashMap;
 use crate::action::{ActionClip, ActionKey};
 use crate::sequence::Sequence;
 
-#[cfg(feature = "metadata")]
-mod meta;
-#[cfg(feature = "metadata")]
-pub use meta::{Combinator, FragmentKind, FragmentMeta};
-
 pub trait TrackOrdering {
     /// Run all [`TrackFragment`]s one after another.
     fn ord_chain(self) -> TrackFragment;
@@ -49,8 +44,6 @@ pub fn chain(
     let mut track = tracks_iter.next().unwrap_or_default();
 
     let mut chain_duration = track.duration;
-    #[cfg(feature = "metadata")]
-    let mut children = alloc::vec![track.meta.clone()];
 
     for mut other_track in tracks_iter {
         for (key, mut other_sequence) in other_track.sequences.drain()
@@ -59,25 +52,10 @@ pub fn chain(
             track = track.upsert_sequence(key, other_sequence);
         }
 
-        #[cfg(feature = "metadata")]
-        {
-            let mut meta = other_track.meta;
-            meta.shift(chain_duration);
-            children.push(meta);
-        }
-
         chain_duration += other_track.duration;
     }
 
     track.duration = chain_duration;
-    #[cfg(feature = "metadata")]
-    {
-        track.meta = FragmentMeta::group(
-            Combinator::Chain,
-            chain_duration,
-            children,
-        );
-    }
     track
 }
 
@@ -90,8 +68,6 @@ pub fn all(
     let mut track = tracks_iter.next().unwrap_or_default();
 
     let mut max_duration = track.duration;
-    #[cfg(feature = "metadata")]
-    let mut children = alloc::vec![track.meta.clone()];
 
     for mut other_track in tracks_iter {
         max_duration = max_duration.max(other_track.duration);
@@ -99,21 +75,9 @@ pub fn all(
         for (key, other_sequence) in other_track.sequences.drain() {
             track = track.upsert_sequence(key, other_sequence);
         }
-
-        // Concurrent: children keep their own starts (no shift).
-        #[cfg(feature = "metadata")]
-        children.push(other_track.meta);
     }
 
     track.duration = max_duration;
-    #[cfg(feature = "metadata")]
-    {
-        track.meta = FragmentMeta::group(
-            Combinator::All,
-            max_duration,
-            children,
-        );
-    }
     track
 }
 
@@ -126,8 +90,6 @@ pub fn any(
     let mut track = tracks_iter.next().unwrap_or_default();
 
     let mut min_duration = track.duration;
-    #[cfg(feature = "metadata")]
-    let mut children = alloc::vec![track.meta.clone()];
 
     for mut other_track in tracks_iter {
         min_duration = min_duration.min(other_track.duration);
@@ -135,21 +97,9 @@ pub fn any(
         for (key, other_sequence) in other_track.sequences.drain() {
             track = track.upsert_sequence(key, other_sequence);
         }
-
-        // Concurrent: children keep their own starts (no shift).
-        #[cfg(feature = "metadata")]
-        children.push(other_track.meta);
     }
 
     track.duration = min_duration;
-    #[cfg(feature = "metadata")]
-    {
-        track.meta = FragmentMeta::group(
-            Combinator::Any,
-            min_duration,
-            children,
-        );
-    }
     track
 }
 
@@ -164,20 +114,11 @@ pub fn flow(
 
     let mut flow_delay = 0.0;
     let mut final_duration = track.duration;
-    #[cfg(feature = "metadata")]
-    let mut children = alloc::vec![track.meta.clone()];
 
     for other_track in tracks_iter {
         flow_delay += delay;
         final_duration =
             (flow_delay + other_track.duration).max(final_duration);
-
-        #[cfg(feature = "metadata")]
-        {
-            let mut meta = other_track.meta;
-            meta.shift(flow_delay);
-            children.push(meta);
-        }
 
         for (key, mut sequence) in other_track.sequences {
             sequence.delay(flow_delay);
@@ -186,14 +127,6 @@ pub fn flow(
     }
 
     track.duration = final_duration;
-    #[cfg(feature = "metadata")]
-    {
-        track.meta = FragmentMeta::group(
-            Combinator::Flow(delay),
-            final_duration,
-            children,
-        );
-    }
     track
 }
 
@@ -203,10 +136,6 @@ pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
     for sequence in track.sequences.values_mut() {
         sequence.delay(delay);
     }
-    // A delay is just an offset, so shift the subtree without wrapping
-    // it in a new group node.
-    #[cfg(feature = "metadata")]
-    track.meta.shift(delay);
 
     track
 }
@@ -214,8 +143,6 @@ pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
 pub struct TrackFragment {
     sequences: HashMap<ActionKey, Sequence>,
     duration: f32,
-    #[cfg(feature = "metadata")]
-    meta: FragmentMeta,
 }
 
 impl TrackFragment {
@@ -223,16 +150,12 @@ impl TrackFragment {
         Self {
             sequences: HashMap::new(),
             duration: 0.0,
-            #[cfg(feature = "metadata")]
-            meta: FragmentMeta::empty(),
         }
     }
 
     pub fn single(key: ActionKey, clip: ActionClip) -> Self {
         Self {
             duration: clip.duration,
-            #[cfg(feature = "metadata")]
-            meta: FragmentMeta::leaf(key, &clip),
             sequences: [(key, Sequence::new(clip))].into(),
         }
     }
@@ -326,8 +249,6 @@ impl TrackFragment {
             sequence_spans: sequence_spans.into_boxed_slice(),
             clip_arena,
             duration: self.duration,
-            #[cfg(feature = "metadata")]
-            meta: self.meta,
         }
     }
 }
@@ -365,11 +286,6 @@ pub struct Track {
 
     /// Total duration of the track in seconds.
     duration: f32,
-
-    /// Composition tree describing how the source [`TrackFragment`]s
-    /// were combined. See [`FragmentMeta`].
-    #[cfg(feature = "metadata")]
-    meta: FragmentMeta,
 }
 
 impl Track {
@@ -397,14 +313,6 @@ impl Track {
     #[inline]
     pub fn sequences_spans(&self) -> &[(ActionKey, Span)] {
         &self.sequence_spans
-    }
-
-    /// The composition tree describing how this track's fragments were
-    /// combined (chain / all / any / flow).
-    #[cfg(feature = "metadata")]
-    #[inline]
-    pub fn meta(&self) -> &FragmentMeta {
-        &self.meta
     }
 
     #[inline]
@@ -547,67 +455,5 @@ mod tests {
         assert_eq!(seq_a.start(), 1.5);
         assert_eq!(seq_a.end(), 3.5);
         assert_eq!(track.duration, 2.0);
-    }
-
-    #[cfg(feature = "metadata")]
-    mod metadata {
-        use super::*;
-
-        /// `[all(a, b), c].chain()` should record the nesting and the
-        /// absolute start of each node.
-        #[test]
-        fn nested_tree_starts() {
-            let a = TrackFragment::single(key("a"), clip(1.0));
-            let b = TrackFragment::single(key("b"), clip(2.0));
-            let c = TrackFragment::single(key("c"), clip(1.0));
-
-            let track = [[a, b].ord_all(), c].ord_chain();
-            let root = &track.meta;
-
-            // chain(all(a,b) @0 dur2, c @2 dur1) -> total 3.
-            assert_eq!(root.start, 0.0);
-            assert_eq!(root.duration, 3.0);
-            let FragmentKind::Group {
-                combinator: Combinator::Chain,
-                children,
-            } = &root.kind
-            else {
-                panic!("root should be a Chain group");
-            };
-            assert_eq!(children.len(), 2);
-
-            // First child: all(a, b), concurrent from 0, dur = max = 2.
-            let all = &children[0];
-            assert_eq!((all.start, all.duration), (0.0, 2.0));
-            let FragmentKind::Group {
-                combinator: Combinator::All,
-                children: inner,
-            } = &all.kind
-            else {
-                panic!("first child should be an All group");
-            };
-            assert_eq!(inner.len(), 2);
-            // Concurrent leaves both start at 0.
-            assert!(inner.iter().all(|leaf| leaf.start == 0.0));
-
-            // Second child: leaf c, chained after the all group (@2).
-            let leaf_c = &children[1];
-            assert_eq!((leaf_c.start, leaf_c.duration), (2.0, 1.0));
-            assert!(matches!(leaf_c.kind, FragmentKind::Leaf { .. }));
-        }
-
-        /// `delay` shifts the subtree without adding a group node.
-        #[test]
-        fn delay_shifts_leaf() {
-            let track = delay(
-                1.5,
-                TrackFragment::single(key("a"), clip(2.0)),
-            );
-            assert_eq!(track.meta.start, 1.5);
-            assert!(matches!(
-                track.meta.kind,
-                FragmentKind::Leaf { .. }
-            ));
-        }
     }
 }

@@ -1,9 +1,3 @@
-//! The MotionGfx editor binary.
-//!
-//! Spawns a demo composition — a row of cubes through a nested
-//! `chain(flow(grow), all(flow(rise), flow(spin)), flow(shrink))` — so
-//! the timeline shows every group kind.
-
 use bevy::color::palettes;
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;

@@ -37,5 +37,3 @@ std = ["motiongfx/std", "bevy_ecs/std", "bevy_app/std", "bevy_platform/std", "be
 asset = ["dep:bevy_asset"]
 transform = ["dep:bevy_transform"]
 color = ["dep:bevy_color"]
-# Forward `motiongfx`'s track composition metadata.
-metadata = ["motiongfx/metadata"]

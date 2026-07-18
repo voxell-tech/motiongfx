@@ -33,6 +33,3 @@ workspace = true
 [features]
 default = ["std"]
 std = ["bevy_math/std"]
-# Retain the composition tree (how `TrackFragment`s were combined) as
-# `FragmentMeta` on each `Track`, for editor/timeline visualization.
-metadata = []

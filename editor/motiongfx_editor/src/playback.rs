@@ -10,6 +10,7 @@ use crate::scene::{
     PlayPauseLabel, Playhead, TimeLabel, TimelineContent,
 };
 use crate::{EditorState, PIXELS_PER_SECOND};
+use bevy_motiongfx::prelude::TimelineId;
 
 /// Command to flip playback, dispatched from the play/pause button
 /// and the spacebar hotkey and handled in one place
@@ -48,6 +49,35 @@ pub(crate) fn on_toggle_playback(
     {
         timeline.set_target_track(0);
         timeline.set_target_time(0.0);
+    }
+}
+
+/// Track the first timeline and keep the track node sized to its
+/// duration, so cursor x maps onto the full time range.
+pub(crate) fn sync_timeline_state(
+    mut state: ResMut<EditorState>,
+    manager: Res<MotionGfxManager>,
+    q_timelines: Query<&TimelineId>,
+    mut q_track: Query<&mut Node, With<TimelineContent>>,
+) {
+    let Some(id) = q_timelines.iter().next().copied() else {
+        return;
+    };
+    let Some(timeline) = manager.get_timeline(&id) else {
+        return;
+    };
+    let duration =
+        timeline.tracks().first().map_or(0.0, |t| t.duration());
+
+    state.timeline = Some(id);
+    state.duration = duration;
+
+    let width = Val::Px((duration * PIXELS_PER_SECOND).max(1.0));
+    for mut node in &mut q_track {
+        if node.width != width {
+            node.width = width;
+            node.min_width = width;
+        }
     }
 }
 

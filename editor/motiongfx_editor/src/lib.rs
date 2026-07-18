@@ -2,12 +2,8 @@
 //! with `bevy_feathers` on top of the headless `bevy_ui_widgets`
 //! behaviors.
 //!
-//! Renders a bottom-docked timeline panel focused on the first track
-//! of the first [`Timeline`] it finds:
-//! - every action is a clip box, positioned by its start/duration and
-//!   colored by its subject entity;
-//! - concurrent groups (all / any / flow) get a collapsible
-//!   container;
+//! Renders a bottom-docked timeline panel for the first [`Timeline`]
+//! it finds:
 //! - pressing or dragging anywhere on the track scrubs, mapping the
 //!   cursor onto the timeline via `PIXELS_PER_SECOND`;
 //! - a feathers [`Button`] (or the spacebar) toggles play/pause;
@@ -15,9 +11,9 @@
 //!   a resizable name column.
 //!
 //! Modules: [`scene`] (component markers + `bsn!` tree + setup),
-//! [`layout`] (composition tree → clip/group/toggle placements),
-//! [`playback`] (play/pause, scrub, playhead), [`view`] (camera +
-//! scroll sync). Widgets live in `motiongfx_editor_ui`.
+//! [`playback`] (play/pause, scrub, playhead), [`hierarchy`] (scene
+//! browser), [`view`] (camera + scroll sync). Widgets live in
+//! `motiongfx_editor_ui`.
 //!
 //! [`Timeline`]: bevy_motiongfx::prelude::BevyTimeline
 //! [`Button`]: bevy::ui_widgets::Button
@@ -27,7 +23,6 @@
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
 mod hierarchy;
-mod layout;
 mod playback;
 mod scene;
 mod view;
@@ -35,7 +30,6 @@ mod view;
 use bevy::feathers::FeathersPlugins;
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
-use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
@@ -76,8 +70,8 @@ impl Plugin for EditorUiPlugin {
         .add_systems(
             Update,
             (
-                layout::build_timeline_view,
                 hierarchy::build_hierarchy_view,
+                playback::sync_timeline_state,
                 playback::play_pause_hotkey,
                 playback::update_playhead,
                 playback::stop_at_track_end,
@@ -88,8 +82,7 @@ impl Plugin for EditorUiPlugin {
             )
                 .chain(),
         )
-        .add_observer(playback::on_toggle_playback)
-        .add_observer(layout::on_timeline_content_added);
+        .add_observer(playback::on_toggle_playback);
     }
 }
 
@@ -100,8 +93,6 @@ pub(crate) const NAME_PANEL_WIDTH: f32 = 140.0;
 pub(crate) const NAME_PANEL_MIN: f32 = 60.0;
 pub(crate) const NAME_PANEL_MAX: f32 = 400.0;
 pub(crate) const CONTROL_BAR_HEIGHT: f32 = 40.0;
-pub(crate) const ROW_HEIGHT: f32 = 22.0;
-pub(crate) const ROW_STRIDE: f32 = ROW_HEIGHT + 8.0;
 pub(crate) const TRACK_TOP_PADDING: f32 = 12.0;
 
 /// The offscreen texture the composition's scene cameras render into.
@@ -112,17 +103,11 @@ pub(crate) const TRACK_TOP_PADDING: f32 = 12.0;
 #[derive(Resource)]
 pub(crate) struct PreviewImage(pub(crate) Handle<Image>);
 
-/// Shared editor state: the focused timeline, whether the view is up
-/// to date, and which groups are collapsed.
+/// The focused timeline and its duration.
 #[derive(Resource, Default)]
 pub(crate) struct EditorState {
     pub(crate) timeline: Option<TimelineId>,
-    /// Whether the timeline view is up to date. Cleared to force a
-    /// rebuild (e.g. after a group is collapsed/expanded).
-    pub(crate) built: bool,
     pub(crate) duration: f32,
-    /// Ids of the concurrent groups currently collapsed.
-    pub(crate) collapsed: HashSet<usize>,
 }
 
 #[derive(Debug, Resource, SettingsGroup, Reflect)]
