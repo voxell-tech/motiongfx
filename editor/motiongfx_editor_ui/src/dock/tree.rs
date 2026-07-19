@@ -40,7 +40,7 @@ pub struct NodeId(pub u64);
 /// `window_id` (e.g. two Outliner tabs side-by-side) and still be
 /// addressed independently for activate / move / close. Allocated
 /// from a per-tree monotonic counter; never reused.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub struct TabId(pub u64);
 
 impl TabId {
