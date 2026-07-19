@@ -120,11 +120,11 @@ pub(super) fn build_assets(
                 .rim_opacity(0.0)
                 .feather(6.0),
         ),
-        // Tabs are interactable: a tight glow signals it, even on
-        // otherwise-invisible idle tabs.
+        // Faint resting pill: separates adjacent tabs without a
+        // divider. Half the hover tint, so hover still reads.
         tab_idle: materials.add(
-            GlassMaterial::new(LinearRgba::NONE, 0.0, 0.0)
-                .rim_opacity(0.0)
+            GlassMaterial::new(tint(base[5], 0.07), 0.10, 5.0)
+                .rim_opacity(0.18)
                 .glow_strength(1.20)
                 .glow_radius_scale(0.35),
         ),
