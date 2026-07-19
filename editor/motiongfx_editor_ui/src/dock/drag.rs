@@ -248,17 +248,15 @@ fn on_drag_move(
                     f32,
                 )> = None;
                 for (index, child) in children.iter().enumerate() {
-                    let Ok((child_computed, _child_transform)) =
+                    let Ok((child_computed, child_transform)) =
                         node_query.get(child)
                     else {
                         continue;
                     };
-                    let (_scale, _angle, center) =
-                        ui_transform.to_scale_angle_translation();
-                    let child_center = center.trunc()
-                        * computed.inverse_scale_factor();
-                    let child_size = child_computed.size()
-                        * child_computed.inverse_scale_factor();
+                    let child_rect =
+                        logical_rect(child_computed, child_transform);
+                    let child_center = child_rect.center();
+                    let child_size = child_rect.size();
                     let distance =
                         child_center.distance_squared(cursor_pos_ui);
                     if closest_child.is_none_or(
