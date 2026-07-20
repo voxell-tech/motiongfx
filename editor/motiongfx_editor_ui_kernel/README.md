@@ -33,39 +33,41 @@ Everything the kernel needs from a backend, and nothing more:
 pub trait Host: Send + Sync + 'static {
     type Node: Copy + Eq + Hash + Send + Sync + 'static;
     type World: 'static;
-    type Widget: Send + Sync + 'static;
 
     fn spawn(world: &mut Self::World, parent: Self::Node) -> Self::Node;
-    fn apply_widget(world: &mut Self::World, node: Self::Node, widget: Self::Widget);
     fn exists(world: &Self::World, node: Self::Node) -> bool;
     fn children(world: &Self::World, node: Self::Node) -> Vec<Self::Node>;
     fn despawn(world: &mut Self::World, node: Self::Node);
 }
 ```
 
-`Node` is opaque: the kernel only stores and compares it. `Widget` is
-opaque too: the kernel hands it straight back to `apply_widget`, so a
-backend can make it a scene, a closure, an enum of both.
+`Node` is opaque: the kernel only stores and compares it. What *fills*
+a node isn't the host's business at all, it's a closure the builder
+hands to `Ui::node`.
+
+`spawn` is the host's job rather than the caller's because cleanup
+depends on it. A rebuild finds what to despawn, and whose bindings to
+drop, by walking `children` from the root; a node that never got wired
+to its parent would leak on every rebuild.
 
 Anything needing concrete types lives in the adapter, not here. The
 kernel stores only `bind_raw`, whose closures the caller has already
 erased; a typed `bind::<Component>` is an extension trait on the
 backend side, where the type is still in scope.
 
-## Building is two-phase
-
-A builder **reads** state and **returns a description**; the kernel
-applies it afterwards.
+## Builders spawn as they go
 
 ```rust,ignore
-fn build(world: &World, ui: &mut Ui<H>)
+fn build(ui: &mut Ui<H>)
 ```
 
-This isn't ceremony, it's what makes the borrows work. A builder that
-both read the world and spawned into it would need `&World` and
-`&mut World` at once. Splitting them means `Ui` can accumulate while
-the world is only borrowed shared, and the kernel does every mutation
-in one pass.
+`Ui` holds `&mut World`, so a builder gets each node's handle the
+moment it makes one. That is what lets a binding refer to a *sibling*
+or *parent* by handle instead of hunting for it at poll time.
+
+The cost is that a builder cannot hold a borrow of the world across a
+spawn: read what you need through `ui.world()` and collect it first,
+then build from that.
 
 ## Declaring a tree
 
@@ -75,7 +77,7 @@ ui.node(widget)                  // spawn a node, filled by a widget
   .watch(changed, build)         // children rebuilt when `changed` fires
   .bind_raw(changed, apply);     // a field that tracks state
 
-ui.group()                       // a node with no widget
+ui.empty_node()                  // a node with no widget
 ```
 
 `Ui` only spawns; everything reactive is declared on the node
@@ -84,7 +86,7 @@ Use `.watch(..)` *or* `.with(..)` on a node, not both: a fire clears
 whatever children it has.
 
 A binding's write doesn't have to land on the node it hangs off, so
-`group()` also serves to scope one whose target is an asset or some
+`empty_node()` also serves to scope one whose target is an asset or some
 global state; the node just bounds its lifetime.
 
 `watch` nests. A watcher declared inside a build is re-registered every

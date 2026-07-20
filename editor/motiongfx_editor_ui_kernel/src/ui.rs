@@ -111,7 +111,7 @@ impl<'a, H: Host> Ui<'a, H> {
 
     /// Spawn a node with nothing in it: for grouping, or to scope a
     /// binding whose write lands somewhere other than a node.
-    pub fn group(&mut self) -> NodeMut<'_, 'a, H> {
+    pub fn empty_node(&mut self) -> NodeMut<'_, 'a, H> {
         let node = H::spawn(self.world, self.parent);
         NodeMut { ui: self, node }
     }

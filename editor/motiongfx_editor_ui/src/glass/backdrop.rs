@@ -25,7 +25,7 @@ pub fn bind_backdrop(ui: &mut BevyUi) {
     > = None;
     let mut seen = Vec4::ZERO;
 
-    ui.group().bind_raw(
+    ui.empty_node().bind_raw(
         move |world, _| {
             let backdrops = match &mut backdrops {
                 Some(query) => query,

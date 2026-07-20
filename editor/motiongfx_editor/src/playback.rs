@@ -66,7 +66,7 @@ pub(crate) fn bind_timeline_state(ui: &mut BevyUi) {
     let mut timelines: Option<QueryState<&'static TimelineId>> = None;
     let mut seen: Option<(TimelineId, f32)> = None;
 
-    ui.group().bind_raw(
+    ui.empty_node().bind_raw(
         move |world, _| {
             let timelines = match &mut timelines {
                 Some(query) => query,
