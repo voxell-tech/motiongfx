@@ -109,28 +109,10 @@ impl<'a, H: Host> Ui<'a, H> {
         NodeMut { ui: self, node }
     }
 
-    /// Spawn a node with nothing in it, for grouping.
+    /// Spawn a node with nothing in it: for grouping, or to scope a
+    /// binding whose write lands somewhere other than a node.
     pub fn group(&mut self) -> NodeMut<'_, 'a, H> {
         let node = H::spawn(self.world, self.parent);
-        NodeMut { ui: self, node }
-    }
-
-    /// Spawn a node that only carries a binding.
-    pub fn bind_raw(
-        &mut self,
-        changed: impl FnMut(&H::World, H::Node) -> bool
-        + Send
-        + Sync
-        + 'static,
-        apply: impl Fn(&mut H::World, H::Node) + Send + Sync + 'static,
-    ) -> NodeMut<'_, 'a, H> {
-        let node = H::spawn(self.world, self.parent);
-        self.records.bindings.entry(node).or_default().push(
-            Binding {
-                changed: Box::new(changed),
-                apply: Box::new(apply),
-            },
-        );
         NodeMut { ui: self, node }
     }
 }

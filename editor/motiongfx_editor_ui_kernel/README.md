@@ -76,12 +76,16 @@ ui.node(widget)                  // spawn a node, filled by a widget
   .bind_raw(changed, apply);     // a field that tracks state
 
 ui.group()                       // a node with no widget
-ui.bind_raw(changed, apply)      // a node that only carries a binding
 ```
 
-Everything hangs off a node, so a builder reads as "make this, then say
-how it reacts". Use `.watch(..)` *or* `.with(..)` on a node, not both:
-a fire clears whatever children it has.
+`Ui` only spawns; everything reactive is declared on the node
+afterwards, so a builder reads as "make this, then say how it reacts".
+Use `.watch(..)` *or* `.with(..)` on a node, not both: a fire clears
+whatever children it has.
+
+A binding's write doesn't have to land on the node it hangs off, so
+`group()` also serves to scope one whose target is an asset or some
+global state; the node just bounds its lifetime.
 
 `watch` nests. A watcher declared inside a build is re-registered every
 time that subtree rebuilds, so nested reactivity survives an outer

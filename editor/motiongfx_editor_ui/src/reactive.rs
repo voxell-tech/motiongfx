@@ -196,36 +196,12 @@ impl BevyNodeMutExt for NodeMut<'_, '_, BevyHost> {
     }
 }
 
-/// Bevy conveniences on [`Ui`]: spawning from a scene, and the
-/// [`BevyNodeMutExt`] binds as standalone nodes.
+/// Spawning a node from a scene. Reactivity is declared on the node
+/// afterwards, through [`BevyNodeMutExt`].
 pub trait BevyUiExt<'a> {
     /// Add a node built from a `bsn!` scene.
     fn bsn(&mut self, scene: impl Scene)
     -> NodeMut<'_, 'a, BevyHost>;
-
-    /// Add a node with `C` written whenever `changed` fires.
-    fn bind<C: Component>(
-        &mut self,
-        changed: impl FnMut(&World, Entity) -> bool
-        + Send
-        + Sync
-        + 'static,
-        value: impl Fn(&World, Entity) -> C + Send + Sync + 'static,
-    ) -> NodeMut<'_, 'a, BevyHost>;
-
-    /// Add a node with one field of `C` written whenever `changed`
-    /// fires.
-    fn bind_field<C: Component<Mutability = Mutable>, T>(
-        &mut self,
-        changed: impl FnMut(&World, Entity) -> bool
-        + Send
-        + Sync
-        + 'static,
-        get: impl Fn(&World, Entity) -> T + Send + Sync + 'static,
-        set: impl Fn(&mut C, T) + Send + Sync + 'static,
-    ) -> NodeMut<'_, 'a, BevyHost>
-    where
-        T: Send + Sync + 'static;
 }
 
 impl<'a> BevyUiExt<'a> for BevyUi<'a> {
@@ -239,42 +215,6 @@ impl<'a> BevyUiExt<'a> for BevyUi<'a> {
             {
                 error!("failed to build node {node}: {err}");
             }
-        })
-    }
-
-    fn bind<C: Component>(
-        &mut self,
-        changed: impl FnMut(&World, Entity) -> bool
-        + Send
-        + Sync
-        + 'static,
-        value: impl Fn(&World, Entity) -> C + Send + Sync + 'static,
-    ) -> NodeMut<'_, 'a, BevyHost> {
-        self.bind_raw(changed, move |world, node| {
-            let component = value(world, node);
-            world.entity_mut(node).insert(component);
-        })
-    }
-
-    fn bind_field<C: Component<Mutability = Mutable>, T>(
-        &mut self,
-        changed: impl FnMut(&World, Entity) -> bool
-        + Send
-        + Sync
-        + 'static,
-        get: impl Fn(&World, Entity) -> T + Send + Sync + 'static,
-        set: impl Fn(&mut C, T) + Send + Sync + 'static,
-    ) -> NodeMut<'_, 'a, BevyHost>
-    where
-        T: Send + Sync + 'static,
-    {
-        self.bind_raw(changed, move |world, node| {
-            let value = get(world, node);
-            let mut entity = world.entity_mut(node);
-            let Some(mut component) = entity.get_mut::<C>() else {
-                return;
-            };
-            set(&mut component, value);
         })
     }
 }
