@@ -20,33 +20,62 @@ use crate::host::Host;
 /// `FnMut` because a predicate usually diffs against what it last saw,
 /// and that value has to live somewhere. It must be called exactly
 /// once per flush: a stateful predicate consumes its own signal.
-pub type ChangedFn<H> = Box<
+pub trait ChangedFn<H: Host>:
+    FnMut(&H::World, H::Node) -> bool + Send + Sync + 'static
+{
+}
+
+impl<H: Host, F> ChangedFn<H> for F where
+    F: FnMut(&H::World, H::Node) -> bool + Send + Sync + 'static
+{
+}
+
+/// Writes into one node. Already type-erased by the caller, so the
+/// kernel never needs a typed accessor of its own.
+pub trait ApplyFn<H: Host>:
+    Fn(&mut H::World, H::Node) + Send + Sync + 'static
+{
+}
+
+impl<H: Host, F> ApplyFn<H> for F where
+    F: Fn(&mut H::World, H::Node) + Send + Sync + 'static
+{
+}
+
+/// Rebuilds the subtree under a node.
+pub trait BuildFn<H: Host>:
+    for<'a> Fn(&mut Ui<'a, H>) + Send + Sync + 'static
+{
+}
+
+impl<H: Host, F> BuildFn<H> for F where
+    F: for<'a> Fn(&mut Ui<'a, H>) + Send + Sync + 'static
+{
+}
+
+// The boxed forms the kernel stores.
+type BoxedChanged<H> = Box<
     dyn FnMut(&<H as Host>::World, <H as Host>::Node) -> bool
         + Send
         + Sync,
 >;
-
-/// Writes into one node. Already type-erased by the caller, so the
-/// kernel never needs a typed accessor of its own.
-pub type ApplyFn<H> = Box<
+type BoxedApply<H> = Box<
     dyn Fn(&mut <H as Host>::World, <H as Host>::Node) + Send + Sync,
 >;
-
-/// Rebuilds the subtree under a node.
-pub type BuildFn<H> =
+type BoxedBuild<H> =
     Box<dyn for<'a> Fn(&mut Ui<'a, H>) + Send + Sync>;
 
 /// A field binding: when `changed` fires, `apply` runs.
 pub struct Binding<H: Host> {
-    pub(crate) changed: ChangedFn<H>,
-    pub(crate) apply: ApplyFn<H>,
+    pub(crate) changed: BoxedChanged<H>,
+    pub(crate) apply: BoxedApply<H>,
 }
 
 /// A watcher rooted at a node.
 pub struct Watcher<H: Host> {
     pub(crate) root: H::Node,
-    pub(crate) changed: ChangedFn<H>,
-    pub(crate) build: BuildFn<H>,
+    pub(crate) changed: BoxedChanged<H>,
+    pub(crate) build: BoxedBuild<H>,
 }
 
 /// What a build registers as it runs, kept beside the world so both
@@ -146,11 +175,8 @@ impl<H: Host> NodeMut<'_, '_, H> {
     /// children the node has.
     pub fn watch(
         self,
-        changed: impl FnMut(&H::World, H::Node) -> bool
-        + Send
-        + Sync
-        + 'static,
-        build: impl for<'b> Fn(&mut Ui<'b, H>) + Send + Sync + 'static,
+        changed: impl ChangedFn<H>,
+        build: impl BuildFn<H>,
     ) -> Self {
         self.ui.records.spawned.push(Watcher {
             root: self.node,
@@ -174,11 +200,8 @@ impl<H: Host> NodeMut<'_, '_, H> {
     /// the host adapter, which still has the concrete types in scope.
     pub fn bind_raw(
         self,
-        changed: impl FnMut(&H::World, H::Node) -> bool
-        + Send
-        + Sync
-        + 'static,
-        apply: impl Fn(&mut H::World, H::Node) + Send + Sync + 'static,
+        changed: impl ChangedFn<H>,
+        apply: impl ApplyFn<H>,
     ) -> Self {
         self.ui.records.bindings.entry(self.node).or_default().push(
             Binding {

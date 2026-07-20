@@ -12,7 +12,9 @@ use bevy::prelude::*;
 use bevy::scene::EntityWorldMutSceneExt;
 use bevy::ui::Node as UiNode;
 
-use motiongfx_editor_ui_kernel::{Host, Kernel, NodeMut, Ui};
+use motiongfx_editor_ui_kernel::{
+    ChangedFn, Host, Kernel, NodeMut, Ui,
+};
 
 /// The kernel itself. Private: the app never touches it directly,
 /// because a flush owns it exclusively and anything the flush spawns
@@ -135,10 +137,7 @@ pub trait BevyNodeMutExt {
     /// Write `C` on this node whenever `changed` fires.
     fn bind<C: Component>(
         self,
-        changed: impl FnMut(&World, Entity) -> bool
-        + Send
-        + Sync
-        + 'static,
+        changed: impl ChangedFn<BevyHost>,
         value: impl Fn(&World, Entity) -> C + Send + Sync + 'static,
     ) -> Self;
 
@@ -147,10 +146,7 @@ pub trait BevyNodeMutExt {
     /// [`BevyUiExt::bind_field`]; same `get`/`set` reasoning.
     fn bind_field<C: Component<Mutability = Mutable>, T>(
         self,
-        changed: impl FnMut(&World, Entity) -> bool
-        + Send
-        + Sync
-        + 'static,
+        changed: impl ChangedFn<BevyHost>,
         get: impl Fn(&World, Entity) -> T + Send + Sync + 'static,
         set: impl Fn(&mut C, T) + Send + Sync + 'static,
     ) -> Self
@@ -161,10 +157,7 @@ pub trait BevyNodeMutExt {
 impl BevyNodeMutExt for NodeMut<'_, '_, BevyHost> {
     fn bind<C: Component>(
         self,
-        changed: impl FnMut(&World, Entity) -> bool
-        + Send
-        + Sync
-        + 'static,
+        changed: impl ChangedFn<BevyHost>,
         value: impl Fn(&World, Entity) -> C + Send + Sync + 'static,
     ) -> Self {
         self.bind_raw(changed, move |world, node| {
@@ -175,10 +168,7 @@ impl BevyNodeMutExt for NodeMut<'_, '_, BevyHost> {
 
     fn bind_field<C: Component<Mutability = Mutable>, T>(
         self,
-        changed: impl FnMut(&World, Entity) -> bool
-        + Send
-        + Sync
-        + 'static,
+        changed: impl ChangedFn<BevyHost>,
         get: impl Fn(&World, Entity) -> T + Send + Sync + 'static,
         set: impl Fn(&mut C, T) + Send + Sync + 'static,
     ) -> Self

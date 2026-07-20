@@ -12,7 +12,9 @@ use alloc::vec::Vec;
 use hashbrown::HashMap;
 
 pub use host::Host;
-pub use ui::{Binding, NodeMut, Records, Ui};
+pub use ui::{
+    ApplyFn, Binding, BuildFn, ChangedFn, NodeMut, Records, Ui,
+};
 
 use ui::Watcher;
 
@@ -43,11 +45,8 @@ impl<H: Host> Kernel<H> {
     pub fn watch(
         &mut self,
         root: H::Node,
-        changed: impl FnMut(&H::World, H::Node) -> bool
-        + Send
-        + Sync
-        + 'static,
-        build: impl for<'a> Fn(&mut Ui<'a, H>) + Send + Sync + 'static,
+        changed: impl ChangedFn<H>,
+        build: impl BuildFn<H>,
     ) {
         self.watchers.push(Watcher {
             root,
