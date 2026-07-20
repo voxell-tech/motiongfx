@@ -3,6 +3,7 @@
 use bevy::feathers::constants::icons;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::picking::events::{Click, Pointer};
+use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use bevy::window::SystemCursorIcon;
@@ -96,8 +97,9 @@ impl DockTab {
                 window_id: {window_id},
                 tab_id: {tab_id},
             }
-            // Read by `hover_tabs` / `show_close_on_hover`.
-            Interaction
+            // Drives the hover pill + close-icon fade.
+            Hovered
+            on(super::tabs::on_tab_hover)
             // Active pill vs faint idle; swapped by `sync_leaf_visuals`.
             template_value(Glass::tab(is_active))
             // Tabs are draggable: signal it on hover.
@@ -184,6 +186,69 @@ impl DockTabCloseButton {
                     color: {icon_color},
                 }
                 Node { width: Val::Px(10.0), height: Val::Px(10.0) }
+            )]
+        }
+    }
+}
+
+/// Props for [`DockTabAddButton`]. `area` is the leaf area entity the
+/// popup adds tabs to.
+#[derive(Clone)]
+pub struct DockTabAddButtonProps {
+    pub area: Entity,
+    pub icon_color: Color,
+}
+
+impl Default for DockTabAddButtonProps {
+    fn default() -> Self {
+        Self {
+            area: Entity::PLACEHOLDER,
+            icon_color: Color::WHITE,
+        }
+    }
+}
+
+#[derive(SceneComponent, Clone)]
+#[scene(DockTabAddButtonProps)]
+pub struct DockTabAddButton {
+    pub area_entity: Entity,
+}
+
+/// `Entity` has no `Default`, so the get-or-insert the derive relies
+/// on needs one written by hand.
+impl Default for DockTabAddButton {
+    fn default() -> Self {
+        Self {
+            area_entity: Entity::PLACEHOLDER,
+        }
+    }
+}
+
+impl DockTabAddButton {
+    fn scene(props: DockTabAddButtonProps) -> impl Scene {
+        let DockTabAddButtonProps { area, icon_color } = props;
+        // `@area` has no meaningful default: omitting it silently
+        // yields a placeholder and the popup adds to nothing.
+        debug_assert_ne!(
+            area,
+            Entity::PLACEHOLDER,
+            "DockTabAddButton requires `@area`"
+        );
+        bsn! {
+            DockTabAddButton { area_entity: {area} }
+            EntityCursor::System(SystemCursorIcon::Pointer)
+            on(super::add_popup::on_add_click)
+            Node {
+                width: Val::Px(18.0),
+                height: Val::Px(18.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_shrink: 0.0,
+            }
+            Children [(
+                Text("+")
+                TextFont { font_size: FontSize::Px(11.0) }
+                TextColor({icon_color})
             )]
         }
     }

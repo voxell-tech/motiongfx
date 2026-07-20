@@ -25,12 +25,14 @@ mod tabs;
 mod tree;
 
 pub use area::{
-    ActiveDockWindow, DockArea, DockTab, DockTabBar,
-    DockTabCloseButton, DockTabContent, DockWindow,
+    ActiveDockWindow, DockArea, DockTab, DockTabAddButton,
+    DockTabBar, DockTabCloseButton, DockTabContent, DockWindow,
 };
 use bevy::prelude::*;
 pub use drag::{DockDragPlugin, DockDragState};
-pub use reconcile::{DockTreeHost, NodeBinding, ReconcilePlugin};
+pub use reconcile::{
+    DockTreeHost, NodeBinding, ReconcilePlugin, dock,
+};
 pub use registry::{
     DockWindowBuildFn, DockWindowDescriptor, WindowRegistry,
 };
@@ -38,7 +40,7 @@ pub use split::{
     Panel, PanelGroup, PanelHandle, SplitPanelPlugin, panel,
     panel_group, panel_handle,
 };
-pub use tabs::{DockTabAddButton, DockTabPlugin, DockTabRow};
+pub use tabs::DockTabRow;
 pub use tree::{
     DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTabEntry,
     DockTree, Edge, NodeId, SplitAxis, TabId,
@@ -55,10 +57,8 @@ impl Plugin for DockPlugin {
         app.add_plugins((
             super::glass::GlassPlugin,
             split::SplitPanelPlugin,
-            tabs::DockTabPlugin,
             drag::DockDragPlugin,
             reconcile::ReconcilePlugin,
-            add_popup::AddWindowPopupPlugin,
         ))
         .init_resource::<registry::WindowRegistry>();
     }

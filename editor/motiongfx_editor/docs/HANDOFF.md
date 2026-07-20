@@ -123,21 +123,7 @@ that was discussed (ThemeToken vs bevy_settings resource) but deferred.
 
 ## IN PROGRESS / NEXT STEPS
 
-1. **add_popup dropdown-item click fix — APPLIED.** `ui/dock/add_popup.rs`
-   no longer has `AddWindowPopupItem`, `on_item_activate`, or
-   `handle_backdrop_close`. Each item is spawned with an inline `move`
-   closure (captures `window_id` + `area`) via `on(...)` in the `bsn!`,
-   and the backdrop uses `.observe(|On<Pointer<Click>>, ...|)` instead of
-   an `Interaction`-polling system. `cargo check`/`clippy`/`test` all
-   clean. **Still needs Nixon's manual click-through** (see checklist
-   below) — picking-target/z-order concerns from the original bug were
-   not independently re-verified beyond compiling.
-
-2. **User asked: use `bsn!` in `build_timeline_view`** (`layout.rs`).
-   It currently spawns clip/group/toggle placements with `spawn_scene(builder(...))`.
-   Convert the spawn loops to `bsn!` where reasonable.
-
-3. Deferred (discussed, not started): hot-reloadable theme asset; UI
+1. Deferred (discussed, not started): hot-reloadable theme asset; UI
    bloom (HDR target + thresholded bloom); glass over-UI refraction
    (needs two-camera grab-pass); making `PreviewImage` HDR for real
    scene highlights.

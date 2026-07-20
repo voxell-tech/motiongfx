@@ -16,7 +16,7 @@ mod material;
 mod preset;
 mod widget;
 
-pub use backdrop::GlassBackdrop;
+pub use backdrop::{GlassBackdrop, bind_backdrop};
 use bevy::asset::embedded_asset;
 use bevy::prelude::*;
 use bevy::ui_render::prelude::UiMaterialPlugin;
@@ -42,7 +42,6 @@ impl Plugin for GlassPlugin {
                 (
                     glow::update_glass_buttons,
                     glow::update_glow,
-                    backdrop::sync_backdrop,
                     widget::update_glass_checkmarks,
                     widget::update_glass_field_cursors,
                 ),

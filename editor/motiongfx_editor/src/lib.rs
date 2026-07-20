@@ -37,6 +37,7 @@ use bevy::settings::{
 use bevy_motiongfx::prelude::TimelineId;
 use motiongfx_editor_ui::dock::DockPlugin;
 use motiongfx_editor_ui::inspector::ReflectInspectorPlugin;
+use motiongfx_editor_ui::reactive::{KernelPlugin, KernelSet};
 
 /// Plugin that renders a timeline editor UI for the first
 /// [`Timeline`](bevy_motiongfx::prelude::BevyTimeline).
@@ -61,26 +62,21 @@ impl Plugin for EditorUiPlugin {
             FeathersPlugins,
             DockPlugin,
             ReflectInspectorPlugin::<EditorSettings>::default(),
+            KernelPlugin::new(scene::build_editor_ui),
         ))
         // Seed the feathers palette (its default theme is empty).
         .insert_resource(UiTheme(create_dark_theme()))
         .init_resource::<EditorState>()
-        .init_resource::<hierarchy::HierarchyState>()
         .add_systems(Startup, scene::setup_editor_ui)
         .add_systems(
             Update,
             (
-                hierarchy::build_hierarchy_view,
-                playback::sync_timeline_state,
                 playback::play_pause_hotkey,
-                playback::update_playhead,
                 playback::stop_at_track_end,
-                playback::update_play_label,
-                view::sync_name_scroll,
                 view::retarget_scene_cameras,
-                view::fit_preview_image,
             )
-                .chain(),
+                .chain()
+                .before(KernelSet),
         )
         .add_observer(playback::on_toggle_playback);
     }
@@ -108,6 +104,11 @@ pub(crate) struct PreviewImage(pub(crate) Handle<Image>);
 pub(crate) struct EditorState {
     pub(crate) timeline: Option<TimelineId>,
     pub(crate) duration: f32,
+    /// Mirrored from the first [`RealtimePlayer`](bevy_motiongfx::prelude::RealtimePlayer)
+    /// so the play/pause label can bind to this resource instead of
+    /// polling a component query. Written by `on_toggle_playback` and
+    /// `stop_at_track_end`.
+    pub(crate) is_playing: bool,
 }
 
 #[derive(Debug, Resource, SettingsGroup, Reflect)]

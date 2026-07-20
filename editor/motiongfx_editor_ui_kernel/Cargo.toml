@@ -1,0 +1,13 @@
+[package]
+name = "motiongfx_editor_ui_kernel"
+description = "Backend-agnostic reactive UI kernel: watchers, bindings and the tree they maintain."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+hashbrown = { workspace = true, features = ["default-hasher"] }
+
+[lints]
+workspace = true

@@ -14,12 +14,17 @@ use bevy::feathers::controls::{
     NumberFormat, NumberInputValue, UpdateNumberInput,
 };
 use bevy::feathers::theme::ThemedText;
+use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::prelude::*;
 use bevy::reflect::{GetPath, ReflectRef};
+use bevy::scene::EntityWorldMutSceneExt;
 use bevy::ui::Checked;
 use bevy::ui_widgets::ValueChange;
 
 use crate::glass::{glass_checkbox, glass_number_field};
+use crate::reactive::{
+    BevyUi, resource_changed, structure_changed, widget,
+};
 
 /// Registers the build / edit / sync systems for one resource type.
 pub struct ReflectInspectorPlugin<T>(PhantomData<T>);
@@ -34,13 +39,11 @@ impl<T: Resource<Mutability = Mutable> + Reflect> Plugin
     for ReflectInspectorPlugin<T>
 {
     fn build(&self, app: &mut App) {
-        app.add_observer(build_inspector::<T>)
-            .add_observer(on_change_bool::<T>)
+        app.add_observer(on_change_bool::<T>)
             .add_observer(on_change_number::<T, f32>)
             .add_observer(on_change_number::<T, f64>)
             .add_observer(on_change_number::<T, i32>)
-            .add_observer(on_change_number::<T, i64>)
-            .add_systems(Update, sync_inspector::<T>);
+            .add_observer(on_change_number::<T, i64>);
     }
 }
 
@@ -124,68 +127,144 @@ fn as_leaf(value: &dyn PartialReflect) -> Option<Leaf> {
     }
 }
 
-/// Build the rows when an [`Inspector<T>`] is added.
-fn build_inspector<T: Resource + Reflect>(
-    add: On<Add, Inspector<T>>,
-    res: Res<T>,
-    mut commands: Commands,
-) {
-    let root = add.entity;
-    let mut leaves = Vec::new();
-    collect_leaves(res.as_partial_reflect(), "", &mut leaves);
-
-    for (path, leaf) in leaves {
-        let row = commands
-            .spawn((
-                Node {
-                    width: Val::Percent(100.0),
-                    flex_direction: FlexDirection::Row,
-                    justify_content: JustifyContent::SpaceBetween,
-                    align_items: AlignItems::Center,
-                    column_gap: Val::Px(8.0),
-                    padding: UiRect::vertical(Val::Px(2.0)),
-                    ..default()
-                },
-                ChildOf(root),
-            ))
-            .id();
-        commands.spawn((
-            Text::new(path.clone()),
-            ThemedText,
-            TextFont {
-                font_size: FontSize::Px(12.0),
+/// Editable rows for `T`, as kernel nodes.
+///
+/// The watcher fires on the *shape* of `T` (its set of reflect paths),
+/// not its values. Values ride on bindings, which is what lets a
+/// number input keep focus while the resource changes underneath it:
+/// a rebuild would despawn the widget mid-edit.
+pub fn inspector_fields<T: Resource + Reflect>(ui: &mut BevyUi) {
+    ui.watch(
+        structure_changed::<T, _>(field_paths),
+        build_fields::<T>,
+    )
+    // Not `bsn!`: `Inspector<T>` is generic, so it is not a
+    // template.
+    .widget(|world, node| {
+        world.entity_mut(node).insert((
+            Inspector::<T>::default(),
+            TabGroup::new(0),
+            Node {
+                width: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(4.0),
                 ..default()
             },
-            ChildOf(row),
         ));
+    });
+}
 
-        match leaf {
-            Leaf::Bool(checked) => {
-                let mut widget =
-                    commands.spawn_scene(glass_checkbox());
-                widget.insert((
-                    InspectorField::<T>::new(path),
-                    ChildOf(row),
-                ));
-                if checked {
-                    widget.insert(Checked);
+fn field_paths<T: Resource + Reflect>(res: &T) -> Vec<String> {
+    let mut leaves = Vec::new();
+    collect_leaves(res.as_partial_reflect(), "", &mut leaves);
+    leaves.into_iter().map(|(path, _)| path).collect()
+}
+
+fn build_fields<T: Resource + Reflect>(ui: &mut BevyUi) {
+    let mut leaves = Vec::new();
+    collect_leaves(
+        ui.world().resource::<T>().as_partial_reflect(),
+        "",
+        &mut leaves,
+    );
+
+    for (path, leaf) in leaves {
+        let label = path.clone();
+        ui.node(widget(bsn! {
+            Node {
+                width: Val::Percent(100.0),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                column_gap: Val::Px(8.0),
+                padding: UiRect::vertical(Val::Px(2.0)),
+            }
+        }))
+        .with(move |ui| {
+            ui.node(widget(bsn! {
+                Text({label})
+                ThemedText
+                TextFont { font_size: FontSize::Px(12.0) }
+            }));
+
+            match leaf {
+                Leaf::Bool(_) => build_bool::<T>(path, ui),
+                Leaf::Number(format, _) => {
+                    build_number::<T>(path, format, ui)
                 }
             }
-            Leaf::Number(format, value) => {
-                let widget = commands
-                    .spawn_scene(glass_number_field(format))
-                    .insert((
-                        InspectorField::<T>::new(path),
-                        ChildOf(row),
-                    ))
-                    .id();
-                // Seed the displayed value.
-                commands.trigger(UpdateNumberInput {
-                    entity: widget,
-                    value,
-                });
-            }
+        });
+    }
+}
+
+/// A checkbox. `Checked` is a marker, inserted or removed rather than
+/// written, so this needs `bind_raw` instead of a typed bind.
+fn build_bool<T: Resource + Reflect>(path: String, ui: &mut BevyUi) {
+    let field_path = path.clone();
+    ui.node(move |world, node| {
+        apply_scene_to(world, node, glass_checkbox());
+        world
+            .entity_mut(node)
+            .insert(InspectorField::<T>::new(field_path));
+    })
+    .bind_raw(resource_changed::<T>(), move |world, node| {
+        let checked = matches!(
+            read_leaf::<T>(world, &path),
+            Some(Leaf::Bool(true))
+        );
+        if checked {
+            world.entity_mut(node).insert(Checked);
+        } else {
+            world.entity_mut(node).remove::<Checked>();
         }
+    });
+}
+
+/// A number input. The value is pushed as an [`UpdateNumberInput`]
+/// event rather than a component write; a focused input ignores it, so
+/// live edits still win.
+fn build_number<T: Resource + Reflect>(
+    path: String,
+    format: NumberFormat,
+    ui: &mut BevyUi,
+) {
+    let field_path = path.clone();
+    ui.node(move |world, node| {
+        apply_scene_to(world, node, glass_number_field(format));
+        world
+            .entity_mut(node)
+            .insert(InspectorField::<T>::new(field_path));
+    })
+    .bind_raw(resource_changed::<T>(), move |world, node| {
+        let Some(Leaf::Number(_, value)) =
+            read_leaf::<T>(world, &path)
+        else {
+            return;
+        };
+        // Re-express in the widget's own format.
+        let value = convert(value, format);
+        world.trigger(UpdateNumberInput {
+            entity: node,
+            value,
+        });
+    });
+}
+
+/// Resolve one reflect path of `T` to a leaf value.
+fn read_leaf<T: Resource + Reflect>(
+    world: &World,
+    path: &str,
+) -> Option<Leaf> {
+    as_leaf(world.resource::<T>().reflect_path(path).ok()?)
+}
+
+fn apply_scene_to(
+    world: &mut World,
+    node: Entity,
+    scene: impl Scene,
+) {
+    if let Err(err) = world.entity_mut(node).apply_scene(scene) {
+        error!("failed to build inspector field: {err}");
     }
 }
 
@@ -261,47 +340,6 @@ fn apply_number(target: &mut dyn PartialReflect, v: f64) {
         *x = v.max(0.0) as u32;
     } else if let Some(x) = target.try_downcast_mut::<u64>() {
         *x = v.max(0.0) as u64;
-    }
-}
-
-/// Push external resource changes back into the widgets. Focused
-/// number inputs ignore [`UpdateNumberInput`], so live edits win.
-fn sync_inspector<T: Resource + Reflect>(
-    res: Res<T>,
-    q_fields: Query<(Entity, &InspectorField<T>, Has<Checked>)>,
-    q_formats: Query<&NumberFormat>,
-    mut commands: Commands,
-) {
-    if !res.is_changed() || res.is_added() {
-        return;
-    }
-    for (entity, field, checked) in &q_fields {
-        let Ok(target) = res.reflect_path(field.path.as_str()) else {
-            continue;
-        };
-        if let Some(leaf) = as_leaf(target) {
-            match leaf {
-                Leaf::Bool(value) => {
-                    if value != checked {
-                        if value {
-                            commands.entity(entity).insert(Checked);
-                        } else {
-                            commands
-                                .entity(entity)
-                                .remove::<Checked>();
-                        }
-                    }
-                }
-                Leaf::Number(_, mut value) => {
-                    // Re-express in the widget's own format.
-                    if let Ok(format) = q_formats.get(entity) {
-                        value = convert(value, *format);
-                    }
-                    commands
-                        .trigger(UpdateNumberInput { entity, value });
-                }
-            }
-        }
     }
 }
 

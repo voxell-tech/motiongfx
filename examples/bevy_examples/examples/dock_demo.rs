@@ -16,13 +16,21 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
 use motiongfx_editor_ui::dock::{
-    DockAreaStyle, DockLeaf, DockPlugin, DockTree, DockTreeHost,
-    DockWindowDescriptor, WindowRegistry,
+    DockAreaStyle, DockLeaf, DockPlugin, DockTree,
+    DockWindowDescriptor, WindowRegistry, dock,
+};
+use motiongfx_editor_ui::reactive::{
+    BevyUi, KernelPlugin, KernelRoot, widget,
 };
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, FeathersPlugins, DockPlugin))
+        .add_plugins((
+            DefaultPlugins,
+            FeathersPlugins,
+            DockPlugin,
+            KernelPlugin::new(dock),
+        ))
         // Seed the feathers palette (its default theme is empty).
         .insert_resource(UiTheme(create_dark_theme()))
         .add_systems(Startup, setup)
@@ -48,25 +56,24 @@ fn setup(
             id: id.to_string(),
             name: name.to_string(),
             icon: None,
-            build: Arc::new(move |spawner| {
-                spawner.spawn((
+            build: Arc::new(move |ui: &mut BevyUi| {
+                let label = label.clone();
+                ui.node(widget(bsn! {
                     Node {
                         flex_grow: 1.0,
                         width: Val::Percent(100.0),
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::Center,
-                        ..default()
-                    },
-                    BackgroundColor(color),
-                    children![(
-                        Text::new(label.clone()),
-                        TextFont {
-                            font_size: FontSize::Px(20.0),
-                            ..default()
-                        },
-                        TextColor(Color::srgb(0.9, 0.9, 0.92)),
-                    )],
-                ));
+                    }
+                    BackgroundColor({color})
+                }))
+                .with(move |ui| {
+                    ui.node(widget(bsn! {
+                        Text({label})
+                        TextFont { font_size: FontSize::Px(20.0) }
+                        TextColor(Color::srgb(0.9, 0.9, 0.92))
+                    }));
+                });
             }),
         });
     }
@@ -82,9 +89,9 @@ fn setup(
         ),
     );
 
-    // The reconciler materializes the tree under this full-window host.
+    // The kernel builds the dock under this full-window root.
     commands.spawn((
-        DockTreeHost,
+        KernelRoot,
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px(0.0),

@@ -6,8 +6,17 @@ use std::sync::Arc;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
+use crate::reactive::BevyUi;
+
+/// Builds a window's content as kernel nodes, so a panel can declare
+/// its own `ui.watch` / `ui.bind` instead of reaching for the kernel
+/// from outside.
+///
+/// `Arc`, not `Box`: the builder has to be cloned out of the registry
+/// before it can run, because `Ui` holds the world mutably and the
+/// registry borrow cannot survive the first spawn.
 pub type DockWindowBuildFn =
-    Arc<dyn Fn(&mut ChildSpawner) + Send + Sync + 'static>;
+    Arc<dyn for<'a> Fn(&mut BevyUi<'a>) + Send + Sync + 'static>;
 
 pub struct DockWindowDescriptor {
     pub id: String,

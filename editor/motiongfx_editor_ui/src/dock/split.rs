@@ -23,13 +23,11 @@ impl Plugin for SplitPanelPlugin {
             app.add_plugins(CursorIconPlugin);
         }
 
+        // Only the two `Add` observers are global; they are already
+        // component-scoped. The pointer ones are attached per handle
+        // in `on_handle_added`.
         app.add_observer(on_panel_added)
             .add_observer(on_handle_added)
-            .add_observer(on_handle_drag_start)
-            .add_observer(on_handle_drag_end)
-            .add_observer(on_handle_hover)
-            .add_observer(on_handle_unhover)
-            .add_observer(handle_panel_drag)
             .add_systems(Update, recalculate_changed_panels);
     }
 }
@@ -174,7 +172,12 @@ fn on_handle_added(
     let cursor_icon = get_drag_icon(node.flex_direction);
     commands
         .entity(trigger.entity)
-        .insert(EntityCursor::System(cursor_icon));
+        .insert(EntityCursor::System(cursor_icon))
+        .observe(on_handle_drag_start)
+        .observe(on_handle_drag_end)
+        .observe(on_handle_hover)
+        .observe(on_handle_unhover)
+        .observe(handle_panel_drag);
 }
 
 fn on_handle_drag_start(
@@ -229,27 +232,24 @@ fn on_handle_drag_end(
 
 fn on_handle_hover(
     trigger: On<Pointer<Over>>,
-    handles: Query<(), With<PanelHandle>>,
     mut commands: Commands,
 ) {
-    if handles.get(trigger.event_target()).is_ok() {
-        commands
-            .entity(trigger.event_target())
-            .insert(BackgroundColor(HANDLE_HOVER_COLOR));
-    }
+    commands
+        .entity(trigger.event_target())
+        .insert(BackgroundColor(HANDLE_HOVER_COLOR));
 }
 
 fn on_handle_unhover(
     trigger: On<Pointer<Out>>,
-    // Skip while dragging so leaving the handle keeps the highlight.
-    handles: Query<(), (With<PanelHandle>, Without<HandleDragging>)>,
+    dragging: Query<(), With<HandleDragging>>,
     mut commands: Commands,
 ) {
-    if handles.get(trigger.event_target()).is_ok() {
-        commands
-            .entity(trigger.event_target())
-            .insert(BackgroundColor(Color::NONE));
+    let handle = trigger.event_target();
+    // Leaving the handle mid-drag keeps the highlight.
+    if dragging.contains(handle) {
+        return;
     }
+    commands.entity(handle).insert(BackgroundColor(Color::NONE));
 }
 
 fn handle_panel_drag(

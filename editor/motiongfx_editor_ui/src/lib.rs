@@ -18,6 +18,7 @@
 pub mod dock;
 pub mod glass;
 pub mod inspector;
+pub mod reactive;
 pub mod theme;
 
 use bevy::feathers::cursor::EntityCursor;

@@ -4,12 +4,8 @@
 
 use bevy::camera::RenderTarget;
 use bevy::prelude::*;
-use bevy::ui::ScrollPosition;
 
-use crate::scene::{
-    NamePanel, PreviewArea, PreviewDisplay, TrackViewport,
-    TrackViewportCamera,
-};
+use crate::scene::TrackViewportCamera;
 use crate::{EditorSettings, PreviewImage};
 
 /// Point every scene camera (all but the editor's own
@@ -38,27 +34,21 @@ pub(crate) fn retarget_scene_cameras(
     }
 }
 
-/// Size the preview [`ImageNode`](bevy::ui::widget::ImageNode) to fit
-/// the available area above the panel while preserving the
-/// composition's aspect ratio (letterbox), so it never stretches.
-pub(crate) fn fit_preview_image(
-    settings: Res<EditorSettings>,
-    q_area: Query<&ComputedNode, With<PreviewArea>>,
-    mut q_display: Query<&mut Node, With<PreviewDisplay>>,
-) {
-    let Ok(area) = q_area.single() else {
-        return;
-    };
-    let Ok(mut node) = q_display.single_mut() else {
-        return;
-    };
-
-    let avail = area.size() * area.inverse_scale_factor();
+/// Fit the preview into its parent area, preserving the composition's
+/// aspect ratio (letterbox) so it never stretches.
+pub(crate) fn preview_fit(
+    world: &World,
+    node: Entity,
+) -> Option<(Val, Val)> {
+    let area = world.get::<ChildOf>(node)?.parent();
+    let computed = world.get::<ComputedNode>(area)?;
+    let avail = computed.size() * computed.inverse_scale_factor();
     if avail.x <= 0.0 || avail.y <= 0.0 {
-        return;
+        return None;
     }
 
-    let comp = settings.physical_size.as_vec2();
+    let comp =
+        world.resource::<EditorSettings>().physical_size.as_vec2();
     let aspect = comp.x / comp.y;
     let mut w = avail.x;
     let mut h = w / aspect;
@@ -66,32 +56,5 @@ pub(crate) fn fit_preview_image(
         h = avail.y;
         w = h * aspect;
     }
-
-    let (w, h) = (Val::Px(w), Val::Px(h));
-    if node.width != w {
-        node.width = w;
-    }
-    if node.height != h {
-        node.height = h;
-    }
-}
-
-/// Keep the name column's vertical scroll locked to the track
-/// viewport.
-pub(crate) fn sync_name_scroll(
-    q_viewport: Query<&ScrollPosition, With<TrackViewport>>,
-    mut q_name_panel: Query<
-        &mut ScrollPosition,
-        (With<NamePanel>, Without<TrackViewport>),
-    >,
-) {
-    let Ok(viewport) = q_viewport.single() else {
-        return;
-    };
-    let Ok(mut name_scroll) = q_name_panel.single_mut() else {
-        return;
-    };
-    if name_scroll.y != viewport.y {
-        name_scroll.y = viewport.y;
-    }
+    Some((Val::Px(w), Val::Px(h)))
 }
