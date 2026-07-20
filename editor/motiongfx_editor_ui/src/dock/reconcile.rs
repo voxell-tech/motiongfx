@@ -1,18 +1,13 @@
 //! Materialize a [`DockTree`] into UI entities.
 //!
-//! The tree is the source of truth for layout; a kernel watcher builds
-//! it. Leaves become `DockArea`s with tab bar + content, splits become
-//! flex containers wrapping two child panel entities plus a
-//! `PanelHandle` between them.
+//! Leaves become `DockArea`s (tab bar + content); splits become flex
+//! containers wrapping two panels plus a [`PanelHandle`] between them.
+//! Drag/move/resize mutate the tree only.
 //!
-//! Drag/move/resize operations mutate the tree only.
-//!
-//! **What rebuilds and what doesn't.** The watcher fires on
-//! [`topology`], a projection that deliberately omits split fractions
-//! and the active tab. Both change constantly (a splitter drag writes
-//! a fraction every frame) and rebuilding for them would be ruinous,
-//! so they ride on bindings instead. Only structural edits, adding,
-//! closing or moving a tab, or a new split, rebuild the layout.
+//! The watcher fires on [`topology`], a fingerprint that omits split
+//! fractions and the active tab — those change too often (a splitter
+//! drag writes every frame) and ride on bindings instead. Only
+//! structural edits rebuild the layout.
 
 use std::fmt::Write as _;
 

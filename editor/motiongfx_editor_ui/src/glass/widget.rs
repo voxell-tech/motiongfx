@@ -1,6 +1,6 @@
-//! Glass *widget* builders (spawn a whole thing). Styling for a node
-//! you already built is the [`Glass`] marker component itself
-//! (`Glass::Panel`, `Glass::tab(active)`, ...), not a builder here.
+//! Glass widget builders (spawn a whole node). To style a node you
+//! already built, use the [`Glass`] marker (`Glass::Panel`,
+//! `Glass::tab(active)`, ...) instead.
 
 use bevy::feathers::controls::{FeathersNumberInput, NumberFormat};
 use bevy::feathers::cursor::EntityCursor;

@@ -1,18 +1,8 @@
 //! Scene hierarchy browser: an indented list of the scene's entities.
 //!
-//! Only *scene* entities are listed: anything with a [`Transform`]
-//! that isn't part of the editor's own `bevy_ui` tree, so the panel
-//! shows the composition's objects rather than the editor chrome.
-//!
-//! The row list is derived inside the watcher rather than by a
-//! separate system writing a resource. A predicate only gets `&World`,
-//! so the queries are built once at registration (where `&mut World`
-//! is available) and then driven with `iter_manual`, which keeps the
-//! iteration archetype-filtered instead of scanning every entity.
-//!
-//! The predicate computes the rows to decide whether anything changed,
-//! so it hands them to the builder through a shared cache rather than
-//! making it recompute them.
+//! Only *scene* entities are listed (anything with a [`Transform`] that
+//! isn't editor UI), so the panel shows the composition's objects, not
+//! the editor chrome.
 
 use std::sync::{Arc, Mutex};
 

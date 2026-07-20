@@ -1,13 +1,12 @@
-//! Frosted-glass UI styling: a [`GlassMaterial`] `UiMaterial` (a
-//! translucent tinted body that blurs the backdrop behind it, with a
-//! thin near-opaque border rim and a cursor glow on hovered
-//! interactables) plus the declarative [`Glass`] preset and a set of
-//! named widget builders.
+//! Frosted-glass `UiMaterial`: a translucent tinted body that blurs the
+//! backdrop behind it, with a thin border rim and a cursor glow on
+//! hovered interactables.
 //!
-//! Usage: attach a preset with the widget builders
-//! (`glass::panel()`, `glass::button(...)`, ...); an observer swaps
-//! in the matching material. Don't also set
-//! `BackgroundColor`/`BorderColor`: the material replaces both.
+//! Usage: insert a [`Glass`] preset marker on a node
+//! (`template_value(Glass::Panel)`), or spawn a widget builder
+//! ([`glass_button`], [`glass_checkbox`], [`glass_number_field`]); an
+//! observer swaps in the matching material. Don't also set
+//! `BackgroundColor`/`BorderColor` — the material replaces both.
 //! Corner rounding comes from the node's own `BorderRadius`.
 
 mod backdrop;

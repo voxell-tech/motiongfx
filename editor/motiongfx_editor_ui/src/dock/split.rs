@@ -1,10 +1,9 @@
-//! Resizable split panels: a [`PanelGroup`] arranges its [`Panel`]
-//! children along its flex axis according to each panel's `ratio`,
-//! with a draggable [`PanelHandle`] between adjacent panels. Dragging
-//! a handle also mirrors the new fraction into the
-//! [`DockTree`](super::tree::DockTree) split it's bound to (via
-//! [`super::reconcile::NodeBinding`]), so the reconciler and the live
-//! layout stay in sync.
+//! Resizable split panels: a [`PanelGroup`] sizes its [`Panel`]
+//! children along its flex axis by each panel's `ratio`, with a
+//! draggable [`PanelHandle`] between adjacent panels. Dragging a
+//! handle mirrors the new fraction into the bound
+//! [`DockTree`](super::tree::DockTree) split so the reconciler and
+//! the live layout stay in sync.
 
 use bevy::ecs::spawn::SpawnableList;
 use bevy::feathers::cursor::{

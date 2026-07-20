@@ -522,6 +522,11 @@ fn current_time(world: &World, _: Entity) -> f32 {
 
 /// Track node width for the current duration, floored at 1px so a
 /// zero-duration track still lays out.
+fn track_width(world: &World, _: Entity) -> Val {
+    let duration = world.resource::<EditorState>().duration;
+    Val::Px((duration * crate::PIXELS_PER_SECOND).max(1.0))
+}
+
 /// Marks one track's box in the timeline.
 #[derive(Component, Default, Clone)]
 pub(crate) struct TrackBox;
@@ -567,9 +572,4 @@ fn build_track_boxes(ui: &mut BevyUi) {
             BackgroundColor({fill.with_alpha(0.35)})
         });
     }
-}
-
-fn track_width(world: &World, _: Entity) -> Val {
-    let duration = world.resource::<EditorState>().duration;
-    Val::Px((duration * crate::PIXELS_PER_SECOND).max(1.0))
 }

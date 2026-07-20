@@ -1,10 +1,8 @@
 //! "+" button popup: lists registered windows; clicking one adds it
 //! as a tab to that area's leaf.
 //!
-//! State-driven rather than spawned on click. The click observer only
-//! writes [`AddWindowPopupState`]; a watcher renders whatever that
-//! says. That is the direction the kernel wants: input sends state to
-//! the world, the UI derives itself from state.
+//! State-driven: the click observer only writes
+//! [`AddWindowPopupState`]; a watcher renders whatever that says.
 
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;

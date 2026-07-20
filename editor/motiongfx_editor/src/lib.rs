@@ -1,22 +1,11 @@
-//! A timeline editor for MotionGfx, built on `bevy_ui` and styled
-//! with `bevy_feathers` on top of the headless `bevy_ui_widgets`
-//! behaviors.
+//! Timeline editor for MotionGfx, built on `bevy_ui` + `bevy_feathers`.
 //!
-//! Renders a bottom-docked timeline panel for the first [`Timeline`]
-//! it finds:
-//! - pressing or dragging anywhere on the track scrubs, mapping the
-//!   cursor onto the timeline via `PIXELS_PER_SECOND`;
-//! - a feathers [`Button`] (or the spacebar) toggles play/pause;
-//! - the track scrolls (wheel / trackpad) via a [`ScrollArea`], with
-//!   a resizable name column.
-//!
-//! Modules: `scene` (markers + the UI builder + setup), `playback`
-//! (play/pause, scrub, playhead), `hierarchy` (scene browser), `view`
-//! (camera + scroll sync). Widgets live in `motiongfx_editor_ui`.
+//! Renders a docked timeline panel for the first [`Timeline`] it finds:
+//! scrub by pressing/dragging the track, toggle play/pause with the
+//! button or spacebar, and scroll the track (wheel/trackpad) with a
+//! resizable name column.
 //!
 //! [`Timeline`]: bevy_motiongfx::prelude::BevyTimeline
-//! [`Button`]: bevy::ui_widgets::Button
-//! [`ScrollArea`]: bevy::ui_widgets::ScrollArea
 
 // Inherent to Bevy ECS: systems take many params and query tuples.
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]

@@ -1,19 +1,7 @@
-//! A generic docking/panel system: a pure-data [`DockTree`]
-//! describing splits and tabbed leaves, a reconciler that
-//! materializes it into UI entities, resizable splits, tab bars, and
-//! `Pointer<Drag>`-driven drag/drop for reordering tabs, merging them
-//! into another leaf, or splitting an area on drop.
-//!
-//! Ported from a sibling project's generic docking engine
-//! (`jackdaw_panels`). Not yet wired into
-//! the editor app or the timeline panel: register
-//! [`DockPlugin`] explicitly, register window kinds on
-//! [`WindowRegistry`], spawn a [`DockTreeHost`] entity, and seed a
-//! [`DockTree`].
-//!
-//! Deliberately out of scope for this first port: an icon-only
-//! sidebar area style, multi-workspace save/switch, and an "add
-//! window" popup menu; just splits, tabs, and drag/drop.
+//! Generic docking/panel system: a pure-data [`DockTree`] of splits
+//! and tabbed leaves, a reconciler that materializes it into UI,
+//! resizable splits, tab bars, and `Pointer<Drag>`-driven drag/drop
+//! (reorder tabs, merge into another leaf, or split an area on drop).
 
 mod add_popup;
 mod area;

@@ -1,6 +1,6 @@
 //! View-plumbing systems: retarget the composition's scene cameras to
-//! the offscreen preview image, fit that image above the panel, and
-//! keep the name column's scroll locked to the track.
+//! the offscreen preview image, and fit that image above the panel.
+//! (The name column's scroll-locking lives in `scene.rs`.)
 
 use bevy::camera::RenderTarget;
 use bevy::prelude::*;

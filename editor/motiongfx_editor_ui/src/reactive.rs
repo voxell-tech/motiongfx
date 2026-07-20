@@ -1,8 +1,7 @@
 //! Bevy backend for [`motiongfx_editor_ui_kernel`].
 //!
 //! The kernel is bevy-free; this is where it meets the ECS. Nodes are
-//! entities, widgets are boxed [`Scene`]s (so `bsn!` still builds each
-//! individual widget), and the world is [`World`].
+//! entities, widgets are boxed [`Scene`]s, and the world is [`World`].
 
 use std::sync::Arc;
 

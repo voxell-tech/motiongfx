@@ -1,13 +1,10 @@
-//! Reusable `bevy_ui` building blocks for the MotionGfx editor:
-//! widget builders here, plus [`dock`] (docking engine), [`glass`]
-//! (frosted-glass material), [`inspector`] (reflect inspector) and
-//! [`theme`].
+//! Reusable `bevy_ui` widgets for the MotionGfx editor: [`dock`]
+//! (docking engine), [`glass`] (frosted-glass material), [`inspector`]
+//! (reflect inspector), [`reactive`] (kernel adapter), and [`theme`].
 //!
-//! **UI-only**: no `bevy_motiongfx` or editor domain deps, so the
-//! docking system is reusable standalone.
-//!
-//! Widgets build on the headless [`bevy::ui_widgets`] behaviors and
-//! the [`bevy::feathers`] theme.
+//! UI-only: no `bevy_motiongfx` or editor domain deps, so the dock
+//! system is reusable standalone. Widgets build on the headless
+//! [`bevy::ui_widgets`] behaviors and the [`bevy::feathers`] theme.
 
 #![allow(
     clippy::type_complexity,

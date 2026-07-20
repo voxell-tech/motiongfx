@@ -1,12 +1,9 @@
 //! The builder.
 //!
 //! [`Ui`] holds `&mut World` and spawns as it goes, so a builder gets
-//! each node's handle the moment it makes one. That is what lets a
-//! binding refer to a *sibling* or *parent* by handle instead of
-//! hunting for it at poll time.
-//!
-//! The cost is that a builder cannot hold a borrow of the world across
-//! a spawn: collect what you need first, then build from it.
+//! each node's handle the moment it makes one — letting a binding
+//! refer to a sibling or parent by handle. The cost: a builder can't
+//! hold a world borrow across a spawn, so collect what you need first.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
