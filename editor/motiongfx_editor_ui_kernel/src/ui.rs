@@ -133,28 +133,6 @@ impl<'a, H: Host> Ui<'a, H> {
         );
         NodeMut { ui: self, node }
     }
-
-    /// Spawn a node whose children are rebuilt whenever `changed`
-    /// fires. First runs on the next flush.
-    ///
-    /// Give it a body with [`NodeMut::widget`], but leave its children
-    /// to the watcher: a fire clears them.
-    pub fn watch(
-        &mut self,
-        changed: impl FnMut(&H::World, H::Node) -> bool
-        + Send
-        + Sync
-        + 'static,
-        build: impl for<'b> Fn(&mut Ui<'b, H>) + Send + Sync + 'static,
-    ) -> NodeMut<'_, 'a, H> {
-        let node = H::spawn(self.world, self.parent);
-        self.records.spawned.push(Watcher {
-            root: node,
-            changed: Box::new(changed),
-            build: Box::new(build),
-        });
-        NodeMut { ui: self, node }
-    }
 }
 
 /// A freshly spawned node, for chaining children and bindings.
@@ -176,6 +154,27 @@ impl<H: Host> NodeMut<'_, '_, H> {
         widget: impl FnOnce(&mut H::World, H::Node),
     ) -> Self {
         widget(self.ui.world, self.node);
+        self
+    }
+
+    /// Rebuild this node's children whenever `changed` fires. First
+    /// runs on the next flush.
+    ///
+    /// Use this *or* [`Self::with`], not both: a fire clears whatever
+    /// children the node has.
+    pub fn watch(
+        self,
+        changed: impl FnMut(&H::World, H::Node) -> bool
+        + Send
+        + Sync
+        + 'static,
+        build: impl for<'b> Fn(&mut Ui<'b, H>) + Send + Sync + 'static,
+    ) -> Self {
+        self.ui.records.spawned.push(Watcher {
+            root: self.node,
+            changed: Box::new(changed),
+            build: Box::new(build),
+        });
         self
     }
 

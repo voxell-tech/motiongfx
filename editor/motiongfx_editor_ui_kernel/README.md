@@ -70,22 +70,22 @@ in one pass.
 ## Declaring a tree
 
 ```rust,ignore
-ui.node(widget)                  // a node filled by a widget
+ui.node(widget)                  // spawn a node, filled by a widget
   .with(|ui| { ... })            // static children
+  .watch(changed, build)         // children rebuilt when `changed` fires
   .bind_raw(changed, apply);     // a field that tracks state
 
 ui.group()                       // a node with no widget
-ui.watch(changed, build)         // children rebuilt when `changed` fires
 ui.bind_raw(changed, apply)      // a node that only carries a binding
 ```
+
+Everything hangs off a node, so a builder reads as "make this, then say
+how it reacts". Use `.watch(..)` *or* `.with(..)` on a node, not both:
+a fire clears whatever children it has.
 
 `watch` nests. A watcher declared inside a build is re-registered every
 time that subtree rebuilds, so nested reactivity survives an outer
 rebuild without anything re-registering it by hand.
-
-Give a `watch` node its own body with `.widget(..)`, applied once at
-spawn, so rebuilding its children leaves it intact. Don't also give it
-`.with(..)`: a fire clears whatever children it has.
 
 ## Predicates
 

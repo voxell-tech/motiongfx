@@ -23,7 +23,7 @@ use bevy::ui_widgets::ValueChange;
 
 use crate::glass::{glass_checkbox, glass_number_field};
 use crate::reactive::{
-    BevyUi, resource_changed, structure_changed, widget,
+    BevyUi, BevyUiExt, resource_changed, structure_changed,
 };
 
 /// Registers the build / edit / sync systems for one resource type.
@@ -134,13 +134,8 @@ fn as_leaf(value: &dyn PartialReflect) -> Option<Leaf> {
 /// number input keep focus while the resource changes underneath it:
 /// a rebuild would despawn the widget mid-edit.
 pub fn inspector_fields<T: Resource + Reflect>(ui: &mut BevyUi) {
-    ui.watch(
-        structure_changed::<T, _>(field_paths),
-        build_fields::<T>,
-    )
-    // Not `bsn!`: `Inspector<T>` is generic, so it is not a
-    // template.
-    .widget(|world, node| {
+    // Not `bsn!`: `Inspector<T>` is generic, so it is not a template.
+    ui.node(|world, node| {
         world.entity_mut(node).insert((
             Inspector::<T>::default(),
             TabGroup::new(0),
@@ -151,7 +146,8 @@ pub fn inspector_fields<T: Resource + Reflect>(ui: &mut BevyUi) {
                 ..default()
             },
         ));
-    });
+    })
+    .watch(structure_changed::<T, _>(field_paths), build_fields::<T>);
 }
 
 fn field_paths<T: Resource + Reflect>(res: &T) -> Vec<String> {
@@ -170,7 +166,7 @@ fn build_fields<T: Resource + Reflect>(ui: &mut BevyUi) {
 
     for (path, leaf) in leaves {
         let label = path.clone();
-        ui.node(widget(bsn! {
+        ui.bsn(bsn! {
             Node {
                 width: Val::Percent(100.0),
                 flex_direction: FlexDirection::Row,
@@ -179,13 +175,13 @@ fn build_fields<T: Resource + Reflect>(ui: &mut BevyUi) {
                 column_gap: Val::Px(8.0),
                 padding: UiRect::vertical(Val::Px(2.0)),
             }
-        }))
+        })
         .with(move |ui| {
-            ui.node(widget(bsn! {
+            ui.bsn(bsn! {
                 Text({label})
                 ThemedText
                 TextFont { font_size: FontSize::Px(12.0) }
-            }));
+            });
 
             match leaf {
                 Leaf::Bool(_) => build_bool::<T>(path, ui),

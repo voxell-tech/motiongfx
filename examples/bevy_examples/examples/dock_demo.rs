@@ -20,7 +20,7 @@ use motiongfx_editor_ui::dock::{
     DockWindowDescriptor, WindowRegistry, dock,
 };
 use motiongfx_editor_ui::reactive::{
-    BevyUi, KernelPlugin, KernelRoot, widget,
+    BevyUi, BevyUiExt, KernelPlugin, KernelRoot,
 };
 
 fn main() {
@@ -58,7 +58,7 @@ fn setup(
             icon: None,
             build: Arc::new(move |ui: &mut BevyUi| {
                 let label = label.clone();
-                ui.node(widget(bsn! {
+                ui.bsn(bsn! {
                     Node {
                         flex_grow: 1.0,
                         width: Val::Percent(100.0),
@@ -66,13 +66,13 @@ fn setup(
                         justify_content: JustifyContent::Center,
                     }
                     BackgroundColor({color})
-                }))
+                })
                 .with(move |ui| {
-                    ui.node(widget(bsn! {
+                    ui.bsn(bsn! {
                         Text({label})
                         TextFont { font_size: FontSize::Px(20.0) }
                         TextColor(Color::srgb(0.9, 0.9, 0.92))
-                    }));
+                    });
                 });
             }),
         });

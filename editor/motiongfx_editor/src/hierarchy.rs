@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use motiongfx_editor_ui::glass::Glass;
-use motiongfx_editor_ui::reactive::{BevyUi, widget};
+use motiongfx_editor_ui::reactive::{BevyUi, BevyUiExt};
 use motiongfx_editor_ui::theme::EditorTheme;
 
 use crate::PANEL_PADDING;
@@ -79,7 +79,20 @@ pub(crate) fn panel(ui: &mut BevyUi) {
     let seen = rows.clone();
     let mut queries: Option<HierarchyQueries> = None;
 
-    ui.watch(
+    ui.bsn(bsn! {
+        HierarchyPanel
+        Node {
+            width: Val::Percent(100.0),
+            flex_grow: 1.0,
+            min_height: Val::Px(0.0),
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(2.0),
+            padding: UiRect::all(Val::Px(PANEL_PADDING)),
+            overflow: Overflow::scroll_y(),
+        }
+        template_value(Glass::Panel)
+    })
+    .watch(
         move |world, _| {
             let queries = match &mut queries {
                 Some(queries) => queries,
@@ -98,20 +111,7 @@ pub(crate) fn panel(ui: &mut BevyUi) {
             let rows = rows.lock().unwrap();
             build_rows(ui, &rows);
         },
-    )
-    .widget(widget(bsn! {
-        HierarchyPanel
-        Node {
-            width: Val::Percent(100.0),
-            flex_grow: 1.0,
-            min_height: Val::Px(0.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(2.0),
-            padding: UiRect::all(Val::Px(PANEL_PADDING)),
-            overflow: Overflow::scroll_y(),
-        }
-        template_value(Glass::Panel)
-    }));
+    );
 }
 
 /// Roots first (a scene entity whose parent isn't itself a scene
@@ -175,19 +175,19 @@ fn build_rows(ui: &mut BevyUi, rows: &[Row]) {
     for row in rows {
         let indent = row.depth as f32 * INDENT;
         let name = row.name.clone();
-        ui.node(widget(bsn! {
+        ui.bsn(bsn! {
             Node {
                 width: Val::Percent(100.0),
                 align_items: AlignItems::Center,
                 padding: UiRect::left(Val::Px(indent)),
             }
-        }))
+        })
         .with(move |ui| {
-            ui.node(widget(bsn! {
+            ui.bsn(bsn! {
                 Text({name})
                 TextFont { font_size: FontSize::Px(12.0) }
                 TextColor({text_color})
-            }));
+            });
         });
     }
 }

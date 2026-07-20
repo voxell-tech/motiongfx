@@ -33,8 +33,8 @@ use motiongfx_editor_ui::glass::{
 };
 use motiongfx_editor_ui::inspector::inspector_fields;
 use motiongfx_editor_ui::reactive::{
-    BevyNodeMutExt, BevyUi, KernelRoot, resource_changed,
-    value_changed, widget,
+    BevyNodeMutExt, BevyUi, BevyUiExt, KernelRoot, resource_changed,
+    value_changed,
 };
 use motiongfx_editor_ui::{
     Divider, label, playhead_line, timeline_track,
@@ -97,7 +97,7 @@ pub(crate) struct SettingsSaveLabel;
 /// this is a builder rather than a `bsn!` tree: `Playhead`, `TimeLabel`
 /// and friends have to be `NodeMut`s to carry their own binds.
 pub(crate) fn timeline_panel(ui: &mut BevyUi) {
-    ui.node(widget(bsn! {
+    ui.bsn(bsn! {
         EditorPanel
         Node {
             width: Val::Percent(100.0),
@@ -108,7 +108,7 @@ pub(crate) fn timeline_panel(ui: &mut BevyUi) {
             padding: UiRect::bottom(Val::Px(PANEL_PADDING)),
         }
         template_value(Glass::Panel)
-    }))
+    })
     .with(|ui| {
         control_bar(ui);
         track_area(ui);
@@ -117,7 +117,7 @@ pub(crate) fn timeline_panel(ui: &mut BevyUi) {
 
 /// Play/pause + time readout.
 fn control_bar(ui: &mut BevyUi) {
-    ui.node(widget(bsn! {
+    ui.bsn(bsn! {
         Node {
             width: Val::Percent(100.0),
             height: Val::Px(CONTROL_BAR_HEIGHT),
@@ -126,9 +126,9 @@ fn control_bar(ui: &mut BevyUi) {
             column_gap: Val::Px(12.0),
             padding: UiRect::horizontal(Val::Px(PANEL_PADDING)),
         }
-    }))
+    })
     .with(|ui| {
-        ui.node(widget(bsn! {
+        ui.bsn(bsn! {
             glass_button()
             on(|mut click: On<Pointer<Click>>,
                 mut commands: Commands| {
@@ -142,27 +142,24 @@ fn control_bar(ui: &mut BevyUi) {
                 justify_content: JustifyContent::Center,
                 border_radius: BorderRadius::all(Val::Px(6.0)),
             }
-        }))
+        })
         .with(|ui| {
-            ui.node(widget(label::<PlayPauseLabel>("Play")))
-                .bind::<Text>(
-                    resource_changed::<EditorState>(),
-                    |world, _| {
-                        Text::new(
-                            if world
-                                .resource::<EditorState>()
-                                .is_playing
-                            {
-                                "Pause"
-                            } else {
-                                "Play"
-                            },
-                        )
-                    },
-                );
+            ui.bsn(label::<PlayPauseLabel>("Play")).bind::<Text>(
+                resource_changed::<EditorState>(),
+                |world, _| {
+                    Text::new(
+                        if world.resource::<EditorState>().is_playing
+                        {
+                            "Pause"
+                        } else {
+                            "Play"
+                        },
+                    )
+                },
+            );
         });
 
-        ui.node(widget(label::<TimeLabel>("0.00s"))).bind::<Text>(
+        ui.bsn(label::<TimeLabel>("0.00s")).bind::<Text>(
             resource_changed::<MotionGfxManager>(),
             |world, entity| {
                 Text::new(format!(
@@ -176,7 +173,7 @@ fn control_bar(ui: &mut BevyUi) {
 
 /// Name column | divider | scroll viewport.
 fn track_area(ui: &mut BevyUi) {
-    ui.node(widget(bsn! {
+    ui.bsn(bsn! {
         Node {
             width: Val::Percent(100.0),
             flex_grow: 1.0,
@@ -187,9 +184,9 @@ fn track_area(ui: &mut BevyUi) {
             flex_direction: FlexDirection::Row,
             padding: UiRect::horizontal(Val::Px(PANEL_PADDING)),
         }
-    }))
+    })
     .with(|ui| {
-        ui.node(widget(bsn! {
+        ui.bsn(bsn! {
             NamePanel
             ScrollPosition
             Node {
@@ -202,7 +199,7 @@ fn track_area(ui: &mut BevyUi) {
                 padding: UiRect::top(Val::Px(TRACK_TOP_PADDING)),
             }
             template_value(Glass::Panel)
-        }))
+        })
         // Locked to the track viewport, found as a sibling: the
         // builder cannot know its entity id yet.
         .bind_field::<ScrollPosition, _>(
@@ -211,15 +208,15 @@ fn track_area(ui: &mut BevyUi) {
             |scroll, y| scroll.y = y,
         );
 
-        ui.node(widget(bsn! {
+        ui.bsn(bsn! {
             @Divider {
                 @thickness: Val::Px(4.0),
                 @orientation: ControlOrientation::Vertical
             }
             on(on_divider_drag)
-        }));
+        });
 
-        ui.node(widget(bsn! {
+        ui.bsn(bsn! {
             TrackViewport
             ScrollArea
             Node {
@@ -232,16 +229,16 @@ fn track_area(ui: &mut BevyUi) {
                 overflow: Overflow::scroll(),
             }
             template_value(Glass::Panel)
-        }))
+        })
         .with(|ui| {
-            ui.node(widget(bsn! {
+            ui.bsn(bsn! {
                 TimelineContent
                 timeline_track(1.0)
                 on(on_track_press)
                 on(on_track_drag)
                 on(on_track_release)
                 on(on_track_cancel)
-            }))
+            })
             .bind_field::<Node, _>(
                 resource_changed::<EditorState>(),
                 track_width,
@@ -251,10 +248,10 @@ fn track_area(ui: &mut BevyUi) {
                 },
             )
             .with(|ui| {
-                ui.node(widget(bsn! {
+                ui.bsn(bsn! {
                     Playhead
                     playhead_line(0.0)
-                }))
+                })
                 .bind_field::<Node, _>(
                     resource_changed::<MotionGfxManager>(),
                     current_time,
@@ -379,7 +376,7 @@ fn register_windows(
         icon: None,
         build: Arc::new(move |ui: &mut BevyUi| {
             let preview = preview.clone();
-            ui.node(widget(bsn! {
+            ui.bsn(bsn! {
                 PreviewArea
                 Node {
                     width: Val::Percent(100.0),
@@ -389,7 +386,7 @@ fn register_windows(
                     align_items: AlignItems::Center,
                     overflow: Overflow::clip(),
                 }
-            }))
+            })
             .with(move |ui| {
                 ui.node(move |world, node| {
                     world.entity_mut(node).insert((
@@ -438,7 +435,7 @@ fn register_windows(
         name: "Settings".into(),
         icon: None,
         build: Arc::new(|ui: &mut BevyUi| {
-            ui.node(widget(bsn! {
+            ui.bsn(bsn! {
                 Node {
                     width: Val::Percent(100.0),
                     flex_grow: 1.0,
@@ -448,12 +445,12 @@ fn register_windows(
                     overflow: Overflow::scroll_y(),
                 }
                 template_value(Glass::Panel)
-            }))
+            })
             .with(|ui| {
                 // Editable rows built by the reflect inspector.
                 inspector_fields::<EditorSettings>(ui);
                 // Save row.
-                ui.node(widget(bsn! {
+                ui.bsn(bsn! {
                     Node { flex_direction: FlexDirection::Row }
                     Children [(
                         glass_button()
@@ -473,7 +470,7 @@ fn register_windows(
                             label::<SettingsSaveLabel>("Save")
                         ]
                     )]
-                }));
+                });
             });
         }),
     });

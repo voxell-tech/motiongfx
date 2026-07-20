@@ -39,7 +39,7 @@ impl<H: Host> Kernel<H> {
     /// Rebuild the subtree under `root` whenever `changed` fires.
     ///
     /// The bootstrap: every other watcher is declared inside a build,
-    /// through [`Ui::watch`].
+    /// through [`NodeMut::watch`].
     pub fn watch(
         &mut self,
         root: H::Node,

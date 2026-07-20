@@ -16,7 +16,7 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tree::DockTree;
 use crate::glass::{Glass, glass_button};
-use crate::reactive::{BevyUi, value_changed, widget};
+use crate::reactive::{BevyUi, BevyUiExt, value_changed};
 use crate::theme::EditorTheme;
 
 const POPUP_WIDTH: f32 = 150.0;
@@ -42,17 +42,11 @@ pub struct AddWindowPopupBackdrop;
 /// The popup, as kernel nodes. Rebuilds when the state changes, which
 /// covers opening, closing, and moving between buttons.
 pub(super) fn add_window_popup(ui: &mut BevyUi) {
-    ui.watch(
-        value_changed(|world: &World, _| {
-            world.resource::<AddWindowPopupState>().clone()
-        }),
-        build_popup,
-    )
     // A full-window overlay, because the popup positions itself in
     // window coordinates and an absolute child positions against its
     // parent. `IGNORE` so it doesn't swallow every click meant for
     // the dock underneath.
-    .widget(widget(bsn! {
+    ui.bsn(bsn! {
         Pickable::IGNORE
         Node {
             position_type: PositionType::Absolute,
@@ -61,7 +55,13 @@ pub(super) fn add_window_popup(ui: &mut BevyUi) {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
         }
-    }));
+    })
+    .watch(
+        value_changed(|world: &World, _| {
+            world.resource::<AddWindowPopupState>().clone()
+        }),
+        build_popup,
+    );
 }
 
 /// Open the popup under the clicked "+" button; clicking the same
@@ -115,7 +115,7 @@ fn build_popup(ui: &mut BevyUi) {
 
     // Catches the outside-click, but lets hover/clicks through to the
     // UI beneath rather than freezing it.
-    ui.node(widget(bsn! {
+    ui.bsn(bsn! {
         AddWindowPopupBackdrop
         on(close_popup)
         Pickable {
@@ -130,10 +130,10 @@ fn build_popup(ui: &mut BevyUi) {
             height: Val::Percent(100.0),
         }
         GlobalZIndex(180)
-    }));
+    });
 
     let (left, top, area) = (open.left, open.top, open.area);
-    ui.node(widget(bsn! {
+    ui.bsn(bsn! {
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px({left}),
@@ -145,7 +145,7 @@ fn build_popup(ui: &mut BevyUi) {
         }
         template_value(Glass::Popup)
         GlobalZIndex(181)
-    }))
+    })
     .with(move |ui| build_rows(ui, area));
 }
 
@@ -166,7 +166,7 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
         // The click handler captures the window id + target area
         // directly instead of going through a component (which would
         // need `Entity`'s absent `Default` for the template system).
-        ui.node(widget(bsn! {
+        ui.bsn(bsn! {
             glass_button()
             on(move |mut click: On<Pointer<Click>>,
                      q_bindings: Query<&NodeBinding>,
@@ -185,13 +185,13 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
                 padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
                 border_radius: BorderRadius::all(Val::Px(4.0)),
             }
-        }))
+        })
         .with(move |ui| {
-            ui.node(widget(bsn! {
+            ui.bsn(bsn! {
                 Text({name})
                 TextFont { font_size: FontSize::Px(12.0) }
                 TextColor({text_color})
-            }));
+            });
         });
     }
 }

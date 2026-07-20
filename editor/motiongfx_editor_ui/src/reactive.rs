@@ -93,15 +93,6 @@ pub type BevyUi<'a> = Ui<'a, BevyHost>;
 /// The bevy [`Host`].
 pub struct BevyHost;
 
-/// Fills a node with a `bsn!` scene.
-pub fn widget(scene: impl Scene) -> impl FnOnce(&mut World, Entity) {
-    move |world: &mut World, node: Entity| {
-        if let Err(err) = world.entity_mut(node).apply_scene(scene) {
-            error!("failed to apply widget to {node}: {err}");
-        }
-    }
-}
-
 impl Host for BevyHost {
     type Node = Entity;
     type World = World;
@@ -205,9 +196,13 @@ impl BevyNodeMutExt for NodeMut<'_, '_, BevyHost> {
     }
 }
 
-/// The [`BevyNodeMutExt`] forms as standalone nodes, for a node whose
-/// only job is to carry a binding.
+/// Bevy conveniences on [`Ui`]: spawning from a scene, and the
+/// [`BevyNodeMutExt`] binds as standalone nodes.
 pub trait BevyUiExt<'a> {
+    /// Add a node built from a `bsn!` scene.
+    fn bsn(&mut self, scene: impl Scene)
+    -> NodeMut<'_, 'a, BevyHost>;
+
     /// Add a node with `C` written whenever `changed` fires.
     fn bind<C: Component>(
         &mut self,
@@ -234,6 +229,19 @@ pub trait BevyUiExt<'a> {
 }
 
 impl<'a> BevyUiExt<'a> for BevyUi<'a> {
+    fn bsn(
+        &mut self,
+        scene: impl Scene,
+    ) -> NodeMut<'_, 'a, BevyHost> {
+        self.node(move |world: &mut World, node: Entity| {
+            if let Err(err) =
+                world.entity_mut(node).apply_scene(scene)
+            {
+                error!("failed to build node {node}: {err}");
+            }
+        })
+    }
+
     fn bind<C: Component>(
         &mut self,
         changed: impl FnMut(&World, Entity) -> bool

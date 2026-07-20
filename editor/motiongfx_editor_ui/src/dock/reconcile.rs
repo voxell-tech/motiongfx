@@ -46,18 +46,18 @@ impl Plugin for ReconcilePlugin {
 /// [`KernelPlugin::new`](crate::reactive::KernelPlugin::new).
 pub fn dock(ui: &mut BevyUi) {
     super::add_popup::add_window_popup(ui);
-    ui.watch(structure_changed::<DockTree, _>(topology), build_dock)
-        .widget(|world, node| {
-            world.entity_mut(node).insert((
-                DockTreeHost,
-                Node {
-                    width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
-                    flex_direction: FlexDirection::Column,
-                    ..default()
-                },
-            ));
-        });
+    ui.node(|world, node| {
+        world.entity_mut(node).insert((
+            DockTreeHost,
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+        ));
+    })
+    .watch(structure_changed::<DockTree, _>(topology), build_dock);
 }
 
 /// Marker for the node the dock tree is rendered underneath.

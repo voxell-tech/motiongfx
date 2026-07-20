@@ -11,7 +11,7 @@ use super::area::{
 };
 use super::tree::{DockNode, DockTree, NodeId, TabId};
 use crate::glass::Glass;
-use crate::reactive::{BevyUi, resource_changed, widget};
+use crate::reactive::{BevyUi, BevyUiExt, resource_changed};
 use crate::theme::EditorTheme;
 
 /// Hover feedback for a tab: the resting pill swap, and the close
@@ -127,12 +127,12 @@ pub(super) fn build_tab_bar(
         });
 
         let muted = ui.world().resource::<EditorTheme>().text_muted;
-        ui.node(widget(bsn! {
+        ui.bsn(bsn! {
             @DockTabAddButton {
                 @area: {area},
                 @icon_color: {muted},
             }
-        }));
+        });
     });
 }
 
@@ -158,7 +158,7 @@ fn build_tab(
         (text, theme.text_muted.with_alpha(0.0))
     };
 
-    ui.node(widget(bsn! {
+    ui.bsn(bsn! {
         @DockTab {
             @window_id: {window_id},
             @tab_id: {tab_id},
@@ -168,7 +168,7 @@ fn build_tab(
             @text_color: {text_color},
             @close_color: {close_color},
         }
-    }))
+    })
     .bind_raw(
         resource_changed::<DockTree>(),
         move |world, node| {
