@@ -2,9 +2,9 @@
 //! translucent tinted body that blurs the backdrop behind it, with a
 //! thin near-opaque border rim and a cursor glow on hovered
 //! interactables) plus the declarative [`Glass`] preset and a set of
-//! named [`widget`] builders.
+//! named widget builders.
 //!
-//! Usage: attach a preset with the [`widget`] builders
+//! Usage: attach a preset with the widget builders
 //! (`glass::panel()`, `glass::button(...)`, ...); an observer swaps
 //! in the matching material. Don't also set
 //! `BackgroundColor`/`BorderColor`: the material replaces both.

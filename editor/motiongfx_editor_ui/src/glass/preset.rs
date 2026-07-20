@@ -9,7 +9,8 @@ use crate::theme::EditorTheme;
 
 /// Declarative glass preset. Inserting one (or re-inserting a
 /// different variant) swaps the node's material accordingly. Prefer
-/// the [`widget`](super::widget) builders over naming variants
+/// the widget builders ([`glass_button`](super::glass_button) and
+/// friends) over naming variants
 /// directly.
 #[derive(Component, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Glass {

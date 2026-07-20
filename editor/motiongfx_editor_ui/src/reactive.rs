@@ -61,7 +61,7 @@ impl Plugin for KernelPlugin {
 }
 
 /// The root build runs once; everything reactive below it is a nested
-/// [`Ui::watch`].
+/// [`NodeMut::watch`].
 fn watch_root(
     mut kernel: ResMut<BevyKernel>,
     root_build: Res<RootBuild>,
@@ -142,8 +142,9 @@ pub trait BevyNodeMutExt {
     ) -> Self;
 
     /// Like [`Self::bind`], but writes one field instead of replacing
-    /// the component. The node-local counterpart of
-    /// [`BevyUiExt::bind_field`]; same `get`/`set` reasoning.
+    /// the component. Split into `get`/`set` because `&World` and
+    /// `&mut C` cannot be held at once: `get` reads the new value,
+    /// `set` writes it.
     fn bind_field<C: Component<Mutability = Mutable>, T>(
         self,
         changed: impl ChangedFn<BevyHost>,

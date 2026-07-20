@@ -10,10 +10,9 @@
 //! - the track scrolls (wheel / trackpad) via a [`ScrollArea`], with
 //!   a resizable name column.
 //!
-//! Modules: [`scene`] (component markers + `bsn!` tree + setup),
-//! [`playback`] (play/pause, scrub, playhead), [`hierarchy`] (scene
-//! browser), [`view`] (camera + scroll sync). Widgets live in
-//! `motiongfx_editor_ui`.
+//! Modules: `scene` (markers + the UI builder + setup), `playback`
+//! (play/pause, scrub, playhead), `hierarchy` (scene browser), `view`
+//! (camera + scroll sync). Widgets live in `motiongfx_editor_ui`.
 //!
 //! [`Timeline`]: bevy_motiongfx::prelude::BevyTimeline
 //! [`Button`]: bevy::ui_widgets::Button

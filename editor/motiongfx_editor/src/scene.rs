@@ -57,9 +57,9 @@ pub(crate) struct TrackViewportCamera;
 #[derive(Component, Default, Clone)]
 pub(crate) struct PreviewArea;
 
-/// The [`ImageNode`] displaying the offscreen composition; sized to
-/// fit [`PreviewArea`] by
-/// [`fit_preview_image`](crate::view::fit_preview_image).
+/// The [`ImageNode`] displaying the offscreen composition; letterboxed
+/// into [`PreviewArea`] by a bind on its parent's computed size (see
+/// [`preview_fit`](crate::view::preview_fit)).
 #[derive(Component, Default, Clone)]
 pub(crate) struct PreviewDisplay;
 
@@ -67,13 +67,10 @@ pub(crate) struct PreviewDisplay;
 #[derive(Component, Default, Clone)]
 pub(crate) struct TrackViewport;
 
-/// The scrubbable track: a horizontal slider whose value is playback
-/// time in seconds. Holds the action boxes and the playhead thumb.
-///
-/// The static skeleton is spawned by [`TrackViewport`]; its size,
-/// time range and action boxes are filled in by
-/// [`build_timeline_view`](crate::layout::build_timeline_view) once a
-/// timeline exists.
+/// The scrubbable track, sized to the timeline's duration at
+/// [`PIXELS_PER_SECOND`](crate::PIXELS_PER_SECOND). Holds the track
+/// boxes and the playhead; scrubbing comes from pointer observers on
+/// it, so a drag can only start from a press that lands inside.
 #[derive(Component, Default, Clone)]
 pub(crate) struct TimelineContent;
 
