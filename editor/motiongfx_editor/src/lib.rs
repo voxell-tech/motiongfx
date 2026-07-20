@@ -90,6 +90,9 @@ pub(crate) const NAME_PANEL_MIN: f32 = 60.0;
 pub(crate) const NAME_PANEL_MAX: f32 = 400.0;
 pub(crate) const CONTROL_BAR_HEIGHT: f32 = 40.0;
 pub(crate) const TRACK_TOP_PADDING: f32 = 12.0;
+/// Height of one track's box, and the gap below it.
+pub(crate) const TRACK_HEIGHT: f32 = 22.0;
+pub(crate) const TRACK_GAP: f32 = 4.0;
 
 /// The offscreen texture the composition's scene cameras render into.
 /// `bevy_ui` scales this image to fit the preview area above the

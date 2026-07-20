@@ -17,6 +17,7 @@ fn main() {
         .run();
 }
 
+// HACK: This is a stub for now, until we have proper serialization.
 fn spawn_timeline(
     mut commands: Commands,
     mut motiongfx: ResMut<MotionGfxManager>,
@@ -50,7 +51,6 @@ fn spawn_timeline(
                 .with_ease(ease::back::ease_out)
                 .play(0.6)
         })
-        .collect::<Vec<_>>()
         .ord_flow(0.12);
 
     let rise = cubes
@@ -62,7 +62,6 @@ fn spawn_timeline(
             .with_ease(ease::cubic::ease_in_out)
             .play(0.5)
         })
-        .collect::<Vec<_>>()
         .ord_flow(0.06);
 
     let spin = cubes
@@ -74,7 +73,6 @@ fn spawn_timeline(
             .with_ease(ease::cubic::ease_in_out)
             .play(0.8)
         })
-        .collect::<Vec<_>>()
         .ord_flow(0.06);
 
     let shrink = cubes
@@ -86,7 +84,6 @@ fn spawn_timeline(
             .with_ease(ease::cubic::ease_in)
             .play(0.5)
         })
-        .collect::<Vec<_>>()
         .ord_flow(0.1);
 
     let track =

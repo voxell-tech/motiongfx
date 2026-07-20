@@ -22,7 +22,7 @@ use crate::playback::{
 use crate::{
     CONTROL_BAR_HEIGHT, EditorSettings, EditorState, NAME_PANEL_MAX,
     NAME_PANEL_MIN, NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage,
-    TRACK_TOP_PADDING,
+    TRACK_GAP, TRACK_HEIGHT, TRACK_TOP_PADDING,
 };
 use motiongfx_editor_ui::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
@@ -36,6 +36,7 @@ use motiongfx_editor_ui::reactive::{
     BevyNodeMutExt, BevyUi, BevyUiExt, KernelRoot, resource_changed,
     value_changed,
 };
+use motiongfx_editor_ui::theme::EditorTheme;
 use motiongfx_editor_ui::{
     Divider, label, playhead_line, timeline_track,
 };
@@ -248,6 +249,17 @@ fn track_area(ui: &mut BevyUi) {
                 },
             )
             .with(|ui| {
+                // The boxes get their own container so the watcher's
+                // rebuild can't take the playhead with it.
+                ui.bsn(bsn! {
+                    Node {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(TRACK_TOP_PADDING),
+                        left: Val::Px(0.0),
+                    }
+                })
+                .watch(value_changed(track_spans), build_track_boxes);
+
                 ui.bsn(bsn! {
                     Playhead
                     playhead_line(0.0)
@@ -513,6 +525,53 @@ fn current_time(world: &World, _: Entity) -> f32 {
 
 /// Track node width for the current duration, floored at 1px so a
 /// zero-duration track still lays out.
+/// Marks one track's box in the timeline.
+#[derive(Component, Default, Clone)]
+pub(crate) struct TrackBox;
+
+/// Every track's duration, in order. The watcher's signal: a box only
+/// needs rebuilding when a track is added, removed or re-timed.
+fn track_spans(world: &World, _: Entity) -> Vec<f32> {
+    let state = world.resource::<EditorState>();
+    let Some(id) = state.timeline else {
+        return Vec::new();
+    };
+    world
+        .resource::<MotionGfxManager>()
+        .get_timeline(&id)
+        .map(|timeline| {
+            timeline
+                .tracks()
+                .iter()
+                .map(|track| track.duration())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// One box per track, stacked top to bottom and scaled to duration.
+fn build_track_boxes(ui: &mut BevyUi) {
+    let spans = track_spans(ui.world(), ui.parent());
+    let fill = ui.world().resource::<EditorTheme>().palette.blue;
+
+    for (index, duration) in spans.into_iter().enumerate() {
+        let top = index as f32 * (TRACK_HEIGHT + TRACK_GAP);
+        let width = (duration * crate::PIXELS_PER_SECOND).max(1.0);
+        ui.bsn(bsn! {
+            TrackBox
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px({top}),
+                left: Val::Px(0.0),
+                width: Val::Px({width}),
+                height: Val::Px(TRACK_HEIGHT),
+                border_radius: BorderRadius::all(Val::Px(3.0)),
+            }
+            BackgroundColor({fill.with_alpha(0.35)})
+        });
+    }
+}
+
 fn track_width(world: &World, _: Entity) -> Val {
     let duration = world.resource::<EditorState>().duration;
     Val::Px((duration * crate::PIXELS_PER_SECOND).max(1.0))
