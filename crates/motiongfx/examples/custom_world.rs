@@ -120,8 +120,8 @@ fn main() {
 
     println!(
         "# Before sampling \ncurrent time: {}s,\ntarget time: {}s",
-        timeline.curr_time(),
-        timeline.target_time()
+        timeline.curr_time().as_secs_f32(),
+        timeline.target_time().as_secs_f32()
     );
     println!("target time clamped to timeline duration (3s)\n");
 
@@ -134,8 +134,8 @@ fn main() {
 
     println!(
         "# After sampling: \ncurrent time: {}s,\ntarget time: {}s\n",
-        timeline.curr_time(),
-        timeline.target_time()
+        timeline.curr_time().as_secs_f32(),
+        timeline.target_time().as_secs_f32()
     );
 }
 

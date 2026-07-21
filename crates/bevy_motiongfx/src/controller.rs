@@ -1,6 +1,9 @@
+use core::time::Duration;
+
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_time::prelude::*;
+use motiongfx::time::IntoDuration;
 
 use crate::MotionGfxSystems;
 use crate::manager::{MotionGfxManager, TimelineId};
@@ -30,10 +33,8 @@ fn realtime_player_update(
         q_timelines.iter().filter(|(_, p)| p.is_playing)
     {
         if let Some(timeline) = motiongfx.get_timeline_mut(id) {
-            let target_time = timeline.target_time()
-                + player.time_scale * time.delta_secs();
-
-            timeline.set_target_time(target_time);
+            timeline
+                .advance_secs(player.time_scale * time.delta_secs());
         }
     }
 }
@@ -47,11 +48,11 @@ fn fixed_rate_player_update(
     {
         if let Some(timeline) = motiongfx.get_timeline_mut(id) {
             // Each frame we update the timeline according to the fps.
-            let target_time =
-                timeline.target_time() + player.delta_secs();
-
-            timeline.set_target_time(target_time);
+            // Derive the time from the frame counter rather than
+            // accumulating, so recorded frame N always lands on the
+            // same timestamp.
             player.curr_frame += 1;
+            timeline.set_target_time(player.frame_time());
         }
     }
 }
@@ -182,6 +183,21 @@ impl FixedRatePlayer {
         1.0 / self.fps as f32
     }
 
+    /// The exact timestamp of [`Self::curr_frame`].
+    ///
+    /// Derived from the frame counter rather than accumulated, so a
+    /// given frame index always maps to the same instant no matter how
+    /// long the recording runs.
+    #[inline]
+    #[must_use]
+    pub const fn frame_time(&self) -> Duration {
+        let fps = if self.fps == 0 { 1 } else { self.fps as u64 };
+
+        Duration::from_nanos(
+            1_000_000_000u64.saturating_mul(self.curr_frame) / fps,
+        )
+    }
+
     /// Setter method for setting [`Self::is_playing`].
     #[inline]
     pub const fn set_playing(
@@ -194,14 +210,14 @@ impl FixedRatePlayer {
 }
 #[derive(Default, Component)]
 pub struct PassivePlayer {
-    time: f32,
+    time: Duration,
     track_index: usize,
 }
 
 impl PassivePlayer {
     #[inline]
-    pub fn set_time(&mut self, time: f32) {
-        self.time = time;
+    pub fn set_time(&mut self, time: impl IntoDuration) {
+        self.time = time.into_duration();
     }
 
     #[inline]
@@ -209,7 +225,7 @@ impl PassivePlayer {
         self.track_index = track_index;
     }
 
-    pub fn get_time(&self) -> f32 {
+    pub fn get_time(&self) -> Duration {
         self.time
     }
 

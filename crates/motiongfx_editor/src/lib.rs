@@ -17,6 +17,8 @@
 
 mod ui;
 
+use core::time::Duration;
+
 use bevy::camera::{ClearColorConfig, RenderTarget, Viewport};
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::{ThemeBackgroundColor, UiTheme};
@@ -320,18 +322,16 @@ fn build_timeline_view(
         .iter()
         .map(|(k, s)| (k, s))
         .collect();
-    rows.sort_by(|a, b| {
-        let start = |span: &Span| {
-            track
-                .clips(*span)
-                .first()
-                .map(|c| c.start)
-                .unwrap_or(f32::INFINITY)
-        };
-        start(a.1).total_cmp(&start(b.1))
+    rows.sort_by_key(|(_, span)| {
+        track
+            .clips(**span)
+            .first()
+            .map(|c| c.start)
+            .unwrap_or(Duration::MAX)
     });
 
-    let duration = track.duration();
+    // The layout below is pixel math, so drop to seconds here.
+    let duration = track.duration().as_secs_f32();
     let content_width = (duration * PIXELS_PER_SECOND).max(1.0);
     let content_height =
         TRACK_TOP_PADDING * 2.0 + rows.len() as f32 * ROW_STRIDE;
@@ -358,8 +358,10 @@ fn build_timeline_view(
             .insert(ChildOf(name_panel));
 
         for clip in track.clips(**span) {
-            let left = clip.start * PIXELS_PER_SECOND;
-            let width = (clip.duration * PIXELS_PER_SECOND).max(2.0);
+            let left = clip.start.as_secs_f32() * PIXELS_PER_SECOND;
+            let width = (clip.duration.as_secs_f32()
+                * PIXELS_PER_SECOND)
+                .max(2.0);
 
             commands
                 .spawn_scene(action_box(
@@ -425,7 +427,7 @@ fn on_play_pause(
     if let Some(timeline_id) = state.timeline
         && q_players.iter().any(|p| p.is_playing)
         && let Some(timeline) = manager.get_timeline_mut(&timeline_id)
-        && timeline.target_time() >= state.duration
+        && timeline.target_time().as_secs_f32() >= state.duration
     {
         timeline.set_target_track(0);
         timeline.set_target_time(0.0);
@@ -448,7 +450,8 @@ fn update_playhead(
     let Some(timeline) = manager.get_timeline(&timeline_id) else {
         return;
     };
-    let time = timeline.target_time();
+    // The slider and playhead are both in seconds-as-pixels.
+    let time = timeline.target_time().as_secs_f32();
 
     for mut node in &mut q_playhead {
         node.left = Val::Px(time * PIXELS_PER_SECOND);
@@ -494,9 +497,9 @@ fn stop_at_track_end(
             continue;
         }
         let at_end = if player.time_scale >= 0.0 {
-            timeline.target_time() >= state.duration
+            timeline.target_time().as_secs_f32() >= state.duration
         } else {
-            timeline.target_time() <= 0.0
+            timeline.target_time() == Duration::ZERO
         };
         if at_end {
             player.is_playing = false;

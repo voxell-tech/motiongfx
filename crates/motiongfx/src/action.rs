@@ -1,4 +1,5 @@
 use core::any::TypeId;
+use core::time::Duration;
 
 use alloc::boxed::Box;
 use field_path::field::UntypedField;
@@ -125,25 +126,82 @@ pub type EaseFn = fn(t: f32) -> f32;
 #[derive(Debug, Clone, Copy)]
 pub struct EaseStorage(pub EaseFn);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActionClip {
     pub id: ActionId,
-    pub start: f32,
-    pub duration: f32,
+    pub start: Duration,
+    pub duration: Duration,
 }
 
 impl ActionClip {
-    pub const fn new(id: ActionId, duration: f32) -> Self {
+    pub const fn new(id: ActionId, duration: Duration) -> Self {
         Self {
             id,
-            start: 0.0,
+            start: Duration::ZERO,
             duration,
         }
     }
 
     #[inline]
-    pub fn end(&self) -> f32 {
+    pub fn end(&self) -> Duration {
         self.start + self.duration
+    }
+
+    /// Normalized progress of `time` through this clip, in
+    /// \[0.0..=1.0\].
+    ///
+    /// Zero-duration clips (used as spacers) report `1.0` rather than
+    /// dividing by zero.
+    #[inline]
+    pub fn progress(&self, time: Duration) -> f32 {
+        let span = self.duration.as_secs_f64();
+
+        if span == 0.0 {
+            return 1.0;
+        }
+
+        let elapsed = time.saturating_sub(self.start).as_secs_f64();
+        (elapsed / span).clamp(0.0, 1.0) as f32
+    }
+}
+
+#[cfg(test)]
+mod clip_tests {
+    use super::*;
+
+    const fn clip(start: u64, duration: u64) -> ActionClip {
+        ActionClip {
+            id: ActionId::PLACEHOLDER,
+            start: Duration::from_millis(start),
+            duration: Duration::from_millis(duration),
+        }
+    }
+
+    #[test]
+    fn progress_spans_the_clip() {
+        let clip = clip(1000, 2000);
+
+        assert_eq!(clip.progress(Duration::from_millis(1000)), 0.0);
+        assert_eq!(clip.progress(Duration::from_millis(2000)), 0.5);
+        assert_eq!(clip.progress(Duration::from_millis(3000)), 1.0);
+    }
+
+    #[test]
+    fn progress_clamps_outside_the_clip() {
+        let clip = clip(1000, 2000);
+
+        assert_eq!(clip.progress(Duration::ZERO), 0.0);
+        assert_eq!(clip.progress(Duration::from_secs(60)), 1.0);
+    }
+
+    /// Zero-duration clips are used as spacers; they must not yield
+    /// `NaN` and poison the interpolated value.
+    #[test]
+    fn zero_duration_clip_reports_completion() {
+        let t = clip(1000, 0).progress(Duration::from_millis(1000));
+
+        assert!(!t.is_nan());
+        assert_eq!(t, 1.0);
     }
 }
 

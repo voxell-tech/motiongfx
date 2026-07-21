@@ -156,8 +156,7 @@ fn bench_scrub(c: &mut Criterion) {
                 // the start so successive iterations are identical.
                 b.iter(|| {
                     for frame in 0..=FRAMES {
-                        let t =
-                            duration * frame as f32 / FRAMES as f32;
+                        let t = duration * frame / FRAMES;
                         timeline.set_target_time(black_box(t));
                         timeline.queue_actions();
                         timeline.sample_queued_actions(
@@ -383,8 +382,7 @@ fn bench_mixed_scrub(c: &mut Criterion) {
 
                 b.iter(|| {
                     for frame in 0..=FRAMES {
-                        let t =
-                            duration * frame as f32 / FRAMES as f32;
+                        let t = duration * frame / FRAMES;
                         timeline.set_target_time(black_box(t));
                         timeline.queue_actions();
                         timeline.sample_queued_actions(

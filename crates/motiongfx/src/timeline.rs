@@ -1,5 +1,6 @@
 use core::cmp::Ordering;
 use core::marker::PhantomData;
+use core::time::Duration;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -15,6 +16,7 @@ use crate::interpolation::Interpolation;
 use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
+use crate::time::{self, IntoDuration};
 use crate::track::Track;
 use crate::world::SubjectSource;
 
@@ -35,9 +37,9 @@ pub struct Timeline<W> {
     /// actions of each type, with no per-action column lookup.
     sample_queue: HashMap<PipelineKey, Vec<(ActionId, SampleMode)>>,
     /// The current time of the current track.
-    curr_time: f32,
+    curr_time: Duration,
     /// The target time of the target track.
-    target_time: f32,
+    target_time: Duration,
     /// The index of the current track.
     curr_index: usize,
     /// The index of the target track.
@@ -93,7 +95,7 @@ impl<W: 'static> Timeline<W> {
                 > self.curr_index()
             {
                 // From the start.
-                curr_time = 0.0;
+                curr_time = Duration::ZERO;
                 (
                     SampleMode::End,
                     self.curr_index()..self.target_index(),
@@ -179,13 +181,12 @@ impl<W: 'static> Timeline<W> {
                 Ok(index) => {
                     let clip = &clips[index];
 
-                    let t = (self.target_time - clip.start)
-                        / (clip.end() - clip.start);
-
                     self.queue_cache.cache(
                         *key,
                         clip.id,
-                        SampleMode::Interp(t),
+                        SampleMode::Interp(
+                            clip.progress(self.target_time),
+                        ),
                     );
                 }
                 // `target_time` is out of bounds.
@@ -274,13 +275,13 @@ impl<W> Timeline<W> {
 
     /// Returns the current playback time.
     #[inline]
-    pub fn curr_time(&self) -> f32 {
+    pub fn curr_time(&self) -> Duration {
         self.curr_time
     }
 
     /// Returns the target playback time.
     #[inline]
-    pub fn target_time(&self) -> f32 {
+    pub fn target_time(&self) -> Duration {
         self.target_time
     }
 
@@ -342,11 +343,26 @@ impl<W> Timeline<W> {
 impl<W> Timeline<W> {
     /// Set the target time of the current track, clamping the value
     /// within \[0.0..=track.duration\]
-    pub fn set_target_time(&mut self, target_time: f32) -> &mut Self {
+    pub fn set_target_time(
+        &mut self,
+        target_time: impl IntoDuration,
+    ) -> &mut Self {
         let duration = self.tracks[self.target_index].duration();
 
-        self.target_time = target_time.clamp(0.0, duration);
+        self.target_time = target_time.into_duration().min(duration);
         self
+    }
+
+    /// Steps the target time by `delta` seconds, saturating at both
+    /// ends of the target track.
+    ///
+    /// Prefer this over reading [`Self::target_time`] and adding to it:
+    /// a [`Duration`] cannot go negative, so backwards playback
+    /// (`delta < 0.0`) needs the saturating arithmetic this performs.
+    pub fn advance_secs(&mut self, delta: f32) -> &mut Self {
+        let target_time = time::offset_secs(self.target_time, delta);
+
+        self.set_target_time(target_time)
     }
 
     /// Set the target track index, clamping the value within
@@ -565,8 +581,8 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
             tracks: self.tracks.into_boxed_slice(),
             queue_cache: QueueCache::new(),
             sample_queue: HashMap::new(),
-            curr_time: 0.0,
-            target_time: 0.0,
+            curr_time: Duration::ZERO,
+            target_time: Duration::ZERO,
             curr_index: 0,
             target_index: 0,
             _marker: PhantomData,

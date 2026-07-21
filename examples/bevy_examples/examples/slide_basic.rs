@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::camera::Hdr;
 use bevy::color::palettes;
 use bevy::prelude::*;
@@ -141,14 +143,15 @@ fn slide_movement(
                 ]) {
                     player.set_playing(true).set_time_scale(-1.0);
 
-                    if timeline.curr_time() <= 0.0
+                    if timeline.curr_time() == Duration::ZERO
                         && timeline.curr_index() > 0
                     {
                         // Move to the end of the previous track.
                         let target_index =
                             timeline.curr_index().saturating_sub(1);
                         timeline.set_target_track(target_index);
-                        timeline.set_target_time(f32::MAX);
+                        // Clamped to the new track's duration.
+                        timeline.set_target_time(Duration::MAX);
                     }
                 } else {
                     player.set_playing(true).set_time_scale(1.0);

@@ -1,5 +1,5 @@
 use core::f64;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use kurbo::{Affine, BezPath, Vec2};
 use motiongfx::prelude::*;
@@ -90,8 +90,8 @@ struct LissajousTableDemo {
     world: TableWorld,
     start: Instant,
     timeline: Timeline<TableWorld>,
-    grid_duration: f32,
-    curve_duration: f32,
+    grid_duration: Duration,
+    curve_duration: Duration,
     window_size: kurbo::Size,
 }
 
@@ -263,17 +263,21 @@ impl VelloDemo for LissajousTableDemo {
         scene: &mut vello::Scene,
         scale_factor: f64,
     ) {
-        let elapsed = self.start.elapsed().as_secs_f32();
+        let elapsed = self.start.elapsed();
 
         // Track 0 plays once; once done we lock to track 1 and loop it.
         if elapsed < self.grid_duration {
             self.timeline.set_target_track(0);
             self.timeline.set_target_time(elapsed);
         } else {
+            // `Duration` has no `Rem`, so wrap through nanoseconds.
+            let into_loop = (elapsed - self.grid_duration).as_nanos();
+            let period = self.curve_duration.as_nanos().max(1);
+
             self.timeline.set_target_track(1);
-            self.timeline.set_target_time(
-                (elapsed - self.grid_duration) % self.curve_duration,
-            );
+            self.timeline.set_target_time(Duration::from_nanos(
+                (into_loop % period) as u64,
+            ));
         }
         self.timeline.queue_actions();
         self.timeline
