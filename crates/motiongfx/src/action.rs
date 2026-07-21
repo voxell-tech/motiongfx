@@ -166,8 +166,29 @@ impl ActionClip {
     }
 }
 
+pub struct Segment<T> {
+    /// The starting value.
+    pub start: T,
+    /// The ending value.
+    pub end: T,
+}
+
+impl<T> Segment<T> {
+    pub fn new(start: T, end: T) -> Self {
+        Self { start, end }
+    }
+}
+
+/// Determines how a [`Segment`] should be sampled.
+#[derive(Debug, Clone, Copy)]
+pub enum SampleMode {
+    Start,
+    End,
+    Interp(f32),
+}
+
 #[cfg(test)]
-mod clip_tests {
+mod tests {
     use super::*;
 
     const fn clip(start: u64, duration: u64) -> ActionClip {
@@ -216,25 +237,4 @@ mod clip_tests {
         assert!(!t.is_nan());
         assert_eq!(t, 1.0);
     }
-}
-
-pub struct Segment<T> {
-    /// The starting value.
-    pub start: T,
-    /// The ending value.
-    pub end: T,
-}
-
-impl<T> Segment<T> {
-    pub fn new(start: T, end: T) -> Self {
-        Self { start, end }
-    }
-}
-
-/// Determines how a [`Segment`] should be sampled.
-#[derive(Debug, Clone, Copy)]
-pub enum SampleMode {
-    Start,
-    End,
-    Interp(f32),
 }
