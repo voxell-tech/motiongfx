@@ -356,9 +356,9 @@ impl<W> Timeline<W> {
     /// Steps the target time by `delta` seconds, saturating at both
     /// ends of the target track.
     ///
-    /// Prefer this over reading [`Self::target_time`] and adding to it:
-    /// a [`Duration`] cannot go negative, so backwards playback
-    /// (`delta < 0.0`) needs the saturating arithmetic this performs.
+    /// Prefer this over adding to [`Self::target_time`]: a [`Duration`]
+    /// cannot go negative, so `delta < 0.0` needs saturating
+    /// arithmetic.
     pub fn advance_secs(&mut self, delta: f32) -> &mut Self {
         let target_time = time::offset_secs(self.target_time, delta);
 

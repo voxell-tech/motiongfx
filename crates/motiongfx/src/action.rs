@@ -142,16 +142,17 @@ impl ActionClip {
         }
     }
 
+    /// Saturating, so an absurd authored duration degrades to a clamped
+    /// timeline rather than a panic deep in playback.
     #[inline]
     pub fn end(&self) -> Duration {
-        self.start + self.duration
+        self.start.saturating_add(self.duration)
     }
 
     /// Normalized progress of `time` through this clip, in
     /// \[0.0..=1.0\].
     ///
-    /// Zero-duration clips (used as spacers) report `1.0` rather than
-    /// dividing by zero.
+    /// Zero-duration spacer clips report `1.0` rather than `NaN`.
     #[inline]
     pub fn progress(&self, time: Duration) -> f32 {
         let span = self.duration.as_secs_f64();
@@ -186,6 +187,19 @@ mod clip_tests {
         assert_eq!(clip.progress(Duration::from_millis(3000)), 1.0);
     }
 
+    /// `end()` runs on every queue pass, so a saturated duration must
+    /// not panic there.
+    #[test]
+    fn end_saturates_instead_of_overflowing() {
+        let clip = ActionClip {
+            id: ActionId::PLACEHOLDER,
+            start: Duration::MAX,
+            duration: Duration::MAX,
+        };
+
+        assert_eq!(clip.end(), Duration::MAX);
+    }
+
     #[test]
     fn progress_clamps_outside_the_clip() {
         let clip = clip(1000, 2000);
@@ -194,8 +208,7 @@ mod clip_tests {
         assert_eq!(clip.progress(Duration::from_secs(60)), 1.0);
     }
 
-    /// Zero-duration clips are used as spacers; they must not yield
-    /// `NaN` and poison the interpolated value.
+    /// A `NaN` here would poison the interpolated value.
     #[test]
     fn zero_duration_clip_reports_completion() {
         let t = clip(1000, 0).progress(Duration::from_millis(1000));

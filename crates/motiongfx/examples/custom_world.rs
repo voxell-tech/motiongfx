@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
 use motiongfx::prelude::*;
 
@@ -111,19 +112,22 @@ fn main() {
     // Check the values after sampling:
     println!("After:  {:?}\n", world.subject_world);
 
-    let new_target_time = 7.0;
+    let new_target_time = Duration::from_secs(7);
 
     // Set target time to after total track duration
     timeline.set_target_time(new_target_time);
 
-    println!("timeline target time set to: {}s", new_target_time);
+    println!("timeline target time set to: {:?}", new_target_time);
 
     println!(
-        "# Before sampling \ncurrent time: {}s,\ntarget time: {}s",
-        timeline.curr_time().as_secs_f32(),
-        timeline.target_time().as_secs_f32()
+        "# Before sampling \ncurrent time: {:?},\ntarget time: {:?}",
+        timeline.curr_time(),
+        timeline.target_time(),
     );
-    println!("target time clamped to timeline duration (3s)\n");
+    println!(
+        "target time clamped to current track's duration ({:?})\n",
+        timeline.curr_track().duration()
+    );
 
     // Queue and sample the actions.
     timeline.queue_actions();
@@ -133,9 +137,9 @@ fn main() {
     );
 
     println!(
-        "# After sampling: \ncurrent time: {}s,\ntarget time: {}s\n",
-        timeline.curr_time().as_secs_f32(),
-        timeline.target_time().as_secs_f32()
+        "# After sampling: \ncurrent time: {:?},\ntarget time: {:?}\n",
+        timeline.curr_time(),
+        timeline.target_time(),
     );
 }
 

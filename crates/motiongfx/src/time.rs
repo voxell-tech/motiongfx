@@ -1,36 +1,24 @@
 //! Time conversion helpers.
 //!
-//! Motiongfx stores all timing as [`Duration`] so that the durations
-//! accumulated by the track combinators and the clip offsets accumulated
-//! when delaying a [`Sequence`] can never disagree. Float seconds are not
-//! associative, so the two accumulations used to drift apart by a few
-//! ULPs, which tripped the non-overlap assertion when extending a
-//! sequence and left the playhead clamp just short of the final clip's
-//! end.
+//! Timing is stored as [`Duration`] so that the durations accumulated by
+//! the track combinators and the clip offsets accumulated when delaying a
+//! [`Sequence`] can never disagree. Float seconds are not associative, so
+//! the two used to drift apart by a few ULPs, tripping the non-overlap
+//! assertion and leaving the playhead clamp short of the final clip's end.
 //!
-//! Authoring in seconds is still the ergonomic default, hence
-//! [`IntoDuration`].
+//! [`IntoDuration`] keeps seconds as the authoring unit.
 //!
 //! [`Sequence`]: crate::sequence::Sequence
 
 use core::time::Duration;
 
 /// Conversion into a [`Duration`] for the timing arguments of the
-/// authoring API.
+/// authoring API, so that `play(0.6)` and
+/// `play(Duration::from_millis(600))` are both accepted.
 ///
-/// Implemented for [`Duration`] itself as well as `f32`/`f64` seconds,
-/// so both of these are accepted:
-///
-/// ```ignore
-/// action.play(0.6);
-/// action.play(Duration::from_millis(600));
-/// ```
-///
-/// Seconds that a [`Duration`] cannot represent saturate rather than
-/// panic: negative and non-finite values become [`Duration::ZERO`],
-/// and values past [`Duration::MAX`] become [`Duration::MAX`]. This
-/// keeps idioms like `set_target_time(f32::MAX)` ("seek to the end")
-/// working.
+/// Unrepresentable seconds saturate rather than panic: negative and NaN
+/// become [`Duration::ZERO`], overflow becomes [`Duration::MAX`]. This
+/// keeps `set_target_time(f32::MAX)` ("seek to the end") working.
 pub trait IntoDuration {
     fn into_duration(self) -> Duration;
 }
@@ -56,9 +44,8 @@ impl IntoDuration for f64 {
             return Duration::ZERO;
         }
 
-        // Positive and non-NaN at this point, so the only remaining
-        // failure is overflow (which includes `INFINITY`).
-        // `from_secs_f64` would panic on those instead.
+        // Positive and non-NaN, so the only remaining failure is
+        // overflow. `from_secs_f64` would panic on it.
         Duration::try_from_secs_f64(self).unwrap_or(Duration::MAX)
     }
 }
@@ -68,12 +55,10 @@ impl IntoDuration for f64 {
 /// [`Duration`] has no signed representation, so stepping a playhead
 /// backwards has to go through this rather than a plain `+`.
 ///
-/// The offset is only as precise as `delta` itself: `0.05f32` is really
-/// `0.05000000074505806`, so it lands a nanosecond off. That is
-/// inherent to a float-seconds clock and is not the drift this module
-/// exists to prevent — clip and track boundaries are exact
-/// [`Duration`]s, so an imprecise step still resolves against them
-/// consistently instead of accumulating error into the timeline.
+/// Only as precise as `delta` itself: `0.05f32` is really
+/// `0.05000000074505806`, so it lands a nanosecond off. That is inherent
+/// to a float clock, not the drift this module prevents. Clip and track
+/// boundaries stay exact, so the error does not accumulate.
 #[inline]
 pub fn offset_secs(time: Duration, delta: f32) -> Duration {
     if delta >= 0.0 {
@@ -92,14 +77,11 @@ mod tests {
         assert_eq!((-1.0f32).into_duration(), Duration::ZERO);
         assert_eq!(f32::NAN.into_duration(), Duration::ZERO);
         assert_eq!(f32::NEG_INFINITY.into_duration(), Duration::ZERO);
-        // "Seek to the end" idiom: must clamp, not overflow.
         assert_eq!(f32::MAX.into_duration(), Duration::MAX);
         assert_eq!(f32::INFINITY.into_duration(), Duration::MAX);
     }
 
-    /// `delta` is `f32` seconds, so the result is only accurate to
-    /// within the rounding of that `f32` — a nanosecond or so. Exact
-    /// equality is deliberately not asserted here.
+    /// `delta` is `f32` seconds, so exact equality is not assertable.
     #[track_caller]
     fn assert_near(actual: Duration, expected: Duration) {
         let diff = actual.abs_diff(expected);
@@ -128,8 +110,6 @@ mod tests {
     fn offset_secs_saturates_at_zero() {
         let time = Duration::from_millis(100);
 
-        // Stepping further back than the playhead has to give must
-        // saturate rather than wrap or panic.
         assert_eq!(offset_secs(time, -10.0), Duration::ZERO);
         assert_eq!(offset_secs(Duration::ZERO, -1.0), Duration::ZERO);
     }

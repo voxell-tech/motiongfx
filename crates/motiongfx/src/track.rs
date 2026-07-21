@@ -55,7 +55,8 @@ pub fn chain(
             track = track.upsert_sequence(key, other_sequence);
         }
 
-        chain_duration += other_track.duration;
+        chain_duration =
+            chain_duration.saturating_add(other_track.duration);
     }
 
     track.duration = chain_duration;
@@ -120,9 +121,10 @@ pub fn flow(
     let mut final_duration = track.duration;
 
     for other_track in tracks_iter {
-        flow_delay += delay;
-        final_duration =
-            (flow_delay + other_track.duration).max(final_duration);
+        flow_delay = flow_delay.saturating_add(delay);
+        final_duration = flow_delay
+            .saturating_add(other_track.duration)
+            .max(final_duration);
 
         for (key, mut sequence) in other_track.sequences {
             sequence.delay(flow_delay);
@@ -216,9 +218,9 @@ impl TrackFragment {
         sequences.sort_by_key(|(key, _)| *key.field());
 
         // The combinators accumulate `duration` independently of the
-        // clip offsets, so pin the two together here: the playhead
-        // clamp in `Timeline::set_target_time` must be able to reach
-        // the end of the last clip.
+        // clip offsets, so pin them together here: the clamp in
+        // `Timeline::set_target_time` must be able to reach the last
+        // clip's end.
         let duration = sequences
             .iter()
             .map(|(_, seq)| seq.end())
@@ -526,6 +528,44 @@ mod tests {
         let track = fragment.compile();
 
         assert_eq!(track.duration(), ms(1000));
+    }
+
+    /// `IntoDuration` saturates absurd seconds to `Duration::MAX`, so
+    /// the arithmetic downstream has to saturate too, or the panic just
+    /// moves into `chain`, `flow`, or `ActionClip::end`.
+    ///
+    /// Distinct keys per fragment: saturated clips really do overlap,
+    /// and the non-overlap assert is right to say so. Only the duration
+    /// arithmetic is under test.
+    #[test]
+    fn saturated_durations_do_not_overflow_the_combinators() {
+        let huge = |path: &'static str| {
+            TrackFragment::single(
+                key(path),
+                ActionClip::new(
+                    ActionId::PLACEHOLDER,
+                    f32::INFINITY.into_duration(),
+                ),
+            )
+        };
+
+        assert_eq!(huge("a").duration, Duration::MAX);
+        assert_eq!(
+            [huge("a"), huge("b")].ord_chain().duration,
+            Duration::MAX
+        );
+        assert_eq!(
+            [huge("a"), huge("b")].ord_flow(1.0).duration,
+            Duration::MAX
+        );
+        assert_eq!(
+            [huge("a"), huge("b")].ord_all().duration,
+            Duration::MAX
+        );
+        assert_eq!(
+            delay(f32::MAX, huge("a")).duration,
+            Duration::MAX
+        );
     }
 
     #[test]

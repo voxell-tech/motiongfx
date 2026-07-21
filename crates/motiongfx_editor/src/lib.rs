@@ -450,7 +450,6 @@ fn update_playhead(
     let Some(timeline) = manager.get_timeline(&timeline_id) else {
         return;
     };
-    // The slider and playhead are both in seconds-as-pixels.
     let time = timeline.target_time().as_secs_f32();
 
     for mut node in &mut q_playhead {

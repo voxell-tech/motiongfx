@@ -38,12 +38,12 @@ impl Sequence {
     /// Get the duration of the sequence.
     #[inline]
     pub fn duration(&self) -> Duration {
-        self.end() - self.start()
+        self.end().saturating_sub(self.start())
     }
 
     pub(crate) fn delay(&mut self, duration: Duration) {
         for clip in self.clips.iter_mut() {
-            clip.start += duration;
+            clip.start = clip.start.saturating_add(duration);
         }
     }
 }
