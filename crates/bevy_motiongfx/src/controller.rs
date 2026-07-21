@@ -215,13 +215,18 @@ pub struct PassivePlayer {
 
 impl PassivePlayer {
     #[inline]
-    pub fn set_time(&mut self, time: impl IntoDuration) {
+    pub fn set_time(&mut self, time: impl IntoDuration) -> &mut Self {
         self.time = time.into_duration();
+        self
     }
 
     #[inline]
-    pub fn set_track_index(&mut self, track_index: usize) {
+    pub fn set_track_index(
+        &mut self,
+        track_index: usize,
+    ) -> &mut Self {
         self.track_index = track_index;
+        self
     }
 
     pub fn get_time(&self) -> Duration {
