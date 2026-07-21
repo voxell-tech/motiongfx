@@ -1,18 +1,17 @@
 //! Time conversion helpers.
 //!
 //! Motiongfx stores all timing as [`Duration`] so that the durations
-//! accumulated by the track combinators and the clip offsets
-//! accumulated by [`Sequence::delay`] can never disagree. Float seconds
-//! are not associative, so the two accumulations used to drift apart by
-//! a few ULPs, which tripped the non-overlap assertion in
-//! [`Sequence::push`] and left the playhead clamp just short of the
-//! final clip's end.
+//! accumulated by the track combinators and the clip offsets accumulated
+//! when delaying a [`Sequence`] can never disagree. Float seconds are not
+//! associative, so the two accumulations used to drift apart by a few
+//! ULPs, which tripped the non-overlap assertion when extending a
+//! sequence and left the playhead clamp just short of the final clip's
+//! end.
 //!
 //! Authoring in seconds is still the ergonomic default, hence
 //! [`IntoDuration`].
 //!
-//! [`Sequence::delay`]: crate::sequence::Sequence::delay
-//! [`Sequence::push`]: crate::sequence::Sequence::push
+//! [`Sequence`]: crate::sequence::Sequence
 
 use core::time::Duration;
 
