@@ -48,9 +48,6 @@ fn fixed_rate_player_update(
     {
         if let Some(timeline) = motiongfx.get_timeline_mut(id) {
             // Each frame we update the timeline according to the fps.
-            // Derive the time from the frame counter rather than
-            // accumulating, so recorded frame N always lands on the
-            // same timestamp.
             player.curr_frame += 1;
             timeline.set_target_time(player.frame_time());
         }
@@ -185,17 +182,18 @@ impl FixedRatePlayer {
 
     /// The exact timestamp of [`Self::curr_frame`].
     ///
-    /// Derived from the frame counter rather than accumulated, so a
-    /// given frame index always maps to the same instant no matter how
-    /// long the recording runs.
+    /// A given frame index always maps to the same instant no matter
+    /// how long the recording runs.
+    ///
+    /// Returns [`Duration::ZERO`] when [`Self::fps`] is zero.
     #[inline]
     #[must_use]
-    pub const fn frame_time(&self) -> Duration {
-        let fps = if self.fps == 0 { 1 } else { self.fps as u64 };
+    pub fn frame_time(&self) -> Duration {
+        if self.fps == 0 {
+            return Duration::ZERO;
+        }
 
-        Duration::from_nanos(
-            1_000_000_000u64.saturating_mul(self.curr_frame) / fps,
-        )
+        Duration::from_secs(self.curr_frame) / self.fps as u32
     }
 
     /// Setter method for setting [`Self::is_playing`].
@@ -208,6 +206,7 @@ impl FixedRatePlayer {
         self
     }
 }
+
 #[derive(Default, Component)]
 pub struct PassivePlayer {
     time: Duration,
@@ -231,5 +230,62 @@ impl PassivePlayer {
 
     pub fn get_track(&self) -> usize {
         self.track_index
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn at(fps: u16, frame: u64) -> Duration {
+        FixedRatePlayer {
+            fps,
+            curr_frame: frame,
+            is_playing: false,
+        }
+        .frame_time()
+    }
+
+    #[test]
+    fn frame_time_is_exact_where_the_rate_divides() {
+        assert_eq!(at(30, 0), Duration::ZERO);
+        assert_eq!(at(30, 30), Duration::from_secs(1));
+        assert_eq!(at(30, 3), Duration::from_millis(100));
+        assert_eq!(at(25, 1), Duration::from_millis(40));
+        assert_eq!(at(60, 90), Duration::from_millis(1500));
+    }
+
+    /// The whole point of deriving from the counter: no accumulated
+    /// error, so a long render lands on exact second boundaries.
+    #[test]
+    fn frame_time_does_not_drift_over_a_long_render() {
+        // 30 minutes at 30fps.
+        assert_eq!(at(30, 54_000), Duration::from_secs(1800));
+        // Well past where the old nanosecond-based form overflowed.
+        assert_eq!(
+            at(30, 30_000_000_000),
+            Duration::from_secs(1_000_000_000)
+        );
+    }
+
+    /// 1/3s is not representable in nanoseconds, so consecutive
+    /// frames differ by a nanosecond. The error must not compound.
+    #[test]
+    fn frame_time_stays_within_a_nanosecond_of_ideal() {
+        for frame in [1u64, 2, 1_000, 999_999] {
+            let ideal = Duration::from_nanos(
+                (frame as u128 * 1_000_000_000 / 3) as u64,
+            );
+
+            assert_eq!(at(3, frame).abs_diff(ideal), Duration::ZERO);
+        }
+    }
+
+    /// A rate of zero frames per second advances no time, rather than
+    /// dividing by zero or standing in some invented rate.
+    #[test]
+    fn zero_fps_yields_zero() {
+        assert_eq!(at(0, 0), Duration::ZERO);
+        assert_eq!(at(0, 5), Duration::ZERO);
     }
 }
