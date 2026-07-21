@@ -7,9 +7,8 @@
 [![CI](https://github.com/voxell-tech/motiongfx/workflows/CI/badge.svg)](https://github.com/voxell-tech/motiongfx/actions)
 [![Discord](https://img.shields.io/discord/442334985471655946.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/Mhnyp6VYEQ)
 
-**MotionGfx** is a backend-agnostic motion graphics framework
-built on top of [Bevy](https://bevyengine.org) ECS. It provides a
-modular foundation for procedural animations.
+**MotionGfx** is a backend-agnostic motion graphics framework. It
+provides a modular foundation for procedural animations.
 
 ## Key Features
 
@@ -17,7 +16,8 @@ modular foundation for procedural animations.
 - **Procedural**: Write animations with code - loops, functions,
   logic.
 - **Type-erased**: Powered by
-  [Field Path](https://github.com/voxell-tech/field_path), allowing
+  [Field Path](https://github.com/voxell-tech/field_path) &
+  [Typarena](https://github.com/voxell-tech/typarena), allowing
   runtime-flexible animation of arbitrary data.
 - **Two-way playback**: Play animations both forward and backward with
   no extra computation.
