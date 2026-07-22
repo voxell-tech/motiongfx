@@ -246,7 +246,7 @@ impl PassivePlayer {
 
 #[cfg(test)]
 mod tests {
-    use motiongfx::time::{ms, ns, s};
+    use motiongfx::time::{cs, ns, s};
 
     use super::*;
 
@@ -263,9 +263,9 @@ mod tests {
     fn frame_time_is_exact_where_the_rate_divides() {
         assert_eq!(at(30, 0), Duration::ZERO);
         assert_eq!(at(30, 30), s(1));
-        assert_eq!(at(30, 3), ms(100));
-        assert_eq!(at(25, 1), ms(40));
-        assert_eq!(at(60, 90), ms(1500));
+        assert_eq!(at(30, 3), cs(10));
+        assert_eq!(at(25, 1), cs(4));
+        assert_eq!(at(60, 90), cs(150));
     }
 
     /// The whole point of deriving from the counter: no accumulated

@@ -189,25 +189,25 @@ pub enum SampleMode {
 
 #[cfg(test)]
 mod tests {
-    use crate::time::{ms, s};
+    use crate::time::{cs, s};
 
     use super::*;
 
-    const fn clip(start: u64, duration: u64) -> ActionClip {
+    const fn clip(start: Duration, duration: Duration) -> ActionClip {
         ActionClip {
             id: ActionId::PLACEHOLDER,
-            start: ms(start),
-            duration: ms(duration),
+            start,
+            duration,
         }
     }
 
     #[test]
     fn progress_spans_the_clip() {
-        let clip = clip(1000, 2000);
+        let clip = clip(cs(100), cs(200));
 
-        assert_eq!(clip.progress(ms(1000)), 0.0);
-        assert_eq!(clip.progress(ms(2000)), 0.5);
-        assert_eq!(clip.progress(ms(3000)), 1.0);
+        assert_eq!(clip.progress(cs(100)), 0.0);
+        assert_eq!(clip.progress(cs(200)), 0.5);
+        assert_eq!(clip.progress(cs(300)), 1.0);
     }
 
     /// `end()` runs on every queue pass, so a saturated duration must
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn progress_clamps_outside_the_clip() {
-        let clip = clip(1000, 2000);
+        let clip = clip(cs(100), cs(200));
 
         assert_eq!(clip.progress(Duration::ZERO), 0.0);
         assert_eq!(clip.progress(s(60)), 1.0);
@@ -234,7 +234,7 @@ mod tests {
     /// A `NaN` here would poison the interpolated value.
     #[test]
     fn zero_duration_clip_reports_completion() {
-        let t = clip(1000, 0).progress(ms(1000));
+        let t = clip(cs(100), Duration::ZERO).progress(cs(100));
 
         assert!(!t.is_nan());
         assert_eq!(t, 1.0);

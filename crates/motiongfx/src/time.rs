@@ -57,6 +57,13 @@ pub const fn s(secs: u64) -> Duration {
     Duration::from_secs(secs)
 }
 
+/// Whole centiseconds (hundredths of a second) as a [`Duration`].
+#[inline]
+#[must_use]
+pub const fn cs(centis: u64) -> Duration {
+    Duration::from_millis(centis.saturating_mul(10))
+}
+
 /// Whole milliseconds as a [`Duration`].
 #[inline]
 #[must_use]
@@ -78,7 +85,9 @@ mod tests {
     #[test]
     fn unit_helpers_agree_with_duration_constructors() {
         assert_eq!(s(2), ms(2_000));
+        assert_eq!(cs(150), ms(1_500));
         assert_eq!(ms(1), ns(1_000_000));
+        assert_eq!(cs(u64::MAX), Duration::from_millis(u64::MAX));
     }
 
     /// Floats here are the subject under test, not a time literal.
