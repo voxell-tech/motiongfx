@@ -1,5 +1,6 @@
 use core::any::TypeId;
 use core::marker::PhantomData;
+use core::time::Duration;
 
 use field_path::field::UntypedField;
 use typarena::ColumnId;
@@ -16,7 +17,6 @@ use super::{
 use crate::ThreadSafe;
 use crate::resources::Resources;
 use crate::subject::SubjectId;
-use crate::time::IntoDuration;
 use crate::track::TrackFragment;
 
 /// Phantom marker distinguishing [`ActionId`]'s [`GenId`] domain from
@@ -233,10 +233,10 @@ impl<T> InterpActionBuilder<'_, T> {
 
     /// Confirms the configuration of the action and creates a
     /// [`TrackFragment`].
-    pub fn play(self, duration: impl IntoDuration) -> TrackFragment {
+    pub fn play(self, duration: Duration) -> TrackFragment {
         TrackFragment::single(
             self.inner.key,
-            ActionClip::new(self.id(), duration.into_duration()),
+            ActionClip::new(self.id(), duration),
         )
     }
 }

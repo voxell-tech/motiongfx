@@ -16,7 +16,6 @@ use crate::interpolation::Interpolation;
 use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
-use crate::time::IntoDuration;
 use crate::track::Track;
 use crate::world::SubjectSource;
 
@@ -345,21 +344,17 @@ impl<W> Timeline<W> {
     /// within \[0.0..=track.duration\]
     pub fn set_target_time(
         &mut self,
-        target_time: impl IntoDuration,
+        target_time: Duration,
     ) -> &mut Self {
         let duration = self.tracks[self.target_index].duration();
 
-        self.target_time = target_time.into_duration().min(duration);
+        self.target_time = target_time.min(duration);
         self
     }
 
     /// Steps forward, clamping at the track's end.
-    pub fn advance_time(
-        &mut self,
-        time: impl IntoDuration,
-    ) -> &mut Self {
-        let target_time =
-            self.target_time.saturating_add(time.into_duration());
+    pub fn advance_time(&mut self, time: Duration) -> &mut Self {
+        let target_time = self.target_time.saturating_add(time);
 
         self.set_target_time(target_time)
     }
@@ -367,12 +362,8 @@ impl<W> Timeline<W> {
     /// Steps backward, saturating at [`Duration::ZERO`].
     ///
     /// [`Duration`] carries no sign, hence a separate method.
-    pub fn rewind_time(
-        &mut self,
-        time: impl IntoDuration,
-    ) -> &mut Self {
-        let target_time =
-            self.target_time.saturating_sub(time.into_duration());
+    pub fn rewind_time(&mut self, time: Duration) -> &mut Self {
+        let target_time = self.target_time.saturating_sub(time);
 
         self.set_target_time(target_time)
     }

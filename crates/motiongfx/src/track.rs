@@ -7,14 +7,13 @@ use hashbrown::HashMap;
 
 use crate::action::{ActionClip, ActionKey};
 use crate::sequence::Sequence;
-use crate::time::IntoDuration;
 
 pub trait TrackOrdering {
     /// Run all [`TrackFragment`]s one after another.
     fn ord_chain(self) -> TrackFragment;
     fn ord_all(self) -> TrackFragment;
     fn ord_any(self) -> TrackFragment;
-    fn ord_flow(self, delay: impl IntoDuration) -> TrackFragment;
+    fn ord_flow(self, delay: Duration) -> TrackFragment;
 }
 
 impl<T> TrackOrdering for T
@@ -33,7 +32,7 @@ where
         any(self)
     }
 
-    fn ord_flow(self, delay: impl IntoDuration) -> TrackFragment {
+    fn ord_flow(self, delay: Duration) -> TrackFragment {
         flow(delay, self)
     }
 }
@@ -110,10 +109,9 @@ pub fn any(
 /// Run one [`Track`] after another with a fixed delay time.
 #[must_use = "This function consumes all the given tracks and returns a modified one."]
 pub fn flow(
-    delay: impl IntoDuration,
+    delay: Duration,
     tracks: impl IntoIterator<Item = TrackFragment>,
 ) -> TrackFragment {
-    let delay = delay.into_duration();
     let mut tracks_iter = tracks.into_iter();
     let mut track = tracks_iter.next().unwrap_or_default();
 
@@ -139,11 +137,9 @@ pub fn flow(
 /// Run a [`Track`] after a fixed delay time.
 #[must_use = "This function consumes the given track and returns a modified one."]
 pub fn delay(
-    delay: impl IntoDuration,
+    delay: Duration,
     mut track: TrackFragment,
 ) -> TrackFragment {
-    let delay = delay.into_duration();
-
     for sequence in track.sequences.values_mut() {
         sequence.delay(delay);
     }
@@ -526,9 +522,8 @@ mod tests {
         assert_eq!(track.duration(), cs(100));
     }
 
-    /// `IntoDuration` saturates absurd seconds to `Duration::MAX`, so
-    /// the arithmetic downstream has to saturate too, or the panic just
-    /// moves into `chain`, `flow`, or `ActionClip::end`.
+    /// Combinator arithmetic has to saturate, or a `Duration::MAX`
+    /// duration panics inside `chain`, `flow`, or `ActionClip::end`.
     ///
     /// Distinct keys per fragment: saturated clips really do overlap,
     /// and the non-overlap assert is right to say so. Only the duration
@@ -538,10 +533,7 @@ mod tests {
         let huge = |path: &'static str| {
             TrackFragment::single(
                 key(path),
-                ActionClip::new(
-                    ActionId::PLACEHOLDER,
-                    f32::INFINITY.into_duration(),
-                ),
+                ActionClip::new(ActionId::PLACEHOLDER, Duration::MAX),
             )
         };
 
@@ -559,7 +551,7 @@ mod tests {
             Duration::MAX
         );
         assert_eq!(
-            delay(f32::MAX, huge("a")).duration,
+            delay(Duration::MAX, huge("a")).duration,
             Duration::MAX
         );
     }

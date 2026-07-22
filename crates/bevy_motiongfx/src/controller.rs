@@ -3,7 +3,6 @@ use core::time::Duration;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_time::prelude::*;
-use motiongfx::time::IntoDuration;
 
 use crate::MotionGfxSystems;
 use crate::manager::{MotionGfxManager, TimelineId};
@@ -221,8 +220,8 @@ pub struct PassivePlayer {
 
 impl PassivePlayer {
     #[inline]
-    pub fn set_time(&mut self, time: impl IntoDuration) -> &mut Self {
-        self.time = time.into_duration();
+    pub fn set_time(&mut self, time: Duration) -> &mut Self {
+        self.time = time;
         self
     }
 

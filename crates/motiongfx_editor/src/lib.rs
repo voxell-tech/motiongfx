@@ -402,7 +402,8 @@ fn on_scrub(
 
     if let Some(timeline) = manager.get_timeline_mut(&timeline_id) {
         timeline.set_target_track(0);
-        timeline.set_target_time(change.value);
+        timeline
+            .set_target_time(Duration::from_secs_f32(change.value));
     }
 }
 
@@ -430,7 +431,7 @@ fn on_play_pause(
         && timeline.target_time().as_secs_f32() >= state.duration
     {
         timeline.set_target_track(0);
-        timeline.set_target_time(0.0);
+        timeline.set_target_time(Duration::ZERO);
     }
 }
 
