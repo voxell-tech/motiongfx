@@ -144,6 +144,7 @@ pub fn delay(
         sequence.delay(delay);
     }
 
+    track.duration = track.duration.saturating_add(delay);
     track
 }
 
@@ -487,7 +488,25 @@ mod tests {
 
         assert_eq!(seq_a.start(), cs(150));
         assert_eq!(seq_a.end(), cs(350));
-        assert_eq!(track.duration, cs(200));
+        // The delay is part of the fragment's span.
+        assert_eq!(track.duration, cs(350));
+    }
+
+    /// `delay` shifts every clip but must widen `duration` to match,
+    /// or a combinator consuming the fragment places the next clips
+    /// using the understated span and overlaps the delayed ones.
+    #[test]
+    fn delayed_fragment_chains_without_overlapping() {
+        let delayed = delay(
+            cs(150),
+            TrackFragment::single(key("a"), clip(200)),
+        );
+        let track =
+            [delayed, TrackFragment::single(key("a"), clip(100))]
+                .ord_chain();
+
+        assert_eq!(track.duration, cs(450));
+        assert_eq!(track.sequences[&key("a")].end(), cs(450));
     }
 
     /// Chaining durations that have no exact `f32` representation used
