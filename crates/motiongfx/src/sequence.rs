@@ -1,3 +1,5 @@
+use core::time::Duration;
+
 use nonempty::NonEmpty;
 
 use crate::action::ActionClip;
@@ -23,25 +25,25 @@ impl Sequence {
 
     /// Get the start time of the sequence.
     #[inline]
-    pub fn start(&self) -> f32 {
+    pub fn start(&self) -> Duration {
         self.clips.first().start
     }
 
     /// Get the end time of the sequence.
     #[inline]
-    pub fn end(&self) -> f32 {
+    pub fn end(&self) -> Duration {
         self.clips.last().end()
     }
 
     /// Get the duration of the sequence.
     #[inline]
-    pub fn duration(&self) -> f32 {
-        self.end() - self.start()
+    pub fn duration(&self) -> Duration {
+        self.end().saturating_sub(self.start())
     }
 
-    pub(crate) fn delay(&mut self, duration: f32) {
+    pub(crate) fn delay(&mut self, duration: Duration) {
         for clip in self.clips.iter_mut() {
-            clip.start += duration;
+            clip.start = clip.start.saturating_add(duration);
         }
     }
 }
@@ -51,7 +53,7 @@ impl Sequence {
     pub fn push(&mut self, span: ActionClip) {
         debug_assert!(
             span.start >= self.end(),
-            "({} >= {}) `ActionClip`s shouldn't overlap!",
+            "({:?} >= {:?}) `ActionClip`s shouldn't overlap!",
             span.start,
             self.end(),
         );
@@ -73,7 +75,7 @@ impl Extend<ActionClip> for Sequence {
             iter.into_iter().inspect(|clip| {
                 debug_assert!(
                     clip.start >= end,
-                    "({} >= {}) `ActionClip`s shouldn't overlap!",
+                    "({:?} >= {:?}) `ActionClip`s shouldn't overlap!",
                     clip.start,
                     end,
                 );

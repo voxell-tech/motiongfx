@@ -1,5 +1,6 @@
 use core::any::TypeId;
 use core::marker::PhantomData;
+use core::time::Duration;
 
 use field_path::field::UntypedField;
 use typarena::ColumnId;
@@ -232,7 +233,7 @@ impl<T> InterpActionBuilder<'_, T> {
 
     /// Confirms the configuration of the action and creates a
     /// [`TrackFragment`].
-    pub fn play(self, duration: f32) -> TrackFragment {
+    pub fn play(self, duration: Duration) -> TrackFragment {
         TrackFragment::single(
             self.inner.key,
             ActionClip::new(self.id(), duration),

@@ -1,3 +1,5 @@
+use core::time::Duration;
+
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_time::prelude::*;
@@ -30,10 +32,14 @@ fn realtime_player_update(
         q_timelines.iter().filter(|(_, p)| p.is_playing)
     {
         if let Some(timeline) = motiongfx.get_timeline_mut(id) {
-            let target_time = timeline.target_time()
-                + player.time_scale * time.delta_secs();
+            // Magnitude sets the step, sign picks the direction.
+            let delta = time.delta().mul_f64(player.time_scale.abs());
 
-            timeline.set_target_time(target_time);
+            if player.time_scale > 0.0 {
+                timeline.advance_time(delta);
+            } else if player.time_scale < 0.0 {
+                timeline.rewind_time(delta);
+            }
         }
     }
 }
@@ -47,11 +53,8 @@ fn fixed_rate_player_update(
     {
         if let Some(timeline) = motiongfx.get_timeline_mut(id) {
             // Each frame we update the timeline according to the fps.
-            let target_time =
-                timeline.target_time() + player.delta_secs();
-
-            timeline.set_target_time(target_time);
             player.curr_frame += 1;
+            timeline.set_target_time(player.frame_time());
         }
     }
 }
@@ -83,7 +86,7 @@ pub struct RealtimePlayer {
     pub is_playing: bool,
     /// The time scale of the player. Set this to negative
     /// to play backwards.
-    pub time_scale: f32,
+    pub time_scale: f64,
 }
 
 impl RealtimePlayer {
@@ -107,7 +110,7 @@ impl RealtimePlayer {
     /// Builder method for setting [`Self::time_scale`].
     #[inline]
     #[must_use]
-    pub const fn with_time_scale(mut self, time_scale: f32) -> Self {
+    pub const fn with_time_scale(mut self, time_scale: f64) -> Self {
         self.time_scale = time_scale;
         self
     }
@@ -123,7 +126,7 @@ impl RealtimePlayer {
     #[inline]
     pub const fn set_time_scale(
         &mut self,
-        time_scale: f32,
+        time_scale: f64,
     ) -> &mut Self {
         self.time_scale = time_scale;
         self
@@ -182,6 +185,22 @@ impl FixedRatePlayer {
         1.0 / self.fps as f32
     }
 
+    /// The exact timestamp of [`Self::curr_frame`].
+    ///
+    /// A given frame index always maps to the same instant no matter
+    /// how long the recording runs.
+    ///
+    /// Returns [`Duration::ZERO`] when [`Self::fps`] is zero.
+    #[inline]
+    #[must_use]
+    pub fn frame_time(&self) -> Duration {
+        if self.fps == 0 {
+            return Duration::ZERO;
+        }
+
+        Duration::from_secs(self.curr_frame) / self.fps as u32
+    }
+
     /// Setter method for setting [`Self::is_playing`].
     #[inline]
     pub const fn set_playing(
@@ -192,28 +211,89 @@ impl FixedRatePlayer {
         self
     }
 }
+
 #[derive(Default, Component)]
 pub struct PassivePlayer {
-    time: f32,
+    time: Duration,
     track_index: usize,
 }
 
 impl PassivePlayer {
     #[inline]
-    pub fn set_time(&mut self, time: f32) {
+    pub fn set_time(&mut self, time: Duration) -> &mut Self {
         self.time = time;
+        self
     }
 
     #[inline]
-    pub fn set_track_index(&mut self, track_index: usize) {
+    pub fn set_track_index(
+        &mut self,
+        track_index: usize,
+    ) -> &mut Self {
         self.track_index = track_index;
+        self
     }
 
-    pub fn get_time(&self) -> f32 {
+    pub fn get_time(&self) -> Duration {
         self.time
     }
 
     pub fn get_track(&self) -> usize {
         self.track_index
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use motiongfx::time::{cs, ns, s};
+
+    use super::*;
+
+    fn at(fps: u16, frame: u64) -> Duration {
+        FixedRatePlayer {
+            fps,
+            curr_frame: frame,
+            is_playing: false,
+        }
+        .frame_time()
+    }
+
+    #[test]
+    fn frame_time_is_exact_where_the_rate_divides() {
+        assert_eq!(at(30, 0), Duration::ZERO);
+        assert_eq!(at(30, 30), s(1));
+        assert_eq!(at(30, 3), cs(10));
+        assert_eq!(at(25, 1), cs(4));
+        assert_eq!(at(60, 90), cs(150));
+    }
+
+    /// The whole point of deriving from the counter: no accumulated
+    /// error, so a long render lands on exact second boundaries.
+    #[test]
+    fn frame_time_does_not_drift_over_a_long_render() {
+        // 30 minutes at 30fps.
+        assert_eq!(at(30, 54_000), s(1800));
+        // Well past where the old nanosecond-based form overflowed.
+        assert_eq!(at(30, 30_000_000_000), s(1_000_000_000));
+    }
+
+    /// 1/3s is not representable in nanoseconds, so consecutive
+    /// frames differ by a nanosecond. The error must not compound.
+    #[test]
+    fn frame_time_stays_within_a_nanosecond_of_ideal() {
+        for frame in [1u64, 2, 1_000, 999_999] {
+            let ideal =
+                ns((frame as u128 * 1_000_000_000 / 3) as u64);
+
+            assert_eq!(at(3, frame).abs_diff(ideal), Duration::ZERO);
+        }
+    }
+
+    /// A rate of zero frames per second advances no time, rather than
+    /// dividing by zero or standing in some invented rate.
+    #[test]
+    fn zero_fps_yields_zero() {
+        assert_eq!(at(0, 0), Duration::ZERO);
+        assert_eq!(at(0, 5), Duration::ZERO);
     }
 }

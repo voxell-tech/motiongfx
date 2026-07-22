@@ -59,10 +59,10 @@ fn spawn_timeline(
         .map(|&cube| {
             b.act(cube, path!(<Transform>::scale), |_| Vec3::ONE)
                 .with_ease(ease::back::ease_out)
-                .play(0.6)
+                .play(cs(60))
         })
         .collect::<Vec<_>>()
-        .ord_flow(0.15);
+        .ord_flow(cs(15));
 
     let spin = cubes
         .iter()
@@ -71,10 +71,10 @@ fn spawn_timeline(
                 Quat::from_rotation_y(std::f32::consts::PI)
             })
             .with_ease(ease::cubic::ease_in_out)
-            .play(1.0)
+            .play(s(1))
         })
         .collect::<Vec<_>>()
-        .ord_flow(0.1);
+        .ord_flow(cs(10));
 
     let track = [grow, spin].ord_chain().compile();
     b.add_tracks(track);
