@@ -16,7 +16,7 @@ use crate::interpolation::Interpolation;
 use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
-use crate::time::{self, IntoDuration};
+use crate::time::IntoDuration;
 use crate::track::Track;
 use crate::world::SubjectSource;
 
@@ -353,14 +353,26 @@ impl<W> Timeline<W> {
         self
     }
 
-    /// Steps the target time by `delta` seconds, saturating at both
-    /// ends of the target track.
+    /// Steps forward, clamping at the track's end.
+    pub fn advance_time(
+        &mut self,
+        time: impl IntoDuration,
+    ) -> &mut Self {
+        let target_time =
+            self.target_time.saturating_add(time.into_duration());
+
+        self.set_target_time(target_time)
+    }
+
+    /// Steps backward, saturating at [`Duration::ZERO`].
     ///
-    /// Prefer this over adding to [`Self::target_time`]: a [`Duration`]
-    /// cannot go negative, so `delta < 0.0` needs saturating
-    /// arithmetic.
-    pub fn advance_secs(&mut self, delta: f32) -> &mut Self {
-        let target_time = time::offset_secs(self.target_time, delta);
+    /// [`Duration`] carries no sign, hence a separate method.
+    pub fn rewind_time(
+        &mut self,
+        time: impl IntoDuration,
+    ) -> &mut Self {
+        let target_time =
+            self.target_time.saturating_sub(time.into_duration());
 
         self.set_target_time(target_time)
     }

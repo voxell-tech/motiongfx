@@ -12,12 +12,12 @@ pub fn timeline_movement(
             if keys.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight])
             {
                 player.set_playing(false);
-                timeline.advance_secs(time.delta_secs());
+                timeline.advance_time(time.delta());
             }
 
             if keys.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
                 player.set_playing(false);
-                timeline.advance_secs(-time.delta_secs());
+                timeline.rewind_time(time.delta());
             }
 
             if keys.just_pressed(KeyCode::Space) {

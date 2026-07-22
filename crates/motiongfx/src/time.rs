@@ -71,24 +71,6 @@ pub const fn ns(nanos: u64) -> Duration {
     Duration::from_nanos(nanos)
 }
 
-/// Offsets `time` by `delta` seconds, saturating at [`Duration::ZERO`].
-///
-/// [`Duration`] has no signed representation, so stepping a playhead
-/// backwards has to go through this rather than a plain `+`.
-///
-/// Only as precise as `delta` itself: `0.05f32` is really
-/// `0.05000000074505806`, so it lands a nanosecond off. That is inherent
-/// to a float clock, not the drift this module prevents. Clip and track
-/// boundaries stay exact, so the error does not accumulate.
-#[inline]
-pub fn offset_secs(time: Duration, delta: f32) -> Duration {
-    if delta >= 0.0 {
-        time.saturating_add(delta.into_duration())
-    } else {
-        time.saturating_sub((-delta).into_duration())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,28 +89,5 @@ mod tests {
         assert_eq!(f32::NEG_INFINITY.into_duration(), Duration::ZERO);
         assert_eq!(f32::MAX.into_duration(), Duration::MAX);
         assert_eq!(f32::INFINITY.into_duration(), Duration::MAX);
-    }
-
-    /// `delta` is `f32` seconds, so exact equality is not assertable.
-    #[track_caller]
-    fn assert_near(actual: Duration, expected: Duration) {
-        let diff = actual.abs_diff(expected);
-
-        assert!(
-            diff < ns(1_000),
-            "{actual:?} is not within 1us of {expected:?}",
-        );
-    }
-
-    #[test]
-    fn offset_secs_steps_both_ways() {
-        assert_near(offset_secs(ms(100), -0.05), ms(50));
-        assert_near(offset_secs(ms(100), 0.05), ms(150));
-    }
-
-    #[test]
-    fn offset_secs_saturates_at_zero() {
-        assert_eq!(offset_secs(ms(100), -10.0), Duration::ZERO);
-        assert_eq!(offset_secs(Duration::ZERO, -1.0), Duration::ZERO);
     }
 }

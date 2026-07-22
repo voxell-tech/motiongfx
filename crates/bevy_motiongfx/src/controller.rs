@@ -33,8 +33,14 @@ fn realtime_player_update(
         q_timelines.iter().filter(|(_, p)| p.is_playing)
     {
         if let Some(timeline) = motiongfx.get_timeline_mut(id) {
-            timeline
-                .advance_secs(player.time_scale * time.delta_secs());
+            // Magnitude sets the step, sign picks the direction.
+            let delta = time.delta().mul_f64(player.time_scale.abs());
+
+            if player.time_scale > 0.0 {
+                timeline.advance_time(delta);
+            } else if player.time_scale < 0.0 {
+                timeline.rewind_time(delta);
+            }
         }
     }
 }
@@ -81,7 +87,7 @@ pub struct RealtimePlayer {
     pub is_playing: bool,
     /// The time scale of the player. Set this to negative
     /// to play backwards.
-    pub time_scale: f32,
+    pub time_scale: f64,
 }
 
 impl RealtimePlayer {
@@ -105,7 +111,7 @@ impl RealtimePlayer {
     /// Builder method for setting [`Self::time_scale`].
     #[inline]
     #[must_use]
-    pub const fn with_time_scale(mut self, time_scale: f32) -> Self {
+    pub const fn with_time_scale(mut self, time_scale: f64) -> Self {
         self.time_scale = time_scale;
         self
     }
@@ -121,7 +127,7 @@ impl RealtimePlayer {
     #[inline]
     pub const fn set_time_scale(
         &mut self,
-        time_scale: f32,
+        time_scale: f64,
     ) -> &mut Self {
         self.time_scale = time_scale;
         self
