@@ -33,7 +33,11 @@ impl IntoDuration for Duration {
 impl IntoDuration for f32 {
     #[inline]
     fn into_duration(self) -> Duration {
-        (self as f64).into_duration()
+        if self.is_nan() || self <= 0.0 {
+            return Duration::ZERO;
+        }
+
+        Duration::try_from_secs_f32(self).unwrap_or(Duration::MAX)
     }
 }
 
