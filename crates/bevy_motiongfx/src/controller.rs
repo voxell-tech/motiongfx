@@ -240,6 +240,8 @@ impl PassivePlayer {
 
 #[cfg(test)]
 mod tests {
+    use motiongfx::time::{ms, ns, s};
+
     use super::*;
 
     fn at(fps: u16, frame: u64) -> Duration {
@@ -254,10 +256,10 @@ mod tests {
     #[test]
     fn frame_time_is_exact_where_the_rate_divides() {
         assert_eq!(at(30, 0), Duration::ZERO);
-        assert_eq!(at(30, 30), Duration::from_secs(1));
-        assert_eq!(at(30, 3), Duration::from_millis(100));
-        assert_eq!(at(25, 1), Duration::from_millis(40));
-        assert_eq!(at(60, 90), Duration::from_millis(1500));
+        assert_eq!(at(30, 30), s(1));
+        assert_eq!(at(30, 3), ms(100));
+        assert_eq!(at(25, 1), ms(40));
+        assert_eq!(at(60, 90), ms(1500));
     }
 
     /// The whole point of deriving from the counter: no accumulated
@@ -265,12 +267,9 @@ mod tests {
     #[test]
     fn frame_time_does_not_drift_over_a_long_render() {
         // 30 minutes at 30fps.
-        assert_eq!(at(30, 54_000), Duration::from_secs(1800));
+        assert_eq!(at(30, 54_000), s(1800));
         // Well past where the old nanosecond-based form overflowed.
-        assert_eq!(
-            at(30, 30_000_000_000),
-            Duration::from_secs(1_000_000_000)
-        );
+        assert_eq!(at(30, 30_000_000_000), s(1_000_000_000));
     }
 
     /// 1/3s is not representable in nanoseconds, so consecutive
@@ -278,9 +277,8 @@ mod tests {
     #[test]
     fn frame_time_stays_within_a_nanosecond_of_ideal() {
         for frame in [1u64, 2, 1_000, 999_999] {
-            let ideal = Duration::from_nanos(
-                (frame as u128 * 1_000_000_000 / 3) as u64,
-            );
+            let ideal =
+                ns((frame as u128 * 1_000_000_000 / 3) as u64);
 
             assert_eq!(at(3, frame).abs_diff(ideal), Duration::ZERO);
         }

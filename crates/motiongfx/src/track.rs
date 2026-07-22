@@ -380,6 +380,7 @@ pub struct Span {
 #[cfg(test)]
 mod tests {
     use crate::action::{ActionId, IdRegistry, UntypedSubjectId};
+    use crate::time::{ms, s};
 
     use super::*;
 
@@ -393,10 +394,6 @@ mod tests {
             UntypedSubjectId::PLACEHOLDER,
             UntypedField::placeholder_with_path(path),
         )
-    }
-
-    const fn ms(millis: u64) -> Duration {
-        Duration::from_millis(millis)
     }
 
     const fn clip(millis: u64) -> ActionClip {
@@ -476,7 +473,7 @@ mod tests {
         let track1 = TrackFragment::single(key("a"), clip(1000));
         let track2 = TrackFragment::single(key("b"), clip(1000));
 
-        let track = [track1, track2].ord_flow(0.5);
+        let track = [track1, track2].ord_flow(ms(500));
 
         // 0.5 delay + 1.0 duration
         assert_eq!(track.duration, ms(1500));
@@ -489,7 +486,7 @@ mod tests {
     fn delay_applies_offset() {
         let track = TrackFragment::single(key("a"), clip(2000));
 
-        let track = delay(1.5, track);
+        let track = delay(ms(1500), track);
         let seq_a = &track.sequences[&key("a")];
 
         assert_eq!(seq_a.start(), ms(1500));
@@ -555,7 +552,7 @@ mod tests {
             Duration::MAX
         );
         assert_eq!(
-            [huge("a"), huge("b")].ord_flow(1.0).duration,
+            [huge("a"), huge("b")].ord_flow(s(1)).duration,
             Duration::MAX
         );
         assert_eq!(

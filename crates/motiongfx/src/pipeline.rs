@@ -322,6 +322,7 @@ impl Range {
 #[cfg(test)]
 mod tests {
     use crate::interpolation::Interpolation;
+    use crate::time::s;
 
     use super::*;
 
@@ -442,23 +443,21 @@ mod tests {
 
     #[test]
     fn range_overlap_behavior() {
-        let secs = Duration::from_secs;
-
         let a = Range {
-            start: secs(0),
-            end: secs(5),
+            start: s(0),
+            end: s(5),
         };
         let b = Range {
-            start: secs(3),
-            end: secs(8),
+            start: s(3),
+            end: s(8),
         };
         let c = Range {
-            start: secs(6),
-            end: secs(10),
+            start: s(6),
+            end: s(10),
         };
         let d = Range {
-            start: secs(5),
-            end: secs(5),
+            start: s(5),
+            end: s(5),
         }; // touching boundary
 
         assert!(

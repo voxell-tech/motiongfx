@@ -50,6 +50,27 @@ impl IntoDuration for f64 {
     }
 }
 
+/// Whole seconds as a [`Duration`].
+#[inline]
+#[must_use]
+pub const fn s(secs: u64) -> Duration {
+    Duration::from_secs(secs)
+}
+
+/// Whole milliseconds as a [`Duration`].
+#[inline]
+#[must_use]
+pub const fn ms(millis: u64) -> Duration {
+    Duration::from_millis(millis)
+}
+
+/// Whole nanoseconds as a [`Duration`].
+#[inline]
+#[must_use]
+pub const fn ns(nanos: u64) -> Duration {
+    Duration::from_nanos(nanos)
+}
+
 /// Offsets `time` by `delta` seconds, saturating at [`Duration::ZERO`].
 ///
 /// [`Duration`] has no signed representation, so stepping a playhead
@@ -73,6 +94,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn unit_helpers_agree_with_duration_constructors() {
+        assert_eq!(s(2), ms(2_000));
+        assert_eq!(ms(1), ns(1_000_000));
+    }
+
+    /// Floats here are the subject under test, not a time literal.
+    #[test]
     fn unrepresentable_seconds_saturate_instead_of_panicking() {
         assert_eq!((-1.0f32).into_duration(), Duration::ZERO);
         assert_eq!(f32::NAN.into_duration(), Duration::ZERO);
@@ -87,30 +115,20 @@ mod tests {
         let diff = actual.abs_diff(expected);
 
         assert!(
-            diff < Duration::from_micros(1),
+            diff < ns(1_000),
             "{actual:?} is not within 1us of {expected:?}",
         );
     }
 
     #[test]
     fn offset_secs_steps_both_ways() {
-        let time = Duration::from_millis(100);
-
-        assert_near(
-            offset_secs(time, -0.05),
-            Duration::from_millis(50),
-        );
-        assert_near(
-            offset_secs(time, 0.05),
-            Duration::from_millis(150),
-        );
+        assert_near(offset_secs(ms(100), -0.05), ms(50));
+        assert_near(offset_secs(ms(100), 0.05), ms(150));
     }
 
     #[test]
     fn offset_secs_saturates_at_zero() {
-        let time = Duration::from_millis(100);
-
-        assert_eq!(offset_secs(time, -10.0), Duration::ZERO);
+        assert_eq!(offset_secs(ms(100), -10.0), Duration::ZERO);
         assert_eq!(offset_secs(Duration::ZERO, -1.0), Duration::ZERO);
     }
 }
