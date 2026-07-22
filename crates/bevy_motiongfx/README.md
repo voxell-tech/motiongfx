@@ -53,7 +53,7 @@ fn build_timeline(
         .act(entity, path!(<Transform>::translation::x), |x| {
             x + 6.0
         })
-        .play(1.0)
+        .play(s(1))
         .compile();
 
     b.add_tracks(track);
@@ -90,7 +90,7 @@ fn build_timeline(
           path!(<StandardMaterial>::base_color),
           |_| Srgba::RED.into(),
         )
-        .play(1.0)
+        .play(s(1))
         .compile();
 
     b.add_tracks(track);

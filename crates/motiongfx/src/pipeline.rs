@@ -2,6 +2,7 @@ pub mod func_pointers;
 
 use core::any::TypeId;
 use core::marker::PhantomData;
+use core::time::Duration;
 
 use func_pointers::{BakeFnPtr, SampleFnPtr};
 
@@ -305,10 +306,10 @@ where
     }
 }
 
-#[derive(Default, Debug, PartialEq, Clone, Copy)]
+#[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Range {
-    pub start: f32,
-    pub end: f32,
+    pub start: Duration,
+    pub end: Duration,
 }
 
 impl Range {
@@ -321,6 +322,7 @@ impl Range {
 #[cfg(test)]
 mod tests {
     use crate::interpolation::Interpolation;
+    use crate::time::s;
 
     use super::*;
 
@@ -442,20 +444,20 @@ mod tests {
     #[test]
     fn range_overlap_behavior() {
         let a = Range {
-            start: 0.0,
-            end: 5.0,
+            start: s(0),
+            end: s(5),
         };
         let b = Range {
-            start: 3.0,
-            end: 8.0,
+            start: s(3),
+            end: s(8),
         };
         let c = Range {
-            start: 6.0,
-            end: 10.0,
+            start: s(6),
+            end: s(10),
         };
         let d = Range {
-            start: 5.0,
-            end: 5.0,
+            start: s(5),
+            end: s(5),
         }; // touching boundary
 
         assert!(

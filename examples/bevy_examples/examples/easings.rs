@@ -85,14 +85,14 @@ fn spawn_timeline(
                     |x| x + 10.0,
                 )
                 .with_ease(ease_fn)
-                .play(1.0),
+                .play(s(1)),
                 b.act(
                     sphere_mat_ids[i],
                     path!(<StandardMaterial>::emissive),
                     move |_| red,
                 )
                 .with_ease(ease_fn)
-                .play(1.0),
+                .play(s(1)),
             ]
             .ord_all()
         })

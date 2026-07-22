@@ -1,4 +1,5 @@
 use core::any::TypeId;
+use core::time::Duration;
 
 use alloc::boxed::Box;
 use field_path::field::UntypedField;
@@ -125,25 +126,43 @@ pub type EaseFn = fn(t: f32) -> f32;
 #[derive(Debug, Clone, Copy)]
 pub struct EaseStorage(pub EaseFn);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActionClip {
     pub id: ActionId,
-    pub start: f32,
-    pub duration: f32,
+    pub start: Duration,
+    pub duration: Duration,
 }
 
 impl ActionClip {
-    pub const fn new(id: ActionId, duration: f32) -> Self {
+    pub const fn new(id: ActionId, duration: Duration) -> Self {
         Self {
             id,
-            start: 0.0,
+            start: Duration::ZERO,
             duration,
         }
     }
 
+    /// Saturating, so an absurd authored duration degrades to a clamped
+    /// timeline rather than a panic deep in playback.
     #[inline]
-    pub fn end(&self) -> f32 {
-        self.start + self.duration
+    pub fn end(&self) -> Duration {
+        self.start.saturating_add(self.duration)
+    }
+
+    /// Normalized progress of `time` through this clip, in
+    /// \[0.0..=1.0\].
+    ///
+    /// Zero-duration spacer clips report `1.0` rather than `NaN`.
+    #[inline]
+    pub fn progress(&self, time: Duration) -> f32 {
+        let span = self.duration.as_secs_f64();
+
+        if span == 0.0 {
+            return 1.0;
+        }
+
+        let elapsed = time.saturating_sub(self.start).as_secs_f64();
+        (elapsed / span).clamp(0.0, 1.0) as f32
     }
 }
 
@@ -166,4 +185,58 @@ pub enum SampleMode {
     Start,
     End,
     Interp(f32),
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::time::{cs, s};
+
+    use super::*;
+
+    const fn clip(start: Duration, duration: Duration) -> ActionClip {
+        ActionClip {
+            id: ActionId::PLACEHOLDER,
+            start,
+            duration,
+        }
+    }
+
+    #[test]
+    fn progress_spans_the_clip() {
+        let clip = clip(cs(100), cs(200));
+
+        assert_eq!(clip.progress(cs(100)), 0.0);
+        assert_eq!(clip.progress(cs(200)), 0.5);
+        assert_eq!(clip.progress(cs(300)), 1.0);
+    }
+
+    /// `end()` runs on every queue pass, so a saturated duration must
+    /// not panic there.
+    #[test]
+    fn end_saturates_instead_of_overflowing() {
+        let clip = ActionClip {
+            id: ActionId::PLACEHOLDER,
+            start: Duration::MAX,
+            duration: Duration::MAX,
+        };
+
+        assert_eq!(clip.end(), Duration::MAX);
+    }
+
+    #[test]
+    fn progress_clamps_outside_the_clip() {
+        let clip = clip(cs(100), cs(200));
+
+        assert_eq!(clip.progress(Duration::ZERO), 0.0);
+        assert_eq!(clip.progress(s(60)), 1.0);
+    }
+
+    /// A `NaN` here would poison the interpolated value.
+    #[test]
+    fn zero_duration_clip_reports_completion() {
+        let t = clip(cs(100), Duration::ZERO).progress(cs(100));
+
+        assert!(!t.is_nan());
+        assert_eq!(t, 1.0);
+    }
 }

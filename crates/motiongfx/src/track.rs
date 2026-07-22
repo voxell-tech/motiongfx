@@ -1,3 +1,5 @@
+use core::time::Duration;
+
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use field_path::field::UntypedField;
@@ -11,7 +13,7 @@ pub trait TrackOrdering {
     fn ord_chain(self) -> TrackFragment;
     fn ord_all(self) -> TrackFragment;
     fn ord_any(self) -> TrackFragment;
-    fn ord_flow(self, delay: f32) -> TrackFragment;
+    fn ord_flow(self, delay: Duration) -> TrackFragment;
 }
 
 impl<T> TrackOrdering for T
@@ -30,7 +32,7 @@ where
         any(self)
     }
 
-    fn ord_flow(self, delay: f32) -> TrackFragment {
+    fn ord_flow(self, delay: Duration) -> TrackFragment {
         flow(delay, self)
     }
 }
@@ -52,7 +54,8 @@ pub fn chain(
             track = track.upsert_sequence(key, other_sequence);
         }
 
-        chain_duration += other_track.duration;
+        chain_duration =
+            chain_duration.saturating_add(other_track.duration);
     }
 
     track.duration = chain_duration;
@@ -106,19 +109,20 @@ pub fn any(
 /// Run one [`Track`] after another with a fixed delay time.
 #[must_use = "This function consumes all the given tracks and returns a modified one."]
 pub fn flow(
-    delay: f32,
+    delay: Duration,
     tracks: impl IntoIterator<Item = TrackFragment>,
 ) -> TrackFragment {
     let mut tracks_iter = tracks.into_iter();
     let mut track = tracks_iter.next().unwrap_or_default();
 
-    let mut flow_delay = 0.0;
+    let mut flow_delay = Duration::ZERO;
     let mut final_duration = track.duration;
 
     for other_track in tracks_iter {
-        flow_delay += delay;
-        final_duration =
-            (flow_delay + other_track.duration).max(final_duration);
+        flow_delay = flow_delay.saturating_add(delay);
+        final_duration = flow_delay
+            .saturating_add(other_track.duration)
+            .max(final_duration);
 
         for (key, mut sequence) in other_track.sequences {
             sequence.delay(flow_delay);
@@ -132,7 +136,10 @@ pub fn flow(
 
 /// Run a [`Track`] after a fixed delay time.
 #[must_use = "This function consumes the given track and returns a modified one."]
-pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
+pub fn delay(
+    delay: Duration,
+    mut track: TrackFragment,
+) -> TrackFragment {
     for sequence in track.sequences.values_mut() {
         sequence.delay(delay);
     }
@@ -142,14 +149,14 @@ pub fn delay(delay: f32, mut track: TrackFragment) -> TrackFragment {
 
 pub struct TrackFragment {
     sequences: HashMap<ActionKey, Sequence>,
-    duration: f32,
+    duration: Duration,
 }
 
 impl TrackFragment {
     pub fn new() -> Self {
         Self {
             sequences: HashMap::new(),
-            duration: 0.0,
+            duration: Duration::ZERO,
         }
     }
 
@@ -194,7 +201,28 @@ impl TrackFragment {
     pub fn compile(self) -> Track {
         let mut sequences =
             self.sequences.into_iter().collect::<Vec<_>>();
+
+        if sequences.is_empty() {
+            return Track {
+                field_lookups: Box::new([]),
+                sequence_spans: Box::new([]),
+                clip_arena: Box::new([]),
+                duration: self.duration,
+            };
+        }
+
         sequences.sort_by_key(|(key, _)| *key.field());
+
+        // The combinators accumulate `duration` independently of the
+        // clip offsets, so pin them together here: the clamp in
+        // `Timeline::set_target_time` must be able to reach the last
+        // clip's end.
+        let duration = sequences
+            .iter()
+            .map(|(_, seq)| seq.end())
+            .max()
+            .unwrap_or(Duration::ZERO)
+            .max(self.duration);
 
         let mut seq_offset = 0;
         let mut sequence_spans = Vec::with_capacity(sequences.len());
@@ -248,7 +276,7 @@ impl TrackFragment {
             field_lookups: field_lookups.into_boxed_slice(),
             sequence_spans: sequence_spans.into_boxed_slice(),
             clip_arena,
-            duration: self.duration,
+            duration,
         }
     }
 }
@@ -284,8 +312,11 @@ pub struct Track {
     /// Contiguous storage of all action clips.
     clip_arena: Box<[ActionClip]>,
 
-    /// Total duration of the track in seconds.
-    duration: f32,
+    /// Total duration of the track.
+    ///
+    /// Guaranteed to be `>=` the end of every clip in `clip_arena`.
+    /// See [`TrackFragment::compile`].
+    duration: Duration,
 }
 
 impl Track {
@@ -321,7 +352,7 @@ impl Track {
     }
 
     #[inline]
-    pub fn duration(&self) -> f32 {
+    pub fn duration(&self) -> Duration {
         self.duration
     }
 }
@@ -345,6 +376,7 @@ pub struct Span {
 #[cfg(test)]
 mod tests {
     use crate::action::{ActionId, IdRegistry, UntypedSubjectId};
+    use crate::time::{cs, ms, s};
 
     use super::*;
 
@@ -360,14 +392,14 @@ mod tests {
         )
     }
 
-    const fn clip(duration: f32) -> ActionClip {
-        ActionClip::new(ActionId::PLACEHOLDER, duration)
+    const fn clip(centis: u64) -> ActionClip {
+        ActionClip::new(ActionId::PLACEHOLDER, cs(centis))
     }
 
     #[test]
     fn track_key_uniqueness() {
         // Sequence with 0 duration to prevent overlaps.
-        const DUMMY_SEQ: Sequence = Sequence::new(clip(0.0));
+        const DUMMY_SEQ: Sequence = Sequence::new(clip(0));
 
         let entity1 = DummyId(1);
         let entity2 = DummyId(2);
@@ -403,57 +435,132 @@ mod tests {
 
     #[test]
     fn chain_duration_and_delay() {
-        let track1 = TrackFragment::single(key("a"), clip(1.0));
-        let track2 = TrackFragment::single(key("b"), clip(2.0));
+        let track1 = TrackFragment::single(key("a"), clip(100));
+        let track2 = TrackFragment::single(key("b"), clip(200));
 
         let track = [track1, track2].ord_chain();
 
-        assert_eq!(track.duration, 3.0);
+        assert_eq!(track.duration, cs(300));
         let seq_b = &track.sequences[&key("b")];
         // `seq_b` should be delayed by 1.0 (duration of `track1`).
-        assert_eq!(seq_b.start(), 1.0);
+        assert_eq!(seq_b.start(), cs(100));
     }
 
     #[test]
     fn all_duration_max() {
-        let track1 = TrackFragment::single(key("a"), clip(1.0));
-        let track2 = TrackFragment::single(key("b"), clip(3.0));
+        let track1 = TrackFragment::single(key("a"), clip(100));
+        let track2 = TrackFragment::single(key("b"), clip(300));
 
         let track = [track1, track2].ord_all();
-        assert_eq!(track.duration, 3.0);
+        assert_eq!(track.duration, cs(300));
     }
 
     #[test]
     fn any_duration_min() {
-        let track1 = TrackFragment::single(key("a"), clip(1.0));
-        let track2 = TrackFragment::single(key("b"), clip(3.0));
+        let track1 = TrackFragment::single(key("a"), clip(100));
+        let track2 = TrackFragment::single(key("b"), clip(300));
 
         let track = [track1, track2].ord_any();
-        assert_eq!(track.duration, 1.0);
+        assert_eq!(track.duration, cs(100));
     }
 
     #[test]
     fn flow_with_delay() {
-        let track1 = TrackFragment::single(key("a"), clip(1.0));
-        let track2 = TrackFragment::single(key("b"), clip(1.0));
+        let track1 = TrackFragment::single(key("a"), clip(100));
+        let track2 = TrackFragment::single(key("b"), clip(100));
 
-        let track = [track1, track2].ord_flow(0.5);
+        let track = [track1, track2].ord_flow(cs(50));
 
-        assert_eq!(track.duration, 1.5); // 0.5 delay + 1.0 duration
+        // 0.5 delay + 1.0 duration
+        assert_eq!(track.duration, cs(150));
         let seq_b = &track.sequences[&key("b")];
         // `seq_b` should be delayed by 0.5
-        assert_eq!(seq_b.start(), 0.5);
+        assert_eq!(seq_b.start(), cs(50));
     }
 
     #[test]
     fn delay_applies_offset() {
-        let track = TrackFragment::single(key("a"), clip(2.0));
+        let track = TrackFragment::single(key("a"), clip(200));
 
-        let track = delay(1.5, track);
+        let track = delay(cs(150), track);
         let seq_a = &track.sequences[&key("a")];
 
-        assert_eq!(seq_a.start(), 1.5);
-        assert_eq!(seq_a.end(), 3.5);
-        assert_eq!(track.duration, 2.0);
+        assert_eq!(seq_a.start(), cs(150));
+        assert_eq!(seq_a.end(), cs(350));
+        assert_eq!(track.duration, cs(200));
+    }
+
+    /// Chaining durations that have no exact `f32` representation used
+    /// to leave `TrackFragment::duration` and the clip offsets on
+    /// different values, because the two are accumulated separately.
+    /// The mismatch tripped the non-overlap assert in `Sequence::push`
+    /// and put `Track::duration` out of reach of the last clip's end.
+    #[test]
+    fn chain_accumulation_matches_clip_offsets() {
+        // 0.1s is not representable in binary floating point.
+        let tracks: Vec<_> = (0..10)
+            .map(|_| TrackFragment::single(key("a"), clip(10)))
+            .collect();
+
+        let track = tracks.ord_chain();
+
+        assert_eq!(track.duration, cs(100));
+        assert_eq!(track.sequences[&key("a")].end(), cs(100));
+    }
+
+    /// `Track::duration` must always be reachable by the playhead, so
+    /// that the final clip can resolve to `SampleMode::End`.
+    #[test]
+    fn compile_duration_covers_last_clip_end() {
+        let mut fragment = TrackFragment::single(key("a"), clip(100));
+        // Understate the duration the way a combinator would if the
+        // two accumulations ever diverged again.
+        fragment.duration = ms(999);
+
+        let track = fragment.compile();
+
+        assert_eq!(track.duration(), cs(100));
+    }
+
+    /// Combinator arithmetic has to saturate, or a `Duration::MAX`
+    /// duration panics inside `chain`, `flow`, or `ActionClip::end`.
+    ///
+    /// Distinct keys per fragment: saturated clips really do overlap,
+    /// and the non-overlap assert is right to say so. Only the duration
+    /// arithmetic is under test.
+    #[test]
+    fn saturated_durations_do_not_overflow_the_combinators() {
+        let huge = |path: &'static str| {
+            TrackFragment::single(
+                key(path),
+                ActionClip::new(ActionId::PLACEHOLDER, Duration::MAX),
+            )
+        };
+
+        assert_eq!(huge("a").duration, Duration::MAX);
+        assert_eq!(
+            [huge("a"), huge("b")].ord_chain().duration,
+            Duration::MAX
+        );
+        assert_eq!(
+            [huge("a"), huge("b")].ord_flow(s(1)).duration,
+            Duration::MAX
+        );
+        assert_eq!(
+            [huge("a"), huge("b")].ord_all().duration,
+            Duration::MAX
+        );
+        assert_eq!(
+            delay(Duration::MAX, huge("a")).duration,
+            Duration::MAX
+        );
+    }
+
+    #[test]
+    fn compile_empty_fragment_is_not_a_panic() {
+        let track = TrackFragment::new().compile();
+
+        assert_eq!(track.duration(), Duration::ZERO);
+        assert!(track.sequences_spans().is_empty());
     }
 }

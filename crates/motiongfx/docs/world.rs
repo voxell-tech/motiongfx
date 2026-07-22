@@ -22,7 +22,7 @@ pub fn timeline() -> (Registry, Timeline<World>) {
     let track = b
         .act_builder(0usize, path!(<f32>), |x| x + 10.0)
         .with_interp(|a: &f32, b: &f32, t| a + (b - a) * t)
-        .play(1.0)
+        .play(s(1))
         .compile();
     b.add_tracks(track);
     let timeline = b.compile();
