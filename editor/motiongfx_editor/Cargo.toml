@@ -8,9 +8,11 @@ repository.workspace = true
 
 [dependencies]
 bevy_motiongfx = { workspace = true }
+motiongfx_editor_ui = { workspace = true }
 bevy = { workspace = true, default-features = true, features = [
     "bevy_feathers",
     "bevy_ui_widgets",
+    "bevy_settings",
 ] }
 
 [lints]

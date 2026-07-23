@@ -1,0 +1,17 @@
+[package]
+name = "motiongfx_editor_ui"
+description = "Reusable bevy_ui widgets, docking and theming for the MotionGfx editor."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+motiongfx_editor_ui_kernel.workspace = true
+bevy = { workspace = true, default-features = true, features = [
+    "bevy_feathers",
+    "bevy_ui_widgets",
+] }
+
+[lints]
+workspace = true

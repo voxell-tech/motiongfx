@@ -1,0 +1,129 @@
+//! Timeline editor for MotionGfx, built on `bevy_ui` + `bevy_feathers`.
+//!
+//! Renders a docked timeline panel for the first [`Timeline`] it finds:
+//! scrub by pressing/dragging the track, toggle play/pause with the
+//! button or spacebar, and scroll the track (wheel/trackpad) with a
+//! resizable name column.
+//!
+//! [`Timeline`]: bevy_motiongfx::prelude::BevyTimeline
+
+// Inherent to Bevy ECS: systems take many params and query tuples.
+#![allow(clippy::type_complexity, clippy::too_many_arguments)]
+
+mod hierarchy;
+mod playback;
+mod scene;
+mod view;
+
+use core::time::Duration;
+
+use bevy::feathers::FeathersPlugins;
+use bevy::feathers::dark_theme::create_dark_theme;
+use bevy::feathers::theme::UiTheme;
+use bevy::prelude::*;
+use bevy::settings::{
+    ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
+};
+use bevy_motiongfx::prelude::TimelineId;
+use motiongfx_editor_ui::dock::DockPlugin;
+use motiongfx_editor_ui::inspector::ReflectInspectorPlugin;
+use motiongfx_editor_ui::reactive::{KernelPlugin, KernelSet};
+
+/// Plugin that renders a timeline editor UI for the first
+/// [`Timeline`](bevy_motiongfx::prelude::BevyTimeline).
+pub struct MotionGfxEditorPlugin;
+
+impl Plugin for MotionGfxEditorPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(SettingsPlugin::new(
+            "org.voxell.motiongfx.editor",
+        ))
+        .add_plugins(EditorUiPlugin);
+    }
+}
+
+/// Wires feathers theming, the editor scene, and the per-frame
+/// timeline/playback/preview systems.
+struct EditorUiPlugin;
+
+impl Plugin for EditorUiPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins((
+            FeathersPlugins,
+            DockPlugin,
+            ReflectInspectorPlugin::<EditorSettings>::default(),
+            KernelPlugin::new(scene::build_editor_ui),
+        ))
+        // Seed the feathers palette (its default theme is empty).
+        .insert_resource(UiTheme(create_dark_theme()))
+        .init_resource::<EditorState>()
+        .add_systems(Startup, scene::setup_editor_ui)
+        .add_systems(
+            Update,
+            (
+                playback::play_pause_hotkey,
+                playback::stop_at_track_end,
+                view::retarget_scene_cameras,
+            )
+                .chain()
+                .before(KernelSet),
+        )
+        .add_observer(playback::on_toggle_playback);
+    }
+}
+
+/// Pixels per second of animation (horizontal zoom).
+pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
+
+/// Horizontal pixel offset for a point `t` into the timeline.
+#[inline]
+pub(crate) fn px_for(t: Duration) -> f32 {
+    t.as_secs_f32() * PIXELS_PER_SECOND
+}
+pub(crate) const PANEL_PADDING: f32 = 12.0;
+pub(crate) const NAME_PANEL_WIDTH: f32 = 140.0;
+pub(crate) const NAME_PANEL_MIN: f32 = 60.0;
+pub(crate) const NAME_PANEL_MAX: f32 = 400.0;
+pub(crate) const CONTROL_BAR_HEIGHT: f32 = 40.0;
+pub(crate) const TRACK_TOP_PADDING: f32 = 12.0;
+/// Height of one track's box, and the gap below it.
+pub(crate) const TRACK_HEIGHT: f32 = 22.0;
+pub(crate) const TRACK_GAP: f32 = 4.0;
+
+/// The offscreen texture the composition's scene cameras render into.
+/// `bevy_ui` scales this image to fit the preview area above the
+/// timeline panel, so growing the panel shrinks the whole frame
+/// uniformly instead of distorting it. Sized from
+/// [`EditorSettings::physical_size`].
+#[derive(Resource)]
+pub(crate) struct PreviewImage(pub(crate) Handle<Image>);
+
+/// The focused timeline and its duration.
+#[derive(Resource, Default)]
+pub(crate) struct EditorState {
+    pub(crate) timeline: Option<TimelineId>,
+    pub(crate) duration: Duration,
+    /// Mirrored from the first [`RealtimePlayer`](bevy_motiongfx::prelude::RealtimePlayer)
+    /// so the play/pause label can bind to this resource instead of
+    /// polling a component query. Written by `on_toggle_playback` and
+    /// `stop_at_track_end`.
+    pub(crate) is_playing: bool,
+}
+
+#[derive(Debug, Resource, SettingsGroup, Reflect)]
+#[reflect(Resource, SettingsGroup, Default)]
+pub struct EditorSettings {
+    hdr: bool,
+    physical_size: UVec2,
+}
+
+impl Default for EditorSettings {
+    fn default() -> Self {
+        Self {
+            hdr: Default::default(),
+            // Portrait 9:16 to match the current compositions; the
+            // offscreen preview renders at this resolution.
+            physical_size: UVec2::new(1080, 1920),
+        }
+    }
+}

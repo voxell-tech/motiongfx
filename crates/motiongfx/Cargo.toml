@@ -16,7 +16,7 @@ bevy_math = { workspace = true }
 
 # other
 field_path = { workspace = true }
-hashbrown = { workspace = true }
+hashbrown = { workspace = true, features = ["default-hasher"] }
 nonempty = { workspace = true }
 typarena = { workspace = true }
 
