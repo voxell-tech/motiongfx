@@ -1,6 +1,8 @@
 //! Playback control: play/pause (button + spacebar), scrubbing, and
 //! the playhead / time readout.
 
+use core::time::Duration;
+
 use bevy::picking::events::{Cancel, Drag, DragEnd, Pointer, Press};
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
@@ -51,7 +53,7 @@ pub(crate) fn on_toggle_playback(
         && timeline.target_time() >= state.duration
     {
         timeline.set_target_track(0);
-        timeline.set_target_time(0.0);
+        timeline.set_target_time(Duration::ZERO);
     }
 }
 
@@ -64,7 +66,7 @@ pub(crate) fn on_toggle_playback(
 /// ever holds `&World`.
 pub(crate) fn bind_timeline_state(ui: &mut BevyUi) {
     let mut timelines: Option<QueryState<&'static TimelineId>> = None;
-    let mut seen: Option<(TimelineId, f32)> = None;
+    let mut seen: Option<(TimelineId, Duration)> = None;
 
     ui.empty_node().bind_raw(
         move |world, _| {
@@ -102,15 +104,15 @@ fn first_timeline(world: &mut World) -> Option<TimelineId> {
     world.query::<&TimelineId>().iter(world).next().copied()
 }
 
-/// Duration of the timeline's first track, or 0.0 if it is gone.
-fn duration_of(world: &World, id: TimelineId) -> f32 {
+/// Duration of the timeline's first track, or zero if it is gone.
+fn duration_of(world: &World, id: TimelineId) -> Duration {
     world
         .resource::<MotionGfxManager>()
         .get_timeline(&id)
         .and_then(|timeline| {
             timeline.tracks().first().map(|track| track.duration())
         })
-        .unwrap_or(0.0)
+        .unwrap_or(Duration::ZERO)
 }
 
 /// Present on the timeline track while a scrub is in progress. A
@@ -119,14 +121,14 @@ fn duration_of(world: &World, id: TimelineId) -> f32 {
 #[derive(Component)]
 pub(crate) struct Scrubbing;
 
-/// Time (seconds) under `cursor` for a track laid out at
+/// Time under `cursor` for a track laid out at
 /// [`PIXELS_PER_SECOND`], clamped to the track's duration.
 fn time_at_cursor(
     cursor: Vec2,
     computed: &ComputedNode,
     transform: &UiGlobalTransform,
-    duration: f32,
-) -> f32 {
+    duration: Duration,
+) -> Duration {
     let inv = computed.inverse_scale_factor();
     let (_scale, _angle, center) =
         transform.to_scale_angle_translation();
@@ -134,14 +136,14 @@ fn time_at_cursor(
         center.trunc() * inv,
         computed.size() * inv,
     );
-    ((cursor.x - rect.min.x) / PIXELS_PER_SECOND)
-        .clamp(0.0, duration.max(0.0))
+    let secs = ((cursor.x - rect.min.x) / PIXELS_PER_SECOND).max(0.0);
+    Duration::from_secs_f32(secs).min(duration)
 }
 
 /// Move the timeline to `time` and stop playback so the scrub isn't
 /// immediately overwritten by the player.
 fn scrub_to(
-    time: f32,
+    time: Duration,
     state: &EditorState,
     manager: &mut MotionGfxManager,
     q_players: &mut Query<&mut RealtimePlayer>,
@@ -243,7 +245,7 @@ pub(crate) fn stop_at_track_end(
     let Some(timeline) = manager.get_timeline(&timeline_id) else {
         return;
     };
-    if state.duration <= 0.0 {
+    if state.duration == Duration::ZERO {
         return;
     }
 
@@ -256,7 +258,7 @@ pub(crate) fn stop_at_track_end(
         let at_end = if player.time_scale >= 0.0 {
             timeline.target_time() >= state.duration
         } else {
-            timeline.target_time() <= 0.0
+            timeline.target_time() == Duration::ZERO
         };
         if at_end {
             player.is_playing = false;

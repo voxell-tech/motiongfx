@@ -4,6 +4,8 @@
 
 use std::sync::Arc;
 
+use core::time::Duration;
+
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
 use bevy::picking::events::{Click, Drag, Pointer};
@@ -162,7 +164,7 @@ fn control_bar(ui: &mut BevyUi) {
             |world, entity| {
                 Text::new(format!(
                     "{:.2}s",
-                    current_time(world, entity)
+                    current_time(world, entity).as_secs_f32()
                 ))
             },
         );
@@ -265,8 +267,7 @@ fn track_area(ui: &mut BevyUi) {
                     resource_changed::<MotionGfxManager>(),
                     current_time,
                     |node, time| {
-                        node.left =
-                            Val::Px(time * crate::PIXELS_PER_SECOND);
+                        node.left = Val::Px(crate::px_for(time));
                     },
                 );
             });
@@ -507,24 +508,24 @@ pub(crate) fn on_divider_drag(
     }
 }
 
-/// `timeline.target_time()`, or 0.0 if no timeline is focused yet.
-fn current_time(world: &World, _: Entity) -> f32 {
+/// `timeline.target_time()`, or zero if no timeline is focused yet.
+fn current_time(world: &World, _: Entity) -> Duration {
     let state = world.resource::<EditorState>();
     let Some(id) = state.timeline else {
-        return 0.0;
+        return Duration::ZERO;
     };
     world
         .resource::<MotionGfxManager>()
         .get_timeline(&id)
         .map(|t| t.target_time())
-        .unwrap_or(0.0)
+        .unwrap_or(Duration::ZERO)
 }
 
 /// Track node width for the current duration, floored at 1px so a
 /// zero-duration track still lays out.
 fn track_width(world: &World, _: Entity) -> Val {
     let duration = world.resource::<EditorState>().duration;
-    Val::Px((duration * crate::PIXELS_PER_SECOND).max(1.0))
+    Val::Px(crate::px_for(duration).max(1.0))
 }
 
 /// Marks one track's box in the timeline.
@@ -533,7 +534,7 @@ pub(crate) struct TrackBox;
 
 /// Every track's duration, in order. The watcher's signal: a box only
 /// needs rebuilding when a track is added, removed or re-timed.
-fn track_spans(world: &World, _: Entity) -> Vec<f32> {
+fn track_spans(world: &World, _: Entity) -> Vec<Duration> {
     let state = world.resource::<EditorState>();
     let Some(id) = state.timeline else {
         return Vec::new();
@@ -558,7 +559,7 @@ fn build_track_boxes(ui: &mut BevyUi) {
 
     for (index, duration) in spans.into_iter().enumerate() {
         let top = index as f32 * (TRACK_HEIGHT + TRACK_GAP);
-        let width = (duration * crate::PIXELS_PER_SECOND).max(1.0);
+        let width = crate::px_for(duration).max(1.0);
         ui.bsn(bsn! {
             TrackBox
             Node {

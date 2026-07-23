@@ -61,7 +61,6 @@ fn spawn_timeline(
                 .with_ease(ease::back::ease_out)
                 .play(cs(60))
         })
-        .collect::<Vec<_>>()
         .ord_flow(cs(15));
 
     let spin = cubes
@@ -73,7 +72,6 @@ fn spawn_timeline(
             .with_ease(ease::cubic::ease_in_out)
             .play(s(1))
         })
-        .collect::<Vec<_>>()
         .ord_flow(cs(10));
 
     let track = [grow, spin].ord_chain().compile();

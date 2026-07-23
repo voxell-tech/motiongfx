@@ -15,6 +15,8 @@ mod playback;
 mod scene;
 mod view;
 
+use core::time::Duration;
+
 use bevy::feathers::FeathersPlugins;
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
@@ -72,6 +74,12 @@ impl Plugin for EditorUiPlugin {
 
 /// Pixels per second of animation (horizontal zoom).
 pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
+
+/// Horizontal pixel offset for a point `t` into the timeline.
+#[inline]
+pub(crate) fn px_for(t: Duration) -> f32 {
+    t.as_secs_f32() * PIXELS_PER_SECOND
+}
 pub(crate) const PANEL_PADDING: f32 = 12.0;
 pub(crate) const NAME_PANEL_WIDTH: f32 = 140.0;
 pub(crate) const NAME_PANEL_MIN: f32 = 60.0;
@@ -94,7 +102,7 @@ pub(crate) struct PreviewImage(pub(crate) Handle<Image>);
 #[derive(Resource, Default)]
 pub(crate) struct EditorState {
     pub(crate) timeline: Option<TimelineId>,
-    pub(crate) duration: f32,
+    pub(crate) duration: Duration,
     /// Mirrored from the first [`RealtimePlayer`](bevy_motiongfx::prelude::RealtimePlayer)
     /// so the play/pause label can bind to this resource instead of
     /// polling a component query. Written by `on_toggle_playback` and
