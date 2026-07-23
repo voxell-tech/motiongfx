@@ -3,7 +3,9 @@
 
 use core::time::Duration;
 
-use bevy::picking::events::{Cancel, Drag, DragEnd, Pointer, Press};
+use bevy::picking::events::{
+    Cancel, Drag, DragEnd, Pointer, Press, Release,
+};
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 use bevy_motiongfx::prelude::*;
@@ -38,17 +40,18 @@ pub(crate) fn on_toggle_playback(
     mut manager: ResMut<MotionGfxManager>,
     mut q_players: Query<&mut RealtimePlayer>,
 ) {
-    let mut now_playing = false;
+    // One global target: invert the aggregate, not each player, so
+    // mixed states resolve to a single play/pause rather than a swap.
+    let should_play = !q_players.iter().any(|p| p.is_playing);
     for mut player in &mut q_players {
-        player.is_playing = !player.is_playing;
+        player.is_playing = should_play;
         player.time_scale = 1.0;
-        now_playing |= player.is_playing;
     }
-    state.is_playing = now_playing;
+    state.is_playing = should_play;
 
     // Rewind if starting playback from the very end.
     if let Some(timeline_id) = state.timeline
-        && q_players.iter().any(|p| p.is_playing)
+        && should_play
         && let Some(timeline) = manager.get_timeline_mut(&timeline_id)
         && timeline.target_time() >= state.duration
     {
@@ -211,9 +214,19 @@ pub(crate) fn on_track_drag(
     scrub_to(time, &state, &mut manager, &mut q_players);
 }
 
-/// End a scrub on release / drag-end / cancel.
+/// End a scrub when a drag finishes off the track.
 pub(crate) fn on_track_release(
     release: On<Pointer<DragEnd>>,
+    mut commands: Commands,
+) {
+    commands.entity(release.entity).remove::<Scrubbing>();
+}
+
+/// End a scrub on a plain press/release with no intervening drag.
+/// [`Pointer<DragEnd>`] never fires for that gesture, so without this
+/// a single click would leave [`Scrubbing`] armed.
+pub(crate) fn on_track_click_release(
+    release: On<Pointer<Release>>,
     mut commands: Commands,
 ) {
     commands.entity(release.entity).remove::<Scrubbing>();

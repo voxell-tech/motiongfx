@@ -47,8 +47,13 @@ pub(crate) fn preview_fit(
         return None;
     }
 
-    let comp =
-        world.resource::<EditorSettings>().physical_size.as_vec2();
+    // Floor at 1px each: the reflect inspector lets `physical_size`
+    // reach 0, which would make `aspect` inf/NaN.
+    let comp = world
+        .resource::<EditorSettings>()
+        .physical_size
+        .max(UVec2::ONE)
+        .as_vec2();
     let aspect = comp.x / comp.y;
     let mut w = avail.x;
     let mut h = w / aspect;

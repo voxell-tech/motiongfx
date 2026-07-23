@@ -23,7 +23,8 @@ pub fn bind_backdrop(ui: &mut BevyUi) {
     let mut backdrops: Option<
         QueryState<(Entity, &'static GlassBackdrop)>,
     > = None;
-    let mut seen = Vec4::ZERO;
+    let mut seen_rect = Vec4::ZERO;
+    let mut seen_image: Option<AssetId<Image>> = None;
 
     ui.empty_node().bind_raw(
         move |world, _| {
@@ -35,14 +36,18 @@ pub fn bind_backdrop(ui: &mut BevyUi) {
                 },
             };
             backdrops.update_archetypes(world);
-            let rect = backdrops
-                .iter_manual(world)
-                .next()
-                .map_or(Vec4::ZERO, |(entity, _)| {
-                    backdrop_rect(world, entity)
-                });
-            let changed = seen != rect;
-            seen = rect;
+            // Track the image id too: a new handle with an unchanged
+            // rect must still repropagate to the glass materials.
+            let current = backdrops.iter_manual(world).next().map(
+                |(entity, backdrop)| {
+                    (backdrop_rect(world, entity), backdrop.0.id())
+                },
+            );
+            let rect = current.map_or(Vec4::ZERO, |(r, _)| r);
+            let image = current.map(|(_, id)| id);
+            let changed = seen_rect != rect || seen_image != image;
+            seen_rect = rect;
+            seen_image = image;
             changed
         },
         |world, _| {

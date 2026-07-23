@@ -18,8 +18,8 @@ use bevy::ui_widgets::{ControlOrientation, ScrollArea};
 use bevy_motiongfx::prelude::MotionGfxManager;
 
 use crate::playback::{
-    TogglePlayback, on_track_cancel, on_track_drag, on_track_press,
-    on_track_release,
+    TogglePlayback, on_track_cancel, on_track_click_release,
+    on_track_drag, on_track_press, on_track_release,
 };
 use crate::{
     CONTROL_BAR_HEIGHT, EditorSettings, EditorState, NAME_PANEL_MAX,
@@ -237,6 +237,7 @@ fn track_area(ui: &mut BevyUi) {
                 on(on_track_press)
                 on(on_track_drag)
                 on(on_track_release)
+                on(on_track_click_release)
                 on(on_track_cancel)
             })
             .bind_field::<Node, _>(

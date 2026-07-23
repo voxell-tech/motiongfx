@@ -33,6 +33,12 @@ pub struct WindowRegistry {
 
 impl WindowRegistry {
     pub fn register(&mut self, descriptor: DockWindowDescriptor) {
+        // Replace in place on a duplicate id, or both descriptors
+        // linger in `windows` while `index` points only at the newer.
+        if let Some(&idx) = self.index.get(&descriptor.id) {
+            self.windows[idx] = descriptor;
+            return;
+        }
         let idx = self.windows.len();
         self.index.insert(descriptor.id.clone(), idx);
         self.windows.push(descriptor);
@@ -61,5 +67,44 @@ impl WindowRegistry {
         &self,
     ) -> impl Iterator<Item = &DockWindowDescriptor> {
         self.windows.iter()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn descriptor(id: &str, name: &str) -> DockWindowDescriptor {
+        DockWindowDescriptor {
+            id: id.to_string(),
+            name: name.to_string(),
+            icon: None,
+            build: Arc::new(|_| {}),
+        }
+    }
+
+    #[test]
+    fn register_duplicate_id_replaces_in_place() {
+        let mut reg = WindowRegistry::default();
+        reg.register(descriptor("x", "first"));
+        reg.register(descriptor("x", "second"));
+
+        // The duplicate must not leave a stale descriptor behind.
+        assert_eq!(reg.iter().count(), 1);
+        assert_eq!(
+            reg.get("x").map(|d| d.name.as_str()),
+            Some("second")
+        );
+    }
+
+    #[test]
+    fn unregister_after_duplicate_leaves_nothing() {
+        let mut reg = WindowRegistry::default();
+        reg.register(descriptor("x", "first"));
+        reg.register(descriptor("x", "second"));
+
+        assert!(reg.unregister("x"));
+        assert_eq!(reg.iter().count(), 0);
+        assert!(reg.get("x").is_none());
     }
 }

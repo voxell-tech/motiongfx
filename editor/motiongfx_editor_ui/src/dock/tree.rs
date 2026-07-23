@@ -571,7 +571,7 @@ impl DockTree {
         // Pluck the entry out of the source. Holds the (window_id,
         // tab_id) pair while we move it; ids never change as a tab
         // changes leaves.
-        let entry = {
+        let (entry, source_index) = {
             let Some(DockNode::Leaf(l)) = self.nodes.get_mut(&from)
             else {
                 return;
@@ -585,14 +585,22 @@ impl DockTree {
             if l.active == Some(tab) {
                 l.active = l.windows.first().map(|t| t.id);
             }
-            entry
+            (entry, pos)
         };
         if let Some(DockNode::Leaf(l)) = self.nodes.get_mut(&to) {
             let new_id = entry.id;
             match index {
-                Some(idx) => l
-                    .windows
-                    .insert(idx.clamp(0, l.windows.len()), entry),
+                Some(idx) => {
+                    // Removing the tab from this same leaf shifted every
+                    // later slot left, so a forward move overshoots by
+                    // one unless we compensate.
+                    let idx = if from == to && idx > source_index {
+                        idx - 1
+                    } else {
+                        idx
+                    };
+                    l.windows.insert(idx.min(l.windows.len()), entry);
+                }
                 None => l.windows.push(entry),
             }
             l.active = Some(new_id);
@@ -846,6 +854,33 @@ mod tests {
         assert_eq!(window_ids(&t, root), vec!["b"]);
         assert_eq!(window_ids(&t, right), vec!["c", "a"]);
         assert_eq!(active_window_id(&t, right), Some("a"));
+    }
+
+    #[test]
+    fn same_leaf_forward_reorder_lands_at_requested_index() {
+        let mut t = DockTree::new();
+        let root = t.set_root_leaf(leaf("root", &["a", "b", "c"]));
+        let tab_a = tab_id_for(&t, root, "a");
+
+        // Move "a" (source index 0) to index 2. Removing it first
+        // shifts "b","c" left, so a naive insert at 2 would overshoot
+        // and land "a" last; the requested slot is between b and c.
+        t.insert_tab(tab_a, root, true, Some(2));
+
+        assert_eq!(window_ids(&t, root), vec!["b", "a", "c"]);
+        assert_eq!(active_window_id(&t, root), Some("a"));
+    }
+
+    #[test]
+    fn same_leaf_backward_reorder_is_unshifted() {
+        let mut t = DockTree::new();
+        let root = t.set_root_leaf(leaf("root", &["a", "b", "c"]));
+        let tab_c = tab_id_for(&t, root, "c");
+
+        // Backward move (index 0 <= source index 2): no compensation.
+        t.insert_tab(tab_c, root, true, Some(0));
+
+        assert_eq!(window_ids(&t, root), vec!["c", "a", "b"]);
     }
 
     #[test]
