@@ -67,14 +67,14 @@ fn spawn_timeline(
                     Vec3::splat(0.9)
                 })
                 .with_ease(circ_ease)
-                .play(1.0),
+                .play(s(1)),
                 b.act(
                     cube_id,
                     path!(<Transform>::translation::x),
                     |x| x + 1.0,
                 )
                 .with_ease(circ_ease)
-                .play(1.0),
+                .play(s(1)),
                 b.act(cube_id, path!(<Transform>::rotation), |_| {
                     Quat::from_euler(
                         EulerRot::XYZ,
@@ -84,7 +84,7 @@ fn spawn_timeline(
                     )
                 })
                 .with_ease(circ_ease)
-                .play(1.0),
+                .play(s(1)),
             ]
             .ord_all();
 
@@ -92,7 +92,7 @@ fn spawn_timeline(
         }
     }
 
-    let track = cube_tracks.ord_flow(0.01).compile();
+    let track = cube_tracks.ord_flow(cs(1)).compile();
     b.add_tracks(track);
     let timeline = b.compile();
 

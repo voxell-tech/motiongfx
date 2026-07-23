@@ -11,6 +11,7 @@ pub mod registry;
 mod resources;
 pub mod sequence;
 pub mod subject;
+pub mod time;
 pub mod timeline;
 pub mod track;
 pub mod world;
@@ -33,6 +34,7 @@ pub mod prelude {
     pub use crate::registry::{
         AccessorRegistry, PipelineRegistry, Registry,
     };
+    pub use crate::time::{cs, ms, ns, s};
     pub use crate::timeline::{Timeline, TimelineBuilder};
     pub use crate::track::{Track, TrackFragment, TrackOrdering};
     pub use crate::world::SubjectSource;

@@ -81,7 +81,7 @@ fn build_timeline(
             builder
                 .act_builder(Id(i), path!(<Point>::x), |x| x + 72.0)
                 .with_interp(linear_f32)
-                .play(1.0)
+                .play(s(1))
         })
         .collect::<Vec<_>>();
 
@@ -156,8 +156,7 @@ fn bench_scrub(c: &mut Criterion) {
                 // the start so successive iterations are identical.
                 b.iter(|| {
                     for frame in 0..=FRAMES {
-                        let t =
-                            duration * frame as f32 / FRAMES as f32;
+                        let t = duration * frame / FRAMES;
                         timeline.set_target_time(black_box(t));
                         timeline.queue_actions();
                         timeline.sample_queued_actions(
@@ -165,7 +164,7 @@ fn bench_scrub(c: &mut Criterion) {
                         );
                     }
                     // Rewind to t=0 for the next iteration.
-                    timeline.set_target_time(0.0);
+                    timeline.set_target_time(s(0));
                     timeline.queue_actions();
                     timeline
                         .sample_queued_actions(&registry, &mut world);
@@ -278,7 +277,7 @@ fn build_mixed(
                         v + 1.0
                     })
                     .with_interp(linear_f32)
-                    .play(1.0),
+                    .play(s(1)),
                 builder
                     .act_builder(
                         Id(i),
@@ -289,7 +288,7 @@ fn build_mixed(
                         },
                     )
                     .with_interp(lerp2)
-                    .play(1.0),
+                    .play(s(1)),
                 builder
                     .act_builder(
                         Id(i),
@@ -301,7 +300,7 @@ fn build_mixed(
                         },
                     )
                     .with_interp(lerp3)
-                    .play(1.0),
+                    .play(s(1)),
                 builder
                     .act_builder(
                         Id(i),
@@ -314,7 +313,7 @@ fn build_mixed(
                         },
                     )
                     .with_interp(lerp4)
-                    .play(1.0),
+                    .play(s(1)),
             ]
         })
         .collect::<Vec<_>>();
@@ -383,15 +382,14 @@ fn bench_mixed_scrub(c: &mut Criterion) {
 
                 b.iter(|| {
                     for frame in 0..=FRAMES {
-                        let t =
-                            duration * frame as f32 / FRAMES as f32;
+                        let t = duration * frame / FRAMES;
                         timeline.set_target_time(black_box(t));
                         timeline.queue_actions();
                         timeline.sample_queued_actions(
                             &registry, &mut world,
                         );
                     }
-                    timeline.set_target_time(0.0);
+                    timeline.set_target_time(s(0));
                     timeline.queue_actions();
                     timeline
                         .sample_queued_actions(&registry, &mut world);

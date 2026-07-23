@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::camera::Hdr;
 use bevy::color::palettes;
 use bevy::prelude::*;
@@ -53,7 +55,7 @@ fn spawn_timeline(
     let slide0 = b
         .act(cube, path!(<Transform>::scale), |_| Vec3::ONE)
         .with_ease(ease::cubic::ease_out)
-        .play(1.0)
+        .play(s(1))
         .compile();
 
     let slide1 = [
@@ -64,21 +66,21 @@ fn spawn_timeline(
                 move |_| -X_OFFSET,
             )
             .with_ease(ease::cubic::ease_out)
-            .play(1.0),
+            .play(s(1)),
             b.act(
                 cube_mat_id,
                 path!(<StandardMaterial>::base_color),
                 move |_| palettes::tailwind::ZINC_700.into(),
             )
             .with_ease(ease::cubic::ease_out)
-            .play(1.0),
+            .play(s(1)),
         ]
         .ord_all(),
         b.act(sphere, path!(<Transform>::scale), |_| Vec3::ONE)
             .with_ease(ease::cubic::ease_out)
-            .play(1.0),
+            .play(s(1)),
     ]
-    .ord_flow(0.1)
+    .ord_flow(cs(10))
     .compile();
 
     b.add_tracks([slide0, slide1]);
@@ -119,7 +121,7 @@ fn slide_movement(
                 // Move to the start of the next track.
                 let target_index = timeline.curr_index() + 1;
                 timeline.set_target_track(target_index);
-                timeline.set_target_time(0.0);
+                timeline.set_target_time(s(0));
 
                 player.set_playing(false);
             }
@@ -129,7 +131,7 @@ fn slide_movement(
                 let target_index =
                     timeline.curr_index().saturating_sub(1);
                 timeline.set_target_track(target_index);
-                timeline.set_target_time(0.0);
+                timeline.set_target_time(s(0));
 
                 player.set_playing(false);
             }
@@ -141,14 +143,15 @@ fn slide_movement(
                 ]) {
                     player.set_playing(true).set_time_scale(-1.0);
 
-                    if timeline.curr_time() <= 0.0
+                    if timeline.curr_time() == Duration::ZERO
                         && timeline.curr_index() > 0
                     {
                         // Move to the end of the previous track.
                         let target_index =
                             timeline.curr_index().saturating_sub(1);
                         timeline.set_target_track(target_index);
-                        timeline.set_target_time(f32::MAX);
+                        // Clamped to the new track's duration.
+                        timeline.set_target_time(Duration::MAX);
                     }
                 } else {
                     player.set_playing(true).set_time_scale(1.0);
@@ -159,7 +162,7 @@ fn slide_movement(
                         // Move to the start of the next track.
                         let target_index = timeline.curr_index() + 1;
                         timeline.set_target_track(target_index);
-                        timeline.set_target_time(0.0);
+                        timeline.set_target_time(s(0));
                     }
                 }
             }

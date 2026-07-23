@@ -1,10 +1,18 @@
+//! Demonstrates the [`MotionGfxEditorPlugin`] timeline editor.
+//!
+//! A row of cubes animates through a single track containing several
+//! actions. The editor docks a timeline panel at the bottom of the
+//! window: use the play/pause button to control playback and drag on
+//! the timeline to scrub. If the track is wider than the window, scroll
+//! the panel horizontally to reveal the rest.
+
 use bevy::color::palettes;
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
 use motiongfx_editor::MotionGfxEditorPlugin;
 
-const CUBE_COUNT: usize = 4;
+const CUBE_COUNT: usize = 6;
 
 fn main() {
     App::new()
@@ -17,13 +25,13 @@ fn main() {
         .run();
 }
 
-// HACK: This is a stub for now, until we have proper serialization.
 fn spawn_timeline(
     mut commands: Commands,
     mut motiongfx: ResMut<MotionGfxManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // Spawn a row of cubes.
     let mesh = meshes.add(Cuboid::default());
     let mut cubes = Vec::with_capacity(CUBE_COUNT);
     for i in 0..CUBE_COUNT {
@@ -42,6 +50,8 @@ fn spawn_timeline(
         cubes.push(cube);
     }
 
+    // Build a single track: each cube grows, then the whole row spins,
+    // staggered so the first track has plenty of actions to show.
     let mut b = motiongfx.create_builder();
 
     let grow = cubes
@@ -49,20 +59,10 @@ fn spawn_timeline(
         .map(|&cube| {
             b.act(cube, path!(<Transform>::scale), |_| Vec3::ONE)
                 .with_ease(ease::back::ease_out)
-                .play(0.6)
+                .play(cs(60))
         })
-        .ord_flow(0.12);
-
-    let rise = cubes
-        .iter()
-        .map(|&cube| {
-            b.act(cube, path!(<Transform>::translation::y), |y| {
-                y + 1.5
-            })
-            .with_ease(ease::cubic::ease_in_out)
-            .play(0.5)
-        })
-        .ord_flow(0.06);
+        .collect::<Vec<_>>()
+        .ord_flow(cs(15));
 
     let spin = cubes
         .iter()
@@ -71,23 +71,12 @@ fn spawn_timeline(
                 Quat::from_rotation_y(std::f32::consts::PI)
             })
             .with_ease(ease::cubic::ease_in_out)
-            .play(0.8)
+            .play(s(1))
         })
-        .ord_flow(0.06);
+        .collect::<Vec<_>>()
+        .ord_flow(cs(10));
 
-    let shrink = cubes
-        .iter()
-        .map(|&cube| {
-            b.act(cube, path!(<Transform>::scale), |_| {
-                Vec3::splat(0.4)
-            })
-            .with_ease(ease::cubic::ease_in)
-            .play(0.5)
-        })
-        .ord_flow(0.1);
-
-    let track =
-        [grow, [rise, spin].ord_all(), shrink].ord_chain().compile();
+    let track = [grow, spin].ord_chain().compile();
     b.add_tracks(track);
 
     let timeline = b.compile();
