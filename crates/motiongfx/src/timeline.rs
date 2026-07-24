@@ -461,6 +461,12 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
         }
     }
 
+    /// Access the underlying runtime registry (needed by the scene
+    /// compile step to look up typed accessors).
+    pub fn registry(&self) -> &Registry {
+        self.registry
+    }
+
     /// Add an [`Action`] with interpolation using
     /// [`Interpolation::interp`].
     pub fn act<I, S, T, M>(

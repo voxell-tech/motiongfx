@@ -3646,6 +3646,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "motiongfx_scene"
+version = "0.3.0"
+dependencies = [
+ "hashbrown 0.17.1",
+ "motiongfx",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "moxcms"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
