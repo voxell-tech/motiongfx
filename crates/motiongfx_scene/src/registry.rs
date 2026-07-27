@@ -1,6 +1,7 @@
 //! The reconstruction boundary: maps scene names to typed runtime
 //! closures. Filled by the backend at startup; see [`SceneRegistry`].
 
+use core::any::{Any, TypeId};
 use core::marker::PhantomData;
 
 use alloc::boxed::Box;
@@ -19,8 +20,11 @@ use crate::block::ActionCmd;
 use crate::error::CompileError;
 use crate::refs::{EaseRef, FieldRef, InterpRef, OpRef, TypeName};
 
-/// A monomorphized op builder, stored by `(TypeName, OpRef)`.
-trait TypedOpBuilder<Id, V, W> {
+/// Resolves one `S`/`T`-typed field into a [`TrackFragment`], stored by
+/// [`FieldRef`]. The action itself (looked up by `T` alone, not `S`; see
+/// [`SceneRegistry::build_action`] and its `action_resolvers` map) doesn't
+/// belong here - only the field-accessor step needs `S`.
+trait FieldResolver<Id, V, W> {
     fn build(
         &self,
         cmd: &ActionCmd<Id, V>,
@@ -29,20 +33,18 @@ trait TypedOpBuilder<Id, V, W> {
     ) -> Result<TrackFragment, CompileError<Id>>;
 }
 
-struct ConcreteOpBuilder<Id, V, W, S, T, F> {
-    f: F,
+struct ConcreteFieldResolver<Id, V, W, S, T> {
     _marker: PhantomData<(Id, V, W, S, T)>,
 }
 
-impl<Id, V, W, S, T, F> TypedOpBuilder<Id, V, W>
-    for ConcreteOpBuilder<Id, V, W, S, T, F>
+impl<Id, V, W, S, T> FieldResolver<Id, V, W>
+    for ConcreteFieldResolver<Id, V, W, S, T>
 where
     W: SubjectSource<Id, S> + 'static,
     Id: SubjectId + 'static,
     S: 'static,
     T: ThreadSafe + Clone + 'static,
     V: 'static,
-    F: Fn(&V) -> Box<dyn Action<T>>,
 {
     fn build(
         &self,
@@ -50,28 +52,30 @@ where
         registry: &SceneRegistry<Id, V, W>,
         builder: &mut TimelineBuilder<'_, W>,
     ) -> Result<TrackFragment, CompileError<Id>> {
-        let field = registry.resolve_field(&cmd.field)?;
+        let untyped_field = registry.resolve_field(&cmd.field)?;
 
         // Verify type match and get the typed accessor.
         let accessor = builder
             .registry()
             .accessor
-            .get::<S, T>(&field)
+            .get::<S, T>(&untyped_field)
             .ok_or_else(|| CompileError::TypeMismatch {
                 type_name: core::any::type_name::<T>(),
                 field: cmd.field.clone(),
             })?;
 
         // Reconstruct the typed Field and FieldAccessor.
-        let typed_field = field.typed::<S, T>().ok_or_else(|| {
-            CompileError::TypeMismatch {
-                type_name: core::any::type_name::<T>(),
-                field: cmd.field.clone(),
-            }
-        })?;
+        let field =
+            untyped_field.typed::<S, T>().ok_or_else(|| {
+                CompileError::TypeMismatch {
+                    type_name: core::any::type_name::<T>(),
+                    field: cmd.field.clone(),
+                }
+            })?;
 
-        let field_acc = FieldAccessor::new(typed_field, accessor);
-        let action = (self.f)(&cmd.value);
+        let field_acc = FieldAccessor::new(field, accessor);
+        let action =
+            registry.build_action::<T>(&cmd.op, &cmd.value)?;
 
         // Only known here, where `T` is concrete: pull the named interp
         // out of the type-erased map, or fall back to step.
@@ -90,8 +94,14 @@ where
     }
 }
 
-type OpBuilderMap<Id, V, W> =
-    HashMap<(TypeName, OpRef), Box<dyn TypedOpBuilder<Id, V, W>>>;
+type BuildAction<V, T> = Box<dyn Fn(&V) -> Box<dyn Action<T>>>;
+
+/// Keyed by `(TypeId::of::<T>(), OpRef)`: an op's identity is the value
+/// type it acts on plus its name, never the field's owning type.
+type ActionResolverMap = HashMap<(TypeId, OpRef), Box<dyn Any>>;
+
+type FieldResolverMap<Id, V, W> =
+    HashMap<FieldRef, Box<dyn FieldResolver<Id, V, W>>>;
 
 type FieldRegistrarMap =
     HashMap<FieldRef, Box<dyn Fn(&mut Registry)>>;
@@ -99,15 +109,15 @@ type FieldRegistrarMap =
 /// The bridge between scene names and runtime closures.
 ///
 /// `Id`/`V` match the scene's type parameters; `W` is the runtime's
-/// world type. Fill via [`register_field`](Self::register_field),
-/// [`register_op`](Self::register_op), and optionally
-/// [`register_ease`](Self::register_ease)/[`register_interp`](Self::register_interp).
+/// world type. Fill via [`Self::register_field`], [`Self::register_op`],
+/// and optionally [`Self::register_ease`]/[`Self::register_interp`].
 pub struct SceneRegistry<Id, V, W> {
-    op_builders: OpBuilderMap<Id, V, W>,
+    action_resolvers: ActionResolverMap,
     field_map: HashMap<FieldRef, UntypedField>,
+    field_resolvers: FieldResolverMap<Id, V, W>,
     field_registrars: FieldRegistrarMap,
     eases: HashMap<EaseRef, EaseFn>,
-    interps: HashMap<InterpRef, Box<dyn core::any::Any>>,
+    interps: HashMap<InterpRef, Box<dyn Any>>,
     _marker: PhantomData<(Id, V, W)>,
 }
 
@@ -115,8 +125,9 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
     /// Create an empty registry.
     pub fn new() -> Self {
         Self {
-            op_builders: HashMap::new(),
+            action_resolvers: HashMap::new(),
             field_map: HashMap::new(),
+            field_resolvers: HashMap::new(),
             field_registrars: HashMap::new(),
             eases: HashMap::new(),
             interps: HashMap::new(),
@@ -139,6 +150,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         Id: SubjectId + 'static,
         S: 'static,
         T: ThreadSafe + Clone,
+        V: 'static,
     {
         let field_ref = FieldRef {
             type_name,
@@ -146,6 +158,12 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         };
         let untyped = field_acc.field.untyped();
         self.field_map.insert(field_ref.clone(), untyped);
+        self.field_resolvers.insert(
+            field_ref.clone(),
+            Box::new(ConcreteFieldResolver::<Id, V, W, S, T> {
+                _marker: PhantomData,
+            }),
+        );
 
         // `FieldAccessor`'s derived `Copy` needs `S: Copy, T: Copy`, but
         // `Field`/`Accessor` alone are unconditionally `Copy` - capture
@@ -172,30 +190,22 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         }
     }
 
-    /// Register an action op builder.
+    /// Register an op by name for a value type `T`.
     ///
-    /// `f` receives a reference to the scene's opaque value `V` and
-    /// returns a boxed action closure.
-    pub fn register_op<S, T, F>(
-        &mut self,
-        type_name: TypeName,
-        op: OpRef,
-        f: F,
-    ) where
-        W: SubjectSource<Id, S> + 'static,
-        Id: SubjectId + 'static,
-        S: 'static,
+    /// Keyed by `T` alone (via [`TypeId`]), not by any field's owning
+    /// type `S`: the same `"to"`/`"by"` registered for `T = f32` covers
+    /// every field of every `S` whose value type is `f32`. `build_action`
+    /// receives a reference to the scene's opaque value `V` and returns
+    /// a boxed action closure.
+    pub fn register_op<T, F>(&mut self, op: OpRef, build_action: F)
+    where
         T: ThreadSafe + Clone + 'static,
         V: 'static,
         F: Fn(&V) -> Box<dyn Action<T>> + 'static,
     {
-        self.op_builders.insert(
-            (type_name, op),
-            Box::new(ConcreteOpBuilder::<Id, V, W, S, T, F> {
-                f,
-                _marker: PhantomData,
-            }),
-        );
+        let build_action: BuildAction<V, T> = Box::new(build_action);
+        self.action_resolvers
+            .insert((TypeId::of::<T>(), op), Box::new(build_action));
     }
 
     /// Register an easing function by name.
@@ -256,21 +266,40 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         }
     }
 
+    /// Build the action for `op` under a concrete `T`, or
+    /// [`CompileError::UnknownOp`] if `op` isn't registered for this `T`.
+    pub(crate) fn build_action<T>(
+        &self,
+        op: &OpRef,
+        value: &V,
+    ) -> Result<Box<dyn Action<T>>, CompileError<Id>>
+    where
+        T: 'static,
+        V: 'static,
+    {
+        self.action_resolvers
+            .get(&(TypeId::of::<T>(), op.clone()))
+            .and_then(|f| f.downcast_ref::<BuildAction<V, T>>())
+            .map(|build_action| build_action(value))
+            .ok_or_else(|| {
+                CompileError::UnknownOp(
+                    core::any::type_name::<T>(),
+                    op.clone(),
+                )
+            })
+    }
+
     pub(crate) fn resolve_op(
         &self,
         cmd: &ActionCmd<Id, V>,
         builder: &mut TimelineBuilder<'_, W>,
     ) -> Result<TrackFragment, CompileError<Id>> {
-        let key = (cmd.field.type_name.clone(), cmd.op.clone());
-        let op_builder =
-            self.op_builders.get(&key).ok_or_else(|| {
-                CompileError::UnknownOp(
-                    cmd.field.type_name.clone(),
-                    cmd.op.clone(),
-                )
-            })?;
+        let resolver =
+            self.field_resolvers.get(&cmd.field).ok_or_else(
+                || CompileError::UnknownField(cmd.field.clone()),
+            )?;
 
-        op_builder.build(cmd, self, builder)
+        resolver.build(cmd, self, builder)
     }
 }
 

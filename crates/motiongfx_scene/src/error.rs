@@ -2,10 +2,10 @@
 
 use core::fmt;
 
-use crate::refs::{EaseRef, FieldRef, InterpRef, OpRef, TypeName};
+use crate::refs::{EaseRef, FieldRef, InterpRef, OpRef};
 
-/// Errors that can occur during [`compile`](crate::compile()) of a scene
-/// into a runtime [`Timeline`](motiongfx::timeline::Timeline).
+/// Errors that can occur during [`compile`](crate::compile()) of a
+/// scene into a runtime [`Timeline`](motiongfx::timeline::Timeline).
 ///
 /// Each variant pinpoints the scene element that couldn't be resolved.
 #[derive(Debug, Clone, PartialEq)]
@@ -17,8 +17,8 @@ pub enum CompileError<Id> {
     /// The field reference has no matching `UntypedField` in the registry.
     UnknownField(FieldRef),
 
-    /// No op builder was registered for the given `(TypeName, OpRef)` pair.
-    UnknownOp(TypeName, OpRef),
+    /// No op builder was registered for `OpRef` under this value type.
+    UnknownOp(&'static str, OpRef),
 
     /// No easing function registered under this name.
     UnknownEase(EaseRef),
@@ -27,8 +27,7 @@ pub enum CompileError<Id> {
     UnknownInterp(InterpRef),
 
     /// The op builder's expected type doesn't match what's registered
-    /// for the field: a registration bug. `type_name` is a diagnostic
-    /// `core::any::type_name::<T>()`, not a format-level [`TypeName`].
+    /// for the field: a registration bug.
     TypeMismatch {
         type_name: &'static str,
         field: FieldRef,

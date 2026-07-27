@@ -16,12 +16,20 @@ struct Point {
     y: f32,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct Circle {
+    radius: f32,
+}
+
 #[derive(Default)]
-struct ToyWorld(HashMap<u64, Point>);
+struct ToyWorld {
+    points: HashMap<u64, Point>,
+    circles: HashMap<u64, Circle>,
+}
 
 impl SubjectSource<u64, Point> for ToyWorld {
     fn get_source(&self, id: u64) -> Option<&Point> {
-        self.0.get(&id)
+        self.points.get(&id)
     }
 
     fn apply_source<R>(
@@ -29,7 +37,21 @@ impl SubjectSource<u64, Point> for ToyWorld {
         id: u64,
         f: impl FnOnce(&mut Point) -> R,
     ) -> Option<R> {
-        self.0.get_mut(&id).map(f)
+        self.points.get_mut(&id).map(f)
+    }
+}
+
+impl SubjectSource<u64, Circle> for ToyWorld {
+    fn get_source(&self, id: u64) -> Option<&Circle> {
+        self.circles.get(&id)
+    }
+
+    fn apply_source<R>(
+        &mut self,
+        id: u64,
+        f: impl FnOnce(&mut Circle) -> R,
+    ) -> Option<R> {
+        self.circles.get_mut(&id).map(f)
     }
 }
 
@@ -71,8 +93,7 @@ fn registry_with_to_op() -> SceneRegistry<u64, f32, ToyWorld> {
         "y",
         path!(<Point>::y),
     );
-    registry.register_op::<Point, f32, _>(
-        "Point".into(),
+    registry.register_op::<f32, _>(
         OpRef("to".into()),
         |value: &f32| -> Box<dyn Action<f32>> {
             let value = *value;
@@ -111,7 +132,7 @@ fn compiles_and_samples_a_single_action() {
             .expect("scene should compile");
 
     let mut world = ToyWorld::default();
-    world.0.insert(0, Point::default());
+    world.points.insert(0, Point::default());
     timeline.bake_actions(&runtime_registry, &world);
 
     sample_at(
@@ -120,7 +141,7 @@ fn compiles_and_samples_a_single_action() {
         &mut world,
         Duration::from_millis(200),
     );
-    assert_eq!(world.0[&0].x, 5.0);
+    assert_eq!(world.points[&0].x, 5.0);
 }
 
 #[test]
@@ -142,7 +163,7 @@ fn chain_runs_children_in_sequence() {
             .expect("scene should compile");
 
     let mut world = ToyWorld::default();
-    world.0.insert(0, Point::default());
+    world.points.insert(0, Point::default());
     timeline.bake_actions(&runtime_registry, &world);
 
     // Only the first action's window has elapsed.
@@ -152,7 +173,7 @@ fn chain_runs_children_in_sequence() {
         &mut world,
         Duration::from_millis(100),
     );
-    assert_eq!(world.0[&0].x, 1.0);
+    assert_eq!(world.points[&0].x, 1.0);
 
     // Both actions have now completed, in order.
     sample_at(
@@ -161,7 +182,7 @@ fn chain_runs_children_in_sequence() {
         &mut world,
         Duration::from_millis(200),
     );
-    assert_eq!(world.0[&0].x, 2.0);
+    assert_eq!(world.points[&0].x, 2.0);
 }
 
 #[test]
@@ -186,7 +207,7 @@ fn all_combinator_runs_children_simultaneously() {
             .expect("scene should compile");
 
     let mut world = ToyWorld::default();
-    world.0.insert(0, Point::default());
+    world.points.insert(0, Point::default());
     timeline.bake_actions(&runtime_registry, &world);
 
     sample_at(
@@ -195,8 +216,8 @@ fn all_combinator_runs_children_simultaneously() {
         &mut world,
         Duration::from_millis(200),
     );
-    assert_eq!(world.0[&0].x, 5.0);
-    assert_eq!(world.0[&0].y, 9.0);
+    assert_eq!(world.points[&0].x, 5.0);
+    assert_eq!(world.points[&0].y, 9.0);
 }
 
 #[test]
@@ -220,7 +241,7 @@ fn delayed_node_shifts_the_start_time() {
             .expect("scene should compile");
 
     let mut world = ToyWorld::default();
-    world.0.insert(0, Point::default());
+    world.points.insert(0, Point::default());
     timeline.bake_actions(&runtime_registry, &world);
 
     // Still inside the delay window: nothing has been queued yet.
@@ -230,7 +251,7 @@ fn delayed_node_shifts_the_start_time() {
         &mut world,
         Duration::from_millis(100),
     );
-    assert_eq!(world.0[&0].x, 0.0);
+    assert_eq!(world.points[&0].x, 0.0);
 
     // Delay elapsed and the action's own duration has passed.
     sample_at(
@@ -239,23 +260,80 @@ fn delayed_node_shifts_the_start_time() {
         &mut world,
         Duration::from_millis(300),
     );
-    assert_eq!(world.0[&0].x, 5.0);
+    assert_eq!(world.points[&0].x, 5.0);
 }
 
 #[test]
-fn unregistered_field_is_a_compile_error() {
-    // Op is registered, but no `register_field` call for "x": isolates
-    // the field lookup, since op lookup happens first in `resolve_op`.
+fn one_op_registration_covers_every_owning_type_sharing_t() {
     let mut scene_registry: SceneRegistry<u64, f32, ToyWorld> =
         SceneRegistry::new();
-    scene_registry.register_op::<Point, f32, _>(
+    scene_registry.register_field::<Point, f32>(
         "Point".into(),
+        "x",
+        path!(<Point>::x),
+    );
+    scene_registry.register_field::<Circle, f32>(
+        "Circle".into(),
+        "radius",
+        path!(<Circle>::radius),
+    );
+    // Registered once, for T = f32; never registered again for Circle.
+    scene_registry.register_op::<f32, _>(
         OpRef("to".into()),
         |value: &f32| -> Box<dyn Action<f32>> {
             let value = *value;
             Box::new(move |_prev: &f32| value)
         },
     );
+
+    let circle_action = ActionCmd {
+        subject: 0,
+        field: FieldRef {
+            type_name: "Circle".into(),
+            path: "radius".into(),
+        },
+        op: OpRef("to".into()),
+        value: 3.0,
+        duration: Duration::from_millis(100),
+        ease: None,
+        interp: None,
+    };
+    let scene: Scene<u64, f32> = Scene {
+        stage: Stage {
+            subjects: vec![Subject { id: 0, state: 0.0 }],
+        },
+        animation: Block::chain(vec![
+            Node::Action(action_cmd(0, "x", 5.0, 100)),
+            Node::Action(circle_action),
+        ]),
+    };
+
+    let mut runtime_registry = Registry::new();
+    let mut timeline =
+        compile(&scene, &scene_registry, &mut runtime_registry)
+            .expect("scene should compile");
+
+    let mut world = ToyWorld::default();
+    world.points.insert(0, Point::default());
+    world.circles.insert(0, Circle::default());
+    timeline.bake_actions(&runtime_registry, &world);
+
+    sample_at(
+        &mut timeline,
+        &runtime_registry,
+        &mut world,
+        Duration::from_millis(200),
+    );
+    assert_eq!(world.points[&0].x, 5.0);
+    assert_eq!(world.circles[&0].radius, 3.0);
+}
+
+#[test]
+fn unregistered_field_is_a_compile_error() {
+    // No `register_field` call for "x" at all: `resolve_op` dispatches
+    // on the field first, so this never reaches op resolution.
+    let scene_registry: SceneRegistry<u64, f32, ToyWorld> =
+        SceneRegistry::new();
 
     let scene: Scene<u64, f32> = Scene {
         stage: Stage {
