@@ -4,8 +4,8 @@ use core::fmt;
 
 use crate::refs::{EaseRef, FieldRef, InterpRef, OpRef};
 
-/// Errors that can occur during [`compile`](crate::compile()) of a
-/// scene into a runtime [`Timeline`](motiongfx::timeline::Timeline).
+/// Errors that can occur during [`compile`](crate::compile::compile())
+/// of a scene into a runtime [`Timeline`](motiongfx::timeline::Timeline).
 ///
 /// Each variant pinpoints the scene element that couldn't be resolved.
 #[derive(Debug, Clone, PartialEq)]
@@ -14,10 +14,13 @@ pub enum CompileError<Id> {
     /// registry's subject map.
     UnknownSubject(Id),
 
-    /// The field reference has no matching `UntypedField` in the registry.
+    /// The field reference has no matching
+    /// [`UntypedField`](motiongfx::field_path::field::UntypedField) in
+    /// the registry.
     UnknownField(FieldRef),
 
-    /// No op builder was registered for `OpRef` under this value type.
+    /// No op builder was registered for this [`OpRef`] under this value
+    /// type.
     UnknownOp(&'static str, OpRef),
 
     /// No easing function registered under this name.

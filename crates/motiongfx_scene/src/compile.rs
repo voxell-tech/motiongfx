@@ -18,7 +18,7 @@ use crate::refs::FieldRef;
 use crate::registry::SceneRegistry;
 use crate::scene::Scene;
 
-/// Compile a [`Scene`] into a [`Timeline`].
+/// Compiles a [`Scene`] into a [`Timeline`].
 ///
 /// # Errors
 ///
@@ -51,7 +51,7 @@ where
     })
 }
 
-/// Compile a [`Node`] into a [`TrackFragment`].
+/// Compiles a [`Node`] into a [`TrackFragment`].
 fn walk_node<Id, V, W>(
     node: &Node<Id, V>,
     registry: &SceneRegistry<Id, V, W>,
@@ -72,7 +72,7 @@ where
     }
 }
 
-/// Compile a [`Block`] into a [`TrackFragment`].
+/// Compiles a [`Block`] into a [`TrackFragment`].
 fn walk_block<Id, V, W>(
     block: &Block<Id, V>,
     registry: &SceneRegistry<Id, V, W>,

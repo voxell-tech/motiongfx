@@ -34,7 +34,7 @@ trait FieldResolver<Id, V, W> {
 }
 
 struct ConcreteFieldResolver<Id, V, W, S, T> {
-    #[expect(clippy::complexity)]
+    #[expect(clippy::type_complexity)]
     _marker: PhantomData<fn() -> (Id, V, W, S, T)>,
 }
 
@@ -115,12 +115,12 @@ pub struct SceneRegistry<Id, V, W> {
     action_resolvers: TypeTable<OpRef>,
     eases: HashMap<EaseRef, EaseFn>,
     interps: TypeTable<InterpRef>,
-    #[expect(clippy::complexity)]
+    #[expect(clippy::type_complexity)]
     _marker: PhantomData<fn() -> (Id, V, W)>,
 }
 
 impl<Id, V, W> SceneRegistry<Id, V, W> {
-    /// Create an empty registry.
+    /// Creates an empty registry.
     pub fn new() -> Self {
         Self {
             fields: TypeTable::new(),
@@ -131,7 +131,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         }
     }
 
-    /// Register a field mapping.
+    /// Registers a field mapping.
     ///
     /// `type_name` + `path` form the [`FieldRef`] used in serialized
     /// [`ActionCmd`]s. `field_acc` is installed into the runtime
@@ -177,7 +177,8 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         );
     }
 
-    /// Install every registered field's accessor into `runtime_registry`.
+    /// Installs every registered field's accessor into the runtime
+    /// [`Registry`].
     pub(crate) fn install_accessors(
         &self,
         runtime_registry: &mut Registry,
@@ -187,7 +188,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         }
     }
 
-    /// Register an op by name for a value type `T`.
+    /// Registers an op by name for a value type `T`.
     ///
     /// Keyed by `T` alone, not by any field's owning type `S`: the same
     /// `"to"`/`"by"` registered for `T = f32` covers every field of
@@ -205,12 +206,12 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
             .insert::<BuildAction<V, T>>(op, build_action);
     }
 
-    /// Register an easing function by name.
+    /// Registers an easing function by name.
     pub fn register_ease(&mut self, name: EaseRef, ease: EaseFn) {
         self.eases.insert(name, ease);
     }
 
-    /// Register an interpolation function by name.
+    /// Registers an interpolation function by name.
     pub fn register_interp<T>(
         &mut self,
         name: InterpRef,
@@ -265,7 +266,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         }
     }
 
-    /// Build the action for `op` under a concrete `T`, or
+    /// Builds the action for `op` under a concrete `T`, or
     /// [`CompileError::UnknownOp`] if `op` isn't registered for this `T`.
     pub(crate) fn build_action<T>(
         &self,
