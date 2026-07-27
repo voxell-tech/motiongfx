@@ -1,12 +1,12 @@
 //! The reconstruction boundary: maps scene names to typed runtime
 //! closures. Filled by the backend at startup; see [`SceneRegistry`].
 
-use core::any::{Any, TypeId};
 use core::marker::PhantomData;
 
 use alloc::boxed::Box;
 
 use hashbrown::HashMap;
+use typarena::type_table::TypeTable;
 
 use motiongfx::ThreadSafe;
 use motiongfx::action::{Action, EaseFn, InterpFn};
@@ -94,11 +94,8 @@ where
     }
 }
 
-type BuildAction<V, T> = Box<dyn Fn(&V) -> Box<dyn Action<T>>>;
-
-/// Keyed by `(TypeId::of::<T>(), OpRef)`: an op's identity is the value
-/// type it acts on plus its name, never the field's owning type.
-type ActionResolverMap = HashMap<(TypeId, OpRef), Box<dyn Any>>;
+type BuildAction<V, T> =
+    Box<dyn Fn(&V) -> Box<dyn Action<T>> + Send + Sync>;
 
 type FieldResolverMap<Id, V, W> =
     HashMap<FieldRef, Box<dyn FieldResolver<Id, V, W>>>;
@@ -112,26 +109,24 @@ type FieldRegistrarMap =
 /// world type. Fill via [`Self::register_field`], [`Self::register_op`],
 /// and optionally [`Self::register_ease`]/[`Self::register_interp`].
 pub struct SceneRegistry<Id, V, W> {
-    action_resolvers: ActionResolverMap,
+    action_resolvers: TypeTable<OpRef>,
     field_map: HashMap<FieldRef, UntypedField>,
     field_resolvers: FieldResolverMap<Id, V, W>,
     field_registrars: FieldRegistrarMap,
     eases: HashMap<EaseRef, EaseFn>,
-    interps: HashMap<InterpRef, Box<dyn Any>>,
-    _marker: PhantomData<(Id, V, W)>,
+    interps: TypeTable<InterpRef>,
 }
 
 impl<Id, V, W> SceneRegistry<Id, V, W> {
     /// Create an empty registry.
     pub fn new() -> Self {
         Self {
-            action_resolvers: HashMap::new(),
+            action_resolvers: TypeTable::new(),
             field_map: HashMap::new(),
             field_resolvers: HashMap::new(),
             field_registrars: HashMap::new(),
             eases: HashMap::new(),
-            interps: HashMap::new(),
-            _marker: PhantomData,
+            interps: TypeTable::new(),
         }
     }
 
@@ -192,20 +187,20 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
 
     /// Register an op by name for a value type `T`.
     ///
-    /// Keyed by `T` alone (via [`TypeId`]), not by any field's owning
-    /// type `S`: the same `"to"`/`"by"` registered for `T = f32` covers
-    /// every field of every `S` whose value type is `f32`. `build_action`
-    /// receives a reference to the scene's opaque value `V` and returns
-    /// a boxed action closure.
+    /// Keyed by `T` alone, not by any field's owning type `S`: the same
+    /// `"to"`/`"by"` registered for `T = f32` covers every field of
+    /// every `S` whose value type is `f32`. `build_action` receives a
+    /// reference to the scene's opaque value `V` and returns a boxed
+    /// action closure.
     pub fn register_op<T, F>(&mut self, op: OpRef, build_action: F)
     where
         T: ThreadSafe + Clone + 'static,
         V: 'static,
-        F: Fn(&V) -> Box<dyn Action<T>> + 'static,
+        F: Fn(&V) -> Box<dyn Action<T>> + ThreadSafe,
     {
         let build_action: BuildAction<V, T> = Box::new(build_action);
         self.action_resolvers
-            .insert((TypeId::of::<T>(), op), Box::new(build_action));
+            .insert::<BuildAction<V, T>>(op, build_action);
     }
 
     /// Register an easing function by name.
@@ -221,7 +216,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
     ) where
         T: 'static,
     {
-        self.interps.insert(name, Box::new(interp));
+        self.interps.insert::<InterpFn<T>>(name, interp);
     }
 
     pub(crate) fn resolve_field(
@@ -257,8 +252,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
             ),
             Some(name) => self
                 .interps
-                .get(name)
-                .and_then(|f| f.downcast_ref::<InterpFn<T>>())
+                .get::<InterpFn<T>>(name)
                 .copied()
                 .ok_or_else(|| {
                     CompileError::UnknownInterp(name.clone())
@@ -278,8 +272,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         V: 'static,
     {
         self.action_resolvers
-            .get(&(TypeId::of::<T>(), op.clone()))
-            .and_then(|f| f.downcast_ref::<BuildAction<V, T>>())
+            .get::<BuildAction<V, T>>(op)
             .map(|build_action| build_action(value))
             .ok_or_else(|| {
                 CompileError::UnknownOp(

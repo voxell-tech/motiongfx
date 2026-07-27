@@ -3653,6 +3653,7 @@ dependencies = [
  "motiongfx",
  "serde",
  "serde_json",
+ "typarena",
 ]
 
 [[package]]
