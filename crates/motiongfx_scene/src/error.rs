@@ -24,15 +24,15 @@ pub enum CompileError<B: SceneBackend> {
     UnknownField(FieldRef),
 
     /// No op builder was registered for this
-    /// [`Key`](crate::refs::Key) under this value type.
+    /// [`Key`](crate::backend::Key) under this value type.
     UnknownOp(&'static str, B::OpId),
 
     /// No easing function registered under this
-    /// [`Key`](crate::refs::Key).
+    /// [`Key`](crate::backend::Key).
     UnknownEase(B::EaseId),
 
     /// No interpolation function registered under this
-    /// [`Key`](crate::refs::Key).
+    /// [`Key`](crate::backend::Key).
     UnknownInterp(B::InterpId),
 
     /// The op builder's expected type doesn't match what's registered

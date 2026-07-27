@@ -29,9 +29,9 @@ pub mod registry;
 pub mod scene;
 
 pub mod prelude {
-    pub use crate::backend::SceneBackend;
+    pub use crate::backend::{Key, SceneBackend, Storable};
     pub use crate::block::{ActionCmd, Block, Combinator, Node};
     pub use crate::error::CompileError;
-    pub use crate::refs::{FieldRef, Key, TypeName};
+    pub use crate::refs::{FieldRef, TypeName};
     pub use crate::scene::{Scene, Stage, Subject};
 }

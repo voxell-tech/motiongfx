@@ -8,22 +8,8 @@
 use alloc::boxed::Box;
 use alloc::string::String;
 use core::fmt;
-use core::fmt::Debug;
-use core::hash::Hash;
 
 use serde::{Deserialize, Serialize};
-
-use motiongfx::ThreadSafe;
-
-/// An auto trait bound for any small `Copy` identifier usable as a
-/// hashmap/table key - thread-safe, debuggable, and cheap to compare
-/// and hash.
-pub trait Key: ThreadSafe + Debug + Copy + Clone + Eq + Hash {}
-
-impl<T> Key for T where
-    T: ThreadSafe + Debug + Copy + Clone + Eq + Hash
-{
-}
 
 /// A fully-qualified type name, e.g.
 /// `"bevy_transform::components::transform::Transform"`.
