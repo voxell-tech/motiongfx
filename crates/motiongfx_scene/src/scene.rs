@@ -13,10 +13,7 @@ use crate::block::Block;
 /// [`SceneBackend`].
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(Debug, Clone, PartialEq)]
-#[serde(bound(
-    serialize = "B::Id: Serialize, B::Value: Serialize, B::OpId: Serialize, B::InterpId: Serialize, B::EaseId: Serialize",
-    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>, B::OpId: Deserialize<'de>, B::InterpId: Deserialize<'de>, B::EaseId: Deserialize<'de>"
-))]
+#[serde(bound = "")]
 pub struct Scene<B: SceneBackend> {
     pub stage: Stage<B>,
     /// The root block. An empty timeline is `Block::chain([])`.
@@ -27,10 +24,7 @@ pub struct Scene<B: SceneBackend> {
 /// Deliberately no object-vs-asset split; that's a backend concern.
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(Debug, Clone, PartialEq)]
-#[serde(bound(
-    serialize = "B::Id: Serialize, B::Value: Serialize",
-    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>"
-))]
+#[serde(bound = "")]
 pub struct Stage<B: SceneBackend> {
     pub subjects: Vec<Subject<B>>,
 }
@@ -39,10 +33,7 @@ pub struct Stage<B: SceneBackend> {
 /// `state` is opaque to core; the backend owns its shape.
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(Debug, Clone, PartialEq)]
-#[serde(bound(
-    serialize = "B::Id: Serialize, B::Value: Serialize",
-    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>"
-))]
+#[serde(bound = "")]
 pub struct Subject<B: SceneBackend> {
     pub id: B::Id,
     pub state: B::Value,

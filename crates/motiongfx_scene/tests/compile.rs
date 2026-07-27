@@ -9,8 +9,11 @@ use motiongfx::prelude::*;
 use motiongfx_scene::compile::compile;
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
 enum Op {
     To,
 }

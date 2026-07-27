@@ -14,26 +14,13 @@ use crate::backend::SceneBackend;
 use crate::refs::FieldRef;
 
 /// A group of [`Node`]s combined by one [`Combinator`].
-///
-/// `Block`/`Node` are mutually recursive (`Node::Block(Block<B>)`,
-/// `Block.children: Vec<Node<B>>`), which `educe`'s automatic bound
-/// inference can't see across - explicit `bound(...)` overrides below
-/// give it the real per-field bounds instead of falling back to
-/// requiring `B` itself implement each trait. Only `B::Value` needs a
-/// bound stated here: `B::Id: SubjectId` and `B::OpId`/`B::InterpId`/
-/// `B::EaseId: Key` already guarantee `Debug`/`Clone`/`Eq` (which
-/// implies `PartialEq`) as supertraits, so those hold without restating
-/// them.
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(
     Debug(bound(B::Value: core::fmt::Debug)),
     Clone(bound(B::Value: Clone)),
     PartialEq(bound(B::Value: PartialEq))
 )]
-#[serde(bound(
-    serialize = "B::Id: Serialize, B::Value: Serialize, B::OpId: Serialize, B::InterpId: Serialize, B::EaseId: Serialize",
-    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>, B::OpId: Deserialize<'de>, B::InterpId: Deserialize<'de>, B::EaseId: Deserialize<'de>"
-))]
+#[serde(bound = "")]
 pub struct Block<B: SceneBackend> {
     pub combinator: Combinator,
     pub children: Vec<Node<B>>,
@@ -65,20 +52,13 @@ pub enum Combinator {
 
 /// A member of a [`Block`]: a nested block, an action leaf, or a
 /// delayed wrapper.
-///
-/// Explicit `bound(...)` overrides for the same reason as
-/// [`Block`] - `Node` is directly self-referential via
-/// `Delayed.node: Box<Node<B>>`.
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(
     Debug(bound(B::Value: core::fmt::Debug)),
     Clone(bound(B::Value: Clone)),
     PartialEq(bound(B::Value: PartialEq))
 )]
-#[serde(bound(
-    serialize = "B::Id: Serialize, B::Value: Serialize, B::OpId: Serialize, B::InterpId: Serialize, B::EaseId: Serialize",
-    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>, B::OpId: Deserialize<'de>, B::InterpId: Deserialize<'de>, B::EaseId: Deserialize<'de>"
-))]
+#[serde(bound = "")]
 pub enum Node<B: SceneBackend> {
     Block(Block<B>),
     Action(ActionCmd<B>),
@@ -94,10 +74,7 @@ pub enum Node<B: SceneBackend> {
 /// opaque value; the registry reconstructs the typed action.
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(Debug, Clone, PartialEq)]
-#[serde(bound(
-    serialize = "B::Id: Serialize, B::Value: Serialize, B::OpId: Serialize, B::InterpId: Serialize, B::EaseId: Serialize",
-    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>, B::OpId: Deserialize<'de>, B::InterpId: Deserialize<'de>, B::EaseId: Deserialize<'de>"
-))]
+#[serde(bound = "")]
 pub struct ActionCmd<B: SceneBackend> {
     pub subject: B::Id,
     pub field: FieldRef,
