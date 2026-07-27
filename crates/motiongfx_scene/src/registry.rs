@@ -34,7 +34,8 @@ trait FieldResolver<Id, V, W> {
 }
 
 struct ConcreteFieldResolver<Id, V, W, S, T> {
-    _marker: PhantomData<(Id, V, W, S, T)>,
+    #[expect(clippy::complexity)]
+    _marker: PhantomData<fn() -> (Id, V, W, S, T)>,
 }
 
 impl<Id, V, W, S, T> FieldResolver<Id, V, W>
@@ -97,11 +98,10 @@ where
 type BuildAction<V, T> =
     Box<dyn Fn(&V) -> Box<dyn Action<T>> + Send + Sync>;
 
-type FieldResolverMap<Id, V, W> =
-    HashMap<FieldRef, Box<dyn FieldResolver<Id, V, W>>>;
+type FieldResolverBox<Id, V, W> =
+    Box<dyn FieldResolver<Id, V, W> + Send + Sync>;
 
-type FieldRegistrarMap =
-    HashMap<FieldRef, Box<dyn Fn(&mut Registry)>>;
+type FieldRegistrar = Box<dyn Fn(&mut Registry) + Send + Sync>;
 
 /// The bridge between scene names and runtime closures.
 ///
@@ -109,24 +109,25 @@ type FieldRegistrarMap =
 /// world type. Fill via [`Self::register_field`], [`Self::register_op`],
 /// and optionally [`Self::register_ease`]/[`Self::register_interp`].
 pub struct SceneRegistry<Id, V, W> {
+    /// Keyed by [`FieldRef`]; columns are `UntypedField`,
+    /// [`FieldResolverBox`], and [`FieldRegistrar`].
+    fields: TypeTable<FieldRef>,
     action_resolvers: TypeTable<OpRef>,
-    field_map: HashMap<FieldRef, UntypedField>,
-    field_resolvers: FieldResolverMap<Id, V, W>,
-    field_registrars: FieldRegistrarMap,
     eases: HashMap<EaseRef, EaseFn>,
     interps: TypeTable<InterpRef>,
+    #[expect(clippy::complexity)]
+    _marker: PhantomData<fn() -> (Id, V, W)>,
 }
 
 impl<Id, V, W> SceneRegistry<Id, V, W> {
     /// Create an empty registry.
     pub fn new() -> Self {
         Self {
+            fields: TypeTable::new(),
             action_resolvers: TypeTable::new(),
-            field_map: HashMap::new(),
-            field_resolvers: HashMap::new(),
-            field_registrars: HashMap::new(),
             eases: HashMap::new(),
             interps: TypeTable::new(),
+            _marker: PhantomData,
         }
     }
 
@@ -152,8 +153,9 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
             path: path.into(),
         };
         let untyped = field_acc.field.untyped();
-        self.field_map.insert(field_ref.clone(), untyped);
-        self.field_resolvers.insert(
+        self.fields
+            .insert::<UntypedField>(field_ref.clone(), untyped);
+        self.fields.insert::<FieldResolverBox<Id, V, W>>(
             field_ref.clone(),
             Box::new(ConcreteFieldResolver::<Id, V, W, S, T> {
                 _marker: PhantomData,
@@ -165,7 +167,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         // those instead to keep this closure `Fn`, not `FnOnce`.
         let field = field_acc.field;
         let accessor = field_acc.accessor;
-        self.field_registrars.insert(
+        self.fields.insert::<FieldRegistrar>(
             field_ref,
             Box::new(move |runtime: &mut Registry| {
                 runtime.register::<W, Id, S, T>(FieldAccessor::new(
@@ -180,7 +182,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         &self,
         runtime_registry: &mut Registry,
     ) {
-        for registrar in self.field_registrars.values() {
+        for (_, registrar) in self.fields.iter::<FieldRegistrar>() {
             registrar(runtime_registry);
         }
     }
@@ -223,9 +225,12 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         &self,
         field_ref: &FieldRef,
     ) -> Result<UntypedField, CompileError<Id>> {
-        self.field_map.get(field_ref).copied().ok_or_else(|| {
-            CompileError::UnknownField(field_ref.clone())
-        })
+        self.fields
+            .get::<UntypedField>(field_ref)
+            .copied()
+            .ok_or_else(|| {
+                CompileError::UnknownField(field_ref.clone())
+            })
     }
 
     pub(crate) fn resolve_ease(
@@ -286,11 +291,18 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         &self,
         cmd: &ActionCmd<Id, V>,
         builder: &mut TimelineBuilder<'_, W>,
-    ) -> Result<TrackFragment, CompileError<Id>> {
-        let resolver =
-            self.field_resolvers.get(&cmd.field).ok_or_else(
-                || CompileError::UnknownField(cmd.field.clone()),
-            )?;
+    ) -> Result<TrackFragment, CompileError<Id>>
+    where
+        Id: 'static,
+        V: 'static,
+        W: 'static,
+    {
+        let resolver = self
+            .fields
+            .get::<FieldResolverBox<Id, V, W>>(&cmd.field)
+            .ok_or_else(|| {
+                CompileError::UnknownField(cmd.field.clone())
+            })?;
 
         resolver.build(cmd, self, builder)
     }
