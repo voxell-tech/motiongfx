@@ -13,46 +13,44 @@ use motiongfx::action::{Action, EaseFn, InterpFn};
 use motiongfx::field_path::field::UntypedField;
 use motiongfx::prelude::*;
 use motiongfx::registry::Registry;
-use motiongfx::subject::SubjectId;
 use motiongfx::world::SubjectSource;
 
+use crate::backend::SceneBackend;
 use crate::block::ActionCmd;
 use crate::error::CompileError;
-use crate::refs::{EaseRef, FieldRef, InterpRef, OpRef, TypeName};
+use crate::refs::{FieldRef, TypeName};
 
 /// Resolves one `S`/`T`-typed field into a [`TrackFragment`], stored by
 /// [`FieldRef`]. The action itself (looked up by `T` alone, not `S`; see
 /// [`SceneRegistry::build_action`] and its `action_resolvers` map) doesn't
 /// belong here - only the field-accessor step needs `S`.
-trait FieldResolver<Id, V, W> {
+trait FieldResolver<B: SceneBackend> {
     fn build(
         &self,
-        cmd: &ActionCmd<Id, V>,
-        registry: &SceneRegistry<Id, V, W>,
-        builder: &mut TimelineBuilder<'_, W>,
-    ) -> Result<TrackFragment, CompileError<Id>>;
+        cmd: &ActionCmd<B>,
+        registry: &SceneRegistry<B>,
+        builder: &mut TimelineBuilder<'_, B::World>,
+    ) -> Result<TrackFragment, CompileError<B>>;
 }
 
-struct ConcreteFieldResolver<Id, V, W, S, T> {
+struct ConcreteFieldResolver<B, S, T> {
     #[expect(clippy::type_complexity)]
-    _marker: PhantomData<fn() -> (Id, V, W, S, T)>,
+    _marker: PhantomData<fn() -> (B, S, T)>,
 }
 
-impl<Id, V, W, S, T> FieldResolver<Id, V, W>
-    for ConcreteFieldResolver<Id, V, W, S, T>
+impl<B, S, T> FieldResolver<B> for ConcreteFieldResolver<B, S, T>
 where
-    W: SubjectSource<Id, S> + 'static,
-    Id: SubjectId + 'static,
+    B: SceneBackend,
+    B::World: SubjectSource<B::Id, S>,
     S: 'static,
-    T: ThreadSafe + Clone + 'static,
-    V: 'static,
+    T: ThreadSafe + Clone,
 {
     fn build(
         &self,
-        cmd: &ActionCmd<Id, V>,
-        registry: &SceneRegistry<Id, V, W>,
-        builder: &mut TimelineBuilder<'_, W>,
-    ) -> Result<TrackFragment, CompileError<Id>> {
+        cmd: &ActionCmd<B>,
+        registry: &SceneRegistry<B>,
+        builder: &mut TimelineBuilder<'_, B::World>,
+    ) -> Result<TrackFragment, CompileError<B>> {
         let untyped_field = registry.resolve_field(&cmd.field)?;
 
         // Verify type match and get the typed accessor.
@@ -76,7 +74,7 @@ where
 
         let field_acc = FieldAccessor::new(field, accessor);
         let action =
-            registry.build_action::<T>(&cmd.op, &cmd.value)?;
+            registry.build_action::<T>(cmd.op, &cmd.value)?;
 
         // Only known here, where `T` is concrete: pull the named interp
         // out of the type-erased map, or fall back to step.
@@ -98,28 +96,25 @@ where
 type BuildAction<V, T> =
     Box<dyn Fn(&V) -> Box<dyn Action<T>> + Send + Sync>;
 
-type FieldResolverBox<Id, V, W> =
-    Box<dyn FieldResolver<Id, V, W> + Send + Sync>;
+type FieldResolverBox<B> = Box<dyn FieldResolver<B> + Send + Sync>;
 
 type FieldRegistrar = Box<dyn Fn(&mut Registry) + Send + Sync>;
 
 /// The bridge between scene names and runtime closures.
 ///
-/// `Id`/`V` match the scene's type parameters; `W` is the runtime's
-/// world type. Fill via [`Self::register_field`], [`Self::register_op`],
-/// and optionally [`Self::register_ease`]/[`Self::register_interp`].
-pub struct SceneRegistry<Id, V, W> {
+/// `B` bundles the backend's chosen types; see [`SceneBackend`]. Fill
+/// via [`Self::register_field`], [`Self::register_op`], and
+/// optionally [`Self::register_ease`]/[`Self::register_interp`].
+pub struct SceneRegistry<B: SceneBackend> {
     /// Keyed by [`FieldRef`]; columns are `UntypedField`,
     /// [`FieldResolverBox`], and [`FieldRegistrar`].
     fields: TypeTable<FieldRef>,
-    action_resolvers: TypeTable<OpRef>,
-    eases: HashMap<EaseRef, EaseFn>,
-    interps: TypeTable<InterpRef>,
-    #[expect(clippy::type_complexity)]
-    _marker: PhantomData<fn() -> (Id, V, W)>,
+    action_resolvers: TypeTable<B::OpId>,
+    eases: HashMap<B::EaseId, EaseFn>,
+    interps: TypeTable<B::InterpId>,
 }
 
-impl<Id, V, W> SceneRegistry<Id, V, W> {
+impl<B: SceneBackend> SceneRegistry<B> {
     /// Creates an empty registry.
     pub fn new() -> Self {
         Self {
@@ -127,7 +122,6 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
             action_resolvers: TypeTable::new(),
             eases: HashMap::new(),
             interps: TypeTable::new(),
-            _marker: PhantomData,
         }
     }
 
@@ -142,11 +136,9 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         path: impl Into<Box<str>>,
         field_acc: FieldAccessor<S, T>,
     ) where
-        W: SubjectSource<Id, S> + 'static,
-        Id: SubjectId + 'static,
+        B::World: SubjectSource<B::Id, S>,
         S: 'static,
         T: ThreadSafe + Clone,
-        V: 'static,
     {
         let field_ref = FieldRef {
             type_name,
@@ -155,9 +147,9 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         let untyped = field_acc.field.untyped();
         self.fields
             .insert::<UntypedField>(field_ref.clone(), untyped);
-        self.fields.insert::<FieldResolverBox<Id, V, W>>(
+        self.fields.insert::<FieldResolverBox<B>>(
             field_ref.clone(),
-            Box::new(ConcreteFieldResolver::<Id, V, W, S, T> {
+            Box::new(ConcreteFieldResolver::<B, S, T> {
                 _marker: PhantomData,
             }),
         );
@@ -170,9 +162,9 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
         self.fields.insert::<FieldRegistrar>(
             field_ref,
             Box::new(move |runtime: &mut Registry| {
-                runtime.register::<W, Id, S, T>(FieldAccessor::new(
-                    field, accessor,
-                ));
+                runtime.register::<B::World, B::Id, S, T>(
+                    FieldAccessor::new(field, accessor),
+                );
             }),
         );
     }
@@ -193,28 +185,28 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
     /// Keyed by `T` alone, not by any field's owning type `S`: the same
     /// `"to"`/`"by"` registered for `T = f32` covers every field of
     /// every `S` whose value type is `f32`. `build_action` receives a
-    /// reference to the scene's opaque value `V` and returns a boxed
-    /// action closure.
-    pub fn register_op<T, F>(&mut self, op: OpRef, build_action: F)
+    /// reference to the scene's opaque value (`B::Value`) and returns
+    /// a boxed action closure.
+    pub fn register_op<T, F>(&mut self, op: B::OpId, build_action: F)
     where
-        T: ThreadSafe + Clone + 'static,
-        V: 'static,
-        F: Fn(&V) -> Box<dyn Action<T>> + ThreadSafe,
+        T: ThreadSafe + Clone,
+        F: Fn(&B::Value) -> Box<dyn Action<T>> + ThreadSafe,
     {
-        let build_action: BuildAction<V, T> = Box::new(build_action);
+        let build_action: BuildAction<B::Value, T> =
+            Box::new(build_action);
         self.action_resolvers
-            .insert::<BuildAction<V, T>>(op, build_action);
+            .insert::<BuildAction<B::Value, T>>(op, build_action);
     }
 
     /// Registers an easing function by name.
-    pub fn register_ease(&mut self, name: EaseRef, ease: EaseFn) {
+    pub fn register_ease(&mut self, name: B::EaseId, ease: EaseFn) {
         self.eases.insert(name, ease);
     }
 
     /// Registers an interpolation function by name.
     pub fn register_interp<T>(
         &mut self,
-        name: InterpRef,
+        name: B::InterpId,
         interp: InterpFn<T>,
     ) where
         T: 'static,
@@ -225,7 +217,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
     pub(crate) fn resolve_field(
         &self,
         field_ref: &FieldRef,
-    ) -> Result<UntypedField, CompileError<Id>> {
+    ) -> Result<UntypedField, CompileError<B>> {
         self.fields
             .get::<UntypedField>(field_ref)
             .copied()
@@ -236,7 +228,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
 
     pub(crate) fn resolve_ease(
         &self,
-        ease: &Option<EaseRef>,
+        ease: &Option<B::EaseId>,
     ) -> Option<EaseFn> {
         ease.as_ref().and_then(|name| self.eases.get(name).copied())
     }
@@ -245,8 +237,8 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
     /// `Some(name)` is [`CompileError::UnknownInterp`].
     pub(crate) fn resolve_interp<T>(
         &self,
-        interp: &Option<InterpRef>,
-    ) -> Result<InterpFn<T>, CompileError<Id>>
+        interp: &Option<B::InterpId>,
+    ) -> Result<InterpFn<T>, CompileError<B>>
     where
         T: Clone + 'static,
     {
@@ -260,9 +252,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
                 .interps
                 .get::<InterpFn<T>>(name)
                 .copied()
-                .ok_or_else(|| {
-                    CompileError::UnknownInterp(name.clone())
-                }),
+                .ok_or(CompileError::UnknownInterp(*name)),
         }
     }
 
@@ -270,37 +260,31 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
     /// [`CompileError::UnknownOp`] if `op` isn't registered for this `T`.
     pub(crate) fn build_action<T>(
         &self,
-        op: &OpRef,
-        value: &V,
-    ) -> Result<Box<dyn Action<T>>, CompileError<Id>>
+        op: B::OpId,
+        value: &B::Value,
+    ) -> Result<Box<dyn Action<T>>, CompileError<B>>
     where
         T: 'static,
-        V: 'static,
     {
         self.action_resolvers
-            .get::<BuildAction<V, T>>(op)
+            .get::<BuildAction<B::Value, T>>(&op)
             .map(|build_action| build_action(value))
             .ok_or_else(|| {
                 CompileError::UnknownOp(
                     core::any::type_name::<T>(),
-                    op.clone(),
+                    op,
                 )
             })
     }
 
     pub(crate) fn resolve_op(
         &self,
-        cmd: &ActionCmd<Id, V>,
-        builder: &mut TimelineBuilder<'_, W>,
-    ) -> Result<TrackFragment, CompileError<Id>>
-    where
-        Id: 'static,
-        V: 'static,
-        W: 'static,
-    {
+        cmd: &ActionCmd<B>,
+        builder: &mut TimelineBuilder<'_, B::World>,
+    ) -> Result<TrackFragment, CompileError<B>> {
         let resolver = self
             .fields
-            .get::<FieldResolverBox<Id, V, W>>(&cmd.field)
+            .get::<FieldResolverBox<B>>(&cmd.field)
             .ok_or_else(|| {
                 CompileError::UnknownField(cmd.field.clone())
             })?;
@@ -309,7 +293,7 @@ impl<Id, V, W> SceneRegistry<Id, V, W> {
     }
 }
 
-impl<Id, V, W> Default for SceneRegistry<Id, V, W> {
+impl<B: SceneBackend> Default for SceneRegistry<B> {
     fn default() -> Self {
         Self::new()
     }

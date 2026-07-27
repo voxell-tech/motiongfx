@@ -4,8 +4,34 @@
 use core::time::Duration;
 
 use motiongfx_scene::prelude::*;
+use serde::{Deserialize, Serialize};
 
-fn sample() -> Scene<u64, f32> {
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+enum Op {
+    To,
+}
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+enum Ease {
+    CubicEaseInOut,
+}
+
+struct RoundtripBackend;
+
+impl SceneBackend for RoundtripBackend {
+    type Id = u64;
+    type Value = f32;
+    type OpId = Op;
+    type InterpId = ();
+    type EaseId = Ease;
+    type World = ();
+}
+
+fn sample() -> Scene<RoundtripBackend> {
     // Chain[ All[ to(1.0), to(0.5) ], Delayed(0.2, to(2.0)) ]
     let action = |value: f32| ActionCmd {
         subject: 7,
@@ -13,10 +39,10 @@ fn sample() -> Scene<u64, f32> {
             type_name: "Transform".into(),
             path: "translation::x".into(),
         },
-        op: OpRef("to".into()),
+        op: Op::To,
         value,
         duration: Duration::from_millis(500),
-        ease: Some(EaseRef::new("cubic::ease_in_out")),
+        ease: Some(Ease::CubicEaseInOut),
         interp: None,
     };
 
@@ -44,13 +70,14 @@ fn sample() -> Scene<u64, f32> {
 fn scene_round_trips_through_json() {
     let scene = sample();
     let json = serde_json::to_string(&scene).unwrap();
-    let back: Scene<u64, f32> = serde_json::from_str(&json).unwrap();
+    let back: Scene<RoundtripBackend> =
+        serde_json::from_str(&json).unwrap();
     assert_eq!(scene, back);
 }
 
 #[test]
 fn empty_timeline_is_an_empty_chain() {
-    let scene: Scene<u64, f32> = Scene {
+    let scene: Scene<RoundtripBackend> = Scene {
         stage: Stage { subjects: vec![] },
         animation: Block::chain(vec![]),
     };
@@ -59,6 +86,7 @@ fn empty_timeline_is_an_empty_chain() {
     assert!(scene.animation.children.is_empty());
 
     let json = serde_json::to_string(&scene).unwrap();
-    let back: Scene<u64, f32> = serde_json::from_str(&json).unwrap();
+    let back: Scene<RoundtripBackend> =
+        serde_json::from_str(&json).unwrap();
     assert_eq!(scene, back);
 }

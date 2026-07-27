@@ -8,8 +8,22 @@
 use alloc::boxed::Box;
 use alloc::string::String;
 use core::fmt;
+use core::fmt::Debug;
+use core::hash::Hash;
 
 use serde::{Deserialize, Serialize};
+
+use motiongfx::ThreadSafe;
+
+/// An auto trait bound for any small `Copy` identifier usable as a
+/// hashmap/table key - thread-safe, debuggable, and cheap to compare
+/// and hash.
+pub trait Key: ThreadSafe + Debug + Copy + Clone + Eq + Hash {}
+
+impl<T> Key for T where
+    T: ThreadSafe + Debug + Copy + Clone + Eq + Hash
+{
+}
 
 /// A fully-qualified type name, e.g.
 /// `"bevy_transform::components::transform::Transform"`.
@@ -50,35 +64,4 @@ impl From<String> for TypeName {
 pub struct FieldRef {
     pub type_name: TypeName,
     pub path: Box<str>,
-}
-
-/// Name of a registered action op, e.g. `"to"` (absolute) or `"by"`
-/// (relative). Resolved to a value-into-closure builder by the registry.
-#[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
-pub struct OpRef(pub String);
-
-/// Name of a registered easing function, e.g. `"cubic::ease_in_out"`.
-#[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
-pub struct EaseRef(Box<str>);
-
-impl EaseRef {
-    pub fn new(name: impl Into<Box<str>>) -> Self {
-        Self(name.into())
-    }
-}
-
-/// Name of a registered interpolation function.
-#[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
-pub struct InterpRef(Box<str>);
-
-impl InterpRef {
-    pub fn new(name: impl Into<Box<str>>) -> Self {
-        Self(name.into())
-    }
 }

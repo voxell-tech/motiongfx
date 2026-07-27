@@ -10,6 +10,22 @@ use motiongfx_scene::compile::compile;
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Op {
+    To,
+}
+
+struct ToyBackend;
+
+impl SceneBackend for ToyBackend {
+    type Id = u64;
+    type Value = f32;
+    type OpId = Op;
+    type InterpId = ();
+    type EaseId = ();
+    type World = ToyWorld;
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct Point {
     x: f32,
@@ -67,11 +83,11 @@ fn action_cmd(
     path: &str,
     value: f32,
     duration_ms: u64,
-) -> ActionCmd<u64, f32> {
+) -> ActionCmd<ToyBackend> {
     ActionCmd {
         subject,
         field: field(path),
-        op: OpRef("to".into()),
+        op: Op::To,
         value,
         duration: Duration::from_millis(duration_ms),
         ease: None,
@@ -81,7 +97,7 @@ fn action_cmd(
 
 /// Ignores the previous value; one op registration serves every
 /// `to(value)` command.
-fn registry_with_to_op() -> SceneRegistry<u64, f32, ToyWorld> {
+fn registry_with_to_op() -> SceneRegistry<ToyBackend> {
     let mut registry = SceneRegistry::new();
     registry.register_field::<Point, f32>(
         "Point".into(),
@@ -94,7 +110,7 @@ fn registry_with_to_op() -> SceneRegistry<u64, f32, ToyWorld> {
         path!(<Point>::y),
     );
     registry.register_op::<f32, _>(
-        OpRef("to".into()),
+        Op::To,
         |value: &f32| -> Box<dyn Action<f32>> {
             let value = *value;
             Box::new(move |_prev: &f32| value)
@@ -117,7 +133,7 @@ fn sample_at(
 #[test]
 fn compiles_and_samples_a_single_action() {
     let scene_registry = registry_with_to_op();
-    let scene: Scene<u64, f32> = Scene {
+    let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
             subjects: vec![Subject { id: 0, state: 0.0 }],
         },
@@ -147,7 +163,7 @@ fn compiles_and_samples_a_single_action() {
 #[test]
 fn chain_runs_children_in_sequence() {
     let scene_registry = registry_with_to_op();
-    let scene: Scene<u64, f32> = Scene {
+    let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
             subjects: vec![Subject { id: 0, state: 0.0 }],
         },
@@ -188,7 +204,7 @@ fn chain_runs_children_in_sequence() {
 #[test]
 fn all_combinator_runs_children_simultaneously() {
     let scene_registry = registry_with_to_op();
-    let scene: Scene<u64, f32> = Scene {
+    let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
             subjects: vec![Subject { id: 0, state: 0.0 }],
         },
@@ -223,7 +239,7 @@ fn all_combinator_runs_children_simultaneously() {
 #[test]
 fn delayed_node_shifts_the_start_time() {
     let scene_registry = registry_with_to_op();
-    let scene: Scene<u64, f32> = Scene {
+    let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
             subjects: vec![Subject { id: 0, state: 0.0 }],
         },
@@ -265,7 +281,7 @@ fn delayed_node_shifts_the_start_time() {
 
 #[test]
 fn one_op_registration_covers_every_owning_type_sharing_t() {
-    let mut scene_registry: SceneRegistry<u64, f32, ToyWorld> =
+    let mut scene_registry: SceneRegistry<ToyBackend> =
         SceneRegistry::new();
     scene_registry.register_field::<Point, f32>(
         "Point".into(),
@@ -279,7 +295,7 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
     );
     // Registered once, for T = f32; never registered again for Circle.
     scene_registry.register_op::<f32, _>(
-        OpRef("to".into()),
+        Op::To,
         |value: &f32| -> Box<dyn Action<f32>> {
             let value = *value;
             Box::new(move |_prev: &f32| value)
@@ -292,13 +308,13 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
             type_name: "Circle".into(),
             path: "radius".into(),
         },
-        op: OpRef("to".into()),
+        op: Op::To,
         value: 3.0,
         duration: Duration::from_millis(100),
         ease: None,
         interp: None,
     };
-    let scene: Scene<u64, f32> = Scene {
+    let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
             subjects: vec![Subject { id: 0, state: 0.0 }],
         },
@@ -332,10 +348,10 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
 fn unregistered_field_is_a_compile_error() {
     // No `register_field` call for "x" at all: `resolve_op` dispatches
     // on the field first, so this never reaches op resolution.
-    let scene_registry: SceneRegistry<u64, f32, ToyWorld> =
+    let scene_registry: SceneRegistry<ToyBackend> =
         SceneRegistry::new();
 
-    let scene: Scene<u64, f32> = Scene {
+    let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
             subjects: vec![Subject { id: 0, state: 0.0 }],
         },
@@ -359,7 +375,7 @@ fn unregistered_field_is_a_compile_error() {
 #[test]
 fn unregistered_op_is_a_compile_error() {
     // Field is registered, but no op is.
-    let mut scene_registry: SceneRegistry<u64, f32, ToyWorld> =
+    let mut scene_registry: SceneRegistry<ToyBackend> =
         SceneRegistry::new();
     scene_registry.register_field::<Point, f32>(
         "Point".into(),
@@ -367,7 +383,7 @@ fn unregistered_op_is_a_compile_error() {
         path!(<Point>::x),
     );
 
-    let scene: Scene<u64, f32> = Scene {
+    let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
             subjects: vec![Subject { id: 0, state: 0.0 }],
         },

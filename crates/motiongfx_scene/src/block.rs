@@ -7,20 +7,41 @@
 use alloc::{boxed::Box, vec::Vec};
 use core::time::Duration;
 
+use educe::Educe;
 use serde::{Deserialize, Serialize};
 
-use crate::refs::{EaseRef, FieldRef, InterpRef, OpRef};
+use crate::backend::SceneBackend;
+use crate::refs::FieldRef;
 
 /// A group of [`Node`]s combined by one [`Combinator`].
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Block<Id, V> {
+///
+/// `Block`/`Node` are mutually recursive (`Node::Block(Block<B>)`,
+/// `Block.children: Vec<Node<B>>`), which `educe`'s automatic bound
+/// inference can't see across - explicit `bound(...)` overrides below
+/// give it the real per-field bounds instead of falling back to
+/// requiring `B` itself implement each trait. Only `B::Value` needs a
+/// bound stated here: `B::Id: SubjectId` and `B::OpId`/`B::InterpId`/
+/// `B::EaseId: Key` already guarantee `Debug`/`Clone`/`Eq` (which
+/// implies `PartialEq`) as supertraits, so those hold without restating
+/// them.
+#[derive(Educe, Serialize, Deserialize)]
+#[educe(
+    Debug(bound(B::Value: core::fmt::Debug)),
+    Clone(bound(B::Value: Clone)),
+    PartialEq(bound(B::Value: PartialEq))
+)]
+#[serde(bound(
+    serialize = "B::Id: Serialize, B::Value: Serialize, B::OpId: Serialize, B::InterpId: Serialize, B::EaseId: Serialize",
+    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>, B::OpId: Deserialize<'de>, B::InterpId: Deserialize<'de>, B::EaseId: Deserialize<'de>"
+))]
+pub struct Block<B: SceneBackend> {
     pub combinator: Combinator,
-    pub children: Vec<Node<Id, V>>,
+    pub children: Vec<Node<B>>,
 }
 
-impl<Id, V> Block<Id, V> {
+impl<B: SceneBackend> Block<B> {
     /// A sequential `Chain` block; also the shape of an empty timeline.
-    pub fn chain(children: Vec<Node<Id, V>>) -> Self {
+    pub fn chain(children: Vec<Node<B>>) -> Self {
         Self {
             combinator: Combinator::Chain,
             children,
@@ -44,29 +65,47 @@ pub enum Combinator {
 
 /// A member of a [`Block`]: a nested block, an action leaf, or a
 /// delayed wrapper.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Node<Id, V> {
-    Block(Block<Id, V>),
-    Action(ActionCmd<Id, V>),
+///
+/// Explicit `bound(...)` overrides for the same reason as
+/// [`Block`] - `Node` is directly self-referential via
+/// `Delayed.node: Box<Node<B>>`.
+#[derive(Educe, Serialize, Deserialize)]
+#[educe(
+    Debug(bound(B::Value: core::fmt::Debug)),
+    Clone(bound(B::Value: Clone)),
+    PartialEq(bound(B::Value: PartialEq))
+)]
+#[serde(bound(
+    serialize = "B::Id: Serialize, B::Value: Serialize, B::OpId: Serialize, B::InterpId: Serialize, B::EaseId: Serialize",
+    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>, B::OpId: Deserialize<'de>, B::InterpId: Deserialize<'de>, B::EaseId: Deserialize<'de>"
+))]
+pub enum Node<B: SceneBackend> {
+    Block(Block<B>),
+    Action(ActionCmd<B>),
     /// Shifts `node` later by `offset`. (`delay`)
     Delayed {
         offset: Duration,
-        node: Box<Node<Id, V>>,
+        node: Box<Node<B>>,
     },
 }
 
 /// Applies `op(value)` to `subject.field` over `duration`, eased and
 /// interpolated by name. No closures or Rust types, only names and an
 /// opaque value; the registry reconstructs the typed action.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ActionCmd<Id, V> {
-    pub subject: Id,
+#[derive(Educe, Serialize, Deserialize)]
+#[educe(Debug, Clone, PartialEq)]
+#[serde(bound(
+    serialize = "B::Id: Serialize, B::Value: Serialize, B::OpId: Serialize, B::InterpId: Serialize, B::EaseId: Serialize",
+    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>, B::OpId: Deserialize<'de>, B::InterpId: Deserialize<'de>, B::EaseId: Deserialize<'de>"
+))]
+pub struct ActionCmd<B: SceneBackend> {
+    pub subject: B::Id,
     pub field: FieldRef,
-    pub op: OpRef,
-    pub value: V,
+    pub op: B::OpId,
+    pub value: B::Value,
     pub duration: Duration,
     /// `None` = linear / default easing.
-    pub ease: Option<EaseRef>,
+    pub ease: Option<B::EaseId>,
     /// `None` = the field type's default interpolation.
-    pub interp: Option<InterpRef>,
+    pub interp: Option<B::InterpId>,
 }

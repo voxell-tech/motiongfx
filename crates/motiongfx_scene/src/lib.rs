@@ -10,15 +10,17 @@
 //!   format's names, filled by the app.
 //! - **Runtime** ([`motiongfx`]): `Timeline` / `Track` / combinators.
 //!
-//! `V` is the opaque value representation for subject state and action
-//! arguments; the backend picks its shape (e.g. `Box<dyn Reflect>` for
-//! Bevy). This crate only requires `V: Serialize + Deserialize`.
+//! [`SceneBackend::Value`](backend::SceneBackend::Value) is the opaque
+//! value representation for subject state and action arguments; the
+//! backend picks its shape (e.g. `Box<dyn Reflect>` for Bevy). This
+//! crate only requires it to be `Serialize + Deserialize`.
 
 #![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code)]
 
 extern crate alloc;
 
+pub mod backend;
 pub mod block;
 pub mod compile;
 pub mod error;
@@ -27,10 +29,9 @@ pub mod registry;
 pub mod scene;
 
 pub mod prelude {
+    pub use crate::backend::SceneBackend;
     pub use crate::block::{ActionCmd, Block, Combinator, Node};
     pub use crate::error::CompileError;
-    pub use crate::refs::{
-        EaseRef, FieldRef, InterpRef, OpRef, TypeName,
-    };
+    pub use crate::refs::{FieldRef, Key, TypeName};
     pub use crate::scene::{Scene, Stage, Subject};
 }

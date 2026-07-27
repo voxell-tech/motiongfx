@@ -2,30 +2,48 @@
 //! animation.
 
 use alloc::vec::Vec;
+use educe::Educe;
 use serde::{Deserialize, Serialize};
 
+use crate::backend::SceneBackend;
 use crate::block::Block;
 
 /// The whole serialized project: the initial stage and the animation
-/// that drives it. `Id` and `V` are backend-chosen.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Scene<Id, V> {
-    pub stage: Stage<Id, V>,
+/// that drives it. `B` bundles the backend's chosen types; see
+/// [`SceneBackend`].
+#[derive(Educe, Serialize, Deserialize)]
+#[educe(Debug, Clone, PartialEq)]
+#[serde(bound(
+    serialize = "B::Id: Serialize, B::Value: Serialize, B::OpId: Serialize, B::InterpId: Serialize, B::EaseId: Serialize",
+    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>, B::OpId: Deserialize<'de>, B::InterpId: Deserialize<'de>, B::EaseId: Deserialize<'de>"
+))]
+pub struct Scene<B: SceneBackend> {
+    pub stage: Stage<B>,
     /// The root block. An empty timeline is `Block::chain([])`.
-    pub animation: Block<Id, V>,
+    pub animation: Block<B>,
 }
 
 /// The initial state of the world: a flat, uniform set of subjects.
 /// Deliberately no object-vs-asset split; that's a backend concern.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Stage<Id, V> {
-    pub subjects: Vec<Subject<Id, V>>,
+#[derive(Educe, Serialize, Deserialize)]
+#[educe(Debug, Clone, PartialEq)]
+#[serde(bound(
+    serialize = "B::Id: Serialize, B::Value: Serialize",
+    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>"
+))]
+pub struct Stage<B: SceneBackend> {
+    pub subjects: Vec<Subject<B>>,
 }
 
 /// One animatable thing on the stage, addressed by a stable id.
 /// `state` is opaque to core; the backend owns its shape.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Subject<Id, V> {
-    pub id: Id,
-    pub state: V,
+#[derive(Educe, Serialize, Deserialize)]
+#[educe(Debug, Clone, PartialEq)]
+#[serde(bound(
+    serialize = "B::Id: Serialize, B::Value: Serialize",
+    deserialize = "B::Id: Deserialize<'de>, B::Value: Deserialize<'de>"
+))]
+pub struct Subject<B: SceneBackend> {
+    pub id: B::Id,
+    pub state: B::Value,
 }
