@@ -10,6 +10,7 @@ use motiongfx_scene::compile::compile;
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
 use serde::{Deserialize, Serialize};
+use sparse_map::SparseMap;
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
@@ -22,11 +23,32 @@ struct ToyBackend;
 
 impl SceneBackend for ToyBackend {
     type Id = u64;
-    type Value = f32;
+    type ValuePool = ToyValuePool;
     type OpId = Op;
     type InterpId = ();
     type EaseId = ();
     type World = ToyWorld;
+}
+
+/// A single `f32` column: every value in these tests is a plain
+/// `f32`, so one `SparseMap<f32>` is the whole pool.
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct ToyValuePool {
+    f32: SparseMap<f32>,
+}
+
+impl ValueColumn<f32> for ToyValuePool {
+    fn get(&self, id: ValueId) -> Option<&f32> {
+        self.f32.get(&id)
+    }
+
+    fn get_mut(&mut self, id: ValueId) -> Option<&mut f32> {
+        self.f32.get_mut(&id)
+    }
+
+    fn insert(&mut self, value: f32) -> ValueId {
+        self.f32.insert(value)
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -82,6 +104,7 @@ fn field(path: &str) -> FieldRef {
 }
 
 fn action_cmd(
+    values: &mut ToyValuePool,
     subject: u64,
     path: &str,
     value: f32,
@@ -91,7 +114,7 @@ fn action_cmd(
         subject,
         field: field(path),
         op: Op::To,
-        value,
+        value: values.insert(value),
         duration: Duration::from_millis(duration_ms),
         ease: None,
         interp: None,
@@ -136,13 +159,20 @@ fn sample_at(
 #[test]
 fn compiles_and_samples_a_single_action() {
     let scene_registry = registry_with_to_op();
+    let mut values = ToyValuePool::default();
+    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state: 0.0 }],
+            subjects: vec![Subject { id: 0, state }],
         },
         animation: Block::chain(vec![Node::Action(action_cmd(
-            0, "x", 5.0, 200,
+            &mut values,
+            0,
+            "x",
+            5.0,
+            200,
         ))]),
+        values,
     };
 
     let mut runtime_registry = Registry::new();
@@ -166,14 +196,17 @@ fn compiles_and_samples_a_single_action() {
 #[test]
 fn chain_runs_children_in_sequence() {
     let scene_registry = registry_with_to_op();
+    let mut values = ToyValuePool::default();
+    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state: 0.0 }],
+            subjects: vec![Subject { id: 0, state }],
         },
         animation: Block::chain(vec![
-            Node::Action(action_cmd(0, "x", 1.0, 100)),
-            Node::Action(action_cmd(0, "x", 2.0, 100)),
+            Node::Action(action_cmd(&mut values, 0, "x", 1.0, 100)),
+            Node::Action(action_cmd(&mut values, 0, "x", 2.0, 100)),
         ]),
+        values,
     };
 
     let mut runtime_registry = Registry::new();
@@ -207,17 +240,32 @@ fn chain_runs_children_in_sequence() {
 #[test]
 fn all_combinator_runs_children_simultaneously() {
     let scene_registry = registry_with_to_op();
+    let mut values = ToyValuePool::default();
+    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state: 0.0 }],
+            subjects: vec![Subject { id: 0, state }],
         },
         animation: Block {
             combinator: Combinator::All,
             children: vec![
-                Node::Action(action_cmd(0, "x", 5.0, 200)),
-                Node::Action(action_cmd(0, "y", 9.0, 200)),
+                Node::Action(action_cmd(
+                    &mut values,
+                    0,
+                    "x",
+                    5.0,
+                    200,
+                )),
+                Node::Action(action_cmd(
+                    &mut values,
+                    0,
+                    "y",
+                    9.0,
+                    200,
+                )),
             ],
         },
+        values,
     };
 
     let mut runtime_registry = Registry::new();
@@ -242,16 +290,23 @@ fn all_combinator_runs_children_simultaneously() {
 #[test]
 fn delayed_node_shifts_the_start_time() {
     let scene_registry = registry_with_to_op();
+    let mut values = ToyValuePool::default();
+    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state: 0.0 }],
+            subjects: vec![Subject { id: 0, state }],
         },
         animation: Block::chain(vec![Node::Delayed {
             offset: Duration::from_millis(200),
             node: Box::new(Node::Action(action_cmd(
-                0, "x", 5.0, 100,
+                &mut values,
+                0,
+                "x",
+                5.0,
+                100,
             ))),
         }]),
+        values,
     };
 
     let mut runtime_registry = Registry::new();
@@ -305,6 +360,8 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
         },
     );
 
+    let mut values = ToyValuePool::default();
+    let state = values.insert(0.0);
     let circle_action = ActionCmd {
         subject: 0,
         field: FieldRef {
@@ -312,19 +369,20 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
             path: "radius".into(),
         },
         op: Op::To,
-        value: 3.0,
+        value: values.insert(3.0),
         duration: Duration::from_millis(100),
         ease: None,
         interp: None,
     };
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state: 0.0 }],
+            subjects: vec![Subject { id: 0, state }],
         },
         animation: Block::chain(vec![
-            Node::Action(action_cmd(0, "x", 5.0, 100)),
+            Node::Action(action_cmd(&mut values, 0, "x", 5.0, 100)),
             Node::Action(circle_action),
         ]),
+        values,
     };
 
     let mut runtime_registry = Registry::new();
@@ -354,13 +412,20 @@ fn unregistered_field_is_a_compile_error() {
     let scene_registry: SceneRegistry<ToyBackend> =
         SceneRegistry::new();
 
+    let mut values = ToyValuePool::default();
+    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state: 0.0 }],
+            subjects: vec![Subject { id: 0, state }],
         },
         animation: Block::chain(vec![Node::Action(action_cmd(
-            0, "x", 5.0, 100,
+            &mut values,
+            0,
+            "x",
+            5.0,
+            100,
         ))]),
+        values,
     };
 
     let mut runtime_registry = Registry::new();
@@ -386,13 +451,20 @@ fn unregistered_op_is_a_compile_error() {
         path!(<Point>::x),
     );
 
+    let mut values = ToyValuePool::default();
+    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state: 0.0 }],
+            subjects: vec![Subject { id: 0, state }],
         },
         animation: Block::chain(vec![Node::Action(action_cmd(
-            0, "x", 5.0, 100,
+            &mut values,
+            0,
+            "x",
+            5.0,
+            100,
         ))]),
+        values,
     };
 
     let mut runtime_registry = Registry::new();

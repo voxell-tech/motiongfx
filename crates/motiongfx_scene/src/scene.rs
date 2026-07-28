@@ -7,17 +7,26 @@ use serde::{Deserialize, Serialize};
 
 use crate::backend::SceneBackend;
 use crate::block::Block;
+use crate::value::ValueId;
 
 /// The whole serialized project: the initial stage and the animation
-/// that drives it. `B` bundles the backend's chosen types; see
-/// [`SceneBackend`].
+/// that drives it, plus the value pool both reference into. `B`
+/// bundles the backend's chosen types; see [`SceneBackend`].
 #[derive(Educe, Serialize, Deserialize)]
-#[educe(Debug, Clone, PartialEq)]
+#[educe(
+    Debug(bound(B::ValuePool: core::fmt::Debug)),
+    Clone(bound(B::ValuePool: Clone)),
+    PartialEq(bound(B::ValuePool: PartialEq))
+)]
 #[serde(bound = "")]
 pub struct Scene<B: SceneBackend> {
     pub stage: Stage<B>,
     /// The root block. An empty timeline is `Block::chain([])`.
     pub animation: Block<B>,
+    /// Every subject-state and action-argument value, referenced by
+    /// [`ValueId`] from `stage`/`animation`. See
+    /// [`SceneBackend::ValuePool`].
+    pub values: B::ValuePool,
 }
 
 /// The initial state of the world: a flat, uniform set of subjects.
@@ -30,11 +39,11 @@ pub struct Stage<B: SceneBackend> {
 }
 
 /// One animatable thing on the stage, addressed by a stable id.
-/// `state` is opaque to core; the backend owns its shape.
+/// `state` references into [`Scene::values`]; opaque to this crate.
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(Debug, Clone, PartialEq)]
 #[serde(bound = "")]
 pub struct Subject<B: SceneBackend> {
     pub id: B::Id,
-    pub state: B::Value,
+    pub state: ValueId,
 }

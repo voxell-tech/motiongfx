@@ -3,7 +3,7 @@
 //! [`ActionCmd`](crate::block::ActionCmd), and
 //! [`CompileError`](crate::error::CompileError) only need a single
 //! generic parameter (`<B>`) instead of separately threading
-//! `Id`/`Value`/`OpId`/`InterpId`/`EaseId`/`World`.
+//! `Id`/`ValuePool`/`OpId`/`InterpId`/`EaseId`/`World`.
 
 use core::fmt::Debug;
 use core::hash::Hash;
@@ -33,8 +33,9 @@ impl<T> Storable for T where T: Serialize + DeserializeOwned {}
 /// A backend's chosen types for the scene format and registry.
 ///
 /// Implement this once per backend - a zero-sized marker type is
-/// enough - rather than repeating its `Id`/`Value`/`OpId`/`InterpId`/
-/// `EaseId`/`World` choices at every `Scene`/`SceneRegistry` use site.
+/// enough - rather than repeating its `Id`/`ValuePool`/`OpId`/
+/// `InterpId`/`EaseId`/`World` choices at every `Scene`/`SceneRegistry`
+/// use site.
 ///
 /// [`Storable`] on every field type but `World`: serializing a
 /// [`Scene`](crate::scene::Scene) is the whole point of this crate,
@@ -44,9 +45,12 @@ impl<T> Storable for T where T: Serialize + DeserializeOwned {}
 pub trait SceneBackend: 'static {
     /// The subject identifier type.
     type Id: SubjectId + Storable;
-    /// The opaque value representation for subject state and action
-    /// arguments.
-    type Value: 'static + Storable;
+    /// Holds subject state and action-argument values, one
+    /// [`ValueColumn<T>`](crate::value::ValueColumn) impl per concrete
+    /// value type the backend needs. A plain struct of named
+    /// `sparse_map::SparseMap<T>` fields, not a closed enum or a boxed
+    /// trait object - see `crate::value` for why.
+    type ValuePool: Storable + Default + 'static;
     /// A registered action op's identifier.
     type OpId: Key + Storable;
     /// A registered interpolation function's identifier.

@@ -19,6 +19,7 @@ use crate::backend::SceneBackend;
 use crate::block::ActionCmd;
 use crate::error::CompileError;
 use crate::refs::{FieldRef, TypeName};
+use crate::value::ValueColumn;
 
 /// Resolves one `S`/`T`-typed field into a [`TrackFragment`], stored by
 /// [`FieldRef`]. The action itself (looked up by `T` alone, not `S`; see
@@ -29,6 +30,7 @@ trait FieldResolver<B: SceneBackend> {
         &self,
         cmd: &ActionCmd<B>,
         registry: &SceneRegistry<B>,
+        values: &B::ValuePool,
         builder: &mut TimelineBuilder<'_, B::World>,
     ) -> Result<TrackFragment, CompileError<B>>;
 }
@@ -42,6 +44,7 @@ impl<B, S, T> FieldResolver<B> for ConcreteFieldResolver<B, S, T>
 where
     B: SceneBackend,
     B::World: SubjectSource<B::Id, S>,
+    B::ValuePool: ValueColumn<T>,
     S: 'static,
     T: ThreadSafe + Clone,
 {
@@ -49,6 +52,7 @@ where
         &self,
         cmd: &ActionCmd<B>,
         registry: &SceneRegistry<B>,
+        values: &B::ValuePool,
         builder: &mut TimelineBuilder<'_, B::World>,
     ) -> Result<TrackFragment, CompileError<B>> {
         let untyped_field = registry.resolve_field(&cmd.field)?;
@@ -73,8 +77,15 @@ where
             })?;
 
         let field_acc = FieldAccessor::new(field, accessor);
-        let action =
-            registry.build_action::<T>(cmd.op, &cmd.value)?;
+
+        // Pulled from the pool *before* op resolution: by the time
+        // `build_action` runs, `T` is already concrete, so the op
+        // builder closure never needs to extract it from an opaque
+        // value itself (there is no opaque value - see `crate::value`).
+        let value = values
+            .get(cmd.value)
+            .ok_or(CompileError::UnknownValue(cmd.value))?;
+        let action = registry.build_action::<T>(cmd.op, value)?;
 
         // Only known here, where `T` is concrete: pull the named interp
         // out of the type-erased map, or fall back to step.
@@ -93,8 +104,8 @@ where
     }
 }
 
-type BuildAction<V, T> =
-    Box<dyn Fn(&V) -> Box<dyn Action<T>> + Send + Sync>;
+type BuildAction<T> =
+    Box<dyn Fn(&T) -> Box<dyn Action<T>> + Send + Sync>;
 
 type FieldResolverBox<B> = Box<dyn FieldResolver<B> + Send + Sync>;
 
@@ -137,6 +148,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
         field_acc: FieldAccessor<S, T>,
     ) where
         B::World: SubjectSource<B::Id, S>,
+        B::ValuePool: ValueColumn<T>,
         S: 'static,
         T: ThreadSafe + Clone,
     {
@@ -184,18 +196,19 @@ impl<B: SceneBackend> SceneRegistry<B> {
     ///
     /// Keyed by `T` alone, not by any field's owning type `S`: the same
     /// `"to"`/`"by"` registered for `T = f32` covers every field of
-    /// every `S` whose value type is `f32`. `build_action` receives a
-    /// reference to the scene's opaque value (`B::Value`) and returns
-    /// a boxed action closure.
+    /// every `S` whose value type is `f32`. `build_action` receives the
+    /// already-resolved concrete value directly (pulled from the value
+    /// pool by [`ConcreteFieldResolver::build`](struct.ConcreteFieldResolver.html)
+    /// before this is ever called) - no opaque value type to extract
+    /// from, unlike the old `SceneBackend::Value`.
     pub fn register_op<T, F>(&mut self, op: B::OpId, build_action: F)
     where
         T: ThreadSafe + Clone,
-        F: Fn(&B::Value) -> Box<dyn Action<T>> + ThreadSafe,
+        F: Fn(&T) -> Box<dyn Action<T>> + ThreadSafe,
     {
-        let build_action: BuildAction<B::Value, T> =
-            Box::new(build_action);
+        let build_action: BuildAction<T> = Box::new(build_action);
         self.action_resolvers
-            .insert::<BuildAction<B::Value, T>>(op, build_action);
+            .insert::<BuildAction<T>>(op, build_action);
     }
 
     /// Registers an easing function by name.
@@ -261,13 +274,13 @@ impl<B: SceneBackend> SceneRegistry<B> {
     pub(crate) fn build_action<T>(
         &self,
         op: B::OpId,
-        value: &B::Value,
+        value: &T,
     ) -> Result<Box<dyn Action<T>>, CompileError<B>>
     where
         T: 'static,
     {
         self.action_resolvers
-            .get::<BuildAction<B::Value, T>>(&op)
+            .get::<BuildAction<T>>(&op)
             .map(|build_action| build_action(value))
             .ok_or_else(|| {
                 CompileError::UnknownOp(
@@ -280,6 +293,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
     pub(crate) fn resolve_op(
         &self,
         cmd: &ActionCmd<B>,
+        values: &B::ValuePool,
         builder: &mut TimelineBuilder<'_, B::World>,
     ) -> Result<TrackFragment, CompileError<B>> {
         let resolver = self
@@ -289,7 +303,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
                 CompileError::UnknownField(cmd.field.clone())
             })?;
 
-        resolver.build(cmd, self, builder)
+        resolver.build(cmd, self, values, builder)
     }
 }
 

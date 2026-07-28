@@ -32,8 +32,12 @@ pub fn compile<B: SceneBackend>(
     scene_registry.install_accessors(runtime_registry);
     let mut builder = runtime_registry.create_builder::<B::World>();
 
-    let root_fragment =
-        walk_block(&scene.animation, scene_registry, &mut builder)?;
+    let root_fragment = walk_block(
+        &scene.animation,
+        scene_registry,
+        &scene.values,
+        &mut builder,
+    )?;
 
     let track = root_fragment.compile();
     builder.add_tracks([track]);
@@ -50,13 +54,18 @@ pub fn compile<B: SceneBackend>(
 fn walk_node<B: SceneBackend>(
     node: &Node<B>,
     registry: &SceneRegistry<B>,
+    values: &B::ValuePool,
     builder: &mut TimelineBuilder<'_, B::World>,
 ) -> Result<TrackFragment, CompileError<B>> {
     match node {
-        Node::Block(block) => walk_block(block, registry, builder),
-        Node::Action(cmd) => resolve_action(cmd, registry, builder),
+        Node::Block(block) => {
+            walk_block(block, registry, values, builder)
+        }
+        Node::Action(cmd) => {
+            resolve_action(cmd, registry, values, builder)
+        }
         Node::Delayed { offset, node } => {
-            let fragment = walk_node(node, registry, builder)?;
+            let fragment = walk_node(node, registry, values, builder)?;
             Ok(delay(*offset, fragment))
         }
     }
@@ -66,12 +75,13 @@ fn walk_node<B: SceneBackend>(
 fn walk_block<B: SceneBackend>(
     block: &Block<B>,
     registry: &SceneRegistry<B>,
+    values: &B::ValuePool,
     builder: &mut TimelineBuilder<'_, B::World>,
 ) -> Result<TrackFragment, CompileError<B>> {
     let mut fragments = Vec::with_capacity(block.children.len());
 
     for child in &block.children {
-        let fragment = walk_node(child, registry, builder)?;
+        let fragment = walk_node(child, registry, values, builder)?;
         fragments.push(fragment);
     }
 
@@ -88,7 +98,8 @@ fn walk_block<B: SceneBackend>(
 fn resolve_action<B: SceneBackend>(
     cmd: &ActionCmd<B>,
     registry: &SceneRegistry<B>,
+    values: &B::ValuePool,
     builder: &mut TimelineBuilder<'_, B::World>,
 ) -> Result<TrackFragment, CompileError<B>> {
-    registry.resolve_op(cmd, builder)
+    registry.resolve_op(cmd, values, builder)
 }

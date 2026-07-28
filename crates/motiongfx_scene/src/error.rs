@@ -6,6 +6,7 @@ use educe::Educe;
 
 use crate::backend::SceneBackend;
 use crate::refs::FieldRef;
+use crate::value::ValueId;
 
 /// Errors that can occur during [`compile`](crate::compile::compile())
 /// of a scene into a runtime [`Timeline`](motiongfx::timeline::Timeline).
@@ -26,6 +27,11 @@ pub enum CompileError<B: SceneBackend> {
     /// No op builder was registered for this
     /// [`Key`](crate::backend::Key) under this value type.
     UnknownOp(&'static str, B::OpId),
+
+    /// The [`ValueId`] doesn't resolve in the scene's value pool -
+    /// either it's stale/out of range, or the stored value's concrete
+    /// type doesn't match what the field/op expects.
+    UnknownValue(ValueId),
 
     /// No easing function registered under this
     /// [`Key`](crate::backend::Key).
@@ -59,6 +65,9 @@ impl<B: SceneBackend> fmt::Display for CompileError<B> {
             }
             Self::UnknownOp(type_name, op) => {
                 write!(f, "unknown op {op:?} for type {type_name}")
+            }
+            Self::UnknownValue(id) => {
+                write!(f, "unknown or mistyped value {id}")
             }
             Self::UnknownEase(ease) => {
                 write!(f, "unknown easing function {ease:?}")

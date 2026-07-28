@@ -10,16 +10,15 @@ repository.workspace = true
 
 [dependencies]
 motiongfx = { workspace = true }
-serde = { workspace = true, default-features = false, features = [
-    "derive",
-    "alloc",
-] }
+serde = { workspace = true, features = ["derive", "alloc"] }
 typarena = { workspace = true }
+sparse_map = { workspace = true, features = ["serde"] }
 hashbrown = { workspace = true, features = ["default-hasher"] }
 educe = { workspace = true, features = ["Debug", "Clone", "PartialEq"] }
 
 [dev-dependencies]
 serde_json = "1"
+ron = { workspace = true }
 
 [features]
 default = ["std"]

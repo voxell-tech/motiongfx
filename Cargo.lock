@@ -3645,10 +3645,10 @@ dependencies = [
 name = "motiongfx"
 version = "0.3.0"
 dependencies = [
- "bevy_math",
  "criterion",
  "field_path",
  "hashbrown 0.17.1",
+ "libm",
  "nonempty",
  "typarena",
 ]
@@ -3684,8 +3684,10 @@ dependencies = [
  "educe",
  "hashbrown 0.17.1",
  "motiongfx",
+ "ron",
  "serde",
  "serde_json",
+ "sparse_map",
  "typarena",
 ]
 
@@ -5032,8 +5034,9 @@ dependencies = [
 [[package]]
 name = "sparse_map"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea8f483b9159a7efadd9a82915dc40fdc9cfef7985651bbb83a8db20b12bf629"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "spin"

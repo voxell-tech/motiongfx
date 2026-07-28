@@ -10,10 +10,10 @@
 //!   format's names, filled by the app.
 //! - **Runtime** ([`motiongfx`]): `Timeline` / `Track` / combinators.
 //!
-//! [`SceneBackend::Value`](backend::SceneBackend::Value) is the opaque
-//! value representation for subject state and action arguments; the
-//! backend picks its shape (e.g. `Box<dyn Reflect>` for Bevy). This
-//! crate only requires it to be `Serialize + Deserialize`.
+//! [`SceneBackend::ValuePool`](backend::SceneBackend::ValuePool) holds
+//! subject-state and action-argument values; the backend picks its
+//! shape (a plain struct of named `sparse_map::SparseMap<T>` columns,
+//! one per value type it needs - see [`value`]).
 
 #![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code)]
@@ -28,6 +28,7 @@ pub mod error;
 pub mod refs;
 pub mod registry;
 pub mod scene;
+pub mod value;
 
 pub mod prelude {
     pub use crate::backend::{Key, SceneBackend, Storable};
@@ -35,4 +36,5 @@ pub mod prelude {
     pub use crate::error::CompileError;
     pub use crate::refs::{FieldRef, TypeName};
     pub use crate::scene::{Scene, Stage, Subject};
+    pub use crate::value::{ValueColumn, ValueId};
 }
