@@ -8,7 +8,7 @@ readme.workspace = true
 publish = false
 
 [dependencies]
-bevy_motiongfx = { workspace = true }
+bevy_motiongfx = { workspace = true, default-features = true }
 motiongfx_editor_ui = { workspace = true }
 bevy = { workspace = true, default-features = true, features = ["debug"] }
 

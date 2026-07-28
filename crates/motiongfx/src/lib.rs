@@ -1,11 +1,12 @@
 #![doc = include_str!("../README.md")]
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
 
 pub mod action;
 pub mod ease;
 pub mod interpolation;
+mod ops;
 pub mod pipeline;
 pub mod registry;
 mod resources;
