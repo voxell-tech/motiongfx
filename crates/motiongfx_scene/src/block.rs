@@ -47,7 +47,7 @@ pub enum Combinator {
     /// Simultaneous; wait for any. (`ord_any`)
     Any,
     /// Staggered starts, one `delay` apart. (`ord_flow`)
-    Flow(Duration),
+    Flow(#[serde(with = "crate::duration")] Duration),
 }
 
 /// A member of a [`Block`]: a nested block, an action leaf, or a
@@ -64,6 +64,7 @@ pub enum Node<B: SceneBackend> {
     Action(ActionCmd<B>),
     /// Shifts `node` later by `offset`. (`delay`)
     Delayed {
+        #[serde(with = "crate::duration")]
         offset: Duration,
         node: Box<Node<B>>,
     },
@@ -80,6 +81,7 @@ pub struct ActionCmd<B: SceneBackend> {
     pub field: FieldRef,
     pub op: B::OpId,
     pub value: B::Value,
+    #[serde(with = "crate::duration")]
     pub duration: Duration,
     /// `None` = linear / default easing.
     pub ease: Option<B::EaseId>,

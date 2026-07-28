@@ -23,6 +23,7 @@ extern crate alloc;
 pub mod backend;
 pub mod block;
 pub mod compile;
+mod duration;
 pub mod error;
 pub mod refs;
 pub mod registry;
