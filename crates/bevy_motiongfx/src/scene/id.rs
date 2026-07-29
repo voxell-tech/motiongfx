@@ -19,6 +19,7 @@ use core::fmt;
 
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
+use motiongfx_scene::backend::IntoSubjectId;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -59,6 +60,32 @@ impl Default for EntityUid {
 impl fmt::Display for EntityUid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
+    }
+}
+
+/// A scene's subject id: which kind of thing it names is explicit in
+/// the format itself, not inferred from which field targets it.
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+)]
+pub enum SceneUid {
+    Entity(EntityUid),
+}
+
+impl IntoSubjectId<EntityUid> for SceneUid {
+    fn into_subject_id(self) -> Option<EntityUid> {
+        match self {
+            SceneUid::Entity(id) => Some(id),
+        }
     }
 }
 

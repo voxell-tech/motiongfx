@@ -14,9 +14,10 @@ use motiongfx::action::{Action, EaseFn, InterpFn};
 use motiongfx::field_path::field::UntypedField;
 use motiongfx::prelude::*;
 use motiongfx::registry::Registry;
+use motiongfx::subject::SubjectId;
 use motiongfx::world::SubjectSource;
 
-use crate::backend::SceneBackend;
+use crate::backend::{IntoSubjectId, SceneBackend};
 use crate::block::ActionCmd;
 use crate::error::CompileError;
 use crate::refs::{FieldRef, TypeName};
@@ -37,16 +38,18 @@ trait FieldResolver<B: SceneBackend> {
 
 #[derive(Educe)]
 #[educe(Default(bound(false)))]
-struct ConcreteFieldResolver<B, S, T> {
+struct ConcreteFieldResolver<B, S, T, I> {
     #[expect(clippy::type_complexity)]
-    _marker: PhantomData<fn() -> (B, S, T)>,
+    _marker: PhantomData<fn() -> (B, S, T, I)>,
 }
 
-impl<B, S, T> FieldResolver<B> for ConcreteFieldResolver<B, S, T>
+impl<B, S, T, I> FieldResolver<B> for ConcreteFieldResolver<B, S, T, I>
 where
     B: SceneBackend,
-    B::World: SubjectSource<B::Id, S>,
+    B::Id: IntoSubjectId<I>,
+    B::World: SubjectSource<I, S>,
     B::ValuePool: ValueColumn<B::ValueId, T>,
+    I: SubjectId,
     S: 'static,
     T: ThreadSafe + Clone,
 {
@@ -94,8 +97,11 @@ where
         let interp_fn = registry.resolve_interp::<T>(&cmd.interp)?;
         let ease = registry.resolve_ease(&cmd.ease);
 
+        let key = cmd.subject.into_subject_id().ok_or_else(|| {
+            CompileError::UnknownSubjectKind(cmd.field.clone())
+        })?;
         let mut tb = builder
-            .act_builder(cmd.subject, field_acc, action)
+            .act_builder(key, field_acc, action)
             .with_interp(interp_fn);
 
         if let Some(ease) = ease {
@@ -114,22 +120,24 @@ type FieldResolverBox<B> = Box<dyn FieldResolver<B> + Send + Sync>;
 type FieldRegistrar =
     fn(&mut Registry, &TypeTable<FieldRef>, &FieldRef);
 
-fn register_field_accessor<B, S, T>(
+fn register_field_accessor<B, S, T, I>(
     runtime: &mut Registry,
     fields: &TypeTable<FieldRef>,
     field_ref: &FieldRef,
 ) where
     B: SceneBackend,
-    B::World: SubjectSource<B::Id, S>,
+    B::World: SubjectSource<I, S>,
+    I: SubjectId,
     S: 'static,
     T: ThreadSafe + Clone,
 {
     if let Some(field_acc) =
         fields.get::<FieldAccessor<S, T>>(field_ref)
     {
-        runtime.register::<B::World, B::Id, S, T>(
-            FieldAccessor::new(field_acc.field, field_acc.accessor),
-        );
+        runtime.register::<B::World, I, S, T>(FieldAccessor::new(
+            field_acc.field,
+            field_acc.accessor,
+        ));
     }
 }
 
@@ -158,7 +166,9 @@ impl<B: SceneBackend> SceneRegistry<B> {
         }
     }
 
-    /// Registers a field mapping.
+    /// Registers a field mapping whose subject id doubles directly as
+    /// its `SubjectSource` key - the common case for a backend with a
+    /// single, uniform subject id.
     pub fn register_field<S, T>(
         &mut self,
         type_name: TypeName,
@@ -170,6 +180,28 @@ impl<B: SceneBackend> SceneRegistry<B> {
         S: 'static,
         T: ThreadSafe + Clone,
     {
+        self.register_field_with_key::<S, T, B::Id>(
+            type_name, field_acc,
+        )
+    }
+
+    /// Registers a field mapping, resolving the subject id into
+    /// whatever key `I` this field's `SubjectSource` impl actually
+    /// wants via [`IntoSubjectId`] - for backends addressing more than
+    /// one kind of subject (see [`SceneBackend::Id`]).
+    pub fn register_field_with_key<S, T, I>(
+        &mut self,
+        type_name: TypeName,
+        field_acc: FieldAccessor<S, T>,
+    ) -> &mut Self
+    where
+        B::Id: IntoSubjectId<I>,
+        B::World: SubjectSource<I, S>,
+        B::ValuePool: ValueColumn<B::ValueId, T>,
+        I: SubjectId,
+        S: 'static,
+        T: ThreadSafe + Clone,
+    {
         let field_ref =
             FieldRef::new(type_name, field_acc.field.field_path());
         let untyped = field_acc.field.untyped();
@@ -177,7 +209,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
             .insert::<UntypedField>(field_ref.clone(), untyped);
         self.fields.insert::<FieldResolverBox<B>>(
             field_ref.clone(),
-            Box::new(ConcreteFieldResolver::<B, S, T>::default()),
+            Box::new(ConcreteFieldResolver::<B, S, T, I>::default()),
         );
 
         self.fields.insert::<FieldAccessor<S, T>>(
@@ -186,7 +218,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
         );
         self.fields.insert::<FieldRegistrar>(
             field_ref,
-            register_field_accessor::<B, S, T>,
+            register_field_accessor::<B, S, T, I>,
         );
         self
     }

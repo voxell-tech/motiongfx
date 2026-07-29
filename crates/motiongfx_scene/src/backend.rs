@@ -65,3 +65,15 @@ pub trait SceneBackend: 'static {
     /// The runtime's world type.
     type World: 'static;
 }
+
+/// Converts a subject id into a field's actual `SubjectSource` key;
+/// `None` if this subject isn't that kind.
+pub trait IntoSubjectId<Id: SubjectId> {
+    fn into_subject_id(self) -> Option<Id>;
+}
+
+impl<T: SubjectId> IntoSubjectId<T> for T {
+    fn into_subject_id(self) -> Option<T> {
+        Some(self)
+    }
+}

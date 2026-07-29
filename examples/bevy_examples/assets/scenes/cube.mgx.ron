@@ -2,7 +2,7 @@
     stage: (
         subjects: [
             (
-                id: "181e4485-eabb-47b6-8a51-65f2f32ca73f",
+                id: Entity("181e4485-eabb-47b6-8a51-65f2f32ca73f"),
                 state: (
                     index: 0,
                     generation: 0,
@@ -14,7 +14,7 @@
         combinator: Chain,
         children: [
             Action((
-                subject: "181e4485-eabb-47b6-8a51-65f2f32ca73f",
+                subject: Entity("181e4485-eabb-47b6-8a51-65f2f32ca73f"),
                 field: (
                     type_name: "bevy_transform::components::transform::Transform",
                     path: "::translation",

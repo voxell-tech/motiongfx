@@ -40,6 +40,10 @@ pub enum CompileError<B: SceneBackend> {
     /// [`Key`](crate::backend::Key).
     UnknownInterp(B::InterpId),
 
+    /// The subject id isn't the kind this field expects (see
+    /// [`IntoSubjectId`](crate::backend::IntoSubjectId)).
+    UnknownSubjectKind(FieldRef),
+
     /// The op builder's expected type doesn't match what's registered
     /// for the field: a registration bug.
     TypeMismatch {
@@ -74,6 +78,14 @@ impl<B: SceneBackend> fmt::Display for CompileError<B> {
             }
             Self::UnknownInterp(interp) => {
                 write!(f, "unknown interpolation function {interp:?}")
+            }
+            Self::UnknownSubjectKind(field) => {
+                write!(
+                    f,
+                    "unknown subject kind for field {}::{}",
+                    field.type_name(),
+                    field.path()
+                )
             }
             Self::TypeMismatch { type_name, field } => {
                 write!(

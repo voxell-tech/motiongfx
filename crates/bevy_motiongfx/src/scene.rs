@@ -9,7 +9,10 @@ use bevy_app::prelude::*;
 use bevy_asset::AssetApp as _;
 use bevy_ecs::prelude::*;
 use bevy_transform::components::Transform;
-use id::{EntityUid, SceneUidMap, on_add_entity_uid, on_remove_entity_uid};
+use id::{
+    EntityUid, SceneUid, SceneUidMap, on_add_entity_uid,
+    on_remove_entity_uid,
+};
 
 pub mod asset;
 pub mod backend;
@@ -53,10 +56,10 @@ pub fn spawn_scene(
         .subjects
         .iter()
         .map(|subject| {
-            let entity = commands
-                .spawn((Transform::default(), subject.id))
-                .id();
-            (subject.id, entity)
+            let SceneUid::Entity(uid) = subject.id;
+            let entity =
+                commands.spawn((Transform::default(), uid)).id();
+            (uid, entity)
         })
         .collect()
 }

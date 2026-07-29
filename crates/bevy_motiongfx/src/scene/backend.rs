@@ -12,7 +12,7 @@ use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
 use serde::{Deserialize, Serialize};
 
-use crate::scene::id::EntityUid;
+use crate::scene::id::{EntityUid, SceneUid};
 use crate::scene::value_pool::{ValueId, ValuePool};
 use crate::world::BevyWorld;
 
@@ -20,7 +20,7 @@ use crate::world::BevyWorld;
 pub struct Backend;
 
 impl SceneBackend for Backend {
-    type Id = EntityUid;
+    type Id = SceneUid;
     type ValueId = ValueId;
     type ValuePool = ValuePool;
     type OpId = AnimOp;
@@ -107,7 +107,10 @@ impl SceneRegistryExt for BackendRegistry {
         ValuePool: ValueColumn<ValueId, T>,
         T: ThreadSafe + Clone,
     {
-        self.register_field(TypeName::new(S::type_path()), field_acc)
+        self.register_field_with_key::<S, T, EntityUid>(
+            TypeName::new(S::type_path()),
+            field_acc,
+        )
     }
 
     fn register_to_op<T>(&mut self) -> &mut Self
