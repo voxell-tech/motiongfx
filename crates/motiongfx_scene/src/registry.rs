@@ -230,6 +230,17 @@ impl<B: SceneBackend> SceneRegistry<B> {
         self
     }
 
+    /// Registers a batch of easing functions by name.
+    pub fn register_eases(
+        &mut self,
+        eases: &[(B::EaseId, EaseFn)],
+    ) -> &mut Self {
+        for &(name, ease) in eases {
+            self.register_ease(name, ease);
+        }
+        self
+    }
+
     /// Registers an interpolation function by name.
     pub fn register_interp<T>(
         &mut self,

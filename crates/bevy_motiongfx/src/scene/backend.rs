@@ -4,7 +4,6 @@
 
 use alloc::boxed::Box;
 
-use bevy_math::{Quat, Vec3};
 use bevy_reflect::TypePath;
 use bevy_transform::components::Transform;
 use motiongfx::interpolation::Interpolation;
@@ -78,6 +77,23 @@ pub trait SceneRegistryExt {
     fn register_linear_interp<T, M>(&mut self) -> &mut Self
     where
         T: Interpolation<M> + 'static;
+
+    /// Registers a field plus its `To` op and linear interpolation, in
+    /// one call - just pass `path!(<S>::field)`.
+    fn register_bundle<S, T, M>(
+        &mut self,
+        field_acc: FieldAccessor<S, T>,
+    ) -> &mut Self
+    where
+        S: TypePath,
+        BevyWorld: SubjectSource<SceneId, S>,
+        ValuePool: ValueColumn<ValueId, T>,
+        T: Interpolation<M> + ThreadSafe + Clone,
+    {
+        self.register_reflected_field(field_acc)
+            .register_to_op::<T>()
+            .register_linear_interp::<T, M>()
+    }
 }
 
 impl SceneRegistryExt for BackendRegistry {
@@ -121,20 +137,13 @@ pub fn default_scene_registry() -> BackendRegistry {
     let mut registry = SceneRegistry::new();
 
     registry
-        .register_reflected_field(path!(<Transform>::translation))
-        .register_reflected_field(path!(<Transform>::rotation))
-        .register_reflected_field(path!(<Transform>::scale))
-        .register_to_op::<f32>()
-        .register_linear_interp::<f32, _>()
-        .register_to_op::<Vec3>()
-        .register_linear_interp::<Vec3, _>()
-        .register_to_op::<Quat>()
-        .register_linear_interp::<Quat, _>()
-        .register_ease(AnimEase::Linear, ease::linear)
-        .register_ease(
-            AnimEase::CubicEaseInOut,
-            ease::cubic::ease_in_out,
-        );
+        .register_bundle(path!(<Transform>::translation))
+        .register_bundle(path!(<Transform>::rotation))
+        .register_bundle(path!(<Transform>::scale))
+        .register_eases(&[
+            (AnimEase::Linear, ease::linear),
+            (AnimEase::CubicEaseInOut, ease::cubic::ease_in_out),
+        ]);
 
     registry
 }
