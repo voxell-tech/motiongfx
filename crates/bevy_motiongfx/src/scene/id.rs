@@ -3,15 +3,17 @@
 //!
 //! `Entity` is generational and gets reassigned on every scene load,
 //! so it cannot be what a serialized [`Scene`](motiongfx_scene::scene::Scene)
-//! refers to. [`SceneId`] is a plain `Uuid` v4: stable across
-//! save/load. [`SceneEntityMap`] is how
-//! [`BevyWorld`](crate::world::BevyWorld)'s
-//! [`SubjectSource<SceneId, S>`](motiongfx::world::SubjectSource) impl
-//! (see `crate::world`) resolves a `SceneId` to whatever `Entity` it
-//! is currently spawned as, before delegating to the same
+//! refers to. [`EntityUid`] is a plain `Uuid` v4: stable across
+//! save/load, and attached as a [`Component`] to every entity it
+//! materializes as - so the reverse (`Entity` -> `EntityUid`) lookup
+//! is just a normal component read, not a second map to keep in sync.
+//! [`SceneUidMap`] is how [`BevyWorld`](crate::world::BevyWorld)'s
+//! [`SubjectSource<EntityUid, S>`](motiongfx::world::SubjectSource)
+//! impl (see `crate::world`) resolves an `EntityUid` to whatever
+//! `Entity` it is currently spawned as, before delegating to the same
 //! `Entity`-keyed access `BevyWorld` already provides. Nothing outside
 //! this map may assume an `Entity` is stable across a save/reload
-//! cycle - only the `SceneId` is.
+//! cycle - only the `EntityUid` is.
 
 use core::fmt;
 
@@ -21,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(
+    Component,
     Debug,
     Clone,
     Copy,
@@ -33,65 +36,70 @@ use uuid::Uuid;
     Deserialize,
 )]
 #[serde(transparent)]
-pub struct SceneId(Uuid);
+pub struct EntityUid(Uuid);
 
-impl SceneId {
+impl EntityUid {
     /// Generates a new random (v4) id.
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
+
+    /// See [`Uuid::nil()`].
+    pub fn nil() -> Self {
+        Self(Uuid::nil())
+    }
 }
 
-impl Default for SceneId {
+impl Default for EntityUid {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl fmt::Display for SceneId {
+impl fmt::Display for EntityUid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
     }
 }
 
-/// Bidirectional mapping between a scene's [`SceneId`]s and the
-/// `Entity` each is currently materialized as. Store as a resource in
-/// the same [`World`] the scene's entities are spawned into.
+/// Maps a scene's [`EntityUid`]s to the `Entity` each is currently
+/// materialized as. Store as a resource in the same [`World`] the
+/// scene's entities are spawned into.
+///
+/// Kept in sync by [`on_add_entity_uid`]/[`on_remove_entity_uid`] -
+/// there's no manual `insert`/`remove`; spawning or despawning the
+/// [`EntityUid`] component is the only way in or out.
 #[derive(Resource, Default)]
-pub struct SceneEntityMap {
-    to_entity: HashMap<SceneId, Entity>,
-    to_scene_id: HashMap<Entity, SceneId>,
+pub struct SceneUidMap {
+    to_entity: HashMap<EntityUid, Entity>,
 }
 
-impl SceneEntityMap {
-    pub fn insert(&mut self, id: SceneId, entity: Entity) {
-        self.to_entity.insert(id, entity);
-        self.to_scene_id.insert(entity, id);
-    }
-
-    pub fn remove_by_scene_id(
-        &mut self,
-        id: SceneId,
-    ) -> Option<Entity> {
-        let entity = self.to_entity.remove(&id)?;
-        self.to_scene_id.remove(&entity);
-        Some(entity)
-    }
-
-    pub fn remove_by_entity(
-        &mut self,
-        entity: Entity,
-    ) -> Option<SceneId> {
-        let id = self.to_scene_id.remove(&entity)?;
-        self.to_entity.remove(&id);
-        Some(id)
-    }
-
-    pub fn entity(&self, id: SceneId) -> Option<Entity> {
+impl SceneUidMap {
+    pub fn entity(&self, id: EntityUid) -> Option<Entity> {
         self.to_entity.get(&id).copied()
     }
+}
 
-    pub fn scene_id(&self, entity: Entity) -> Option<SceneId> {
-        self.to_scene_id.get(&entity).copied()
+/// Records `id`'s entity in [`SceneUidMap`] whenever an [`EntityUid`]
+/// is added to it.
+pub(crate) fn on_add_entity_uid(
+    trigger: On<Add, EntityUid>,
+    query: Query<&EntityUid>,
+    mut uid_map: ResMut<SceneUidMap>,
+) {
+    if let Ok(id) = query.get(trigger.entity) {
+        uid_map.to_entity.insert(*id, trigger.entity);
+    }
+}
+
+/// Removes `id`'s entry from [`SceneUidMap`] whenever an [`EntityUid`]
+/// is removed from it (including on despawn).
+pub(crate) fn on_remove_entity_uid(
+    trigger: On<Remove, EntityUid>,
+    query: Query<&EntityUid>,
+    mut uid_map: ResMut<SceneUidMap>,
+) {
+    if let Ok(id) = query.get(trigger.entity) {
+        uid_map.to_entity.remove(id);
     }
 }

@@ -27,8 +27,8 @@ impl MotionGfxScene {
     /// like [`MotionGfxManager::add_timeline`]. This scene's subjects
     /// must already be materialized (see
     /// [`spawn_scene`](crate::scene::spawn_scene)) so their
-    /// [`SceneId`](crate::scene::id::SceneId)s resolve through the
-    /// world's [`SceneEntityMap`](crate::scene::id::SceneEntityMap).
+    /// [`EntityUid`](crate::scene::id::EntityUid)s resolve through the
+    /// world's [`SceneUidMap`](crate::scene::id::SceneUidMap).
     pub fn compile(
         &self,
         scene_registry: &BackendRegistry,

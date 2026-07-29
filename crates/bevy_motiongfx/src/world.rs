@@ -3,7 +3,7 @@ use bevy_ecs::prelude::*;
 use motiongfx::prelude::*;
 
 #[cfg(feature = "scene")]
-use crate::scene::id::{SceneEntityMap, SceneId};
+use crate::scene::id::{EntityUid, SceneUidMap};
 
 /// Newtype wrapper around [`World`] that is local to this crate,
 /// allowing [`SubjectSource`] impls without violating the orphan rule.
@@ -38,28 +38,28 @@ impl<S: Component<Mutability = Mutable>> SubjectSource<Entity, S>
     }
 }
 
-/// Resolves `id` to an `Entity` through the world's [`SceneEntityMap`]
+/// Resolves `id` to an `Entity` through the world's [`SceneUidMap`]
 /// resource, then delegates to the `Entity`-keyed impl above. `Entity`
 /// is generational and gets reassigned on every scene load, so nothing
-/// outside `SceneEntityMap` may assume it is stable across a
-/// save/reload cycle - only the `SceneId` is.
+/// outside `SceneUidMap` may assume it is stable across a save/reload
+/// cycle - only the `EntityUid` is.
 #[cfg(feature = "scene")]
-impl<S: Component<Mutability = Mutable>> SubjectSource<SceneId, S>
+impl<S: Component<Mutability = Mutable>> SubjectSource<EntityUid, S>
     for BevyWorld
 {
-    fn get_source(&self, id: SceneId) -> Option<&S> {
+    fn get_source(&self, id: EntityUid) -> Option<&S> {
         let entity =
-            self.0.get_resource::<SceneEntityMap>()?.entity(id)?;
+            self.0.get_resource::<SceneUidMap>()?.entity(id)?;
         self.0.get::<S>(entity)
     }
 
     fn apply_source<R>(
         &mut self,
-        id: SceneId,
+        id: EntityUid,
         f: impl FnOnce(&mut S) -> R,
     ) -> Option<R> {
         let entity =
-            self.0.get_resource::<SceneEntityMap>()?.entity(id)?;
+            self.0.get_resource::<SceneUidMap>()?.entity(id)?;
         self.0.get_mut::<S>(entity).map(|mut m| f(m.as_mut()))
     }
 }

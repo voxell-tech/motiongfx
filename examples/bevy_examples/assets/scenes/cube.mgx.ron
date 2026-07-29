@@ -2,7 +2,7 @@
     stage: (
         subjects: [
             (
-                id: "8eada69e-9691-4fbf-815f-7dee4ecc65b0",
+                id: "181e4485-eabb-47b6-8a51-65f2f32ca73f",
                 state: (
                     index: 0,
                     generation: 0,
@@ -14,10 +14,10 @@
         combinator: Chain,
         children: [
             Action((
-                subject: "8eada69e-9691-4fbf-815f-7dee4ecc65b0",
+                subject: "181e4485-eabb-47b6-8a51-65f2f32ca73f",
                 field: (
-                    type_name: "Transform",
-                    path: "translation",
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::translation",
                 ),
                 op: To,
                 value: (
@@ -31,11 +31,6 @@
         ],
     ),
     values: (
-        f32: (
-            buffer: [],
-            generations: [],
-            empty_slots: [],
-        ),
         vec3: (
             buffer: [
                 Some((6.0, 0.0, 0.0)),
@@ -43,12 +38,6 @@
             generations: [
                 0,
             ],
-            empty_slots: [],
-        ),
-        quat: (
-            buffer: [],
-            generations: [],
-            empty_slots: [],
         ),
     ),
 )

@@ -27,7 +27,7 @@ pub mod prelude {
     pub use crate::world::{BevyTimeline, BevyTimelineBuilder};
 
     #[cfg(feature = "scene")]
-    pub use crate::scene::id::SceneId;
+    pub use crate::scene::id::EntityUid;
 }
 
 pub use motiongfx;

@@ -9,7 +9,6 @@ use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
 use bevy_motiongfx::scene::asset::MotionGfxScene;
 use bevy_motiongfx::scene::backend::default_scene_registry;
-use bevy_motiongfx::scene::id::SceneEntityMap;
 use bevy_motiongfx::scene::spawn_scene;
 
 fn main() {
@@ -53,7 +52,6 @@ fn build_scene_once_loaded(
     scenes: Res<Assets<MotionGfxScene>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut entity_map: ResMut<SceneEntityMap>,
     mut motiongfx: ResMut<MotionGfxManager>,
 ) {
     let Some(pending) = pending else {
@@ -65,9 +63,7 @@ fn build_scene_once_loaded(
     // Materializes the scene's one subject into a real entity, then
     // attaches the visuals (the scene format itself doesn't know
     // about meshes/materials - only `Transform`).
-    spawn_scene(&mut commands, &mut entity_map, scene);
-    for subject in &scene.0.stage.subjects {
-        let entity = entity_map.entity(subject.id).unwrap();
+    for (_, entity) in spawn_scene(&mut commands, scene) {
         commands.entity(entity).insert((
             Mesh3d(meshes.add(Cuboid::default())),
             MeshMaterial3d(
