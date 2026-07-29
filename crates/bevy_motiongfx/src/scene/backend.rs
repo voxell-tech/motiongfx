@@ -7,6 +7,7 @@ use alloc::boxed::Box;
 use bevy_math::{Quat, Vec3};
 use bevy_reflect::TypePath;
 use bevy_transform::components::Transform;
+use motiongfx::interpolation::Interpolation;
 use motiongfx::prelude::*;
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
@@ -54,70 +55,86 @@ pub enum AnimEase {
     CubicEaseInOut,
 }
 
-pub trait SceneRegistryFieldExt<S, T> {
-    fn register_reflected_field(
+pub trait SceneRegistryExt {
+    fn register_reflected_field<S, T>(
         &mut self,
         field_acc: FieldAccessor<S, T>,
-    );
+    ) -> &mut Self
+    where
+        S: TypePath,
+        BevyWorld: SubjectSource<SceneId, S>,
+        ValuePool: ValueColumn<ValueId, T>,
+        T: ThreadSafe + Clone;
+
+    /// Registers a `To` op for `T`: sets the field directly to the
+    /// action's value.
+    fn register_to_op<T>(&mut self) -> &mut Self
+    where
+        T: Clone + Send + Sync + 'static;
+
+    /// Registers linear interpolation for `T`, reusing `T`'s own
+    /// [`Interpolation<M>`] impl instead of a hand-written lerp/slerp
+    /// closure.
+    fn register_linear_interp<T, M>(&mut self) -> &mut Self
+    where
+        T: Interpolation<M> + 'static;
 }
 
-impl<S, T> SceneRegistryFieldExt<S, T> for BackendRegistry
-where
-    S: TypePath,
-    BevyWorld: SubjectSource<SceneId, S>,
-    ValuePool: ValueColumn<ValueId, T>,
-    T: ThreadSafe + Clone,
-{
-    fn register_reflected_field(
+impl SceneRegistryExt for BackendRegistry {
+    fn register_reflected_field<S, T>(
         &mut self,
         field_acc: FieldAccessor<S, T>,
-    ) {
-        self.register_field(TypeName::new(S::type_path()), field_acc);
+    ) -> &mut Self
+    where
+        S: TypePath,
+        BevyWorld: SubjectSource<SceneId, S>,
+        ValuePool: ValueColumn<ValueId, T>,
+        T: ThreadSafe + Clone,
+    {
+        self.register_field(TypeName::new(S::type_path()), field_acc)
+    }
+
+    fn register_to_op<T>(&mut self) -> &mut Self
+    where
+        T: Clone + Send + Sync + 'static,
+    {
+        self.register_op::<T, _>(AnimOp::To, |value: &T| {
+            let value = value.clone();
+            Box::new(move |_prev: &T| value.clone())
+                as Box<dyn Action<T>>
+        })
+    }
+
+    fn register_linear_interp<T, M>(&mut self) -> &mut Self
+    where
+        T: Interpolation<M> + 'static,
+    {
+        self.register_interp::<T>(
+            AnimInterp::Linear,
+            <T as Interpolation<M>>::interp,
+        )
     }
 }
 
-/// A [`SceneRegistry`] with `Transform`'s `translation`/`rotation`/
-/// `scale` fields, a `To` op for `f32`/`Vec3`/`Quat`, linear
-/// interpolation for each, and a couple of named eases.
+/// Create a default battery included scene registry!
 pub fn default_scene_registry() -> BackendRegistry {
     let mut registry = SceneRegistry::new();
 
     registry
-        .register_reflected_field(path!(<Transform>::translation));
-    registry.register_reflected_field(path!(<Transform>::rotation));
-    registry.register_reflected_field(path!(<Transform>::scale));
-
-    register_to_op::<f32>(&mut registry);
-    register_to_op::<Vec3>(&mut registry);
-    register_to_op::<Quat>(&mut registry);
-
-    registry.register_interp::<f32>(AnimInterp::Linear, |a, b, t| {
-        a + (b - a) * t
-    });
-    registry
-        .register_interp::<Vec3>(AnimInterp::Linear, |a, b, t| {
-            a.lerp(*b, t)
-        });
-    registry
-        .register_interp::<Quat>(AnimInterp::Linear, |a, b, t| {
-            a.slerp(*b, t)
-        });
-
-    registry.register_ease(AnimEase::Linear, ease::linear);
-    registry.register_ease(
-        AnimEase::CubicEaseInOut,
-        ease::cubic::ease_in_out,
-    );
+        .register_reflected_field(path!(<Transform>::translation))
+        .register_reflected_field(path!(<Transform>::rotation))
+        .register_reflected_field(path!(<Transform>::scale))
+        .register_to_op::<f32>()
+        .register_linear_interp::<f32, _>()
+        .register_to_op::<Vec3>()
+        .register_linear_interp::<Vec3, _>()
+        .register_to_op::<Quat>()
+        .register_linear_interp::<Quat, _>()
+        .register_ease(AnimEase::Linear, ease::linear)
+        .register_ease(
+            AnimEase::CubicEaseInOut,
+            ease::cubic::ease_in_out,
+        );
 
     registry
-}
-
-fn register_to_op<T>(registry: &mut BackendRegistry)
-where
-    T: Clone + Send + Sync + 'static,
-{
-    registry.register_op::<T, _>(AnimOp::To, |value: &T| {
-        let value = value.clone();
-        Box::new(move |_prev: &T| value.clone()) as Box<dyn Action<T>>
-    });
 }

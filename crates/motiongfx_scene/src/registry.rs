@@ -163,7 +163,8 @@ impl<B: SceneBackend> SceneRegistry<B> {
         &mut self,
         type_name: TypeName,
         field_acc: FieldAccessor<S, T>,
-    ) where
+    ) -> &mut Self
+    where
         B::World: SubjectSource<B::Id, S>,
         B::ValuePool: ValueColumn<B::ValueId, T>,
         S: 'static,
@@ -187,6 +188,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
             field_ref,
             register_field_accessor::<B, S, T>,
         );
+        self
     }
 
     /// Installs every registered field's accessor into the runtime
@@ -203,7 +205,11 @@ impl<B: SceneBackend> SceneRegistry<B> {
     }
 
     /// Registers an op by name for a value type `T`.
-    pub fn register_op<T, F>(&mut self, op: B::OpId, build_action: F)
+    pub fn register_op<T, F>(
+        &mut self,
+        op: B::OpId,
+        build_action: F,
+    ) -> &mut Self
     where
         T: ThreadSafe + Clone,
         F: Fn(&T) -> Box<dyn Action<T>> + ThreadSafe,
@@ -211,11 +217,17 @@ impl<B: SceneBackend> SceneRegistry<B> {
         let build_action: BuildAction<T> = Box::new(build_action);
         self.action_resolvers
             .insert::<BuildAction<T>>(op, build_action);
+        self
     }
 
     /// Registers an easing function by name.
-    pub fn register_ease(&mut self, name: B::EaseId, ease: EaseFn) {
+    pub fn register_ease(
+        &mut self,
+        name: B::EaseId,
+        ease: EaseFn,
+    ) -> &mut Self {
         self.eases.insert(name, ease);
+        self
     }
 
     /// Registers an interpolation function by name.
@@ -223,10 +235,12 @@ impl<B: SceneBackend> SceneRegistry<B> {
         &mut self,
         name: B::InterpId,
         interp: InterpFn<T>,
-    ) where
+    ) -> &mut Self
+    where
         T: 'static,
     {
         self.interps.insert::<InterpFn<T>>(name, interp);
+        self
     }
 
     pub(crate) fn resolve_field(
