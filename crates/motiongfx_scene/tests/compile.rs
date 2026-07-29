@@ -10,7 +10,7 @@ use motiongfx_scene::compile::compile;
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
 use serde::{Deserialize, Serialize};
-use sparse_map::SparseMap;
+use sparse_map::{Key, SparseMap};
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
@@ -23,6 +23,7 @@ struct ToyBackend;
 
 impl SceneBackend for ToyBackend {
     type Id = u64;
+    type ValueId = Key;
     type ValuePool = ToyValuePool;
     type OpId = Op;
     type InterpId = ();
@@ -32,21 +33,23 @@ impl SceneBackend for ToyBackend {
 
 /// A single `f32` column: every value in these tests is a plain
 /// `f32`, so one `SparseMap<f32>` is the whole pool.
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Default, Debug, Clone, PartialEq, Serialize, Deserialize,
+)]
 struct ToyValuePool {
     f32: SparseMap<f32>,
 }
 
-impl ValueColumn<f32> for ToyValuePool {
-    fn get(&self, id: ValueId) -> Option<&f32> {
+impl ValueColumn<Key, f32> for ToyValuePool {
+    fn get(&self, id: Key) -> Option<&f32> {
         self.f32.get(&id)
     }
 
-    fn get_mut(&mut self, id: ValueId) -> Option<&mut f32> {
+    fn get_mut(&mut self, id: Key) -> Option<&mut f32> {
         self.f32.get_mut(&id)
     }
 
-    fn insert(&mut self, value: f32) -> ValueId {
+    fn insert(&mut self, value: f32) -> Key {
         self.f32.insert(value)
     }
 }

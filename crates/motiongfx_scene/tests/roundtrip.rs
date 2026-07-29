@@ -6,7 +6,7 @@ use core::time::Duration;
 
 use motiongfx_scene::prelude::*;
 use serde::{Deserialize, Serialize};
-use sparse_map::SparseMap;
+use sparse_map::{Key, SparseMap};
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
@@ -26,6 +26,7 @@ struct RoundtripBackend;
 
 impl SceneBackend for RoundtripBackend {
     type Id = u64;
+    type ValueId = Key;
     type ValuePool = RoundtripValuePool;
     type OpId = Op;
     type InterpId = ();
@@ -33,21 +34,23 @@ impl SceneBackend for RoundtripBackend {
     type World = ();
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Default, Debug, Clone, PartialEq, Serialize, Deserialize,
+)]
 struct RoundtripValuePool {
     f32: SparseMap<f32>,
 }
 
-impl ValueColumn<f32> for RoundtripValuePool {
-    fn get(&self, id: ValueId) -> Option<&f32> {
+impl ValueColumn<Key, f32> for RoundtripValuePool {
+    fn get(&self, id: Key) -> Option<&f32> {
         self.f32.get(&id)
     }
 
-    fn get_mut(&mut self, id: ValueId) -> Option<&mut f32> {
+    fn get_mut(&mut self, id: Key) -> Option<&mut f32> {
         self.f32.get_mut(&id)
     }
 
-    fn insert(&mut self, value: f32) -> ValueId {
+    fn insert(&mut self, value: f32) -> Key {
         self.f32.insert(value)
     }
 }

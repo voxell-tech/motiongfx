@@ -12,16 +12,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::backend::SceneBackend;
 use crate::refs::FieldRef;
-use crate::value::ValueId;
 
 /// A group of [`Node`]s combined by one [`Combinator`].
 ///
 /// Every field `Block`/`Node`/`ActionCmd` reference through `B`
 /// directly (`B::Id`, `B::OpId`, `B::EaseId`, `B::InterpId`) is
 /// already unconditionally `Debug + Clone + PartialEq` via
-/// `SubjectId`'s/`Key`'s own supertraits, and `ActionCmd::value` is
-/// the concrete `ValueId`, not a per-backend type - so these impls
-/// never actually depend on a backend choice the way the old
+/// `SubjectId`'s/`Key`'s own supertraits, and so is `B::ValueId` (used
+/// by `ActionCmd::value`) - so these impls never actually depend on a
+/// backend choice the way the old
 /// `SceneBackend::Value` did. `bound(false)` (no extra where-clause)
 /// is deliberate, not just "the simplest option that compiles": a
 /// bound referencing `Node<B>`/`Block<B>`/`ActionCmd<B>` here would
@@ -93,11 +92,13 @@ pub struct ActionCmd<B: SceneBackend> {
     pub subject: B::Id,
     pub field: FieldRef,
     pub op: B::OpId,
-    pub value: ValueId,
+    pub value: B::ValueId,
     #[serde(with = "crate::duration")]
     pub duration: Duration,
     /// `None` = linear / default easing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ease: Option<B::EaseId>,
     /// `None` = the field type's default interpolation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub interp: Option<B::InterpId>,
 }

@@ -12,8 +12,9 @@
 //!
 //! [`SceneBackend::ValuePool`](backend::SceneBackend::ValuePool) holds
 //! subject-state and action-argument values; the backend picks its
-//! shape (a plain struct of named `sparse_map::SparseMap<T>` columns,
-//! one per value type it needs - see [`value`]).
+//! shape (a plain struct of named columns, one per value type it
+//! needs, addressed by its own [`SceneBackend::ValueId`](backend::SceneBackend::ValueId) -
+//! see [`value`]).
 
 #![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code)]
@@ -36,5 +37,5 @@ pub mod prelude {
     pub use crate::error::CompileError;
     pub use crate::refs::{FieldRef, TypeName};
     pub use crate::scene::{Scene, Stage, Subject};
-    pub use crate::value::{ValueColumn, ValueId};
+    pub use crate::value::ValueColumn;
 }

@@ -44,7 +44,7 @@ impl<B, S, T> FieldResolver<B> for ConcreteFieldResolver<B, S, T>
 where
     B: SceneBackend,
     B::World: SubjectSource<B::Id, S>,
-    B::ValuePool: ValueColumn<T>,
+    B::ValuePool: ValueColumn<B::ValueId, T>,
     S: 'static,
     T: ThreadSafe + Clone,
 {
@@ -148,7 +148,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
         field_acc: FieldAccessor<S, T>,
     ) where
         B::World: SubjectSource<B::Id, S>,
-        B::ValuePool: ValueColumn<T>,
+        B::ValuePool: ValueColumn<B::ValueId, T>,
         S: 'static,
         T: ThreadSafe + Clone,
     {

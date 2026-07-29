@@ -65,7 +65,8 @@ fn walk_node<B: SceneBackend>(
             resolve_action(cmd, registry, values, builder)
         }
         Node::Delayed { offset, node } => {
-            let fragment = walk_node(node, registry, values, builder)?;
+            let fragment =
+                walk_node(node, registry, values, builder)?;
             Ok(delay(*offset, fragment))
         }
     }

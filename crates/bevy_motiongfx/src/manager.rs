@@ -99,6 +99,12 @@ impl MotionGfxManager {
         TimelineBuilder::new(&mut self.registry)
     }
 
+    /// The runtime [`Registry`] backing this manager's timelines.
+    #[cfg(feature = "scene")]
+    pub(crate) fn registry_mut(&mut self) -> &mut Registry {
+        &mut self.registry
+    }
+
     pub fn add_timeline(
         &mut self,
         timeline: BevyTimeline,

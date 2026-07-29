@@ -1216,9 +1216,15 @@ dependencies = [
  "bevy_ecs",
  "bevy_math",
  "bevy_platform",
+ "bevy_reflect",
  "bevy_time",
  "bevy_transform",
  "motiongfx",
+ "motiongfx_scene",
+ "ron",
+ "serde",
+ "sparse_map",
+ "uuid",
 ]
 
 [[package]]
@@ -5034,6 +5040,7 @@ dependencies = [
 [[package]]
 name = "sparse_map"
 version = "0.3.0"
+source = "git+https://github.com/voxell-tech/sparse_map.git?branch=nixon%2Fserialization#4a34aa3ccd903440ffe361a1d19933d060cc17d2"
 dependencies = [
  "serde",
 ]

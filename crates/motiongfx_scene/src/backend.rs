@@ -45,11 +45,16 @@ impl<T> Storable for T where T: Serialize + DeserializeOwned {}
 pub trait SceneBackend: 'static {
     /// The subject identifier type.
     type Id: SubjectId + Storable;
+    /// A stable reference into [`ValuePool`](Self::ValuePool). Not
+    /// fixed by this crate - a backend picks whatever fits (a
+    /// generational key like `sparse_map::Key`, a `u64`, ...) - see
+    /// `crate::value` for why it must stay stable across removal.
+    type ValueId: Key + Storable;
     /// Holds subject state and action-argument values, one
-    /// [`ValueColumn<T>`](crate::value::ValueColumn) impl per concrete
-    /// value type the backend needs. A plain struct of named
-    /// `sparse_map::SparseMap<T>` fields, not a closed enum or a boxed
-    /// trait object - see `crate::value` for why.
+    /// [`ValueColumn<Id, T>`](crate::value::ValueColumn) impl per
+    /// concrete value type the backend needs. A plain struct of named
+    /// columns, not a closed enum or a boxed trait object - see
+    /// `crate::value` for why.
     type ValuePool: Storable + Default + 'static;
     /// A registered action op's identifier.
     type OpId: Key + Storable;

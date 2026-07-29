@@ -1,0 +1,54 @@
+(
+    stage: (
+        subjects: [
+            (
+                id: "8eada69e-9691-4fbf-815f-7dee4ecc65b0",
+                state: (
+                    index: 0,
+                    generation: 0,
+                ),
+            ),
+        ],
+    ),
+    animation: (
+        combinator: Chain,
+        children: [
+            Action((
+                subject: "8eada69e-9691-4fbf-815f-7dee4ecc65b0",
+                field: (
+                    type_name: "Transform",
+                    path: "translation",
+                ),
+                op: To,
+                value: (
+                    index: 0,
+                    generation: 0,
+                ),
+                duration: Ms(1000),
+                ease: Some(CubicEaseInOut),
+                interp: Some(Linear),
+            )),
+        ],
+    ),
+    values: (
+        f32: (
+            buffer: [],
+            generations: [],
+            empty_slots: [],
+        ),
+        vec3: (
+            buffer: [
+                Some((6.0, 0.0, 0.0)),
+            ],
+            generations: [
+                0,
+            ],
+            empty_slots: [],
+        ),
+        quat: (
+            buffer: [],
+            generations: [],
+            empty_slots: [],
+        ),
+    ),
+)

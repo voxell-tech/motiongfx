@@ -36,6 +36,7 @@ field_path = "0.4.1"
 typarena = { version = "0.1.0", features = ["send", "sync"] }
 sparse_map = { version = "0.3.0", default-features = false }
 libm = "0.2"
+uuid = { version = "1", default-features = false, features = ["v4"] }
 nonempty = { version = "0.12", default-features = false }
 hashbrown = { version = "0.17", default-features = false }
 serde = { version = "1", default-features = false }
@@ -49,9 +50,9 @@ pollster = "0.4"
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
 
-# Use the local checkout until the `serde` feature is published to crates.io.
+# Use this commit until the `serde` feature is published to crates.io.
 [patch.crates-io]
-sparse_map = { path = "../sparse_map" }
+sparse_map = { git = "https://github.com/voxell-tech/sparse_map.git", branch = "nixon/serialization" }
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

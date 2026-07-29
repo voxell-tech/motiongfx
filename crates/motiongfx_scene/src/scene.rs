@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::backend::SceneBackend;
 use crate::block::Block;
-use crate::value::ValueId;
 
 /// The whole serialized project: the initial stage and the animation
 /// that drives it, plus the value pool both reference into. `B`
@@ -24,7 +23,7 @@ pub struct Scene<B: SceneBackend> {
     /// The root block. An empty timeline is `Block::chain([])`.
     pub animation: Block<B>,
     /// Every subject-state and action-argument value, referenced by
-    /// [`ValueId`] from `stage`/`animation`. See
+    /// [`SceneBackend::ValueId`] from `stage`/`animation`. See
     /// [`SceneBackend::ValuePool`].
     pub values: B::ValuePool,
 }
@@ -45,5 +44,5 @@ pub struct Stage<B: SceneBackend> {
 #[serde(bound = "")]
 pub struct Subject<B: SceneBackend> {
     pub id: B::Id,
-    pub state: ValueId,
+    pub state: B::ValueId,
 }
