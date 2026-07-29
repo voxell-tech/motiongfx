@@ -5,6 +5,7 @@ use core::marker::PhantomData;
 
 use alloc::boxed::Box;
 
+use educe::Educe;
 use hashbrown::HashMap;
 use typarena::type_table::TypeTable;
 
@@ -21,10 +22,9 @@ use crate::error::CompileError;
 use crate::refs::{FieldRef, TypeName};
 use crate::value::ValueColumn;
 
-/// Resolves one `S`/`T`-typed field into a [`TrackFragment`], stored by
-/// [`FieldRef`]. The action itself (looked up by `T` alone, not `S`; see
-/// [`SceneRegistry::build_action`] and its `action_resolvers` map) doesn't
-/// belong here - only the field-accessor step needs `S`.
+/// Resolves one `S`/`T`-typed field into a [`TrackFragment`]. Action
+/// lookup (by `T` alone; see [`SceneRegistry::build_action`]) doesn't
+/// need `S`, so it isn't part of this trait's dispatch.
 trait FieldResolver<B: SceneBackend> {
     fn build(
         &self,
@@ -35,6 +35,8 @@ trait FieldResolver<B: SceneBackend> {
     ) -> Result<TrackFragment, CompileError<B>>;
 }
 
+#[derive(Educe)]
+#[educe(Default(bound(false)))]
 struct ConcreteFieldResolver<B, S, T> {
     #[expect(clippy::type_complexity)]
     _marker: PhantomData<fn() -> (B, S, T)>,
@@ -109,7 +111,27 @@ type BuildAction<T> =
 
 type FieldResolverBox<B> = Box<dyn FieldResolver<B> + Send + Sync>;
 
-type FieldRegistrar = Box<dyn Fn(&mut Registry) + Send + Sync>;
+type FieldRegistrar =
+    fn(&mut Registry, &TypeTable<FieldRef>, &FieldRef);
+
+fn register_field_accessor<B, S, T>(
+    runtime: &mut Registry,
+    fields: &TypeTable<FieldRef>,
+    field_ref: &FieldRef,
+) where
+    B: SceneBackend,
+    B::World: SubjectSource<B::Id, S>,
+    S: 'static,
+    T: ThreadSafe + Clone,
+{
+    if let Some(field_acc) =
+        fields.get::<FieldAccessor<S, T>>(field_ref)
+    {
+        runtime.register::<B::World, B::Id, S, T>(
+            FieldAccessor::new(field_acc.field, field_acc.accessor),
+        );
+    }
+}
 
 /// The bridge between scene names and runtime closures.
 ///
@@ -117,8 +139,8 @@ type FieldRegistrar = Box<dyn Fn(&mut Registry) + Send + Sync>;
 /// via [`Self::register_field`], [`Self::register_op`], and
 /// optionally [`Self::register_ease`]/[`Self::register_interp`].
 pub struct SceneRegistry<B: SceneBackend> {
-    /// Keyed by [`FieldRef`]; columns are `UntypedField`,
-    /// [`FieldResolverBox`], and [`FieldRegistrar`].
+    /// Columns are [`UntypedField`], [`FieldResolverBox`],
+    /// [`FieldAccessor`], and [`FieldRegistrar`].
     fields: TypeTable<FieldRef>,
     action_resolvers: TypeTable<B::OpId>,
     eases: HashMap<B::EaseId, EaseFn>,
@@ -137,14 +159,9 @@ impl<B: SceneBackend> SceneRegistry<B> {
     }
 
     /// Registers a field mapping.
-    ///
-    /// `type_name` + `path` form the [`FieldRef`] used in serialized
-    /// [`ActionCmd`]s. `field_acc` is installed into the runtime
-    /// `Registry` at [`compile`](crate::compile::compile) time.
     pub fn register_field<S, T>(
         &mut self,
         type_name: TypeName,
-        path: impl Into<Box<str>>,
         field_acc: FieldAccessor<S, T>,
     ) where
         B::World: SubjectSource<B::Id, S>,
@@ -152,32 +169,23 @@ impl<B: SceneBackend> SceneRegistry<B> {
         S: 'static,
         T: ThreadSafe + Clone,
     {
-        let field_ref = FieldRef {
-            type_name,
-            path: path.into(),
-        };
+        let field_ref =
+            FieldRef::new(type_name, field_acc.field.field_path());
         let untyped = field_acc.field.untyped();
         self.fields
             .insert::<UntypedField>(field_ref.clone(), untyped);
         self.fields.insert::<FieldResolverBox<B>>(
             field_ref.clone(),
-            Box::new(ConcreteFieldResolver::<B, S, T> {
-                _marker: PhantomData,
-            }),
+            Box::new(ConcreteFieldResolver::<B, S, T>::default()),
         );
 
-        // `FieldAccessor`'s derived `Copy` needs `S: Copy, T: Copy`, but
-        // `Field`/`Accessor` alone are unconditionally `Copy` - capture
-        // those instead to keep this closure `Fn`, not `FnOnce`.
-        let field = field_acc.field;
-        let accessor = field_acc.accessor;
+        self.fields.insert::<FieldAccessor<S, T>>(
+            field_ref.clone(),
+            field_acc,
+        );
         self.fields.insert::<FieldRegistrar>(
             field_ref,
-            Box::new(move |runtime: &mut Registry| {
-                runtime.register::<B::World, B::Id, S, T>(
-                    FieldAccessor::new(field, accessor),
-                );
-            }),
+            register_field_accessor::<B, S, T>,
         );
     }
 
@@ -187,20 +195,14 @@ impl<B: SceneBackend> SceneRegistry<B> {
         &self,
         runtime_registry: &mut Registry,
     ) {
-        for (_, registrar) in self.fields.iter::<FieldRegistrar>() {
-            registrar(runtime_registry);
+        for (field_ref, registrar) in
+            self.fields.iter::<FieldRegistrar>()
+        {
+            registrar(runtime_registry, &self.fields, field_ref);
         }
     }
 
     /// Registers an op by name for a value type `T`.
-    ///
-    /// Keyed by `T` alone, not by any field's owning type `S`: the same
-    /// `"to"`/`"by"` registered for `T = f32` covers every field of
-    /// every `S` whose value type is `f32`. `build_action` receives the
-    /// already-resolved concrete value directly (pulled from the value
-    /// pool by [`ConcreteFieldResolver::build`](struct.ConcreteFieldResolver.html)
-    /// before this is ever called) - no opaque value type to extract
-    /// from, unlike the old `SceneBackend::Value`.
     pub fn register_op<T, F>(&mut self, op: B::OpId, build_action: F)
     where
         T: ThreadSafe + Clone,

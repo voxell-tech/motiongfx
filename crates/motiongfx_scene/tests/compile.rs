@@ -100,10 +100,7 @@ impl SubjectSource<u64, Circle> for ToyWorld {
 }
 
 fn field(path: &str) -> FieldRef {
-    FieldRef {
-        type_name: "Point".into(),
-        path: path.into(),
-    }
+    FieldRef::new("Point", path)
 }
 
 fn action_cmd(
@@ -130,12 +127,10 @@ fn registry_with_to_op() -> SceneRegistry<ToyBackend> {
     let mut registry = SceneRegistry::new();
     registry.register_field::<Point, f32>(
         "Point".into(),
-        "x",
         path!(<Point>::x),
     );
     registry.register_field::<Point, f32>(
         "Point".into(),
-        "y",
         path!(<Point>::y),
     );
     registry.register_op::<f32, _>(
@@ -346,12 +341,10 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
         SceneRegistry::new();
     scene_registry.register_field::<Point, f32>(
         "Point".into(),
-        "x",
         path!(<Point>::x),
     );
     scene_registry.register_field::<Circle, f32>(
         "Circle".into(),
-        "radius",
         path!(<Circle>::radius),
     );
     // Registered once, for T = f32; never registered again for Circle.
@@ -367,10 +360,7 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
     let state = values.insert(0.0);
     let circle_action = ActionCmd {
         subject: 0,
-        field: FieldRef {
-            type_name: "Circle".into(),
-            path: "radius".into(),
-        },
+        field: FieldRef::new("Circle", "radius"),
         op: Op::To,
         value: values.insert(3.0),
         duration: Duration::from_millis(100),
@@ -450,7 +440,6 @@ fn unregistered_op_is_a_compile_error() {
         SceneRegistry::new();
     scene_registry.register_field::<Point, f32>(
         "Point".into(),
-        "x",
         path!(<Point>::x),
     );
 

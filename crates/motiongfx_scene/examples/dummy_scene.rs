@@ -90,10 +90,7 @@ fn main() {
         animation: Block::chain(vec![
             Node::Action(ActionCmd {
                 subject: 0,
-                field: FieldRef {
-                    type_name: "Cube".into(),
-                    path: "scale".into(),
-                },
+                field: FieldRef::new("Cube", "scale"),
                 op: Op::To,
                 value: scale_target,
                 duration: Duration::from_millis(600),
@@ -102,10 +99,7 @@ fn main() {
             }),
             Node::Action(ActionCmd {
                 subject: 0,
-                field: FieldRef {
-                    type_name: "Cube".into(),
-                    path: "visible".into(),
-                },
+                field: FieldRef::new("Cube", "visible"),
                 op: Op::To,
                 value: visible_target,
                 duration: Duration::ZERO,

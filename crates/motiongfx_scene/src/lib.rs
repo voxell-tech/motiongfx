@@ -39,3 +39,5 @@ pub mod prelude {
     pub use crate::scene::{Scene, Stage, Subject};
     pub use crate::value::ValueColumn;
 }
+
+pub use motiongfx;

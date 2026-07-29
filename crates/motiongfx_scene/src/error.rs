@@ -59,7 +59,8 @@ impl<B: SceneBackend> fmt::Display for CompileError<B> {
                 write!(
                     f,
                     "unknown field {}::{}",
-                    field.type_name, field.path
+                    field.type_name(),
+                    field.path()
                 )
             }
             Self::UnknownOp(type_name, op) => {
@@ -78,7 +79,8 @@ impl<B: SceneBackend> fmt::Display for CompileError<B> {
                 write!(
                     f,
                     "type mismatch for {type_name} field {}::{}",
-                    field.type_name, field.path
+                    field.type_name(),
+                    field.path()
                 )
             }
         }

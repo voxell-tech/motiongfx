@@ -5,9 +5,9 @@
 use alloc::boxed::Box;
 
 use bevy_math::{Quat, Vec3};
+use bevy_reflect::TypePath;
 use bevy_transform::components::Transform;
-use motiongfx::action::Action;
-use motiongfx::ease;
+use motiongfx::prelude::*;
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ use crate::scene::id::SceneId;
 use crate::scene::value_pool::{ValueId, ValuePool};
 use crate::world::BevyWorld;
 
-/// The concrete [`SceneBackend`] for [`bevy`].
+/// The concrete [`SceneBackend`] for Bevy.
 pub struct Backend;
 
 impl SceneBackend for Backend {
@@ -28,6 +28,8 @@ impl SceneBackend for Backend {
     type EaseId = AnimEase;
     type World = BevyWorld;
 }
+
+pub type BackendRegistry = SceneRegistry<Backend>;
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
@@ -52,29 +54,38 @@ pub enum AnimEase {
     CubicEaseInOut,
 }
 
+pub trait SceneRegistryFieldExt<S, T> {
+    fn register_reflected_field(
+        &mut self,
+        field_acc: FieldAccessor<S, T>,
+    );
+}
+
+impl<S, T> SceneRegistryFieldExt<S, T> for BackendRegistry
+where
+    S: TypePath,
+    BevyWorld: SubjectSource<SceneId, S>,
+    ValuePool: ValueColumn<ValueId, T>,
+    T: ThreadSafe + Clone,
+{
+    fn register_reflected_field(
+        &mut self,
+        field_acc: FieldAccessor<S, T>,
+    ) {
+        self.register_field(TypeName::new(S::type_path()), field_acc);
+    }
+}
+
 /// A [`SceneRegistry`] with `Transform`'s `translation`/`rotation`/
 /// `scale` fields, a `To` op for `f32`/`Vec3`/`Quat`, linear
 /// interpolation for each, and a couple of named eases.
-pub fn default_scene_registry() -> SceneRegistry<Backend> {
+pub fn default_scene_registry() -> BackendRegistry {
     let mut registry = SceneRegistry::new();
 
-    registry.register_field::<Transform, Vec3>(
-        "Transform".into(),
-        "translation",
-        motiongfx::field_path::field_accessor!(
-            <Transform>::translation
-        ),
-    );
-    registry.register_field::<Transform, Quat>(
-        "Transform".into(),
-        "rotation",
-        motiongfx::field_path::field_accessor!(<Transform>::rotation),
-    );
-    registry.register_field::<Transform, Vec3>(
-        "Transform".into(),
-        "scale",
-        motiongfx::field_path::field_accessor!(<Transform>::scale),
-    );
+    registry
+        .register_reflected_field(path!(<Transform>::translation));
+    registry.register_reflected_field(path!(<Transform>::rotation));
+    registry.register_reflected_field(path!(<Transform>::scale));
 
     register_to_op::<f32>(&mut registry);
     register_to_op::<Vec3>(&mut registry);
@@ -101,7 +112,7 @@ pub fn default_scene_registry() -> SceneRegistry<Backend> {
     registry
 }
 
-fn register_to_op<T>(registry: &mut SceneRegistry<Backend>)
+fn register_to_op<T>(registry: &mut BackendRegistry)
 where
     T: Clone + Send + Sync + 'static,
 {

@@ -43,10 +43,7 @@ pub fn compile<B: SceneBackend>(
     builder.add_tracks([track]);
 
     builder.try_compile().ok_or_else(|| {
-        CompileError::UnknownField(FieldRef {
-            type_name: "".into(),
-            path: "".into(),
-        })
+        CompileError::UnknownField(FieldRef::new("", ""))
     })
 }
 

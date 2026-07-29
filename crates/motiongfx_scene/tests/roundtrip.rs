@@ -60,10 +60,7 @@ fn sample() -> Scene<RoundtripBackend> {
     let mut values = RoundtripValuePool::default();
     let mut action = |value: f32| ActionCmd {
         subject: 7,
-        field: FieldRef {
-            type_name: "Transform".into(),
-            path: "translation::x".into(),
-        },
+        field: FieldRef::new("Transform", "translation::x"),
         op: Op::To,
         value: values.insert(value),
         duration: Duration::from_millis(500),

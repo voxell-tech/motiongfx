@@ -7,11 +7,10 @@ use bevy_asset::{Asset, AssetLoader, LoadContext};
 use bevy_ecs::error::BevyError;
 use bevy_reflect::TypePath;
 use motiongfx_scene::error::CompileError;
-use motiongfx_scene::registry::SceneRegistry;
 use motiongfx_scene::scene::Scene;
 
 use crate::manager::{MotionGfxManager, TimelineId};
-use crate::scene::backend::Backend;
+use crate::scene::backend::{Backend, BackendRegistry};
 
 /// A [`Scene<BevyBackend>`], loadable as a Bevy asset.
 ///
@@ -32,7 +31,7 @@ impl MotionGfxScene {
     /// world's [`SceneEntityMap`](crate::scene::id::SceneEntityMap).
     pub fn compile(
         &self,
-        scene_registry: &SceneRegistry<Backend>,
+        scene_registry: &BackendRegistry,
         motiongfx: &mut MotionGfxManager,
     ) -> Result<TimelineId, CompileError<Backend>> {
         let timeline = motiongfx_scene::compile::compile(

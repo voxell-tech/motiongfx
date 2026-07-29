@@ -14,18 +14,6 @@ use crate::backend::SceneBackend;
 use crate::refs::FieldRef;
 
 /// A group of [`Node`]s combined by one [`Combinator`].
-///
-/// Every field `Block`/`Node`/`ActionCmd` reference through `B`
-/// directly (`B::Id`, `B::OpId`, `B::EaseId`, `B::InterpId`) is
-/// already unconditionally `Debug + Clone + PartialEq` via
-/// `SubjectId`'s/`Key`'s own supertraits, and so is `B::ValueId` (used
-/// by `ActionCmd::value`) - so these impls never actually depend on a
-/// backend choice the way the old
-/// `SceneBackend::Value` did. `bound(false)` (no extra where-clause)
-/// is deliberate, not just "the simplest option that compiles": a
-/// bound referencing `Node<B>`/`Block<B>`/`ActionCmd<B>` here would
-/// make the derived impls mutually conditional on each other with no
-/// base case, which overflows the trait solver.
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(
     Debug(bound(false)),

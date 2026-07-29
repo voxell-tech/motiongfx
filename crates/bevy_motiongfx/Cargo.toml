@@ -51,6 +51,7 @@ scene = [
     "dep:ron",
     "dep:bevy_reflect",
     "bevy_math/serialize",
+    "bevy_transform/bevy_reflect",
     "asset",
     "transform",
 ]

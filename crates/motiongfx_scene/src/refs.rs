@@ -6,7 +6,6 @@
 //! time.
 
 use alloc::boxed::Box;
-use alloc::string::String;
 use core::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -31,15 +30,9 @@ impl fmt::Display for TypeName {
     }
 }
 
-impl From<&str> for TypeName {
-    fn from(name: &str) -> Self {
-        Self::new(name)
-    }
-}
-
-impl From<String> for TypeName {
-    fn from(name: String) -> Self {
-        Self::new(name)
+impl<T: Into<Box<str>>> From<T> for TypeName {
+    fn from(value: T) -> Self {
+        Self(value.into())
     }
 }
 
@@ -49,6 +42,26 @@ impl From<String> for TypeName {
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
 )]
 pub struct FieldRef {
-    pub type_name: TypeName,
-    pub path: Box<str>,
+    type_name: TypeName,
+    path: Box<str>,
+}
+
+impl FieldRef {
+    pub fn new(
+        type_name: impl Into<TypeName>,
+        path: impl Into<Box<str>>,
+    ) -> Self {
+        Self {
+            type_name: type_name.into(),
+            path: path.into(),
+        }
+    }
+
+    pub fn type_name(&self) -> &TypeName {
+        &self.type_name
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
 }

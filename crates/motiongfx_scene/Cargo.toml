@@ -13,7 +13,7 @@ motiongfx = { workspace = true }
 serde = { workspace = true, features = ["derive", "alloc"] }
 typarena = { workspace = true }
 hashbrown = { workspace = true, features = ["default-hasher"] }
-educe = { workspace = true, features = ["Debug", "Clone", "PartialEq"] }
+educe = { workspace = true, features = ["Default", "Debug", "Clone", "PartialEq"] }
 
 [dev-dependencies]
 serde_json = "1"
