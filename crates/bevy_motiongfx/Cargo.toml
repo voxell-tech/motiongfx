@@ -25,11 +25,10 @@ bevy_time = { workspace = true }
 bevy_asset = { workspace = true, optional = true }
 bevy_transform = { workspace = true, optional = true }
 bevy_color = { workspace = true, optional = true }
-bevy_reflect = { workspace = true, optional = true }
+bevy_reflect = { workspace = true, optional = true, features = ["uuid"] }
 
 # other
 serde = { workspace = true, features = ["derive"] }
-uuid = { workspace = true, features = ["serde"] }
 sparse_map = { workspace = true, features = ["serde"], optional = true }
 ron = { workspace = true, optional = true }
 

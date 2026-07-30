@@ -1224,7 +1224,6 @@ dependencies = [
  "ron",
  "serde",
  "sparse_map",
- "uuid",
 ]
 
 [[package]]

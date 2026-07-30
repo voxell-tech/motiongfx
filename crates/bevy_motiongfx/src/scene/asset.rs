@@ -25,10 +25,10 @@ impl MotionGfxScene {
     /// Compiles this scene into a `BevyTimeline` through
     /// `scene_registry`, then registers it on `motiongfx` exactly
     /// like [`MotionGfxManager::add_timeline`]. This scene's subjects
-    /// must already be materialized (see
-    /// [`spawn_scene`](crate::scene::spawn_scene)) so their
-    /// [`EntityUid`](crate::scene::id::EntityUid)s resolve through the
-    /// world's [`SceneUidMap`](crate::scene::id::SceneUidMap).
+    /// must already be materialized - however the app chooses to do
+    /// that - so their [`EntityUid`](crate::scene::id::EntityUid)s
+    /// resolve through the world's
+    /// [`SceneUidMap`](crate::scene::id::SceneUidMap).
     pub fn compile(
         &self,
         scene_registry: &BackendRegistry,

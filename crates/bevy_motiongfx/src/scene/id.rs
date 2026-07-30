@@ -17,14 +17,16 @@
 
 use core::fmt;
 
+use bevy_asset::uuid::Uuid;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
+use bevy_reflect::Reflect;
 use motiongfx_scene::backend::IntoSubjectId;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(
     Component,
+    Reflect,
     Debug,
     Clone,
     Copy,
@@ -36,6 +38,7 @@ use uuid::Uuid;
     Serialize,
     Deserialize,
 )]
+#[reflect(Component, Hash, PartialEq)]
 #[serde(transparent)]
 pub struct EntityUid(Uuid);
 

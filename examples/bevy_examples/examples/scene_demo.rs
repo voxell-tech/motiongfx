@@ -1,23 +1,37 @@
-//! Loads `assets/scenes/cube.mgx.ron` through the real
-//! `SceneAssetLoader` (not built by hand in Rust), then spawns its
-//! subject, compiles it, and plays it. Proves the whole scene
-//! pipeline end to end: `.mgx.ron` file -> `AssetServer` -> registry
-//! -> compile -> spawned `Transform` -> played `Timeline`.
+//! Loads `assets/scenes/cube.scn.ron` (entity composition, via
+//! `bevy_world_serialization`) and `assets/scenes/cube.mgx.ron`
+//! (animation, via `SceneAssetLoader`), waits for both, then compiles
+//! and plays it. Proves the whole pipeline end to end: composition
+//! file + animation file -> spawned entities -> compiled `Timeline`.
 
 use bevy::prelude::*;
+use bevy::world_serialization::{
+    DynamicWorld, DynamicWorldRoot, WorldInstanceReady,
+};
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
 use bevy_motiongfx::scene::asset::MotionGfxScene;
 use bevy_motiongfx::scene::backend::default_scene_registry;
-use bevy_motiongfx::scene::spawn_scene;
 
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins, BevyMotionGfxPlugin))
+        .register_type::<Cube>()
+        .init_resource::<CompositionReady>()
         .add_systems(Startup, (setup, load_scene))
         .add_systems(Update, build_scene_once_loaded)
+        .add_observer(on_composition_ready)
+        .add_observer(on_add_cube)
         .run();
 }
+
+/// Marks an entity as a plain cube - the composition file attaches
+/// this alongside `Transform`/`EntityUid` for whatever should render
+/// as one, and [`on_add_cube`] gives it a mesh/material the moment it
+/// shows up.
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+struct Cube;
 
 /// Spawns the camera and the directional light.
 fn setup(mut commands: Commands) {
@@ -36,43 +50,63 @@ fn setup(mut commands: Commands) {
 #[derive(Resource)]
 struct PendingScene(Handle<MotionGfxScene>);
 
+#[derive(Resource, Default)]
+struct CompositionReady(bool);
+
 fn load_scene(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
+    let composition: Handle<DynamicWorld> =
+        asset_server.load("scenes/cube.scn.ron");
+    commands.spawn(DynamicWorldRoot(composition));
+
     let handle = asset_server.load("scenes/cube.mgx.ron");
     commands.insert_resource(PendingScene(handle));
 }
 
-/// Runs every frame until the asset finishes loading, then spawns its
-/// subject, compiles it, and plays it - exactly once.
+fn on_composition_ready(
+    _trigger: On<WorldInstanceReady>,
+    mut ready: ResMut<CompositionReady>,
+) {
+    ready.0 = true;
+}
+
+/// Gives a mesh/material to whatever entity just got a [`Cube`] -
+/// composition files carry the marker, not the asset handles
+/// themselves, since meshes/materials aren't part of this format yet.
+fn on_add_cube(
+    trigger: On<Add, Cube>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.entity(trigger.entity).insert((
+        Mesh3d(meshes.add(Cuboid::default())),
+        MeshMaterial3d(
+            materials.add(StandardMaterial::from_color(Srgba::BLUE)),
+        ),
+    ));
+}
+
+/// Runs every frame until both the composition and the animation are
+/// ready, then compiles and plays it - exactly once.
 fn build_scene_once_loaded(
     mut commands: Commands,
     pending: Option<Res<PendingScene>>,
     scenes: Res<Assets<MotionGfxScene>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    composition_ready: Res<CompositionReady>,
     mut motiongfx: ResMut<MotionGfxManager>,
 ) {
+    if !composition_ready.0 {
+        return;
+    }
     let Some(pending) = pending else {
         return;
     };
     let Some(scene) = scenes.get(&pending.0) else {
         return;
     };
-    // Materializes the scene's one subject into a real entity, then
-    // attaches the visuals (the scene format itself doesn't know
-    // about meshes/materials - only `Transform`).
-    for (_, entity) in spawn_scene(&mut commands, scene) {
-        commands.entity(entity).insert((
-            Mesh3d(meshes.add(Cuboid::default())),
-            MeshMaterial3d(
-                materials
-                    .add(StandardMaterial::from_color(Srgba::BLUE)),
-            ),
-            Transform::from_xyz(-3.0, 0.0, 0.0),
-        ));
-    }
 
     let registry = default_scene_registry();
     let timeline_id = scene
