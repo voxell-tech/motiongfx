@@ -100,7 +100,7 @@ impl SubjectSource<u64, Circle> for ToyWorld {
 }
 
 fn field(path: &str) -> FieldRef {
-    FieldRef::new("Point", path)
+    FieldRef::new("Point", format!("::{path}"))
 }
 
 fn action_cmd(
@@ -360,7 +360,7 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
     let state = values.insert(0.0);
     let circle_action = ActionCmd {
         subject: 0,
-        field: FieldRef::new("Circle", "radius"),
+        field: FieldRef::new("Circle", "::radius"),
         op: Op::To,
         value: values.insert(3.0),
         duration: Duration::from_millis(100),

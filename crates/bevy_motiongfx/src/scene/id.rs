@@ -96,9 +96,9 @@ impl IntoSubjectId<EntityUid> for SceneUid {
 /// materialized as. Store as a resource in the same [`World`] the
 /// scene's entities are spawned into.
 ///
-/// Kept in sync by [`on_add_entity_uid`]/[`on_remove_entity_uid`] -
-/// there's no manual `insert`/`remove`; spawning or despawning the
-/// [`EntityUid`] component is the only way in or out.
+/// Kept in sync by an add/remove observer pair - there's no manual
+/// `insert`/`remove`; spawning or despawning the [`EntityUid`]
+/// component is the only way in or out.
 #[derive(Resource, Default)]
 pub struct SceneUidMap {
     to_entity: HashMap<EntityUid, Entity>,

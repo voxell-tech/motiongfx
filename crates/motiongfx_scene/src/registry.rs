@@ -43,7 +43,8 @@ struct ConcreteFieldResolver<B, S, T, I> {
     _marker: PhantomData<fn() -> (B, S, T, I)>,
 }
 
-impl<B, S, T, I> FieldResolver<B> for ConcreteFieldResolver<B, S, T, I>
+impl<B, S, T, I> FieldResolver<B>
+    for ConcreteFieldResolver<B, S, T, I>
 where
     B: SceneBackend,
     B::Id: IntoSubjectId<I>,

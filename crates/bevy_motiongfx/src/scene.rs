@@ -5,7 +5,9 @@
 use asset::{MotionGfxScene, SceneAssetLoader};
 use bevy_app::prelude::*;
 use bevy_asset::AssetApp as _;
-use id::{EntityUid, SceneUidMap, on_add_entity_uid, on_remove_entity_uid};
+use id::{
+    EntityUid, SceneUidMap, on_add_entity_uid, on_remove_entity_uid,
+};
 
 pub mod asset;
 pub mod backend;
