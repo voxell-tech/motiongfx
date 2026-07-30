@@ -2,8 +2,7 @@
 //! Uses a single `f32` column as a stand-in `ValuePool`; a real
 //! backend picks whatever columns it needs.
 
-use core::time::Duration;
-
+use motiongfx::prelude::*;
 use motiongfx_scene::prelude::*;
 use serde::{Deserialize, Serialize};
 use sparse_map::{Key, SparseMap};
@@ -63,23 +62,20 @@ fn sample() -> Scene<RoundtripBackend> {
         field: FieldRef::new("Transform", "translation::x"),
         op: Op::To,
         value: values.insert(value),
-        duration: Duration::from_millis(500),
+        duration: ms(500),
         ease: Some(Ease::CubicEaseInOut),
         interp: None,
     };
 
     let animation = Block::chain(vec![
-        Node::Block(Block {
+        Node::block(Block {
             combinator: Combinator::All,
             children: vec![
-                Node::Action(action(1.0)),
-                Node::Action(action(0.5)),
+                Node::action(action(1.0)),
+                Node::action(action(0.5)),
             ],
         }),
-        Node::Delayed {
-            offset: Duration::from_millis(200),
-            node: Box::new(Node::Action(action(2.0))),
-        },
+        Node::action(action(2.0)).delay(ms(200)),
     ]);
     let state = values.insert(0.0);
 

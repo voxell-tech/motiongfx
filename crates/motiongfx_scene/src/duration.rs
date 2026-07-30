@@ -10,6 +10,7 @@
 
 use core::time::Duration;
 
+use motiongfx::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Serialize, Deserialize)]
@@ -36,9 +37,36 @@ pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Duration, D::Error> {
     Ok(match Repr::deserialize(deserializer)? {
-        Repr::Ms(ms) => Duration::from_millis(ms),
-        Repr::Ns(ns) => Duration::from_nanos(ns),
+        Repr::Ms(millis) => ms(millis),
+        Repr::Ns(nanos) => ns(nanos),
     })
+}
+
+/// The same encoding for `Option<Duration>`, for `#[serde(with =
+/// "crate::duration::option")]`. `None` is `null`; pair it with
+/// `#[serde(default, skip_serializing_if = "Option::is_none")]` to omit
+/// the field entirely.
+pub(crate) mod option {
+    use super::{
+        Deserialize, Deserializer, Duration, Serialize, Serializer,
+    };
+
+    #[derive(Serialize, Deserialize)]
+    struct Wrapper(#[serde(with = "super")] Duration);
+
+    pub(crate) fn serialize<S: Serializer>(
+        duration: &Option<Duration>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        duration.map(Wrapper).serialize(serializer)
+    }
+
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<Duration>, D::Error> {
+        Ok(Option::<Wrapper>::deserialize(deserializer)?
+            .map(|Wrapper(d)| d))
+    }
 }
 
 #[cfg(test)]
@@ -48,32 +76,38 @@ mod tests {
     #[derive(Serialize, Deserialize, Debug, PartialEq)]
     struct Wrapper(#[serde(with = "super")] Duration);
 
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    struct OptionWrapper(
+        #[serde(with = "super::option")] Option<Duration>,
+    );
+
+    #[test]
+    fn option_round_trips_exactly() {
+        for d in [Some(ms(600)), None] {
+            let json =
+                serde_json::to_string(&OptionWrapper(d)).unwrap();
+            let back: OptionWrapper =
+                serde_json::from_str(&json).unwrap();
+            assert_eq!(back.0, d);
+        }
+    }
+
     #[test]
     fn whole_milliseconds_encode_as_ms() {
-        let json = serde_json::to_string(&Wrapper(
-            Duration::from_millis(600),
-        ))
-        .unwrap();
+        let json = serde_json::to_string(&Wrapper(ms(600))).unwrap();
         assert_eq!(json, r#"{"Ms":600}"#);
     }
 
     #[test]
     fn sub_millisecond_precision_encodes_as_ns() {
-        let json = serde_json::to_string(&Wrapper(
-            Duration::from_nanos(1_500),
-        ))
-        .unwrap();
+        let json =
+            serde_json::to_string(&Wrapper(ns(1_500))).unwrap();
         assert_eq!(json, r#"{"Ns":1500}"#);
     }
 
     #[test]
     fn round_trips_exactly() {
-        for d in [
-            Duration::from_millis(600),
-            Duration::from_nanos(1_500),
-            Duration::ZERO,
-            Duration::from_secs(3),
-        ] {
+        for d in [ms(600), ns(1_500), Duration::ZERO, s(3)] {
             let json = serde_json::to_string(&Wrapper(d)).unwrap();
             let back: Wrapper = serde_json::from_str(&json).unwrap();
             assert_eq!(back.0, d);

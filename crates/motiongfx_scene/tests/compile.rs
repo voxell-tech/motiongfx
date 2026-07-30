@@ -115,7 +115,7 @@ fn action_cmd(
         field: field(path),
         op: Op::To,
         value: values.insert(value),
-        duration: Duration::from_millis(duration_ms),
+        duration: ms(duration_ms),
         ease: None,
         interp: None,
     }
@@ -163,7 +163,7 @@ fn compiles_and_samples_a_single_action() {
         stage: Stage {
             subjects: vec![Subject { id: 0, state }],
         },
-        animation: Block::chain(vec![Node::Action(action_cmd(
+        animation: Block::chain(vec![Node::action(action_cmd(
             &mut values,
             0,
             "x",
@@ -182,12 +182,7 @@ fn compiles_and_samples_a_single_action() {
     world.points.insert(0, Point::default());
     timeline.bake_actions(&runtime_registry, &world);
 
-    sample_at(
-        &mut timeline,
-        &runtime_registry,
-        &mut world,
-        Duration::from_millis(200),
-    );
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(200));
     assert_eq!(world.points[&0].x, 5.0);
 }
 
@@ -201,8 +196,8 @@ fn chain_runs_children_in_sequence() {
             subjects: vec![Subject { id: 0, state }],
         },
         animation: Block::chain(vec![
-            Node::Action(action_cmd(&mut values, 0, "x", 1.0, 100)),
-            Node::Action(action_cmd(&mut values, 0, "x", 2.0, 100)),
+            Node::action(action_cmd(&mut values, 0, "x", 1.0, 100)),
+            Node::action(action_cmd(&mut values, 0, "x", 2.0, 100)),
         ]),
         values,
     };
@@ -217,21 +212,11 @@ fn chain_runs_children_in_sequence() {
     timeline.bake_actions(&runtime_registry, &world);
 
     // Only the first action's window has elapsed.
-    sample_at(
-        &mut timeline,
-        &runtime_registry,
-        &mut world,
-        Duration::from_millis(100),
-    );
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(100));
     assert_eq!(world.points[&0].x, 1.0);
 
     // Both actions have now completed, in order.
-    sample_at(
-        &mut timeline,
-        &runtime_registry,
-        &mut world,
-        Duration::from_millis(200),
-    );
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(200));
     assert_eq!(world.points[&0].x, 2.0);
 }
 
@@ -247,14 +232,14 @@ fn all_combinator_runs_children_simultaneously() {
         animation: Block {
             combinator: Combinator::All,
             children: vec![
-                Node::Action(action_cmd(
+                Node::action(action_cmd(
                     &mut values,
                     0,
                     "x",
                     5.0,
                     200,
                 )),
-                Node::Action(action_cmd(
+                Node::action(action_cmd(
                     &mut values,
                     0,
                     "y",
@@ -275,12 +260,7 @@ fn all_combinator_runs_children_simultaneously() {
     world.points.insert(0, Point::default());
     timeline.bake_actions(&runtime_registry, &world);
 
-    sample_at(
-        &mut timeline,
-        &runtime_registry,
-        &mut world,
-        Duration::from_millis(200),
-    );
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(200));
     assert_eq!(world.points[&0].x, 5.0);
     assert_eq!(world.points[&0].y, 9.0);
 }
@@ -294,16 +274,10 @@ fn delayed_node_shifts_the_start_time() {
         stage: Stage {
             subjects: vec![Subject { id: 0, state }],
         },
-        animation: Block::chain(vec![Node::Delayed {
-            offset: Duration::from_millis(200),
-            node: Box::new(Node::Action(action_cmd(
-                &mut values,
-                0,
-                "x",
-                5.0,
-                100,
-            ))),
-        }]),
+        animation: Block::chain(vec![
+            Node::action(action_cmd(&mut values, 0, "x", 5.0, 100))
+                .delay(ms(200)),
+        ]),
         values,
     };
 
@@ -317,21 +291,11 @@ fn delayed_node_shifts_the_start_time() {
     timeline.bake_actions(&runtime_registry, &world);
 
     // Still inside the delay window: nothing has been queued yet.
-    sample_at(
-        &mut timeline,
-        &runtime_registry,
-        &mut world,
-        Duration::from_millis(100),
-    );
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(100));
     assert_eq!(world.points[&0].x, 0.0);
 
     // Delay elapsed and the action's own duration has passed.
-    sample_at(
-        &mut timeline,
-        &runtime_registry,
-        &mut world,
-        Duration::from_millis(300),
-    );
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(300));
     assert_eq!(world.points[&0].x, 5.0);
 }
 
@@ -363,7 +327,7 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
         field: FieldRef::new("Circle", "::radius"),
         op: Op::To,
         value: values.insert(3.0),
-        duration: Duration::from_millis(100),
+        duration: ms(100),
         ease: None,
         interp: None,
     };
@@ -372,8 +336,8 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
             subjects: vec![Subject { id: 0, state }],
         },
         animation: Block::chain(vec![
-            Node::Action(action_cmd(&mut values, 0, "x", 5.0, 100)),
-            Node::Action(circle_action),
+            Node::action(action_cmd(&mut values, 0, "x", 5.0, 100)),
+            Node::action(circle_action),
         ]),
         values,
     };
@@ -388,12 +352,7 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
     world.circles.insert(0, Circle::default());
     timeline.bake_actions(&runtime_registry, &world);
 
-    sample_at(
-        &mut timeline,
-        &runtime_registry,
-        &mut world,
-        Duration::from_millis(200),
-    );
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(200));
     assert_eq!(world.points[&0].x, 5.0);
     assert_eq!(world.circles[&0].radius, 3.0);
 }
@@ -411,7 +370,7 @@ fn unregistered_field_is_a_compile_error() {
         stage: Stage {
             subjects: vec![Subject { id: 0, state }],
         },
-        animation: Block::chain(vec![Node::Action(action_cmd(
+        animation: Block::chain(vec![Node::action(action_cmd(
             &mut values,
             0,
             "x",
@@ -449,7 +408,7 @@ fn unregistered_op_is_a_compile_error() {
         stage: Stage {
             subjects: vec![Subject { id: 0, state }],
         },
-        animation: Block::chain(vec![Node::Action(action_cmd(
+        animation: Block::chain(vec![Node::action(action_cmd(
             &mut values,
             0,
             "x",

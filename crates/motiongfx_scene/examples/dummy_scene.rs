@@ -5,6 +5,7 @@
 
 use core::time::Duration;
 
+use motiongfx::prelude::*;
 use motiongfx_scene::prelude::*;
 use serde::{Deserialize, Serialize};
 use sparse_map::{Key, SparseMap};
@@ -88,16 +89,16 @@ fn main() {
             }],
         },
         animation: Block::chain(vec![
-            Node::Action(ActionCmd {
+            Node::action(ActionCmd {
                 subject: 0,
                 field: FieldRef::new("Cube", "scale"),
                 op: Op::To,
                 value: scale_target,
-                duration: Duration::from_millis(600),
+                duration: ms(600),
                 ease: Some(Ease::CubicEaseInOut),
                 interp: None,
             }),
-            Node::Action(ActionCmd {
+            Node::action(ActionCmd {
                 subject: 0,
                 field: FieldRef::new("Cube", "visible"),
                 op: Op::To,

@@ -54,19 +54,20 @@ fn walk_node<B: SceneBackend>(
     values: &B::ValuePool,
     builder: &mut TimelineBuilder<'_, B::World>,
 ) -> Result<TrackFragment, CompileError<B>> {
-    match node {
-        Node::Block(block) => {
-            walk_block(block, registry, values, builder)
+    let (offset, fragment) = match node {
+        Node::Block { delay, block } => {
+            (delay, walk_block(block, registry, values, builder)?)
         }
-        Node::Action(cmd) => {
-            resolve_action(cmd, registry, values, builder)
-        }
-        Node::Delayed { offset, node } => {
-            let fragment =
-                walk_node(node, registry, values, builder)?;
-            Ok(delay(*offset, fragment))
-        }
-    }
+        Node::Action { delay, action } => (
+            delay,
+            resolve_action(action, registry, values, builder)?,
+        ),
+    };
+
+    Ok(match offset {
+        Some(offset) => delay(*offset, fragment),
+        None => fragment,
+    })
 }
 
 /// Compiles a [`Block`] into a [`TrackFragment`].

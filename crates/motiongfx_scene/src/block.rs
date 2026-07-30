@@ -4,7 +4,7 @@
 //! a [`Node`] is a nested block, an action leaf, or a delayed wrapper.
 //! Each maps 1:1 onto a `motiongfx` track combinator.
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::vec::Vec;
 use core::time::Duration;
 
 use educe::Educe;
@@ -60,14 +60,49 @@ pub enum Combinator {
 )]
 #[serde(bound = "")]
 pub enum Node<B: SceneBackend> {
-    Block(Block<B>),
-    Action(ActionCmd<B>),
-    /// Shifts `node` later by `offset`. (`delay`)
-    Delayed {
-        #[serde(with = "crate::duration")]
-        offset: Duration,
-        node: Box<Node<B>>,
+    Block {
+        #[serde(
+            default,
+            with = "crate::duration::option",
+            skip_serializing_if = "Option::is_none"
+        )]
+        delay: Option<Duration>,
+        block: Block<B>,
     },
+    Action {
+        #[serde(
+            default,
+            with = "crate::duration::option",
+            skip_serializing_if = "Option::is_none"
+        )]
+        delay: Option<Duration>,
+        action: ActionCmd<B>,
+    },
+}
+
+impl<B: SceneBackend> Node<B> {
+    /// A nested block, starting with its parent.
+    pub fn block(block: Block<B>) -> Self {
+        Self::Block { delay: None, block }
+    }
+
+    /// An action leaf, starting with its parent.
+    pub fn action(action: ActionCmd<B>) -> Self {
+        Self::Action {
+            delay: None,
+            action,
+        }
+    }
+
+    /// Offsets this node's start by `offset`, replacing any existing
+    /// delay.
+    pub fn delay(mut self, offset: Duration) -> Self {
+        *match &mut self {
+            Self::Block { delay, .. }
+            | Self::Action { delay, .. } => delay,
+        } = Some(offset);
+        self
+    }
 }
 
 /// Applies `op(value)` to `subject.field` over `duration`, eased and

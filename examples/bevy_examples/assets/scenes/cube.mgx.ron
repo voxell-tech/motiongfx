@@ -13,21 +13,23 @@
     animation: (
         combinator: Chain,
         children: [
-            Action((
-                subject: Entity("181e4485-eabb-47b6-8a51-65f2f32ca73f"),
-                field: (
-                    type_name: "bevy_transform::components::transform::Transform",
-                    path: "::translation",
+            Action(
+                action: (
+                    subject: Entity("181e4485-eabb-47b6-8a51-65f2f32ca73f"),
+                    field: (
+                        type_name: "bevy_transform::components::transform::Transform",
+                        path: "::translation",
+                    ),
+                    op: To,
+                    value: (
+                        index: 0,
+                        generation: 0,
+                    ),
+                    duration: Ms(1000),
+                    ease: Some(CubicEaseInOut),
+                    interp: Some(Linear),
                 ),
-                op: To,
-                value: (
-                    index: 0,
-                    generation: 0,
-                ),
-                duration: Ms(1000),
-                ease: Some(CubicEaseInOut),
-                interp: Some(Linear),
-            )),
+            ),
         ],
     ),
     values: (
