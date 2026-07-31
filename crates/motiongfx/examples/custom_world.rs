@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::time::Duration;
 
 use motiongfx::prelude::*;
 
@@ -112,7 +111,7 @@ fn main() {
     // Check the values after sampling:
     println!("After:  {:?}\n", world.subject_world);
 
-    let new_target_time = Duration::from_secs(7);
+    let new_target_time = s(7);
 
     // Set target time to after total track duration
     timeline.set_target_time(new_target_time);

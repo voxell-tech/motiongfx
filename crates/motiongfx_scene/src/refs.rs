@@ -1,0 +1,67 @@
+//! Stable, format-owned references.
+//!
+//! Everything the animation portion points at is a name or an id, never
+//! a Rust type or a runtime handle. The [`registry`](crate::registry)
+//! resolves these into concrete accessors, ops, and subjects at compile
+//! time.
+
+use alloc::boxed::Box;
+use core::fmt;
+
+use serde::{Deserialize, Serialize};
+
+/// A fully-qualified type name, e.g.
+/// `"bevy_transform::components::transform::Transform"`.
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+#[serde(transparent)]
+pub struct TypeName(Box<str>);
+
+impl TypeName {
+    pub fn new(name: impl Into<Box<str>>) -> Self {
+        Self(name.into())
+    }
+}
+
+impl fmt::Display for TypeName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl<T: Into<Box<str>>> From<T> for TypeName {
+    fn from(value: T) -> Self {
+        Self(value.into())
+    }
+}
+
+/// Names a field to animate: its owning source type plus a field path
+/// like `"translation::x"`.
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+pub struct FieldRef {
+    type_name: TypeName,
+    path: Box<str>,
+}
+
+impl FieldRef {
+    pub fn new(
+        type_name: impl Into<TypeName>,
+        path: impl Into<Box<str>>,
+    ) -> Self {
+        Self {
+            type_name: type_name.into(),
+            path: path.into(),
+        }
+    }
+
+    pub fn type_name(&self) -> &TypeName {
+        &self.type_name
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+}

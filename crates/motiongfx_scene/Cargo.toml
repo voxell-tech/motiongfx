@@ -1,0 +1,28 @@
+[package]
+name = "motiongfx_scene"
+description = "Serializable scene & animation document for motiongfx, backend agnostic."
+keywords = ["motion", "animation", "serialization", "timeline", "scene"]
+categories = ["multimedia", "graphics", "data-structures"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+motiongfx = { workspace = true }
+serde = { workspace = true, features = ["derive", "alloc"] }
+typarena = { workspace = true }
+hashbrown = { workspace = true, features = ["default-hasher", "serde"] }
+educe = { workspace = true, features = ["Default", "Debug", "Clone", "PartialEq"] }
+
+[dev-dependencies]
+serde_json = "1"
+ron = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+
+[features]
+default = ["std"]
+std = ["serde/std", "motiongfx/std"]
+
+[lints]
+workspace = true

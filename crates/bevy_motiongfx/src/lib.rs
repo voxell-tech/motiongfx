@@ -1,16 +1,23 @@
 #![doc = include_str!("../README.md")]
 #![no_std]
 
+extern crate alloc;
+
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 
 use crate::controller::ControllerPlugin;
 use crate::manager::MotionGfxManagerPlugin;
+#[cfg(feature = "scene")]
+use crate::scene::MotionGfxScenePlugin;
 
 pub mod controller;
 pub mod interpolation;
 pub mod manager;
 pub mod world;
+
+#[cfg(feature = "scene")]
+pub mod scene;
 
 pub mod prelude {
     pub use motiongfx::prelude::*;
@@ -18,6 +25,9 @@ pub mod prelude {
     pub use crate::controller::{FixedRatePlayer, RealtimePlayer};
     pub use crate::manager::{MotionGfxManager, TimelineId};
     pub use crate::world::{BevyTimeline, BevyTimelineBuilder};
+
+    #[cfg(feature = "scene")]
+    pub use crate::scene::id::EntityUid;
 }
 
 pub use motiongfx;
@@ -40,6 +50,9 @@ impl Plugin for BevyMotionGfxPlugin {
                 .chain(),
         );
         app.add_plugins((MotionGfxManagerPlugin, ControllerPlugin));
+
+        #[cfg(feature = "scene")]
+        app.add_plugins(MotionGfxScenePlugin);
     }
 }
 

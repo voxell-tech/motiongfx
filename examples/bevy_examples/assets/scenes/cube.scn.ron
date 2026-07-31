@@ -1,0 +1,16 @@
+(
+  resources: {},
+  entities: {
+    4294967294: (
+      components: {
+        "bevy_motiongfx::scene::id::EntityUid": ("181e4485-eabb-47b6-8a51-65f2f32ca73f"),
+        "bevy_transform::components::transform::Transform": (
+          translation: (-3.0, 0.0, 0.0),
+          rotation: (0.0, 0.0, 0.0, 1.0),
+          scale: (1.0, 1.0, 1.0),
+        ),
+        "scene_demo::Cube": (),
+      },
+    ),
+  },
+)
