@@ -43,7 +43,7 @@ workspace = true
 default = ["std", "asset", "transform", "color"]
 std = [
     "motiongfx/std",
-    "motiongfx_scene/std",
+    "motiongfx_scene?/std",
     "bevy_ecs/std",
     "bevy_app/std",
     "bevy_platform/std",
