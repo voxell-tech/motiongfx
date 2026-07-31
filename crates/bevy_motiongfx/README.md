@@ -56,8 +56,7 @@ fn build_timeline(
         .play(s(1))
         .compile();
 
-    b.add_tracks(track);
-    let timeline = b.compile();
+    let timeline = b.compile(track);
 
     // Spawn the timeline.
     commands.spawn(motiongfx.add_timeline(timeline));
@@ -93,8 +92,7 @@ fn build_timeline(
         .play(s(1))
         .compile();
 
-    b.add_tracks(track);
-    let timeline = b.compile();
+    let timeline = b.compile(track);
 
     // Spawn the timeline.
     commands.spawn(motiongfx.add_timeline(timeline));
@@ -116,8 +114,9 @@ fn build_timeline(
 ) {
     // Build the timeline.
     let mut b = motiongfx.create_builder();
-    // Add tracks here...
-    let timeline = b.compile();
+    // Add actions here...
+    let track = TrackFragment::new().compile();
+    let timeline = b.compile(track);
 
     // Spawn the timeline with a controller.
     commands.spawn((

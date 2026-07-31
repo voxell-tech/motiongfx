@@ -75,9 +75,8 @@ fn spawn_timeline(
         .ord_flow(cs(10));
 
     let track = [grow, spin].ord_chain().compile();
-    b.add_tracks(track);
 
-    let timeline = b.compile();
+    let timeline = b.compile(track);
     commands.spawn((
         motiongfx.add_timeline(timeline),
         // Start paused; drive playback from the editor.

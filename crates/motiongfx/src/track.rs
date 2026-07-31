@@ -4,6 +4,7 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use field_path::field::UntypedField;
 use hashbrown::HashMap;
+use nonempty::NonEmpty;
 
 use crate::action::{ActionClip, ActionKey};
 use crate::sequence::Sequence;
@@ -365,6 +366,41 @@ impl IntoIterator for Track {
 
     fn into_iter(self) -> Self::IntoIter {
         [self].into_iter()
+    }
+}
+
+/// The [`Track`]s a [`Timeline`](crate::timeline::Timeline) plays
+/// through, always at least one.
+#[derive(Clone, Debug)]
+pub struct TrackList(pub NonEmpty<Track>);
+
+impl From<Track> for TrackList {
+    fn from(track: Track) -> Self {
+        Self::new(track)
+    }
+}
+
+impl TrackList {
+    pub fn new(track: Track) -> Self {
+        Self(NonEmpty::new(track))
+    }
+
+    pub fn collect(
+        tracks: impl IntoIterator<Item = Track>,
+    ) -> Option<Self> {
+        NonEmpty::collect(tracks).map(Self)
+    }
+
+    pub fn add(
+        &mut self,
+        tracks: impl IntoIterator<Item = Track>,
+    ) -> &mut Self {
+        self.0.extend(tracks);
+        self
+    }
+
+    pub fn into_boxed_slice(self) -> Box<[Track]> {
+        self.0.into_iter().collect()
     }
 }
 

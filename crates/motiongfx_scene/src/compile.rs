@@ -37,9 +37,8 @@ impl<B: SceneBackend> Scene<B> {
         )?;
 
         let track = root_fragment.compile();
-        builder.add_tracks([track]);
 
-        builder.try_compile().ok_or(CompileError::EmptyTimeline)
+        Ok(builder.compile(track))
     }
 
     /// Writes the [`Stage`](crate::scene::Stage)'s initial values into

@@ -185,7 +185,6 @@ impl LissajousTableDemo {
         }
         let grid_track =
             pair_tracks.into_iter().ord_flow(cs(5)).compile();
-        b.add_tracks(grid_track);
 
         // Track 1: curves draw in and out, looped by the caller.
         let max_diag = N_X + N_Y;
@@ -223,9 +222,8 @@ impl LissajousTableDemo {
             })
             .ord_flow(STAGGER)
             .compile();
-        b.add_tracks(curve_track);
-
-        let mut timeline = b.compile();
+        let mut timeline =
+            b.compile(TrackList(nonempty![grid_track, curve_track]));
         timeline.bake_actions(&registry, &world);
         let grid_duration = timeline.tracks()[0].duration();
         let curve_duration = timeline.tracks()[1].duration();

@@ -93,8 +93,7 @@ fn spawn_timeline(
     }
 
     let track = cube_tracks.ord_flow(cs(1)).compile();
-    b.add_tracks(track);
-    let timeline = b.compile();
+    let timeline = b.compile(track);
 
     commands.spawn((
         motiongfx.add_timeline(timeline),
