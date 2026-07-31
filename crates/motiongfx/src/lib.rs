@@ -19,6 +19,9 @@ pub mod world;
 
 // Re-exports field_path as it is essential for motiongfx to work!
 pub use field_path;
+// Re-exported so `Tracks` can be built without depending on `nonempty`
+// directly.
+pub use ::nonempty;
 
 pub mod prelude {
     pub use field_path::field_accessor::FieldAccessor;
@@ -30,6 +33,7 @@ pub mod prelude {
     };
     pub use crate::ease;
     pub use crate::interpolation::Interpolation;
+    pub use crate::nonempty::{self, nonempty};
     pub use crate::path;
     pub use crate::pipeline::PipelineKey;
     pub use crate::registry::{
@@ -37,7 +41,9 @@ pub mod prelude {
     };
     pub use crate::time::{cs, ms, ns, s};
     pub use crate::timeline::{Timeline, TimelineBuilder};
-    pub use crate::track::{Track, TrackFragment, TrackOrdering};
+    pub use crate::track::{
+        Track, TrackFragment, TrackOrdering, Tracks,
+    };
     pub use crate::world::SubjectSource;
 }
 

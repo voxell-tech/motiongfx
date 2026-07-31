@@ -98,9 +98,9 @@ fn spawn_timeline(
         })
         .ord_chain();
 
-    b.add_tracks(track.compile());
+    let tracks = track.compile();
 
-    let timeline = b.compile();
+    let timeline = b.compile(tracks);
     commands.spawn((
         motiongfx.add_timeline(timeline),
         RealtimePlayer::new().with_playing(true),

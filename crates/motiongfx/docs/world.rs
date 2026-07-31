@@ -24,7 +24,6 @@ pub fn timeline() -> (Registry, Timeline<World>) {
         .with_interp(|a: &f32, b: &f32, t| a + (b - a) * t)
         .play(s(1))
         .compile();
-    b.add_tracks(track);
-    let timeline = b.compile();
+    let timeline = b.compile(track);
     (registry, timeline)
 }

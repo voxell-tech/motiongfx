@@ -89,8 +89,7 @@ fn main() {
     .ord_chain();
 
     // Compile into a timeline.
-    builder.add_tracks(track.compile());
-    let mut timeline = builder.compile();
+    let mut timeline = builder.compile(track.compile());
 
     // Bake actions into segments.
     timeline.bake_actions(&world.registry, &world.subject_world);

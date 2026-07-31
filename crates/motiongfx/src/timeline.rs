@@ -16,7 +16,7 @@ use crate::interpolation::Interpolation;
 use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
-use crate::track::Track;
+use crate::track::{Track, Tracks};
 use crate::world::SubjectSource;
 
 pub struct Timeline<W> {
@@ -445,7 +445,6 @@ pub struct TimelineBuilder<'a, W> {
     registry: &'a mut Registry,
     action_table: ActionTable,
     pipeline_counts: HashMap<PipelineKey, u32>,
-    tracks: Vec<Track>,
     _marker: PhantomData<fn() -> W>,
 }
 
@@ -456,7 +455,6 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
             registry,
             action_table: ActionTable::new(),
             pipeline_counts: HashMap::new(),
-            tracks: Vec::new(),
             _marker: PhantomData,
         }
     }
@@ -559,35 +557,15 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
         false
     }
 
-    /// Add [`Track`]\(s\) to the timeline.
-    pub fn add_tracks(
-        &mut self,
-        tracks: impl IntoIterator<Item = Track>,
-    ) {
-        self.tracks.extend(tracks);
-    }
-
     /// Compile into a [`Timeline`].
-    ///
-    /// ## Panic
-    ///
-    /// Panics if the track is empty.
-    /// Use [`Self::try_compile`] to explicitly handle the case where
-    /// the track may be empty.
-    pub fn compile(self) -> Timeline<W> {
-        // TODO(nixon): What happens when track is empty?
-        debug_assert!(
-            !self.tracks.is_empty(),
-            "Track cannot be empty!"
-        );
-
+    pub fn compile(self, tracks: impl Into<Tracks>) -> Timeline<W> {
         Timeline {
             action_table: self.action_table,
             pipeline_counts: self
                 .pipeline_counts
                 .into_iter()
                 .collect(),
-            tracks: self.tracks.into_boxed_slice(),
+            tracks: tracks.into().into_boxed_slice(),
             queue_cache: QueueCache::new(),
             sample_queue: HashMap::new(),
             curr_time: Duration::ZERO,
@@ -596,12 +574,6 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
             target_index: 0,
             _marker: PhantomData,
         }
-    }
-
-    /// Similar to [`Self::compile`] but return `None` instead of
-    /// panicking.
-    pub fn try_compile(self) -> Option<Timeline<W>> {
-        (!self.tracks.is_empty()).then(|| self.compile())
     }
 }
 

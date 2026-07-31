@@ -85,8 +85,7 @@ fn build_timeline(
         })
         .collect::<Vec<_>>();
 
-    builder.add_tracks(fragments.ord_all().compile());
-    builder.compile()
+    builder.compile(fragments.ord_all().compile())
 }
 
 fn bench_build(c: &mut Criterion) {
@@ -318,8 +317,7 @@ fn build_mixed(
         })
         .collect::<Vec<_>>();
 
-    builder.add_tracks(fragments.ord_all().compile());
-    builder.compile()
+    builder.compile(fragments.ord_all().compile())
 }
 
 fn bench_mixed_build(c: &mut Criterion) {
