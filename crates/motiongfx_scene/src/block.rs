@@ -47,7 +47,7 @@ pub enum Combinator {
     /// Simultaneous; wait for any. (`ord_any`)
     Any,
     /// Staggered starts, one `delay` apart. (`ord_flow`)
-    Flow(#[serde(with = "crate::duration")] Duration),
+    Flow(Duration),
 }
 
 /// A member of a [`Block`]: a nested block, an action leaf, or a
@@ -61,20 +61,12 @@ pub enum Combinator {
 #[serde(bound = "")]
 pub enum Node<B: SceneBackend> {
     Block {
-        #[serde(
-            default,
-            with = "crate::duration::option",
-            skip_serializing_if = "Option::is_none"
-        )]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         delay: Option<Duration>,
         block: Block<B>,
     },
     Action {
-        #[serde(
-            default,
-            with = "crate::duration::option",
-            skip_serializing_if = "Option::is_none"
-        )]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         delay: Option<Duration>,
         action: ActionCmd<B>,
     },
@@ -116,7 +108,6 @@ pub struct ActionCmd<B: SceneBackend> {
     pub field: FieldRef,
     pub op: B::OpId,
     pub value: B::ValueId,
-    #[serde(with = "crate::duration")]
     pub duration: Duration,
     /// `None` = linear / default easing.
     #[serde(default, skip_serializing_if = "Option::is_none")]

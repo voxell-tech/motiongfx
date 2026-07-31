@@ -27,7 +27,7 @@
                     ),
                     op: To,
                     value: "3ab91806-b4db-4c34-a664-f6362bf7f43f",
-                    duration: Ms(1000),
+                    duration: (secs: 1, nanos: 0),
                     ease: Some(CubicEaseInOut),
                     interp: Some(Linear),
                 ),
