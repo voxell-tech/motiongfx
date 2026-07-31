@@ -13,6 +13,7 @@ repository.workspace = true
 [dependencies]
 # motiongfx
 motiongfx = { workspace = true }
+motiongfx_scene = { workspace = true, optional = true }
 
 # bevy
 bevy_ecs = { workspace = true }
@@ -24,6 +25,13 @@ bevy_time = { workspace = true }
 bevy_asset = { workspace = true, optional = true }
 bevy_transform = { workspace = true, optional = true }
 bevy_color = { workspace = true, optional = true }
+bevy_reflect = { workspace = true, optional = true, features = ["uuid"] }
+
+# other
+serde = { workspace = true, features = ["derive"] }
+indexmap = { workspace = true, features = ["serde"], optional = true }
+tracing = { workspace = true, optional = true }
+ron = { workspace = true, optional = true }
 
 [dev-dependencies]
 bevy = { workspace = true, features = ["bevy_pbr"] }
@@ -33,7 +41,25 @@ workspace = true
 
 [features]
 default = ["std", "asset", "transform", "color"]
-std = ["motiongfx/std", "bevy_ecs/std", "bevy_app/std", "bevy_platform/std", "bevy_time/std"]
+std = [
+    "motiongfx/std",
+    "motiongfx_scene?/std",
+    "bevy_ecs/std",
+    "bevy_app/std",
+    "bevy_platform/std",
+    "bevy_time/std",
+]
 asset = ["dep:bevy_asset"]
 transform = ["dep:bevy_transform"]
 color = ["dep:bevy_color"]
+scene = [
+    "dep:motiongfx_scene",
+    "dep:indexmap",
+    "dep:tracing",
+    "dep:ron",
+    "dep:bevy_reflect",
+    "bevy_math/serialize",
+    "bevy_transform/bevy_reflect",
+    "asset",
+    "transform",
+]

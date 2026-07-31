@@ -1,6 +1,6 @@
 use core::f32::consts::PI;
 
-use bevy_math::ops::*;
+use crate::ops::*;
 
 pub fn linear(t: f32) -> f32 {
     t

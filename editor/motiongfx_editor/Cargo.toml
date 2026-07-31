@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-bevy_motiongfx = { workspace = true }
+bevy_motiongfx = { workspace = true, default-features = true }
 motiongfx_editor_ui = { workspace = true }
 bevy = { workspace = true, default-features = true, features = [
     "bevy_feathers",

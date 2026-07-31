@@ -3,6 +3,7 @@ use core::time::Duration;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_time::prelude::*;
+use motiongfx::prelude::*;
 
 use crate::MotionGfxSystems;
 use crate::manager::{MotionGfxManager, TimelineId};
@@ -198,7 +199,7 @@ impl FixedRatePlayer {
             return Duration::ZERO;
         }
 
-        Duration::from_secs(self.curr_frame) / self.fps as u32
+        s(self.curr_frame) / self.fps as u32
     }
 
     /// Setter method for setting [`Self::is_playing`].

@@ -11,14 +11,11 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-# bevy
-bevy_math = { workspace = true }
-
-# other
 field_path = { workspace = true }
 hashbrown = { workspace = true, features = ["default-hasher"] }
 nonempty = { workspace = true }
 typarena = { workspace = true }
+libm = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -32,4 +29,4 @@ workspace = true
 
 [features]
 default = ["std"]
-std = ["bevy_math/std"]
+std = []

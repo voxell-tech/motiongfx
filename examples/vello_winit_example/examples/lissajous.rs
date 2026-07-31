@@ -275,9 +275,8 @@ impl VelloDemo for LissajousTableDemo {
             let period = self.curve_duration.as_nanos().max(1);
 
             self.timeline.set_target_track(1);
-            self.timeline.set_target_time(Duration::from_nanos(
-                (into_loop % period) as u64,
-            ));
+            self.timeline
+                .set_target_time(ns((into_loop % period) as u64));
         }
         self.timeline.queue_actions();
         self.timeline

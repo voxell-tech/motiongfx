@@ -1216,9 +1216,15 @@ dependencies = [
  "bevy_ecs",
  "bevy_math",
  "bevy_platform",
+ "bevy_reflect",
  "bevy_time",
  "bevy_transform",
+ "indexmap",
  "motiongfx",
+ "motiongfx_scene",
+ "ron",
+ "serde",
+ "tracing",
 ]
 
 [[package]]
@@ -2517,6 +2523,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 
 [[package]]
+name = "educe"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92c3e1715a2bf74bc8f68cd7bae12ff144f02669c602106ad1fa16f2ba62e646"
+dependencies = [
+ "enum-ordinalize",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "either"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2547,6 +2565,26 @@ name = "encase_derive_impl"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8bad72d8308f7a382de2391ec978ddd736e0103846b965d7e2a63a75768af30"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "enum-ordinalize"
+version = "4.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07f808d588c10e464ea6f7d3eaed500049eff30aaac103460f61828c2d65b3eb"
+dependencies = [
+ "enum-ordinalize-derive",
+]
+
+[[package]]
+name = "enum-ordinalize-derive"
+version = "4.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42e528e2d34ba8a67a1a650b86beae8ef69fc5fdb638016f386b973226590432"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3068,6 +3106,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 dependencies = [
  "foldhash 0.2.0",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -3613,10 +3653,10 @@ dependencies = [
 name = "motiongfx"
 version = "0.3.0"
 dependencies = [
- "bevy_math",
  "criterion",
  "field_path",
  "hashbrown 0.17.1",
+ "libm",
  "nonempty",
  "typarena",
 ]
@@ -3643,6 +3683,20 @@ name = "motiongfx_editor_ui_kernel"
 version = "0.3.0"
 dependencies = [
  "hashbrown 0.17.1",
+]
+
+[[package]]
+name = "motiongfx_scene"
+version = "0.3.0"
+dependencies = [
+ "educe",
+ "hashbrown 0.17.1",
+ "motiongfx",
+ "ron",
+ "serde",
+ "serde_json",
+ "typarena",
+ "uuid",
 ]
 
 [[package]]

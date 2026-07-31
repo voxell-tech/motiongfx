@@ -18,7 +18,7 @@ use crate::track::Track;
 use crate::world::SubjectSource;
 
 pub struct PipelineHandle<W, I, S, T> {
-    #[expect(clippy::complexity)]
+    #[expect(clippy::type_complexity)]
     _marker: PhantomData<fn() -> (W, I, S, T)>,
 }
 
@@ -108,7 +108,7 @@ impl PipelineKey {
 pub struct Pipeline<W, I, S, T> {
     bake: BakeFn<W>,
     sample: SampleFn<W>,
-    #[expect(clippy::complexity)]
+    #[expect(clippy::type_complexity)]
     _marker: PhantomData<fn() -> (I, S, T)>,
 }
 
