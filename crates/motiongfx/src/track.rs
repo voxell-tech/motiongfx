@@ -369,16 +369,18 @@ impl IntoIterator for Track {
     }
 }
 
+/// The [`Track`]s a [`Timeline`](crate::timeline::Timeline) plays
+/// through, always at least one.
 #[derive(Clone, Debug)]
-pub struct Tracks(pub NonEmpty<Track>);
+pub struct TrackList(pub NonEmpty<Track>);
 
-impl From<Track> for Tracks {
+impl From<Track> for TrackList {
     fn from(track: Track) -> Self {
         Self::new(track)
     }
 }
 
-impl Tracks {
+impl TrackList {
     pub fn new(track: Track) -> Self {
         Self(NonEmpty::new(track))
     }

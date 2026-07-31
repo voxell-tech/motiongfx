@@ -83,7 +83,7 @@ fn spawn_timeline(
     .ord_flow(cs(10))
     .compile();
 
-    let timeline = b.compile(Tracks(nonempty![slide0, slide1]));
+    let timeline = b.compile(TrackList(nonempty![slide0, slide1]));
     commands.spawn((
         motiongfx.add_timeline(timeline),
         RealtimePlayer::new().with_playing(true),

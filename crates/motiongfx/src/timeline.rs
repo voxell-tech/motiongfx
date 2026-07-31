@@ -16,7 +16,7 @@ use crate::interpolation::Interpolation;
 use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
-use crate::track::{Track, Tracks};
+use crate::track::{Track, TrackList};
 use crate::world::SubjectSource;
 
 pub struct Timeline<W> {
@@ -558,7 +558,10 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     }
 
     /// Compile into a [`Timeline`].
-    pub fn compile(self, tracks: impl Into<Tracks>) -> Timeline<W> {
+    pub fn compile(
+        self,
+        tracks: impl Into<TrackList>,
+    ) -> Timeline<W> {
         Timeline {
             action_table: self.action_table,
             pipeline_counts: self

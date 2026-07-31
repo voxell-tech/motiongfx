@@ -223,7 +223,7 @@ impl LissajousTableDemo {
             .ord_flow(STAGGER)
             .compile();
         let mut timeline =
-            b.compile(Tracks(nonempty![grid_track, curve_track]));
+            b.compile(TrackList(nonempty![grid_track, curve_track]));
         timeline.bake_actions(&registry, &world);
         let grid_duration = timeline.tracks()[0].duration();
         let curve_duration = timeline.tracks()[1].duration();
