@@ -7,7 +7,7 @@ use educe::Educe;
 use crate::backend::SceneBackend;
 use crate::refs::FieldRef;
 
-/// Errors that can occur during [`compile`](crate::compile::compile())
+/// Errors that can occur during [`Scene::compile`](crate::scene::Scene::compile)
 /// of a scene into a runtime [`Timeline`](motiongfx::timeline::Timeline).
 ///
 /// Each variant pinpoints the scene element that couldn't be resolved.
@@ -50,6 +50,9 @@ pub enum CompileError<B: SceneBackend> {
         type_name: &'static str,
         field: FieldRef,
     },
+
+    /// The builder produced no tracks, so there is nothing to play.
+    EmptyTimeline,
 }
 
 // Manual Display to keep the crate `no_std` + `alloc`.
@@ -94,6 +97,9 @@ impl<B: SceneBackend> fmt::Display for CompileError<B> {
                     field.type_name(),
                     field.path()
                 )
+            }
+            Self::EmptyTimeline => {
+                write!(f, "scene compiled to an empty timeline")
             }
         }
     }

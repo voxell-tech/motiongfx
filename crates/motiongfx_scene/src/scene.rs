@@ -52,8 +52,8 @@ pub struct Subject<B: SceneBackend> {
 /// The initial value of one animation track.
 ///
 /// Baking reads `prev` from the world, not the scene, so seed these in
-/// with [`apply_stage`](crate::compile::apply_stage) first. `value`
-/// references into [`Scene::values`]; opaque to this crate.
+/// with [`Scene::stage`] first. `value` references into
+/// [`Scene::values`].
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(Debug, Clone, PartialEq)]
 #[serde(bound = "")]

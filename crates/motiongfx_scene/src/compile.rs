@@ -1,4 +1,4 @@
-//! Compiling a [`Scene`] into a runtime [`Timeline`].
+//! [`Scene::compile`] turns a scene into a runtime [`Timeline`].
 //!
 //! 1. Walk the block tree, resolving each [`ActionCmd`] through
 //!    [`SceneRegistry`] into a [`TrackFragment`].
@@ -14,64 +14,55 @@ use motiongfx::track::delay;
 use crate::backend::SceneBackend;
 use crate::block::{ActionCmd, Block, Combinator, Node};
 use crate::error::CompileError;
-use crate::refs::FieldRef;
 use crate::registry::SceneRegistry;
 use crate::scene::Scene;
 
-/// Compiles a [`Scene`] into a [`Timeline`].
-///
-/// # Errors
-///
-/// Returns [`CompileError`] if any subject, field, op, ease, or interp
-/// referenced in the scene cannot be resolved through `scene_registry`.
-pub fn compile<B: SceneBackend>(
-    scene: &Scene<B>,
-    scene_registry: &SceneRegistry<B>,
-    runtime_registry: &mut Registry,
-) -> Result<Timeline<B::World>, CompileError<B>> {
-    scene_registry.install_accessors(runtime_registry);
-    let mut builder = runtime_registry.create_builder::<B::World>();
+impl<B: SceneBackend> Scene<B> {
+    /// Compiles this scene into a [`Timeline`], resolving everything it
+    /// references through `scene_registry`.
+    pub fn compile(
+        &self,
+        scene_registry: &SceneRegistry<B>,
+        runtime_registry: &mut Registry,
+    ) -> Result<Timeline<B::World>, CompileError<B>> {
+        scene_registry.install_accessors(runtime_registry);
+        let mut builder =
+            runtime_registry.create_builder::<B::World>();
 
-    let root_fragment = walk_block(
-        &scene.animation,
-        scene_registry,
-        &scene.values,
-        &mut builder,
-    )?;
+        let root_fragment = walk_block(
+            &self.animation,
+            scene_registry,
+            &self.values,
+            &mut builder,
+        )?;
 
-    let track = root_fragment.compile();
-    builder.add_tracks([track]);
+        let track = root_fragment.compile();
+        builder.add_tracks([track]);
 
-    builder.try_compile().ok_or_else(|| {
-        CompileError::UnknownField(FieldRef::new("", ""))
-    })
-}
-
-/// Writes the [`Stage`](crate::scene::Stage)'s initial values into
-/// `world`. Run after the subjects are materialized, before
-/// `bake_actions`.
-///
-/// # Errors
-///
-/// Returns [`CompileError`] if a seeded field, subject, or value
-/// cannot be resolved through `scene_registry`.
-pub fn apply_stage<B: SceneBackend>(
-    scene: &Scene<B>,
-    scene_registry: &SceneRegistry<B>,
-    world: &mut B::World,
-) -> Result<(), CompileError<B>> {
-    for subject in &scene.stage.subjects {
-        for state in &subject.fields {
-            scene_registry.seed_field(
-                subject.id,
-                state,
-                &scene.values,
-                world,
-            )?;
-        }
+        builder.try_compile().ok_or(CompileError::EmptyTimeline)
     }
 
-    Ok(())
+    /// Writes the [`Stage`](crate::scene::Stage)'s initial values into
+    /// `world`. Run after the subjects are materialized, before
+    /// `bake_actions`.
+    pub fn stage(
+        &self,
+        scene_registry: &SceneRegistry<B>,
+        world: &mut B::World,
+    ) -> Result<(), CompileError<B>> {
+        for subject in &self.stage.subjects {
+            for seed in &subject.fields {
+                scene_registry.seed_field(
+                    subject.id,
+                    seed,
+                    &self.values,
+                    world,
+                )?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Compiles a [`Node`] into a [`TrackFragment`].

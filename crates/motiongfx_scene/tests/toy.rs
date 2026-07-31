@@ -1,4 +1,4 @@
-//! End-to-end tests of `compile()`: scene -> registry -> `Timeline`,
+//! End-to-end tests taking a scene through registry to `Timeline`,
 //! baked and sampled against a toy [`SubjectSource`] world.
 
 use std::collections::HashMap;
@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use motiongfx::action::Action;
 use motiongfx::prelude::*;
-use motiongfx_scene::compile::{apply_stage, compile};
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
 use serde::{Deserialize, Serialize};
@@ -174,7 +173,7 @@ fn sample_at(
 }
 
 #[test]
-fn apply_stage_writes_initial_values_into_the_world() {
+fn stage_writes_initial_values_into_the_world() {
     let scene_registry = registry_with_to_op();
     let mut values = ToyValuePool::default();
     let staged = values.insert(7.0);
@@ -196,7 +195,8 @@ fn apply_stage_writes_initial_values_into_the_world() {
     world.points.insert(0, Point::default());
     assert_eq!(world.points[&0].x, 0.0);
 
-    apply_stage(&scene, &scene_registry, &mut world)
+    scene
+        .stage(&scene_registry, &mut world)
         .expect("stage should apply");
 
     // What `bake_actions` would then read as the track's start.
@@ -204,7 +204,7 @@ fn apply_stage_writes_initial_values_into_the_world() {
 }
 
 #[test]
-fn apply_stage_rejects_an_unregistered_field() {
+fn stage_rejects_an_unregistered_field() {
     let scene_registry: SceneRegistry<ToyBackend> =
         SceneRegistry::new();
     let mut values = ToyValuePool::default();
@@ -226,7 +226,8 @@ fn apply_stage_rejects_an_unregistered_field() {
     let mut world = ToyWorld::default();
     world.points.insert(0, Point::default());
 
-    let err = apply_stage(&scene, &scene_registry, &mut world)
+    let err = scene
+        .stage(&scene_registry, &mut world)
         .expect_err("unregistered field should not resolve");
     assert!(matches!(err, CompileError::UnknownField(_)));
 }
@@ -250,9 +251,9 @@ fn compiles_and_samples_a_single_action() {
     };
 
     let mut runtime_registry = Registry::new();
-    let mut timeline =
-        compile(&scene, &scene_registry, &mut runtime_registry)
-            .expect("scene should compile");
+    let mut timeline = scene
+        .compile(&scene_registry, &mut runtime_registry)
+        .expect("scene should compile");
 
     let mut world = ToyWorld::default();
     world.points.insert(0, Point::default());
@@ -278,9 +279,9 @@ fn chain_runs_children_in_sequence() {
     };
 
     let mut runtime_registry = Registry::new();
-    let mut timeline =
-        compile(&scene, &scene_registry, &mut runtime_registry)
-            .expect("scene should compile");
+    let mut timeline = scene
+        .compile(&scene_registry, &mut runtime_registry)
+        .expect("scene should compile");
 
     let mut world = ToyWorld::default();
     world.points.insert(0, Point::default());
@@ -326,9 +327,9 @@ fn all_combinator_runs_children_simultaneously() {
     };
 
     let mut runtime_registry = Registry::new();
-    let mut timeline =
-        compile(&scene, &scene_registry, &mut runtime_registry)
-            .expect("scene should compile");
+    let mut timeline = scene
+        .compile(&scene_registry, &mut runtime_registry)
+        .expect("scene should compile");
 
     let mut world = ToyWorld::default();
     world.points.insert(0, Point::default());
@@ -355,9 +356,9 @@ fn delayed_node_shifts_the_start_time() {
     };
 
     let mut runtime_registry = Registry::new();
-    let mut timeline =
-        compile(&scene, &scene_registry, &mut runtime_registry)
-            .expect("scene should compile");
+    let mut timeline = scene
+        .compile(&scene_registry, &mut runtime_registry)
+        .expect("scene should compile");
 
     let mut world = ToyWorld::default();
     world.points.insert(0, Point::default());
@@ -421,9 +422,9 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
     };
 
     let mut runtime_registry = Registry::new();
-    let mut timeline =
-        compile(&scene, &scene_registry, &mut runtime_registry)
-            .expect("scene should compile");
+    let mut timeline = scene
+        .compile(&scene_registry, &mut runtime_registry)
+        .expect("scene should compile");
 
     let mut world = ToyWorld::default();
     world.points.insert(0, Point::default());
@@ -459,8 +460,7 @@ fn unregistered_field_is_a_compile_error() {
 
     let mut runtime_registry = Registry::new();
     let err =
-        match compile(&scene, &scene_registry, &mut runtime_registry)
-        {
+        match scene.compile(&scene_registry, &mut runtime_registry) {
             Err(err) => err,
             Ok(_) => {
                 panic!("unregistered field must fail to compile")
@@ -496,8 +496,7 @@ fn unregistered_op_is_a_compile_error() {
 
     let mut runtime_registry = Registry::new();
     let err =
-        match compile(&scene, &scene_registry, &mut runtime_registry)
-        {
+        match scene.compile(&scene_registry, &mut runtime_registry) {
             Err(err) => err,
             Ok(_) => panic!("unregistered op must fail to compile"),
         };

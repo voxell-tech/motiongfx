@@ -412,7 +412,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
         resolver.build(cmd, self, values, builder)
     }
 
-    /// Writes one [`FieldState`]'s value into `world`.
+    /// Writes one [`FieldSeed`]'s value into `world`.
     pub(crate) fn seed_field(
         &self,
         subject: B::Id,

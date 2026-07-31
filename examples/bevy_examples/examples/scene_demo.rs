@@ -113,6 +113,23 @@ fn build_scene_once_loaded(
         .compile(&registry, &mut motiongfx)
         .expect("scene should compile");
 
+    // Needs `&mut World`, so it defers to the next command flush -
+    // still well before `MotionGfxSystems::Sample` bakes in
+    // `PostUpdate`.
+    let handle = pending.0.clone();
+    commands.queue(move |world: &mut World| {
+        let registry = default_scene_registry();
+        world.resource_scope::<Assets<MotionGfxScene>, _>(
+            |world, scenes| {
+                scenes
+                    .get(&handle)
+                    .expect("scene should still be loaded")
+                    .stage(&registry, world)
+                    .expect("stage should apply");
+            },
+        );
+    });
+
     commands.spawn((
         timeline_id,
         RealtimePlayer::new().with_playing(true),

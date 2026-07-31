@@ -5,12 +5,14 @@ use alloc::vec::Vec;
 use bevy_asset::io::Reader;
 use bevy_asset::{Asset, AssetLoader, LoadContext};
 use bevy_ecs::error::BevyError;
+use bevy_ecs::world::World;
 use bevy_reflect::TypePath;
 use motiongfx_scene::error::CompileError;
 use motiongfx_scene::scene::Scene;
 
 use crate::manager::{MotionGfxManager, TimelineId};
 use crate::scene::backend::{Backend, BackendRegistry};
+use crate::world::BevyWorld;
 
 /// A [`Scene<BevyBackend>`], loadable as a Bevy asset.
 ///
@@ -34,12 +36,26 @@ impl MotionGfxScene {
         scene_registry: &BackendRegistry,
         motiongfx: &mut MotionGfxManager,
     ) -> Result<TimelineId, CompileError<Backend>> {
-        let timeline = motiongfx_scene::compile::compile(
-            &self.0,
-            scene_registry,
-            motiongfx.registry_mut(),
-        )?;
+        let timeline = self
+            .0
+            .compile(scene_registry, motiongfx.registry_mut())?;
         Ok(motiongfx.add_timeline(timeline))
+    }
+
+    /// Writes this scene's initial values onto its already-materialized
+    /// subjects.
+    ///
+    /// Baking reads each track's starting value off the world, and that
+    /// happens in [`MotionGfxSystems::Sample`](crate::MotionGfxSystems::Sample),
+    /// so call this any time before then - alongside [`Self::compile`]
+    /// is the natural place. Skip it and the animation starts from
+    /// whatever the entities already held.
+    pub fn stage(
+        &self,
+        scene_registry: &BackendRegistry,
+        world: &mut World,
+    ) -> Result<(), CompileError<Backend>> {
+        self.0.stage(scene_registry, BevyWorld::from_mut(world))
     }
 }
 
