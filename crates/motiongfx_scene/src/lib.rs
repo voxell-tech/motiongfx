@@ -36,7 +36,7 @@ pub mod prelude {
     pub use crate::block::{ActionCmd, Block, Combinator, Node};
     pub use crate::error::CompileError;
     pub use crate::refs::{FieldRef, TypeName};
-    pub use crate::scene::{Scene, Stage, Subject};
+    pub use crate::scene::{FieldSeed, Scene, Stage, Subject};
     pub use crate::value::ValueColumn;
 }
 

@@ -3,7 +3,15 @@
         subjects: [
             (
                 id: Entity("181e4485-eabb-47b6-8a51-65f2f32ca73f"),
-                state: "3ab91806-b4db-4c34-a664-f6362bf7f43f",
+                fields: [
+                    (
+                        field: (
+                            type_name: "bevy_transform::components::transform::Transform",
+                            path: "::translation",
+                        ),
+                        value: "b7c05f21-3d64-4a18-9f2e-1c8a5d0e4b93",
+                    ),
+                ],
             ),
         ],
     ),
@@ -28,6 +36,7 @@
     ),
     values: (
         vec3: {
+            "b7c05f21-3d64-4a18-9f2e-1c8a5d0e4b93": (0.0, 0.0, 0.0),
             "3ab91806-b4db-4c34-a664-f6362bf7f43f": (6.0, 0.0, 0.0),
         },
     ),

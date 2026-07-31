@@ -84,7 +84,16 @@ fn sample() -> Scene<RoundtripBackend> {
 
     Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 7, state }],
+            subjects: vec![Subject {
+                id: 7,
+                fields: vec![FieldSeed {
+                    field: FieldRef::new(
+                        "Transform",
+                        "translation::x",
+                    ),
+                    value: state,
+                }],
+            }],
         },
         animation,
         values,

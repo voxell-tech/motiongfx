@@ -47,6 +47,33 @@ pub fn compile<B: SceneBackend>(
     })
 }
 
+/// Writes the [`Stage`](crate::scene::Stage)'s initial values into
+/// `world`. Run after the subjects are materialized, before
+/// `bake_actions`.
+///
+/// # Errors
+///
+/// Returns [`CompileError`] if a seeded field, subject, or value
+/// cannot be resolved through `scene_registry`.
+pub fn apply_stage<B: SceneBackend>(
+    scene: &Scene<B>,
+    scene_registry: &SceneRegistry<B>,
+    world: &mut B::World,
+) -> Result<(), CompileError<B>> {
+    for subject in &scene.stage.subjects {
+        for state in &subject.fields {
+            scene_registry.seed_field(
+                subject.id,
+                state,
+                &scene.values,
+                world,
+            )?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Compiles a [`Node`] into a [`TrackFragment`].
 fn walk_node<B: SceneBackend>(
     node: &Node<B>,

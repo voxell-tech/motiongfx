@@ -1,6 +1,6 @@
 //! Per-backend value storage.
 //!
-//! `ActionCmd`/`Subject` reference a [`SceneBackend::ValueId`](crate::backend::SceneBackend::ValueId),
+//! `ActionCmd`/`FieldSeed` reference a [`SceneBackend::ValueId`](crate::backend::SceneBackend::ValueId),
 //! resolved through the backend's own
 //! [`SceneBackend::ValuePool`](crate::backend::SceneBackend::ValuePool)
 //! via [`ValueColumn`] - one small impl per concrete value type. No
@@ -12,8 +12,8 @@
 //! This crate doesn't fix the id type itself - deleting an action must
 //! not shift or leak other actions' value slots, so a backend should
 //! pick something with the same "stable across removal" guarantee a
-//! generational key (e.g. `sparse_map::Key`) gives, but the choice is
-//! the backend's, not this crate's.
+//! generational key or a `Uuid` gives, but the choice is the
+//! backend's, not this crate's.
 
 /// Implemented once per concrete value type `T` a backend's
 /// [`ValuePool`](crate::backend::SceneBackend::ValuePool) stores,

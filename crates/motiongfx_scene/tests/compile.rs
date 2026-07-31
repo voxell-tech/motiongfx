@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use motiongfx::action::Action;
 use motiongfx::prelude::*;
-use motiongfx_scene::compile::compile;
+use motiongfx_scene::compile::{apply_stage, compile};
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
 use serde::{Deserialize, Serialize};
@@ -123,6 +123,23 @@ fn action_cmd(
     }
 }
 
+/// A subject whose `paths` all start at `0.0` - the initial value
+/// baking would otherwise read off the world.
+fn subject(
+    values: &mut ToyValuePool,
+    id: u64,
+    paths: &[&str],
+) -> Subject<ToyBackend> {
+    let fields = paths
+        .iter()
+        .map(|path| FieldSeed {
+            field: field(path),
+            value: values.insert(0.0),
+        })
+        .collect();
+    Subject { id, fields }
+}
+
 /// Ignores the previous value; one op registration serves every
 /// `to(value)` command.
 fn registry_with_to_op() -> SceneRegistry<ToyBackend> {
@@ -157,13 +174,70 @@ fn sample_at(
 }
 
 #[test]
+fn apply_stage_writes_initial_values_into_the_world() {
+    let scene_registry = registry_with_to_op();
+    let mut values = ToyValuePool::default();
+    let staged = values.insert(7.0);
+    let scene: Scene<ToyBackend> = Scene {
+        stage: Stage {
+            subjects: vec![Subject {
+                id: 0,
+                fields: vec![FieldSeed {
+                    field: field("x"),
+                    value: staged,
+                }],
+            }],
+        },
+        animation: Block::chain(vec![]),
+        values,
+    };
+
+    let mut world = ToyWorld::default();
+    world.points.insert(0, Point::default());
+    assert_eq!(world.points[&0].x, 0.0);
+
+    apply_stage(&scene, &scene_registry, &mut world)
+        .expect("stage should apply");
+
+    // What `bake_actions` would then read as the track's start.
+    assert_eq!(world.points[&0].x, 7.0);
+}
+
+#[test]
+fn apply_stage_rejects_an_unregistered_field() {
+    let scene_registry: SceneRegistry<ToyBackend> =
+        SceneRegistry::new();
+    let mut values = ToyValuePool::default();
+    let staged = values.insert(7.0);
+    let scene: Scene<ToyBackend> = Scene {
+        stage: Stage {
+            subjects: vec![Subject {
+                id: 0,
+                fields: vec![FieldSeed {
+                    field: field("x"),
+                    value: staged,
+                }],
+            }],
+        },
+        animation: Block::chain(vec![]),
+        values,
+    };
+
+    let mut world = ToyWorld::default();
+    world.points.insert(0, Point::default());
+
+    let err = apply_stage(&scene, &scene_registry, &mut world)
+        .expect_err("unregistered field should not resolve");
+    assert!(matches!(err, CompileError::UnknownField(_)));
+}
+
+#[test]
 fn compiles_and_samples_a_single_action() {
     let scene_registry = registry_with_to_op();
     let mut values = ToyValuePool::default();
-    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state }],
+            subjects: vec![subject(&mut values, 0, &["x"])],
         },
         animation: Block::chain(vec![Node::action(action_cmd(
             &mut values,
@@ -192,10 +266,9 @@ fn compiles_and_samples_a_single_action() {
 fn chain_runs_children_in_sequence() {
     let scene_registry = registry_with_to_op();
     let mut values = ToyValuePool::default();
-    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state }],
+            subjects: vec![subject(&mut values, 0, &["x"])],
         },
         animation: Block::chain(vec![
             Node::action(action_cmd(&mut values, 0, "x", 1.0, 100)),
@@ -226,10 +299,9 @@ fn chain_runs_children_in_sequence() {
 fn all_combinator_runs_children_simultaneously() {
     let scene_registry = registry_with_to_op();
     let mut values = ToyValuePool::default();
-    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state }],
+            subjects: vec![subject(&mut values, 0, &["x", "y"])],
         },
         animation: Block {
             combinator: Combinator::All,
@@ -271,10 +343,9 @@ fn all_combinator_runs_children_simultaneously() {
 fn delayed_node_shifts_the_start_time() {
     let scene_registry = registry_with_to_op();
     let mut values = ToyValuePool::default();
-    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state }],
+            subjects: vec![subject(&mut values, 0, &["x"])],
         },
         animation: Block::chain(vec![
             Node::action(action_cmd(&mut values, 0, "x", 5.0, 100))
@@ -323,7 +394,6 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
     );
 
     let mut values = ToyValuePool::default();
-    let state = values.insert(0.0);
     let circle_action = ActionCmd {
         subject: 0,
         field: FieldRef::new("Circle", "::radius"),
@@ -333,9 +403,15 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
         ease: None,
         interp: None,
     };
+    // Two owning types on one subject, so two initial entries.
+    let mut staged = subject(&mut values, 0, &["x"]);
+    staged.fields.push(FieldSeed {
+        field: FieldRef::new("Circle", "::radius"),
+        value: values.insert(0.0),
+    });
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state }],
+            subjects: vec![staged],
         },
         animation: Block::chain(vec![
             Node::action(action_cmd(&mut values, 0, "x", 5.0, 100)),
@@ -367,10 +443,9 @@ fn unregistered_field_is_a_compile_error() {
         SceneRegistry::new();
 
     let mut values = ToyValuePool::default();
-    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state }],
+            subjects: vec![subject(&mut values, 0, &["x"])],
         },
         animation: Block::chain(vec![Node::action(action_cmd(
             &mut values,
@@ -405,10 +480,9 @@ fn unregistered_op_is_a_compile_error() {
     );
 
     let mut values = ToyValuePool::default();
-    let state = values.insert(0.0);
     let scene: Scene<ToyBackend> = Scene {
         stage: Stage {
-            subjects: vec![Subject { id: 0, state }],
+            subjects: vec![subject(&mut values, 0, &["x"])],
         },
         animation: Block::chain(vec![Node::action(action_cmd(
             &mut values,

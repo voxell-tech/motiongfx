@@ -15,6 +15,7 @@ fn main() {
     let mut values = ExampleValuePool::default();
 
     let initial_scale = values.insert(1.0_f32);
+    let initial_visible = values.insert(false);
     let scale_target = values.insert(2.0_f32);
     let visible_target = values.insert(true);
 
@@ -22,7 +23,16 @@ fn main() {
         stage: Stage {
             subjects: vec![Subject {
                 id: 0,
-                state: initial_scale,
+                fields: vec![
+                    FieldSeed {
+                        field: FieldRef::new("Cube", "scale"),
+                        value: initial_scale,
+                    },
+                    FieldSeed {
+                        field: FieldRef::new("Cube", "visible"),
+                        value: initial_visible,
+                    },
+                ],
             }],
         },
         animation: Block::chain(vec![

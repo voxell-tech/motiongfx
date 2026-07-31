@@ -21,6 +21,7 @@ use crate::backend::{IntoSubjectId, SceneBackend};
 use crate::block::ActionCmd;
 use crate::error::CompileError;
 use crate::refs::{FieldRef, TypeName};
+use crate::scene::FieldSeed;
 use crate::value::ValueColumn;
 
 /// Resolves one `S`/`T`-typed field into a [`TrackFragment`]. Action
@@ -34,6 +35,18 @@ trait FieldResolver<B: SceneBackend> {
         values: &B::ValuePool,
         builder: &mut TimelineBuilder<'_, B::World>,
     ) -> Result<TrackFragment, CompileError<B>>;
+
+    /// Writes one [`FieldSeed`] into `world`, reusing the same
+    /// name-to-type resolution [`Self::build`] does but assigning
+    /// through the accessor instead of building an action.
+    fn seed(
+        &self,
+        subject: B::Id,
+        state: &FieldSeed<B>,
+        registry: &SceneRegistry<B>,
+        values: &B::ValuePool,
+        world: &mut B::World,
+    ) -> Result<(), CompileError<B>>;
 }
 
 #[derive(Educe)]
@@ -110,6 +123,39 @@ where
         }
 
         Ok(tb.play(cmd.duration))
+    }
+
+    fn seed(
+        &self,
+        subject: B::Id,
+        state: &FieldSeed<B>,
+        registry: &SceneRegistry<B>,
+        values: &B::ValuePool,
+        world: &mut B::World,
+    ) -> Result<(), CompileError<B>> {
+        let field_acc = registry
+            .fields
+            .get::<FieldAccessor<S, T>>(&state.field)
+            .ok_or_else(|| CompileError::TypeMismatch {
+                type_name: core::any::type_name::<T>(),
+                field: state.field.clone(),
+            })?;
+        let accessor = field_acc.accessor;
+
+        let value: T = values
+            .get(state.value)
+            .ok_or(CompileError::UnknownValue(state.value))?
+            .clone();
+
+        let key = subject.into_subject_id().ok_or_else(|| {
+            CompileError::UnknownSubjectKind(state.field.clone())
+        })?;
+
+        world
+            .apply_source(key, |source: &mut S| {
+                *accessor.get_mut(source) = value;
+            })
+            .ok_or(CompileError::UnknownSubject(subject))
     }
 }
 
@@ -364,6 +410,24 @@ impl<B: SceneBackend> SceneRegistry<B> {
             })?;
 
         resolver.build(cmd, self, values, builder)
+    }
+
+    /// Writes one [`FieldState`]'s value into `world`.
+    pub(crate) fn seed_field(
+        &self,
+        subject: B::Id,
+        state: &FieldSeed<B>,
+        values: &B::ValuePool,
+        world: &mut B::World,
+    ) -> Result<(), CompileError<B>> {
+        let resolver = self
+            .fields
+            .get::<FieldResolverBox<B>>(&state.field)
+            .ok_or_else(|| {
+                CompileError::UnknownField(state.field.clone())
+            })?;
+
+        resolver.seed(subject, state, self, values, world)
     }
 }
 

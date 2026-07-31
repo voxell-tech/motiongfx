@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::backend::SceneBackend;
 use crate::block::Block;
+use crate::refs::FieldRef;
 
 /// The whole serialized project: the initial stage and the animation
 /// that drives it, plus the value pool both reference into. `B`
@@ -28,8 +29,9 @@ pub struct Scene<B: SceneBackend> {
     pub values: B::ValuePool,
 }
 
-/// The initial state of the world: a flat, uniform set of subjects.
-/// Deliberately no object-vs-asset split; that's a backend concern.
+/// Holds the initial value of every animated field, as a flat, uniform
+/// set of subjects. Deliberately no object-vs-asset split; that's a
+/// backend concern.
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(Debug, Clone, PartialEq)]
 #[serde(bound = "")]
@@ -38,11 +40,24 @@ pub struct Stage<B: SceneBackend> {
 }
 
 /// One animatable thing on the stage, addressed by a stable id.
-/// `state` references into [`Scene::values`]; opaque to this crate.
 #[derive(Educe, Serialize, Deserialize)]
 #[educe(Debug, Clone, PartialEq)]
 #[serde(bound = "")]
 pub struct Subject<B: SceneBackend> {
     pub id: B::Id,
-    pub state: B::ValueId,
+    /// Initial value of each field animated on this subject.
+    pub fields: Vec<FieldSeed<B>>,
+}
+
+/// The initial value of one animation track.
+///
+/// Baking reads `prev` from the world, not the scene, so seed these in
+/// with [`apply_stage`](crate::compile::apply_stage) first. `value`
+/// references into [`Scene::values`]; opaque to this crate.
+#[derive(Educe, Serialize, Deserialize)]
+#[educe(Debug, Clone, PartialEq)]
+#[serde(bound = "")]
+pub struct FieldSeed<B: SceneBackend> {
+    pub field: FieldRef,
+    pub value: B::ValueId,
 }
