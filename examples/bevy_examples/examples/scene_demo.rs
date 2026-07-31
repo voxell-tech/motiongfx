@@ -118,7 +118,6 @@ fn build_scene_once_loaded(
     // `PostUpdate`.
     let handle = pending.0.clone();
     commands.queue(move |world: &mut World| {
-        let registry = default_scene_registry();
         world.resource_scope::<Assets<MotionGfxScene>, _>(
             |world, scenes| {
                 scenes

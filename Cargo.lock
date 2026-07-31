@@ -1224,6 +1224,7 @@ dependencies = [
  "motiongfx_scene",
  "ron",
  "serde",
+ "tracing",
 ]
 
 [[package]]

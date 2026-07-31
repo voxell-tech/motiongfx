@@ -23,6 +23,7 @@ use bevy_platform::collections::HashMap;
 use bevy_reflect::Reflect;
 use motiongfx_scene::backend::IntoSubjectId;
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
 #[derive(
     Component,
@@ -118,6 +119,17 @@ pub(crate) fn on_add_entity_uid(
     mut uid_map: ResMut<SceneUidMap>,
 ) {
     if let Ok(id) = query.get(trigger.entity) {
+        if let Some(existing) = uid_map.entity(*id)
+            && existing != trigger.entity
+        {
+            error!(
+                "duplicate EntityUid {id}: already held by {existing}, \
+                 ignoring {}",
+                trigger.entity
+            );
+            return;
+        }
+
         uid_map.to_entity.insert(*id, trigger.entity);
     }
 }
@@ -130,6 +142,10 @@ pub(crate) fn on_remove_entity_uid(
     mut uid_map: ResMut<SceneUidMap>,
 ) {
     if let Ok(id) = query.get(trigger.entity) {
-        uid_map.to_entity.remove(id);
+        // A rejected duplicate never claimed the entry, so removing it
+        // would strip the surviving entity's mapping.
+        if uid_map.entity(*id) == Some(trigger.entity) {
+            uid_map.to_entity.remove(id);
+        }
     }
 }
