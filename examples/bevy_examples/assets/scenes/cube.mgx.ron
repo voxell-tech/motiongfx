@@ -3,10 +3,7 @@
         subjects: [
             (
                 id: Entity("181e4485-eabb-47b6-8a51-65f2f32ca73f"),
-                state: (
-                    index: 0,
-                    generation: 0,
-                ),
+                state: "3ab91806-b4db-4c34-a664-f6362bf7f43f",
             ),
         ],
     ),
@@ -21,10 +18,7 @@
                         path: "::translation",
                     ),
                     op: To,
-                    value: (
-                        index: 0,
-                        generation: 0,
-                    ),
+                    value: "3ab91806-b4db-4c34-a664-f6362bf7f43f",
                     duration: Ms(1000),
                     ease: Some(CubicEaseInOut),
                     interp: Some(Linear),
@@ -33,13 +27,8 @@
         ],
     ),
     values: (
-        vec3: (
-            buffer: [
-                Some((6.0, 0.0, 0.0)),
-            ],
-            generations: [
-                0,
-            ],
-        ),
+        vec3: {
+            "3ab91806-b4db-4c34-a664-f6362bf7f43f": (6.0, 0.0, 0.0),
+        },
     ),
 )

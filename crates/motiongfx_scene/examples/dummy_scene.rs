@@ -5,74 +5,11 @@
 
 use core::time::Duration;
 
+use hashbrown::HashMap;
 use motiongfx::prelude::*;
 use motiongfx_scene::prelude::*;
 use serde::{Deserialize, Serialize};
-use sparse_map::{Key, SparseMap};
-
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
-enum Op {
-    To,
-}
-
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
-)]
-enum Ease {
-    CubicEaseInOut,
-}
-
-struct ExampleBackend;
-
-impl SceneBackend for ExampleBackend {
-    type Id = u64;
-    type ValueId = Key;
-    type ValuePool = ExampleValuePool;
-    type OpId = Op;
-    type InterpId = ();
-    type EaseId = Ease;
-    type World = ();
-}
-
-/// Two columns, just to show a pool holding more than one value type:
-/// this scene animates a cube's scale (`f32`) and visibility (`bool`).
-#[derive(
-    Default, Debug, Clone, PartialEq, Serialize, Deserialize,
-)]
-struct ExampleValuePool {
-    f32: SparseMap<f32>,
-    bool: SparseMap<bool>,
-}
-
-impl ValueColumn<Key, f32> for ExampleValuePool {
-    fn get(&self, id: Key) -> Option<&f32> {
-        self.f32.get(&id)
-    }
-
-    fn get_mut(&mut self, id: Key) -> Option<&mut f32> {
-        self.f32.get_mut(&id)
-    }
-
-    fn insert(&mut self, value: f32) -> Key {
-        self.f32.insert(value)
-    }
-}
-
-impl ValueColumn<Key, bool> for ExampleValuePool {
-    fn get(&self, id: Key) -> Option<&bool> {
-        self.bool.get(&id)
-    }
-
-    fn get_mut(&mut self, id: Key) -> Option<&mut bool> {
-        self.bool.get_mut(&id)
-    }
-
-    fn insert(&mut self, value: bool) -> Key {
-        self.bool.insert(value)
-    }
-}
+use uuid::Uuid;
 
 fn main() {
     let mut values = ExampleValuePool::default();
@@ -121,4 +58,71 @@ fn main() {
     let back: Scene<ExampleBackend> = ron::de::from_str(&ron_text)
         .expect("scene should deserialize");
     assert_eq!(scene, back);
+}
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+enum Op {
+    To,
+}
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+)]
+enum Ease {
+    CubicEaseInOut,
+}
+
+struct ExampleBackend;
+
+impl SceneBackend for ExampleBackend {
+    type Id = u64;
+    type ValueId = Uuid;
+    type ValuePool = ExampleValuePool;
+    type OpId = Op;
+    type InterpId = ();
+    type EaseId = Ease;
+    type World = ();
+}
+
+/// Two columns, to show a pool holding more than one value type.
+#[derive(
+    Default, Debug, Clone, PartialEq, Serialize, Deserialize,
+)]
+struct ExampleValuePool {
+    f32: HashMap<Uuid, f32>,
+    bool: HashMap<Uuid, bool>,
+}
+
+impl ValueColumn<Uuid, f32> for ExampleValuePool {
+    fn get(&self, id: Uuid) -> Option<&f32> {
+        self.f32.get(&id)
+    }
+
+    fn get_mut(&mut self, id: Uuid) -> Option<&mut f32> {
+        self.f32.get_mut(&id)
+    }
+
+    fn insert(&mut self, value: f32) -> Uuid {
+        let id = Uuid::new_v4();
+        self.f32.insert(id, value);
+        id
+    }
+}
+
+impl ValueColumn<Uuid, bool> for ExampleValuePool {
+    fn get(&self, id: Uuid) -> Option<&bool> {
+        self.bool.get(&id)
+    }
+
+    fn get_mut(&mut self, id: Uuid) -> Option<&mut bool> {
+        self.bool.get_mut(&id)
+    }
+
+    fn insert(&mut self, value: bool) -> Uuid {
+        let id = Uuid::new_v4();
+        self.bool.insert(id, value);
+        id
+    }
 }

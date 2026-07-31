@@ -1219,11 +1219,11 @@ dependencies = [
  "bevy_reflect",
  "bevy_time",
  "bevy_transform",
+ "indexmap",
  "motiongfx",
  "motiongfx_scene",
  "ron",
  "serde",
- "sparse_map",
 ]
 
 [[package]]
@@ -3105,6 +3105,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 dependencies = [
  "foldhash 0.2.0",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -3692,8 +3694,8 @@ dependencies = [
  "ron",
  "serde",
  "serde_json",
- "sparse_map",
  "typarena",
+ "uuid",
 ]
 
 [[package]]
@@ -5039,10 +5041,8 @@ dependencies = [
 [[package]]
 name = "sparse_map"
 version = "0.3.0"
-source = "git+https://github.com/voxell-tech/sparse_map.git?branch=nixon%2Fserialization#4a34aa3ccd903440ffe361a1d19933d060cc17d2"
-dependencies = [
- "serde",
-]
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea8f483b9159a7efadd9a82915dc40fdc9cfef7985651bbb83a8db20b12bf629"
 
 [[package]]
 name = "spin"

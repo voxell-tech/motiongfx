@@ -2,10 +2,11 @@
 //! Uses a single `f32` column as a stand-in `ValuePool`; a real
 //! backend picks whatever columns it needs.
 
+use hashbrown::HashMap;
 use motiongfx::prelude::*;
 use motiongfx_scene::prelude::*;
 use serde::{Deserialize, Serialize};
-use sparse_map::{Key, SparseMap};
+use uuid::Uuid;
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
@@ -25,7 +26,7 @@ struct RoundtripBackend;
 
 impl SceneBackend for RoundtripBackend {
     type Id = u64;
-    type ValueId = Key;
+    type ValueId = Uuid;
     type ValuePool = RoundtripValuePool;
     type OpId = Op;
     type InterpId = ();
@@ -37,20 +38,22 @@ impl SceneBackend for RoundtripBackend {
     Default, Debug, Clone, PartialEq, Serialize, Deserialize,
 )]
 struct RoundtripValuePool {
-    f32: SparseMap<f32>,
+    f32: HashMap<Uuid, f32>,
 }
 
-impl ValueColumn<Key, f32> for RoundtripValuePool {
-    fn get(&self, id: Key) -> Option<&f32> {
+impl ValueColumn<Uuid, f32> for RoundtripValuePool {
+    fn get(&self, id: Uuid) -> Option<&f32> {
         self.f32.get(&id)
     }
 
-    fn get_mut(&mut self, id: Key) -> Option<&mut f32> {
+    fn get_mut(&mut self, id: Uuid) -> Option<&mut f32> {
         self.f32.get_mut(&id)
     }
 
-    fn insert(&mut self, value: f32) -> Key {
-        self.f32.insert(value)
+    fn insert(&mut self, value: f32) -> Uuid {
+        let id = Uuid::new_v4();
+        self.f32.insert(id, value);
+        id
     }
 }
 

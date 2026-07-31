@@ -29,7 +29,7 @@ bevy_reflect = { workspace = true, optional = true, features = ["uuid"] }
 
 # other
 serde = { workspace = true, features = ["derive"] }
-sparse_map = { workspace = true, features = ["serde"], optional = true }
+indexmap = { workspace = true, features = ["serde"], optional = true }
 ron = { workspace = true, optional = true }
 
 [dev-dependencies]
@@ -40,13 +40,20 @@ workspace = true
 
 [features]
 default = ["std", "asset", "transform", "color"]
-std = ["motiongfx/std", "motiongfx_scene/std", "bevy_ecs/std", "bevy_app/std", "bevy_platform/std", "bevy_time/std"]
+std = [
+    "motiongfx/std",
+    "motiongfx_scene/std",
+    "bevy_ecs/std",
+    "bevy_app/std",
+    "bevy_platform/std",
+    "bevy_time/std",
+]
 asset = ["dep:bevy_asset"]
 transform = ["dep:bevy_transform"]
 color = ["dep:bevy_color"]
 scene = [
     "dep:motiongfx_scene",
-    "dep:sparse_map",
+    "dep:indexmap",
     "dep:ron",
     "dep:bevy_reflect",
     "bevy_math/serialize",

@@ -4,6 +4,7 @@
 
 use alloc::boxed::Box;
 
+use bevy_asset::uuid::Uuid;
 use bevy_reflect::TypePath;
 use bevy_transform::components::Transform;
 use motiongfx::interpolation::Interpolation;
@@ -13,7 +14,7 @@ use motiongfx_scene::registry::SceneRegistry;
 use serde::{Deserialize, Serialize};
 
 use crate::scene::id::{EntityUid, SceneUid};
-use crate::scene::value_pool::{ValueId, ValuePool};
+use crate::scene::value_pool::ValuePool;
 use crate::world::BevyWorld;
 
 /// The concrete [`SceneBackend`] for Bevy.
@@ -21,7 +22,7 @@ pub struct Backend;
 
 impl SceneBackend for Backend {
     type Id = SceneUid;
-    type ValueId = ValueId;
+    type ValueId = Uuid;
     type ValuePool = ValuePool;
     type OpId = AnimOp;
     type InterpId = AnimInterp;
@@ -62,7 +63,7 @@ pub trait SceneRegistryExt {
     where
         S: TypePath,
         BevyWorld: SubjectSource<EntityUid, S>,
-        ValuePool: ValueColumn<ValueId, T>,
+        ValuePool: ValueColumn<Uuid, T>,
         T: ThreadSafe + Clone;
 
     /// Registers a `To` op for `T`: sets the field directly to the
@@ -87,7 +88,7 @@ pub trait SceneRegistryExt {
     where
         S: TypePath,
         BevyWorld: SubjectSource<EntityUid, S>,
-        ValuePool: ValueColumn<ValueId, T>,
+        ValuePool: ValueColumn<Uuid, T>,
         T: Interpolation<M> + ThreadSafe + Clone,
     {
         self.register_reflected_field(field_acc)
@@ -104,7 +105,7 @@ impl SceneRegistryExt for BackendRegistry {
     where
         S: TypePath,
         BevyWorld: SubjectSource<EntityUid, S>,
-        ValuePool: ValueColumn<ValueId, T>,
+        ValuePool: ValueColumn<Uuid, T>,
         T: ThreadSafe + Clone,
     {
         self.register_field_with_key::<S, T, EntityUid>(
