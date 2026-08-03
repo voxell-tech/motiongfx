@@ -36,6 +36,7 @@ impl Plugin for GlassPlugin {
         app.init_resource::<EditorTheme>()
             .add_plugins(UiMaterialPlugin::<GlassMaterial>::default())
             .add_observer(preset::attach_glass)
+            .add_observer(preset::detach_glass)
             .add_systems(
                 Update,
                 (

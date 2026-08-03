@@ -169,16 +169,25 @@ pub(super) fn build_assets(
     }
 }
 
-/// Attach / swap the material whenever a [`Glass`] preset is
-/// inserted.
+/// Drop the material when [`Glass`] is removed.
+pub(super) fn detach_glass(
+    trigger: On<Remove, Glass>,
+    mut commands: Commands,
+) {
+    commands
+        .entity(trigger.entity)
+        .try_remove::<MaterialNode<GlassMaterial>>();
+}
+
+/// Attach / swap the material whenever [`Glass`] is inserted.
 pub(super) fn attach_glass(
-    insert: On<Insert, Glass>,
+    trigger: On<Insert, Glass>,
     q_glass: Query<&Glass>,
     assets: Res<GlassAssets>,
     mut materials: ResMut<Assets<GlassMaterial>>,
     mut commands: Commands,
 ) {
-    let Ok(glass) = q_glass.get(insert.entity) else {
+    let Ok(glass) = q_glass.get(trigger.entity) else {
         return;
     };
     let preset = assets.preset(*glass);
@@ -194,5 +203,5 @@ pub(super) fn attach_glass(
     } else {
         preset
     };
-    commands.entity(insert.entity).insert(MaterialNode(handle));
+    commands.entity(trigger.entity).insert(MaterialNode(handle));
 }
