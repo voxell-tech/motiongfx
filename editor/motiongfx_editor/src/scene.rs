@@ -33,7 +33,9 @@ use motiongfx_editor_ui::dock::{
 use motiongfx_editor_ui::glass::{
     Glass, bind_backdrop, glass_button,
 };
-use motiongfx_editor_ui::inspector::inspector_fields;
+use motiongfx_editor_ui::inspector::{
+    InspectorTarget, inspector_fields,
+};
 use motiongfx_editor_ui::reactive::{
     BevyNodeMutExt, BevyUi, BevyUiExt, KernelRoot, resource_changed,
     value_changed,
@@ -459,7 +461,10 @@ fn register_windows(
             })
             .with(|ui| {
                 // Editable rows built by the reflect inspector.
-                inspector_fields::<EditorSettings>(ui);
+                inspector_fields(
+                    ui,
+                    InspectorTarget::resource::<EditorSettings>(),
+                );
                 // Save row.
                 ui.bsn(bsn! {
                     Node { flex_direction: FlexDirection::Row }
