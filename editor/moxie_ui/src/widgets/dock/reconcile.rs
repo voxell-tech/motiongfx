@@ -36,8 +36,7 @@ impl Plugin for ReconcilePlugin {
 }
 
 /// The dock, as a node in the app's UI tree. Call this from the
-/// builder handed to
-/// [`KernelPlugin::new`](crate::reactive::KernelPlugin::new).
+/// builder handed to [`build_root`](crate::reactive::build_root).
 pub fn dock(ui: &mut BevyUi) {
     super::add_popup::add_window_popup(ui);
     ui.node(|world, node| {
