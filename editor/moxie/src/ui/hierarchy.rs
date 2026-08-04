@@ -12,15 +12,14 @@ use moxie_ui::glass::Glass;
 use moxie_ui::reactive::{BevyUi, BevyUiExt};
 use moxie_ui::theme::EditorTheme;
 
-use crate::PANEL_PADDING;
-use crate::scene::TrackViewportCamera;
+use super::{PANEL_PADDING, TrackViewportCamera};
 
 /// Indent per hierarchy level.
 const INDENT: f32 = 12.0;
 
 /// Marks the scrollable panel the rows are built into.
 #[derive(Component, Default, Clone)]
-pub(crate) struct HierarchyPanel;
+struct HierarchyPanel;
 
 /// One row: an entity's depth and display name.
 #[derive(Clone, PartialEq)]
@@ -64,7 +63,7 @@ impl HierarchyQueries {
 }
 
 /// The hierarchy panel, as kernel nodes.
-pub(crate) fn panel(ui: &mut BevyUi) {
+pub(super) fn panel(ui: &mut BevyUi) {
     let rows: Arc<Mutex<Vec<Row>>> = Arc::default();
     let seen = rows.clone();
     let mut queries: Option<HierarchyQueries> = None;

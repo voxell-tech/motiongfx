@@ -1,11 +1,11 @@
 //! View-plumbing systems: retarget the composition's scene cameras to
 //! the offscreen preview image, and fit that image above the panel.
-//! (The name column's scroll-locking lives in `scene.rs`.)
+//! (The name column's scroll-locking lives in `ui.rs`.)
 
 use bevy::camera::RenderTarget;
 use bevy::prelude::*;
 
-use crate::scene::TrackViewportCamera;
+use crate::ui::TrackViewportCamera;
 use crate::{EditorSettings, PreviewImage};
 
 /// Point every scene camera (all but the editor's own
