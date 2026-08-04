@@ -11,9 +11,7 @@ use bevy::prelude::*;
 use bevy::scene::EntityWorldMutSceneExt;
 use bevy::ui::Node as UiNode;
 
-use moxie_ui_kernel::{
-    ChangedFn, Host, Kernel, NodeMut, Ui,
-};
+use moxie_ui_kernel::{ChangedFn, Host, Kernel, NodeMut, Ui};
 
 /// The kernel itself. Private: the app never touches it directly,
 /// because a flush owns it exclusively and anything the flush spawns

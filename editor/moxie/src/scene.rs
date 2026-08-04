@@ -30,20 +30,14 @@ use moxie_ui::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
     DockWindowDescriptor, Edge, WindowRegistry, dock,
 };
-use moxie_ui::glass::{
-    Glass, bind_backdrop, glass_button,
-};
-use moxie_ui::inspector::{
-    InspectorTarget, inspector_fields,
-};
+use moxie_ui::glass::{Glass, bind_backdrop, glass_button};
+use moxie_ui::inspector::{InspectorTarget, inspector_fields};
 use moxie_ui::reactive::{
     BevyNodeMutExt, BevyUi, BevyUiExt, KernelRoot, resource_changed,
     value_changed,
 };
 use moxie_ui::theme::EditorTheme;
-use moxie_ui::{
-    Divider, label, playhead_line, timeline_track,
-};
+use moxie_ui::{Divider, label, playhead_line, timeline_track};
 
 /// Marker for the timeline panel node (fills its dock area).
 #[derive(Component, Default, Clone)]
