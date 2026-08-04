@@ -8,9 +8,9 @@ use std::sync::{Arc, Mutex};
 
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
-use motiongfx_editor_ui::glass::Glass;
-use motiongfx_editor_ui::reactive::{BevyUi, BevyUiExt};
-use motiongfx_editor_ui::theme::EditorTheme;
+use moxie_ui::glass::Glass;
+use moxie_ui::reactive::{BevyUi, BevyUiExt};
+use moxie_ui::theme::EditorTheme;
 
 use crate::PANEL_PADDING;
 use crate::scene::TrackViewportCamera;

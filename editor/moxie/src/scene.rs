@@ -26,24 +26,18 @@ use crate::{
     NAME_PANEL_MIN, NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage,
     TRACK_GAP, TRACK_HEIGHT, TRACK_TOP_PADDING,
 };
-use motiongfx_editor_ui::dock::{
+use moxie_ui::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
     DockWindowDescriptor, Edge, WindowRegistry, dock,
 };
-use motiongfx_editor_ui::glass::{
-    Glass, bind_backdrop, glass_button,
-};
-use motiongfx_editor_ui::inspector::{
-    InspectorTarget, inspector_fields,
-};
-use motiongfx_editor_ui::reactive::{
+use moxie_ui::glass::{Glass, bind_backdrop, glass_button};
+use moxie_ui::inspector::{InspectorTarget, inspector_fields};
+use moxie_ui::reactive::{
     BevyNodeMutExt, BevyUi, BevyUiExt, KernelRoot, resource_changed,
     value_changed,
 };
-use motiongfx_editor_ui::theme::EditorTheme;
-use motiongfx_editor_ui::{
-    Divider, label, playhead_line, timeline_track,
-};
+use moxie_ui::theme::EditorTheme;
+use moxie_ui::{Divider, label, playhead_line, timeline_track};
 
 /// Marker for the timeline panel node (fills its dock area).
 #[derive(Component, Default, Clone)]

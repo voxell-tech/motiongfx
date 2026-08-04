@@ -14,9 +14,9 @@ motiongfx = { version = "0.3.0", path = "crates/motiongfx", default-features = f
 motiongfx_scene = { version = "0.3.0", path = "crates/motiongfx_scene", default-features = false }
 bevy_motiongfx = { version = "0.3.0", path = "crates/bevy_motiongfx", default-features = false }
 peniko_motiongfx = { version = "0.3.0", path = "crates/peniko_motiongfx" }
-motiongfx_editor = { version = "0.3.0", path = "editor/motiongfx_editor" }
-motiongfx_editor_ui = { version = "0.3.0", path = "editor/motiongfx_editor_ui" }
-motiongfx_editor_ui_kernel = { version = "0.3.0", path = "editor/motiongfx_editor_ui_kernel" }
+moxie = { version = "0.3.0", path = "editor/moxie" }
+moxie_ui = { version = "0.3.0", path = "editor/moxie_ui" }
+moxie_ui_kernel = { version = "0.3.0", path = "editor/moxie_ui_kernel" }
 
 # bevy
 bevy = { version = "0.19", default-features = false }

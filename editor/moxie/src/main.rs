@@ -1,4 +1,4 @@
-//! Demonstrates the [`MotionGfxEditorPlugin`] timeline editor.
+//! Demonstrates the [`MoxiePlugin`] timeline editor.
 //!
 //! A row of cubes animates through a single track containing several
 //! actions. The editor docks a timeline panel at the bottom of the
@@ -10,7 +10,7 @@ use bevy::color::palettes;
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
-use motiongfx_editor::MotionGfxEditorPlugin;
+use moxie::MoxiePlugin;
 
 const CUBE_COUNT: usize = 6;
 
@@ -19,7 +19,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             BevyMotionGfxPlugin,
-            MotionGfxEditorPlugin,
+            MoxiePlugin,
         ))
         .add_systems(Startup, (setup, spawn_timeline))
         .run();

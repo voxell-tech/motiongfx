@@ -14,7 +14,7 @@ use crate::scene::TimelineContent;
 use crate::{EditorState, PIXELS_PER_SECOND};
 use bevy::ecs::query::QueryState;
 use bevy_motiongfx::prelude::TimelineId;
-use motiongfx_editor_ui::reactive::BevyUi;
+use moxie_ui::reactive::BevyUi;
 
 /// Command to flip playback, dispatched from the play/pause button
 /// and the spacebar hotkey and handled in one place

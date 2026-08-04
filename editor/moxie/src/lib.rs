@@ -25,15 +25,15 @@ use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
 };
 use bevy_motiongfx::prelude::TimelineId;
-use motiongfx_editor_ui::dock::DockPlugin;
-use motiongfx_editor_ui::inspector::InspectAppExt;
-use motiongfx_editor_ui::reactive::{KernelPlugin, KernelSet};
+use moxie_ui::dock::DockPlugin;
+use moxie_ui::inspector::InspectAppExt;
+use moxie_ui::reactive::{KernelPlugin, KernelSet};
 
 /// Plugin that renders a timeline editor UI for the first
 /// [`Timeline`](bevy_motiongfx::prelude::BevyTimeline).
-pub struct MotionGfxEditorPlugin;
+pub struct MoxiePlugin;
 
-impl Plugin for MotionGfxEditorPlugin {
+impl Plugin for MoxiePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SettingsPlugin::new(
             "org.voxell.motiongfx.editor",
