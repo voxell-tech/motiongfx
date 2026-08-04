@@ -26,7 +26,7 @@ use bevy::settings::{
 };
 use bevy_motiongfx::prelude::TimelineId;
 use motiongfx_editor_ui::dock::DockPlugin;
-use motiongfx_editor_ui::inspector::ReflectInspectorPlugin;
+use motiongfx_editor_ui::inspector::InspectAppExt;
 use motiongfx_editor_ui::reactive::{KernelPlugin, KernelSet};
 
 /// Plugin that renders a timeline editor UI for the first
@@ -51,9 +51,9 @@ impl Plugin for EditorUiPlugin {
         app.add_plugins((
             FeathersPlugins,
             DockPlugin,
-            ReflectInspectorPlugin::<EditorSettings>::default(),
             KernelPlugin::new(scene::build_editor_ui),
         ))
+        .register_default_inspects()
         // Seed the feathers palette (its default theme is empty).
         .insert_resource(UiTheme(create_dark_theme()))
         .init_resource::<EditorState>()
