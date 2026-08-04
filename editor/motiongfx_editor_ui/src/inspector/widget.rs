@@ -195,8 +195,7 @@ number_widget! {
     i32 => I32, I32, i32, |value| value, |value| value;
     i64 => I64, I64, i64, |value| value, |value| value;
     // There is no unsigned input format, so these ride an `i64` and
-    // clamp on the way back - `as` alone would wrap a negative edit
-    // around to a huge value.
-    u32 => I64, I64, i64, |value: i64| value.max(0) as u32, |value| value as i64;
+    // clamp on the way back - `as` alone would wrap or truncate.
+    u32 => I64, I64, i64, |value: i64| value.clamp(0, u32::MAX as i64) as u32, |value| value as i64;
     u64 => I64, I64, i64, |value: i64| value.max(0) as u64, |value| value as i64;
 }
