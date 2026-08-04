@@ -132,7 +132,7 @@ fn control_bar(ui: &mut BevyUi) {
                 commands.trigger(TogglePlayback);
             })
             Node {
-                width: Val::Px(84.0),
+                width: Val::Px(26.0),
                 height: Val::Px(26.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
@@ -140,16 +140,23 @@ fn control_bar(ui: &mut BevyUi) {
             }
         })
         .with(|ui| {
-            ui.bsn(label::<PlayPauseLabel>("Play")).bind::<Text>(
+            ui.bsn(bsn! {
+                PlayPauseLabel
+                ImageNode { image: {crate::icons::PLAY} }
+                Node { width: Val::Px(14.0), height: Val::Px(14.0) }
+            })
+            .bind::<ImageNode>(
                 resource_changed::<EditorState>(),
                 |world, _| {
-                    Text::new(
+                    let path =
                         if world.resource::<EditorState>().is_playing
                         {
-                            "Pause"
+                            crate::icons::PAUSE
                         } else {
-                            "Play"
-                        },
+                            crate::icons::PLAY
+                        };
+                    ImageNode::new(
+                        world.resource::<AssetServer>().load(path),
                     )
                 },
             );
@@ -380,7 +387,7 @@ fn register_windows(
     registry.register(DockWindowDescriptor {
         id: "viewport".into(),
         name: "Viewport".into(),
-        icon: None,
+        icon: Some(crate::icons::VIEWPORT.into()),
         build: Arc::new(move |ui: &mut BevyUi| {
             let preview = preview.clone();
             ui.bsn(bsn! {
@@ -423,14 +430,14 @@ fn register_windows(
     registry.register(DockWindowDescriptor {
         id: "timeline".into(),
         name: "Timeline".into(),
-        icon: None,
+        icon: Some(crate::icons::TIMELINE.into()),
         build: Arc::new(|ui: &mut BevyUi| timeline_panel(ui)),
     });
 
     registry.register(DockWindowDescriptor {
         id: "hierarchy".into(),
         name: "Hierarchy".into(),
-        icon: None,
+        icon: Some(crate::icons::HIERARCHY.into()),
         build: Arc::new(|ui: &mut BevyUi| {
             crate::hierarchy::panel(ui)
         }),
@@ -440,7 +447,7 @@ fn register_windows(
     registry.register(DockWindowDescriptor {
         id: "settings".into(),
         name: "Settings".into(),
-        icon: None,
+        icon: Some(crate::icons::SETTINGS.into()),
         build: Arc::new(|ui: &mut BevyUi| {
             ui.bsn(bsn! {
                 Node {

@@ -249,6 +249,7 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
                 tab.id,
                 desc.id.clone(),
                 desc.name.clone(),
+                desc.icon.clone(),
                 desc.build.clone(),
             ))
         })
@@ -256,8 +257,8 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
 
     let bar_tabs = tabs_data
         .iter()
-        .map(|(tab_id, window_id, name, _)| {
-            (*tab_id, window_id.clone(), name.clone())
+        .map(|(tab_id, window_id, name, icon, _)| {
+            (*tab_id, window_id.clone(), name.clone(), icon.clone())
         })
         .collect::<Vec<_>>();
 
@@ -295,7 +296,7 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
         if show_bar {
             tabs::build_tab_bar(id, area_entity, bar_tabs, ui);
         }
-        for (tab_id, window_id, _, build) in tabs_data {
+        for (tab_id, window_id, _, _, build) in tabs_data {
             build_content(id, tab_id, window_id, build, ui);
         }
     });

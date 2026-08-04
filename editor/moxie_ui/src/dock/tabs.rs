@@ -8,6 +8,7 @@ use bevy::ui::widget::ImageNode;
 use super::TAB_HEIGHT;
 use super::area::{
     DockTab, DockTabAddButton, DockTabBar, DockTabCloseButton,
+    DockTabIcon,
 };
 use super::tree::{DockNode, DockTree, NodeId, TabId};
 use crate::glass::Glass;
@@ -78,7 +79,7 @@ pub struct DockTabRow;
 pub(super) fn build_tab_bar(
     leaf: NodeId,
     area: Entity,
-    tabs: Vec<(TabId, String, String)>,
+    tabs: Vec<(TabId, String, String, Option<String>)>,
     ui: &mut BevyUi,
 ) {
     ui.node(|world, node| {
@@ -121,8 +122,10 @@ pub(super) fn build_tab_bar(
             ));
         })
         .with(move |ui| {
-            for (tab_id, window_id, label) in tabs {
-                build_tab(leaf, area, tab_id, window_id, label, ui);
+            for (tab_id, window_id, label, icon) in tabs {
+                build_tab(
+                    leaf, area, tab_id, window_id, label, icon, ui,
+                );
             }
         });
 
@@ -145,6 +148,7 @@ fn build_tab(
     tab_id: TabId,
     window_id: String,
     label: String,
+    icon: Option<String>,
     ui: &mut BevyUi,
 ) {
     let is_active = active_of(ui.world(), leaf) == Some(tab_id);
@@ -163,6 +167,7 @@ fn build_tab(
             @window_id: {window_id},
             @tab_id: {tab_id},
             @label: {label},
+            @icon: {icon},
             @area: {area},
             @is_active: {is_active},
             @text_color: {text_color},
@@ -192,6 +197,15 @@ fn build_tab(
                     world.get_mut::<TextColor>(child)
                 {
                     text.0 = color;
+                }
+                // Icon-less tabs keep their slot at alpha 0; only the
+                // hue follows the active/inactive swap.
+                if world.get::<DockTabIcon>(child).is_some()
+                    && let Some(mut image) =
+                        world.get_mut::<ImageNode>(child)
+                {
+                    let alpha = image.color.alpha();
+                    image.color = color.with_alpha(alpha);
                 }
             }
         },

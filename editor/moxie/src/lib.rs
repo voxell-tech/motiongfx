@@ -11,6 +11,7 @@
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
 mod hierarchy;
+mod icons;
 mod playback;
 mod scene;
 mod view;

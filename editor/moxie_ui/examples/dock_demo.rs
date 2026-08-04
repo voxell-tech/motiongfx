@@ -26,7 +26,12 @@ use moxie_ui::reactive::{
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins,
+            // `../assets`: the editor crates share one asset folder
+            // (`editor/assets`) rather than each carrying its own.
+            DefaultPlugins.set(AssetPlugin {
+                file_path: "../assets".into(),
+                ..default()
+            }),
             FeathersPlugins,
             DockPlugin,
             KernelPlugin::new(dock),
