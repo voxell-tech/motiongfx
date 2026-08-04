@@ -14,7 +14,7 @@ mod tree;
 
 pub use area::{
     ActiveDockWindow, DockArea, DockTab, DockTabAddButton,
-    DockTabBar, DockTabCloseButton, DockTabContent, DockWindow,
+    DockTabCloseButton, DockTabContent, DockWindow,
 };
 use bevy::prelude::*;
 pub use drag::{DockDragPlugin, DockDragState};
@@ -43,7 +43,7 @@ pub struct DockPlugin;
 impl Plugin for DockPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            super::glass::GlassPlugin,
+            crate::glass::GlassPlugin,
             split::SplitPanelPlugin,
             drag::DockDragPlugin,
             reconcile::ReconcilePlugin,
@@ -52,8 +52,8 @@ impl Plugin for DockPlugin {
     }
 }
 
-// Backgrounds come from the glass materials (`crate::glass`) and
-// colors from the theme (`crate::theme`); only metrics live here.
+// Backgrounds come from the glass materials (`crate::glass`)
+// and colors from the theme (`crate::theme`); only metrics live here.
 
 /// Tab-bar height, in px.
 pub(crate) const TAB_HEIGHT: f32 = 24.0;

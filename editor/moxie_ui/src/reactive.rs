@@ -3,8 +3,6 @@
 //! The kernel is bevy-free; this is where it meets the ECS. Nodes are
 //! entities, widgets are boxed [`Scene`]s, and the world is [`World`].
 
-use std::sync::Arc;
-
 use bevy::ecs::change_detection::{ComponentTicks, Tick};
 use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
@@ -21,58 +19,42 @@ use moxie_ui_kernel::{ChangedFn, Host, Kernel, NodeMut, Ui};
 #[derive(Resource, Deref, DerefMut, Default)]
 struct BevyKernel(Kernel<BevyHost>);
 
-/// Marks the entity the whole UI tree is built under. Spawn exactly
-/// one, carrying whatever the app's root node needs (camera target,
-/// root `Node`); the kernel fills it from the builder given to
-/// [`KernelPlugin::new`].
+/// Marks the entity a UI tree is built under. Purely a naming
+/// convention for consumers (e.g. to find "the" root for a camera
+/// target) — the kernel itself doesn't query for it; see
+/// [`build_root`].
 #[derive(Component, Default, Clone)]
 pub struct KernelRoot;
 
-type RootBuildFn = Arc<dyn for<'a> Fn(&mut BevyUi<'a>) + Send + Sync>;
-
-#[derive(Resource, Deref)]
-struct RootBuild(RootBuildFn);
-
-/// Drives [`Kernel::flush`] once per frame and owns the bootstrap:
-/// the one watcher the app cannot declare through [`Ui`], because
-/// every other watcher and binding is nested inside a build.
-pub struct KernelPlugin(RootBuildFn);
-
-impl KernelPlugin {
-    pub fn new(
-        build: impl for<'a> Fn(&mut BevyUi<'a>) + Send + Sync + 'static,
-    ) -> Self {
-        Self(Arc::new(build))
-    }
-}
+/// Drives [`Kernel::flush`] once per frame. Just the machinery: a
+/// root's build is registered separately, with [`build_root`], from
+/// wherever the app spawns that root (typically a `Startup` system).
+#[derive(Default)]
+pub struct KernelPlugin;
 
 impl Plugin for KernelPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BevyKernel>()
-            .insert_resource(RootBuild(self.0.clone()))
-            .add_systems(
-                Update,
-                (watch_root, flush_kernel).chain().in_set(KernelSet),
-            );
+            .add_systems(Update, flush_kernel.in_set(KernelSet));
     }
 }
 
-/// The root build runs once; everything reactive below it is a nested
-/// [`NodeMut::watch`].
-fn watch_root(
-    mut kernel: ResMut<BevyKernel>,
-    root_build: Res<RootBuild>,
-    q_root: Query<Entity, Added<KernelRoot>>,
+/// Register `root`'s build as a one-shot: it runs on the next flush,
+/// and everything reactive below it is a nested [`NodeMut::watch`]
+/// declared inside `build`. Call once per root, after spawning it —
+/// a `Startup` system's `Commands::queue` is the usual place, since
+/// `Commands` alone can't reach `World` to call this directly.
+pub fn build_root(
+    world: &mut World,
+    root: Entity,
+    build: impl for<'a> Fn(&mut BevyUi<'a>) + Send + Sync + 'static,
 ) {
-    for root in &q_root {
-        let build = root_build.0.clone();
-        let mut first = true;
-        kernel.watch(
-            root,
-            move |_, _| std::mem::replace(&mut first, false),
-            move |ui| build(ui),
-        );
-    }
+    let mut first = true;
+    world.resource_mut::<BevyKernel>().watch(
+        root,
+        move |_, _| std::mem::replace(&mut first, false),
+        move |ui| build(ui),
+    );
 }
 
 fn flush_kernel(world: &mut World) {
@@ -270,6 +252,19 @@ where
         seen = Some(current);
         fired
     }
+}
+
+/// Fires when the watched node's `C` differs from the last poll.
+///
+/// The entity-local counterpart to [`resource_changed`]: state for a
+/// single widget instance (a popup's open/closed, a field's edit
+/// buffer) belongs on that widget's own node, not in a global
+/// `Resource` that every instance of the widget would have to share.
+/// `C` absent reads as unchanged, not a rebuild — a node that hasn't
+/// had its state inserted yet is not yet ready to build.
+pub fn component_changed<C: Component + Clone + PartialEq>()
+-> impl FnMut(&World, Entity) -> bool {
+    value_changed(|world, node| world.get::<C>(node).cloned())
 }
 
 /// Fires when the current `S` differs from the last poll.

@@ -26,18 +26,23 @@ use crate::{
     NAME_PANEL_MIN, NAME_PANEL_WIDTH, PANEL_PADDING, PreviewImage,
     TRACK_GAP, TRACK_HEIGHT, TRACK_TOP_PADDING,
 };
-use moxie_ui::dock::{
-    DockAreaStyle, DockLeaf, DockNode, DockTree,
-    DockWindowDescriptor, Edge, WindowRegistry, dock,
+use moxie_ui::elements::{
+    Divider, Label, PlayheadLine, TimelineTrack,
 };
-use moxie_ui::glass::{Glass, bind_backdrop, glass_button};
-use moxie_ui::inspector::{InspectorTarget, inspector_fields};
+use moxie_ui::glass::{Glass, glass_button};
 use moxie_ui::reactive::{
     BevyNodeMutExt, BevyUi, BevyUiExt, KernelRoot, resource_changed,
     value_changed,
 };
 use moxie_ui::theme::EditorTheme;
-use moxie_ui::{Divider, label, playhead_line, timeline_track};
+use moxie_ui::widgets::bind_backdrop;
+use moxie_ui::widgets::dock::{
+    DockAreaStyle, DockLeaf, DockNode, DockTree,
+    DockWindowDescriptor, Edge, WindowRegistry, dock,
+};
+use moxie_ui::widgets::inspector::{
+    InspectorTarget, inspector_fields,
+};
 
 /// Marker for the timeline panel node (fills its dock area).
 #[derive(Component, Default, Clone)]
@@ -162,7 +167,11 @@ fn control_bar(ui: &mut BevyUi) {
             );
         });
 
-        ui.bsn(label::<TimeLabel>("0.00s")).bind::<Text>(
+        ui.bsn(bsn! {
+            TimeLabel
+            @Label { @text: {"0.00s".to_string()} }
+        })
+        .bind::<Text>(
             resource_changed::<MotionGfxManager>(),
             |world, entity| {
                 Text::new(format!(
@@ -236,7 +245,7 @@ fn track_area(ui: &mut BevyUi) {
         .with(|ui| {
             ui.bsn(bsn! {
                 TimelineContent
-                timeline_track(1.0)
+                @TimelineTrack { @width: 1.0 }
                 on(on_track_press)
                 on(on_track_drag)
                 on(on_track_release)
@@ -265,7 +274,7 @@ fn track_area(ui: &mut BevyUi) {
 
                 ui.bsn(bsn! {
                     Playhead
-                    playhead_line(0.0)
+                    @PlayheadLine { @left: 0.0 }
                 })
                 .bind_field::<Node, _>(
                     resource_changed::<MotionGfxManager>(),
@@ -356,17 +365,24 @@ pub(crate) fn setup_editor_ui(
         leaf.area_id = "timeline".into();
     }
 
-    // The kernel builds the whole tree under this root.
-    commands.spawn((
-        KernelRoot,
-        UiTargetCamera(ui_camera),
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            ..default()
-        },
-    ));
+    // The kernel builds the whole tree under this root. `Commands`
+    // can't reach `World` itself, so the build is queued: it runs
+    // once these commands are applied, by which point `root` exists.
+    let root = commands
+        .spawn((
+            KernelRoot,
+            UiTargetCamera(ui_camera),
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+        ))
+        .id();
+    commands.queue(move |world: &mut World| {
+        moxie_ui::reactive::build_root(world, root, build_editor_ui);
+    });
 }
 
 /// The app's UI tree. Everything reactive below here is a nested
@@ -483,9 +499,10 @@ fn register_windows(
                             justify_content: JustifyContent::Center,
                             border_radius: BorderRadius::all(Val::Px(6.0)),
                         }
-                        Children [
-                            label::<SettingsSaveLabel>("Save")
-                        ]
+                        Children [(
+                            SettingsSaveLabel
+                            @Label { @text: {"Save".to_string()} }
+                        )]
                     )]
                 });
             });

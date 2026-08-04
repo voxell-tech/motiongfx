@@ -31,8 +31,7 @@ pub struct ReconcilePlugin;
 
 impl Plugin for ReconcilePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DockTree>()
-            .init_resource::<super::add_popup::AddWindowPopupState>();
+        app.init_resource::<DockTree>();
     }
 }
 

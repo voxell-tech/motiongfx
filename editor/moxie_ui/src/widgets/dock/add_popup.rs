@@ -3,24 +3,30 @@
 //!
 //! State-driven: the click observer only writes
 //! [`AddWindowPopupState`]; a watcher renders whatever that says.
+//! The state lives on the overlay node itself (there's exactly one),
+//! rather than a global `Resource` — see [`crate::reactive::component_changed`].
 
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 
-use super::area::{DockTabAddButton, PLACEHOLDER_ICON};
+use super::area::DockTabAddButton;
 use super::drag::logical_rect;
 use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tree::DockTree;
+use crate::elements::Frame;
 use crate::glass::{Glass, glass_button};
-use crate::reactive::{BevyUi, BevyUiExt, value_changed};
+use crate::icons;
+use crate::reactive::{BevyUi, BevyUiExt, component_changed};
 use crate::theme::EditorTheme;
 
 const POPUP_WIDTH: f32 = 150.0;
 
 /// The open popup, if any: which "+" button owns it and where it sits.
-#[derive(Resource, Default, PartialEq, Clone)]
+/// One overlay node ever carries this, so a plain `Query::single_mut`
+/// finds it from anywhere.
+#[derive(Component, Default, PartialEq, Clone)]
 pub struct AddWindowPopupState {
     open: Option<OpenPopup>,
 }
@@ -53,13 +59,9 @@ pub(super) fn add_window_popup(ui: &mut BevyUi) {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
         }
+        AddWindowPopupState
     })
-    .watch(
-        value_changed(|world: &World, _| {
-            world.resource::<AddWindowPopupState>().clone()
-        }),
-        build_popup,
-    );
+    .watch(component_changed::<AddWindowPopupState>(), build_popup);
 }
 
 /// Open the popup under the clicked "+" button; clicking the same
@@ -71,12 +73,15 @@ pub(super) fn on_add_click(
         &ComputedNode,
         &UiGlobalTransform,
     )>,
-    mut state: ResMut<AddWindowPopupState>,
+    mut q_state: Query<&mut AddWindowPopupState>,
 ) {
     click.propagate(false);
     let owner = click.entity;
     let Ok((button, computed, transform)) = q_buttons.get(owner)
     else {
+        return;
+    };
+    let Ok(mut state) = q_state.single_mut() else {
         return;
     };
 
@@ -98,15 +103,20 @@ pub(super) fn on_add_click(
 /// Close on any click that isn't on the popup itself.
 fn close_popup(
     mut click: On<Pointer<Click>>,
-    mut state: ResMut<AddWindowPopupState>,
+    mut q_state: Query<&mut AddWindowPopupState>,
 ) {
     click.propagate(false);
-    state.open = None;
+    if let Ok(mut state) = q_state.single_mut() {
+        state.open = None;
+    }
 }
 
 fn build_popup(ui: &mut BevyUi) {
-    let Some(open) =
-        ui.world().resource::<AddWindowPopupState>().open.clone()
+    let popup_root = ui.parent();
+    let Some(open) = ui
+        .world()
+        .get::<AddWindowPopupState>(popup_root)
+        .and_then(|state| state.open.clone())
     else {
         return;
     };
@@ -132,16 +142,18 @@ fn build_popup(ui: &mut BevyUi) {
 
     let (left, top, area) = (open.left, open.top, open.area);
     ui.bsn(bsn! {
+        @Frame {
+            @width: {Val::Px(POPUP_WIDTH)},
+            @direction: {FlexDirection::Column},
+            @padding: {UiRect::all(Val::Px(4.0))},
+            @radius: {Val::Px(6.0)},
+            @glass: {Some(Glass::Popup)},
+        }
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px({left}),
             top: Val::Px({top}),
-            width: Val::Px(POPUP_WIDTH),
-            flex_direction: FlexDirection::Column,
-            padding: UiRect::all(Val::Px(4.0)),
-            border_radius: BorderRadius::all(Val::Px(6.0)),
         }
-        template_value(Glass::Popup)
         GlobalZIndex(181)
     })
     .with(move |ui| build_rows(ui, area));
@@ -169,26 +181,28 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
             on(move |mut click: On<Pointer<Click>>,
                      q_bindings: Query<&NodeBinding>,
                      mut tree: ResMut<DockTree>,
-                     mut state: ResMut<AddWindowPopupState>| {
+                     mut q_state: Query<&mut AddWindowPopupState>| {
                 click.propagate(false);
                 if let Ok(binding) = q_bindings.get(area) {
                     tree.add_tab(binding.0, window_id.clone());
                 }
-                state.open = None;
+                if let Ok(mut state) = q_state.single_mut() {
+                    state.open = None;
+                }
             })
-            Node {
-                width: Val::Percent(100.0),
-                justify_content: JustifyContent::FlexStart,
-                align_items: AlignItems::Center,
-                padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
-                border_radius: BorderRadius::all(Val::Px(4.0)),
+            @Frame {
+                @width: {Val::Percent(100.0)},
+                @justify: {JustifyContent::FlexStart},
+                @align: {AlignItems::Center},
+                @padding: {UiRect::axes(Val::Px(8.0), Val::Px(4.0))},
+                @radius: {Val::Px(4.0)},
             }
         })
         .with(move |ui| {
             let (icon_src, icon_color) = match &icon {
                 Some(icon) => (icon.clone(), text_color),
                 None => (
-                    PLACEHOLDER_ICON.to_string(),
+                    icons::PLACEHOLDER.to_string(),
                     text_color.with_alpha(0.0),
                 ),
             };

@@ -82,6 +82,6 @@ impl GlassMaterial {
 
 impl UiMaterial for GlassMaterial {
     fn fragment_shader() -> ShaderRef {
-        "embedded://moxie_ui/glass.wgsl".into()
+        "embedded://moxie_ui/glass/glass.wgsl".into()
     }
 }

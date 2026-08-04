@@ -9,13 +9,11 @@
 //! `BackgroundColor`/`BorderColor` — the material replaces both.
 //! Corner rounding comes from the node's own `BorderRadius`.
 
-mod backdrop;
 mod glow;
 mod material;
 mod preset;
 mod widget;
 
-pub use backdrop::{GlassBackdrop, bind_backdrop};
 use bevy::asset::embedded_asset;
 use bevy::prelude::*;
 use bevy::ui_render::prelude::UiMaterialPlugin;

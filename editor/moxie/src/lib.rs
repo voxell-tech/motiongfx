@@ -18,17 +18,13 @@ mod view;
 
 use core::time::Duration;
 
-use bevy::feathers::FeathersPlugins;
-use bevy::feathers::dark_theme::create_dark_theme;
-use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
 use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
 };
 use bevy_motiongfx::prelude::TimelineId;
-use moxie_ui::dock::DockPlugin;
-use moxie_ui::inspector::InspectAppExt;
-use moxie_ui::reactive::{KernelPlugin, KernelSet};
+use moxie_ui::MoxieUiPlugin;
+use moxie_ui::reactive::KernelSet;
 
 /// Plugin that renders a timeline editor UI for the first
 /// [`Timeline`](bevy_motiongfx::prelude::BevyTimeline).
@@ -49,27 +45,20 @@ struct EditorUiPlugin;
 
 impl Plugin for EditorUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            FeathersPlugins,
-            DockPlugin,
-            KernelPlugin::new(scene::build_editor_ui),
-        ))
-        .register_default_inspects()
-        // Seed the feathers palette (its default theme is empty).
-        .insert_resource(UiTheme(create_dark_theme()))
-        .init_resource::<EditorState>()
-        .add_systems(Startup, scene::setup_editor_ui)
-        .add_systems(
-            Update,
-            (
-                playback::play_pause_hotkey,
-                playback::stop_at_track_end,
-                view::retarget_scene_cameras,
+        app.add_plugins(MoxieUiPlugin)
+            .init_resource::<EditorState>()
+            .add_systems(Startup, scene::setup_editor_ui)
+            .add_systems(
+                Update,
+                (
+                    playback::play_pause_hotkey,
+                    playback::stop_at_track_end,
+                    view::retarget_scene_cameras,
+                )
+                    .chain()
+                    .before(KernelSet),
             )
-                .chain()
-                .before(KernelSet),
-        )
-        .add_observer(playback::on_toggle_playback);
+            .add_observer(playback::on_toggle_playback);
     }
 }
 
