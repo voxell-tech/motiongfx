@@ -1,5 +1,5 @@
 //! Demonstrates the standalone docking system in
-//! [`motiongfx_editor_ui::dock`].
+//! [`moxie_ui::dock`].
 //!
 //! Three trivial panels ("Panel A/B/C") start as tabs in one full-window
 //! area. Try:
@@ -15,11 +15,11 @@ use bevy::feathers::FeathersPlugins;
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
-use motiongfx_editor_ui::dock::{
+use moxie_ui::dock::{
     DockAreaStyle, DockLeaf, DockPlugin, DockTree,
     DockWindowDescriptor, WindowRegistry, dock,
 };
-use motiongfx_editor_ui::reactive::{
+use moxie_ui::reactive::{
     BevyUi, BevyUiExt, KernelPlugin, KernelRoot,
 };
 

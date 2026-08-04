@@ -1,5 +1,5 @@
 [package]
-name = "motiongfx_editor"
+name = "moxie"
 description = "A bevy_ui based editor for the MotionGfx framework."
 version.workspace = true
 edition.workspace = true
@@ -8,7 +8,7 @@ repository.workspace = true
 
 [dependencies]
 bevy_motiongfx = { workspace = true, default-features = true }
-motiongfx_editor_ui = { workspace = true }
+moxie_ui = { workspace = true }
 bevy = { workspace = true, default-features = true, features = [
     "bevy_feathers",
     "bevy_ui_widgets",

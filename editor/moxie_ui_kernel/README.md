@@ -1,4 +1,4 @@
-# motiongfx_editor_ui_kernel
+# moxie_ui_kernel
 
 A reactive UI kernel with no renderer, no layout engine, and no
 elements of its own. It owns a tree of *nodes* and keeps them in sync

@@ -1,4 +1,4 @@
-//! Bevy backend for [`motiongfx_editor_ui_kernel`].
+//! Bevy backend for [`moxie_ui_kernel`].
 //!
 //! The kernel is bevy-free; this is where it meets the ECS. Nodes are
 //! entities, widgets are boxed [`Scene`]s, and the world is [`World`].
@@ -11,7 +11,7 @@ use bevy::prelude::*;
 use bevy::scene::EntityWorldMutSceneExt;
 use bevy::ui::Node as UiNode;
 
-use motiongfx_editor_ui_kernel::{
+use moxie_ui_kernel::{
     ChangedFn, Host, Kernel, NodeMut, Ui,
 };
 

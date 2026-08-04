@@ -787,7 +787,6 @@ version = "0.3.0"
 dependencies = [
  "bevy",
  "bevy_motiongfx",
- "motiongfx_editor_ui",
 ]
 
 [[package]]
@@ -3662,30 +3661,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "motiongfx_editor"
-version = "0.3.0"
-dependencies = [
- "bevy",
- "bevy_motiongfx",
- "motiongfx_editor_ui",
-]
-
-[[package]]
-name = "motiongfx_editor_ui"
-version = "0.3.0"
-dependencies = [
- "bevy",
- "motiongfx_editor_ui_kernel",
-]
-
-[[package]]
-name = "motiongfx_editor_ui_kernel"
-version = "0.3.0"
-dependencies = [
- "hashbrown 0.17.1",
-]
-
-[[package]]
 name = "motiongfx_scene"
 version = "0.3.0"
 dependencies = [
@@ -3707,6 +3682,30 @@ checksum = "bb85c154ba489f01b25c0d36ae69a87e4a1c73a72631fc6c0eb6dde34a73e44b"
 dependencies = [
  "num-traits",
  "pxfm",
+]
+
+[[package]]
+name = "moxie"
+version = "0.3.0"
+dependencies = [
+ "bevy",
+ "bevy_motiongfx",
+ "moxie_ui",
+]
+
+[[package]]
+name = "moxie_ui"
+version = "0.3.0"
+dependencies = [
+ "bevy",
+ "moxie_ui_kernel",
+]
+
+[[package]]
+name = "moxie_ui_kernel"
+version = "0.3.0"
+dependencies = [
+ "hashbrown 0.17.1",
 ]
 
 [[package]]
