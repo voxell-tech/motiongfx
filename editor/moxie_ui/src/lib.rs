@@ -1,11 +1,4 @@
-//! Reusable `bevy_ui` widgets for the MotionGfx editor: [`elements`]
-//! (pure `bsn!` building blocks), [`widgets`] (kernel-composed trees:
-//! docking engine, reflect inspector), [`glass`] (frosted-glass
-//! material), [`reactive`] (kernel adapter), and [`theme`].
-//!
-//! UI-only: no `bevy_motiongfx` or editor domain deps, so the dock
-//! system is reusable standalone. Widgets build on the headless
-//! [`bevy::ui_widgets`] behaviors and the [`bevy::feathers`] theme.
+//! Reusable UI elements and widgets for Moxie.
 
 #![allow(
     clippy::type_complexity,
