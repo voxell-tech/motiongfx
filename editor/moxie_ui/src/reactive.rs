@@ -165,9 +165,24 @@ pub trait BevyUiExt<'a> {
     /// Add a node built from a `bsn!` scene.
     fn bsn(&mut self, scene: impl Scene)
     -> NodeMut<'_, 'a, BevyHost>;
+
+    /// Add a node from a `bundle`, inserted once, immediately.
+    fn bundle<B: Bundle>(
+        &mut self,
+        bundle: B,
+    ) -> NodeMut<'_, 'a, BevyHost>;
 }
 
 impl<'a> BevyUiExt<'a> for BevyUi<'a> {
+    fn bundle<B: Bundle>(
+        &mut self,
+        bundle: B,
+    ) -> NodeMut<'_, 'a, BevyHost> {
+        self.node(move |world: &mut World, node: Entity| {
+            world.entity_mut(node).insert(bundle);
+        })
+    }
+
     fn bsn(
         &mut self,
         scene: impl Scene,

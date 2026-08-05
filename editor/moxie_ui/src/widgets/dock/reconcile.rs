@@ -24,7 +24,8 @@ use super::tree::{
     SplitAxis, TabId,
 };
 use crate::reactive::{
-    BevyNodeMutExt, BevyUi, resource_changed, structure_changed,
+    BevyNodeMutExt, BevyUi, BevyUiExt, resource_changed,
+    structure_changed,
 };
 
 pub struct ReconcilePlugin;
@@ -39,17 +40,15 @@ impl Plugin for ReconcilePlugin {
 /// builder handed to [`build_root`](crate::reactive::build_root).
 pub fn dock(ui: &mut BevyUi) {
     super::add_popup::add_window_popup(ui);
-    ui.node(|world, node| {
-        world.entity_mut(node).insert((
-            DockTreeHost,
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                flex_direction: FlexDirection::Column,
-                ..default()
-            },
-        ));
-    })
+    ui.bundle((
+        DockTreeHost,
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            flex_direction: FlexDirection::Column,
+            ..default()
+        },
+    ))
     .watch(structure_changed::<DockTree, _>(topology), build_dock);
 }
 
@@ -128,35 +127,31 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
     let b_visible = leaf_visible(ui.world(), split.b);
     let handle_visible = a_visible && b_visible;
 
-    ui.node(move |world, node| {
-        world.entity_mut(node).insert((
-            NodeBinding(id),
-            PanelGroup { min_ratio: 0.05 },
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                flex_direction,
-                overflow: Overflow::clip(),
-                ..default()
-            },
-        ));
-    })
+    ui.bundle((
+        NodeBinding(id),
+        PanelGroup { min_ratio: 0.05 },
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            flex_direction,
+            overflow: Overflow::clip(),
+            ..default()
+        },
+    ))
     .with(move |ui| {
         build_panel(id, split.a, true, a_visible, ui);
 
-        ui.node(move |world, node| {
-            world.entity_mut(node).insert((
-                PanelHandle,
-                NodeBinding(id),
-                Node {
-                    min_width: Val::Px(3.0),
-                    min_height: Val::Px(3.0),
-                    display: display(handle_visible),
-                    ..default()
-                },
-                BackgroundColor(Color::NONE),
-            ));
-        });
+        ui.bundle((
+            PanelHandle,
+            NodeBinding(id),
+            Node {
+                min_width: Val::Px(3.0),
+                min_height: Val::Px(3.0),
+                display: display(handle_visible),
+                ..default()
+            },
+            BackgroundColor(Color::NONE),
+        ));
 
         build_panel(id, split.b, false, b_visible, ui);
     });
@@ -266,20 +261,18 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
     let active = active_of(ui.world(), id);
 
     let area = ui
-        .node(move |world, node| {
-            world.entity_mut(node).insert((
-                DockArea { id: area_id, style },
-                ActiveDockWindow(active),
-                NodeBinding(id),
-                Node {
-                    width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
-                    flex_direction,
-                    overflow: Overflow::clip(),
-                    ..default()
-                },
-            ));
-        })
+        .bundle((
+            DockArea { id: area_id, style },
+            ActiveDockWindow(active),
+            NodeBinding(id),
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction,
+                overflow: Overflow::clip(),
+                ..default()
+            },
+        ))
         .bind::<ActiveDockWindow>(
             resource_changed::<DockTree>(),
             move |world, _| ActiveDockWindow(active_of(world, id)),
@@ -313,19 +306,17 @@ fn build_content(
     let descriptor_id = window_id.clone();
     let active = active_of(ui.world(), leaf) == Some(tab);
 
-    ui.node(move |world, node| {
-        world.entity_mut(node).insert((
-            DockWindow {
-                descriptor_id,
-                tab_id: tab,
-            },
-            DockTabContent {
-                window_id,
-                tab_id: tab,
-            },
-            content_node(display(active)),
-        ));
-    })
+    ui.bundle((
+        DockWindow {
+            descriptor_id,
+            tab_id: tab,
+        },
+        DockTabContent {
+            window_id,
+            tab_id: tab,
+        },
+        content_node(display(active)),
+    ))
     // Only `display`: the content pane's own layout is its business,
     // and replacing the whole `Node` would clobber it.
     .bind_field::<Node, _>(

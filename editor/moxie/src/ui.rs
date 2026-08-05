@@ -178,11 +178,7 @@ fn register_windows(
                 }
             })
             .with(move |ui| {
-                ui.node(move |world, node| {
-                    world
-                        .entity_mut(node)
-                        .insert(ImageNode::new(preview.clone()));
-                })
+                ui.bundle(ImageNode::new(preview.clone()))
                 // Letterboxed to fit the area above, which is this
                 // node's parent.
                 .bind_field::<Node, _>(
