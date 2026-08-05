@@ -1,5 +1,5 @@
 //! Demonstrates the standalone docking system in
-//! [`moxie_ui::dock`].
+//! [`moxie_ui::widgets::dock`].
 //!
 //! Three trivial panels ("Panel A/B/C") start as tabs in one full-window
 //! area. Try:
@@ -11,16 +11,12 @@
 
 use std::sync::Arc;
 
-use bevy::feathers::FeathersPlugins;
-use bevy::feathers::dark_theme::create_dark_theme;
-use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
-use moxie_ui::dock::{
-    DockAreaStyle, DockLeaf, DockPlugin, DockTree,
-    DockWindowDescriptor, WindowRegistry, dock,
-};
-use moxie_ui::reactive::{
-    BevyUi, BevyUiExt, KernelPlugin, KernelRoot,
+use moxie_ui::MoxieUiPlugin;
+use moxie_ui::reactive::{BevyUi, BevyUiExt};
+use moxie_ui::widgets::dock::{
+    DockAreaStyle, DockLeaf, DockTree, DockWindowDescriptor,
+    WindowRegistry, dock,
 };
 
 fn main() {
@@ -32,12 +28,8 @@ fn main() {
                 file_path: "../assets".into(),
                 ..default()
             }),
-            FeathersPlugins,
-            DockPlugin,
-            KernelPlugin::new(dock),
+            MoxieUiPlugin,
         ))
-        // Seed the feathers palette (its default theme is empty).
-        .insert_resource(UiTheme(create_dark_theme()))
         .add_systems(Startup, setup)
         .run();
 }
@@ -94,10 +86,11 @@ fn setup(
         ),
     );
 
-    // The kernel builds the dock under this full-window root.
-    commands.spawn((
-        KernelRoot,
-        Node {
+    // The kernel builds the dock under this full-window root. Queued:
+    // `Commands` can't reach `World` itself, so this runs once these
+    // commands are applied, by which point `root` exists.
+    let root = commands
+        .spawn(Node {
             position_type: PositionType::Absolute,
             left: Val::Px(0.0),
             top: Val::Px(0.0),
@@ -105,6 +98,9 @@ fn setup(
             height: Val::Percent(100.0),
             flex_direction: FlexDirection::Column,
             ..default()
-        },
-    ));
+        })
+        .id();
+    commands.queue(move |world: &mut World| {
+        moxie_ui::reactive::build_root(world, root, dock);
+    });
 }

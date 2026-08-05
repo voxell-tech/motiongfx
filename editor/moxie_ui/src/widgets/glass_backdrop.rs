@@ -4,7 +4,7 @@ use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 
-use super::material::GlassMaterial;
+use crate::glass::GlassMaterial;
 use crate::reactive::BevyUi;
 
 /// Marks a UI node displaying a backdrop image (e.g. the editor's

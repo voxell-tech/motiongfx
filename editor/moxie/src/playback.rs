@@ -10,7 +10,7 @@ use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 use bevy_motiongfx::prelude::*;
 
-use crate::scene::TimelineContent;
+use crate::ui::TimelineContent;
 use crate::{EditorState, PIXELS_PER_SECOND};
 use bevy::ecs::query::QueryState;
 use bevy_motiongfx::prelude::TimelineId;

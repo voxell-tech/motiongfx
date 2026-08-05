@@ -31,14 +31,12 @@ pub struct ReconcilePlugin;
 
 impl Plugin for ReconcilePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DockTree>()
-            .init_resource::<super::add_popup::AddWindowPopupState>();
+        app.init_resource::<DockTree>();
     }
 }
 
 /// The dock, as a node in the app's UI tree. Call this from the
-/// builder handed to
-/// [`KernelPlugin::new`](crate::reactive::KernelPlugin::new).
+/// builder handed to [`build_root`](crate::reactive::build_root).
 pub fn dock(ui: &mut BevyUi) {
     super::add_popup::add_window_popup(ui);
     ui.node(|world, node| {

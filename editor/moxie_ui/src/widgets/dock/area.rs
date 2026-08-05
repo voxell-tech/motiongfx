@@ -1,6 +1,6 @@
 //! Component markers for dock areas, tabs, and their content.
 
-use bevy::feathers::constants::icons;
+use bevy::feathers::constants::icons as feathers_icons;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::picking::events::{Click, Pointer};
 use bevy::picking::hover::Hovered;
@@ -9,24 +9,11 @@ use bevy::ui::widget::ImageNode;
 use bevy::window::SystemCursorIcon;
 
 use super::reconcile::LeafBinding;
-use super::tabs::{DockTabCloseIcon, tab_tile_node};
+use super::tabs::tab_tile_node;
 use super::tree::{DockTree, TabId};
+use crate::elements::GhostButton;
 use crate::glass::Glass;
-
-/// Shown when a tab has no [`DockWindowDescriptor::icon`](
-/// super::registry::DockWindowDescriptor::icon): the slot stays
-/// reserved but fully transparent rather than being conditionally
-/// omitted.
-pub(super) const PLACEHOLDER_ICON: &str =
-    "icons/general/placeholder.png";
-
-/// Icon for the tab bar's "add tab" button.
-const PLUS_ICON: &str = "icons/general/plus.png";
-
-/// Marker on a tab's icon image so activation can retint it alongside
-/// the label.
-#[derive(Component, Default, Clone)]
-pub struct DockTabIcon;
+use crate::icons;
 
 #[derive(Component, Clone, Debug)]
 pub struct DockArea {
@@ -50,9 +37,6 @@ pub struct DockWindow {
 /// of the same window kind coexist without their content stacking.
 #[derive(Component, Clone, Debug, Default)]
 pub struct ActiveDockWindow(pub Option<TabId>);
-
-#[derive(Component)]
-pub struct DockTabBar;
 
 /// Props for [`DockTab`]. `area` is the leaf area entity, captured by
 /// the click observer so activating a tab needs no parent walk.
@@ -115,7 +99,7 @@ impl DockTab {
         // but sits fully transparent.
         let has_icon = icon.is_some();
         let icon_src =
-            icon.unwrap_or_else(|| PLACEHOLDER_ICON.into());
+            icon.unwrap_or_else(|| icons::PLACEHOLDER.into());
         let icon_color = if has_icon {
             text_color
         } else {
@@ -144,7 +128,6 @@ impl DockTab {
             template_value(tab_tile_node())
             Children [
                 (
-                    DockTabIcon
                     ImageNode {
                         image: {icon_src},
                         color: {icon_color},
@@ -200,7 +183,13 @@ impl DockTabCloseButton {
                 window_id: {window_id},
                 tab_id: {tab_id},
             }
-            EntityCursor::System(SystemCursorIcon::Pointer)
+            @GhostButton {
+                @icon: {feathers_icons::X.to_string()},
+                @color: {icon_color},
+                @size: Val::Px(14.0),
+                @icon_size: Val::Px(10.0),
+                @radius: Val::Px(2.0),
+            }
             on(move |mut click: On<Pointer<Click>>,
                      mut tree: ResMut<DockTree>| {
                 click.propagate(false);
@@ -209,21 +198,6 @@ impl DockTabCloseButton {
                     tree.remove_tab(tab_id);
                 }
             })
-            Node {
-                width: Val::Px(14.0),
-                height: Val::Px(14.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                border_radius: BorderRadius::all(Val::Px(2.0)),
-            }
-            Children [(
-                DockTabCloseIcon
-                ImageNode {
-                    image: {icons::X},
-                    color: {icon_color},
-                }
-                Node { width: Val::Px(10.0), height: Val::Px(10.0) }
-            )]
         }
     }
 }
@@ -273,22 +247,12 @@ impl DockTabAddButton {
         );
         bsn! {
             DockTabAddButton { area_entity: {area} }
-            EntityCursor::System(SystemCursorIcon::Pointer)
-            on(super::add_popup::on_add_click)
-            Node {
-                width: Val::Px(18.0),
-                height: Val::Px(18.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                flex_shrink: 0.0,
+            @GhostButton {
+                @icon: {icons::PLUS.to_string()},
+                @color: {icon_color},
             }
-            Children [(
-                ImageNode {
-                    image: {PLUS_ICON},
-                    color: {icon_color},
-                }
-                Node { width: Val::Px(11.0), height: Val::Px(11.0) }
-            )]
+            Node { flex_shrink: 0.0 }
+            on(super::add_popup::on_add_click)
         }
     }
 }

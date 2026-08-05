@@ -1,15 +1,12 @@
-//! Tab bar widget: a `DockTabBar` (row of `DockTab`s + an "add tab"
-//! button) for a leaf, built as kernel nodes.
+//! Tab bar widget: a row of `DockTab`s + an "add tab" button for a
+//! leaf, built as kernel nodes.
 
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 
 use super::TAB_HEIGHT;
-use super::area::{
-    DockTab, DockTabAddButton, DockTabBar, DockTabCloseButton,
-    DockTabIcon,
-};
+use super::area::{DockTab, DockTabAddButton, DockTabCloseButton};
 use super::tree::{DockNode, DockTree, NodeId, TabId};
 use crate::glass::Glass;
 use crate::reactive::{BevyUi, BevyUiExt, resource_changed};
@@ -27,7 +24,9 @@ pub(super) fn on_tab_hover(
     q_tabs: Query<(&Hovered, &Glass, &Children), With<DockTab>>,
     drag_state: Res<super::drag::DockDragState>,
     close_buttons: Query<&Children, With<DockTabCloseButton>>,
-    mut icons: Query<&mut ImageNode, With<DockTabCloseIcon>>,
+    // A close button's only child is its icon: no marker needed to
+    // pick it out.
+    mut icons: Query<&mut ImageNode>,
     mut commands: Commands,
 ) {
     let tab = insert.entity;
@@ -84,7 +83,6 @@ pub(super) fn build_tab_bar(
 ) {
     ui.node(|world, node| {
         world.entity_mut(node).insert((
-            DockTabBar,
             Node {
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
@@ -199,10 +197,12 @@ fn build_tab(
                     text.0 = color;
                 }
                 // Icon-less tabs keep their slot at alpha 0; only the
-                // hue follows the active/inactive swap.
-                if world.get::<DockTabIcon>(child).is_some()
-                    && let Some(mut image) =
-                        world.get_mut::<ImageNode>(child)
+                // hue follows the active/inactive swap. A tab's icon
+                // is its only direct child carrying `ImageNode` (the
+                // close button's icon is a grandchild), so no marker
+                // is needed to single it out.
+                if let Some(mut image) =
+                    world.get_mut::<ImageNode>(child)
                 {
                     let alpha = image.color.alpha();
                     image.color = color.with_alpha(alpha);
@@ -270,8 +270,3 @@ pub(super) fn spawn_ghost_tab(
         ChildOf(tile),
     ));
 }
-
-/// Marker on the inner close icon of a dock tab close button so the
-/// hover observer can fade it in / out without reflowing the tab.
-#[derive(Component, Default, Clone)]
-pub struct DockTabCloseIcon;
