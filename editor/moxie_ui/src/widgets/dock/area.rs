@@ -132,7 +132,7 @@ impl DockTab {
                         image: {icon_src},
                         color: {icon_color},
                     }
-                    Node { width: Val::Px(12.0), height: Val::Px(12.0) }
+                    Node { width: px(12), height: px(12) }
                 ),
                 (
                     Text({label})
@@ -186,9 +186,9 @@ impl DockTabCloseButton {
             @GhostButton {
                 @icon: {feathers_icons::X.to_string()},
                 @color: {icon_color},
-                @size: Val::Px(14.0),
-                @icon_size: Val::Px(10.0),
-                @radius: Val::Px(2.0),
+                @size: px(14),
+                @icon_size: px(10),
+                @radius: px(2),
             }
             on(move |mut click: On<Pointer<Click>>,
                      mut tree: ResMut<DockTree>| {
