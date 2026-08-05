@@ -38,12 +38,11 @@ pub use tree::{
 /// reconciler, and drag/drop. Does not seed a [`DockTree`] or
 /// register any [`WindowRegistry`] entries; callers do that after
 /// adding this plugin.
-pub struct DockPlugin;
+pub(crate) struct DockPlugin;
 
 impl Plugin for DockPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            crate::glass::GlassPlugin,
             split::SplitPanelPlugin,
             drag::DockDragPlugin,
             reconcile::ReconcilePlugin,

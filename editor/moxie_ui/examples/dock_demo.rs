@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use bevy::prelude::*;
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::reactive::{BevyUi, BevyUiExt, KernelRoot};
+use moxie_ui::reactive::{BevyUi, BevyUiExt};
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockTree, DockWindowDescriptor,
     WindowRegistry, dock,
@@ -90,18 +90,15 @@ fn setup(
     // `Commands` can't reach `World` itself, so this runs once these
     // commands are applied, by which point `root` exists.
     let root = commands
-        .spawn((
-            KernelRoot,
-            Node {
-                position_type: PositionType::Absolute,
-                left: Val::Px(0.0),
-                top: Val::Px(0.0),
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                flex_direction: FlexDirection::Column,
-                ..default()
-            },
-        ))
+        .spawn(Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(0.0),
+            top: Val::Px(0.0),
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            flex_direction: FlexDirection::Column,
+            ..default()
+        })
         .id();
     commands.queue(move |world: &mut World| {
         moxie_ui::reactive::build_root(world, root, dock);

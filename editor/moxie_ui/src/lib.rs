@@ -25,6 +25,7 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
 
+use glass::GlassPlugin;
 use reactive::KernelPlugin;
 use widgets::dock::DockPlugin;
 use widgets::inspector::InspectAppExt;
@@ -41,9 +42,14 @@ pub struct MoxieUiPlugin;
 
 impl Plugin for MoxieUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((FeathersPlugins, DockPlugin, KernelPlugin))
-            .register_default_inspects()
-            // Seed the feathers palette (its default theme is empty).
-            .insert_resource(UiTheme(create_dark_theme()));
+        app.add_plugins((
+            FeathersPlugins,
+            DockPlugin,
+            KernelPlugin,
+            GlassPlugin,
+        ))
+        .register_default_inspects()
+        // Seed the feathers palette (its default theme is empty).
+        .insert_resource(UiTheme(create_dark_theme()));
     }
 }

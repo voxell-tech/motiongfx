@@ -19,18 +19,11 @@ use moxie_ui_kernel::{ChangedFn, Host, Kernel, NodeMut, Ui};
 #[derive(Resource, Deref, DerefMut, Default)]
 struct BevyKernel(Kernel<BevyHost>);
 
-/// Marks the entity a UI tree is built under. Purely a naming
-/// convention for consumers (e.g. to find "the" root for a camera
-/// target) — the kernel itself doesn't query for it; see
-/// [`build_root`].
-#[derive(Component, Default, Clone)]
-pub struct KernelRoot;
-
 /// Drives [`Kernel::flush`] once per frame. Just the machinery: a
 /// root's build is registered separately, with [`build_root`], from
 /// wherever the app spawns that root (typically a `Startup` system).
 #[derive(Default)]
-pub struct KernelPlugin;
+pub(crate) struct KernelPlugin;
 
 impl Plugin for KernelPlugin {
     fn build(&self, app: &mut App) {

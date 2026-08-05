@@ -25,8 +25,7 @@ use moxie_ui::MoxieUiPlugin;
 use moxie_ui::elements::Label;
 use moxie_ui::glass::{Glass, glass_button};
 use moxie_ui::reactive::{
-    BevyNodeMutExt, BevyUi, BevyUiExt, KernelRoot, KernelSet,
-    value_changed,
+    BevyNodeMutExt, BevyUi, BevyUiExt, KernelSet, value_changed,
 };
 use moxie_ui::widgets::bind_backdrop;
 use moxie_ui::widgets::dock::{
@@ -133,7 +132,6 @@ fn setup_editor_ui(
     // once these commands are applied, by which point `root` exists.
     let root = commands
         .spawn((
-            KernelRoot,
             UiTargetCamera(ui_camera),
             Node {
                 width: Val::Percent(100.0),
