@@ -56,4 +56,4 @@ impl Plugin for DockPlugin {
 // colors from the theme (`crate::theme`); only metrics live here.
 
 /// Tab-bar height, in px.
-pub(crate) const TAB_HEIGHT: f32 = 32.0;
+pub(crate) const TAB_HEIGHT: f32 = 24.0;

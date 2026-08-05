@@ -8,7 +8,7 @@ use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 
-use super::area::DockTabAddButton;
+use super::area::{DockTabAddButton, PLACEHOLDER_ICON};
 use super::drag::logical_rect;
 use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
@@ -157,10 +157,10 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
         .resource::<WindowRegistry>()
         .iter()
         .filter(|d| tree.find_leaf_with_window(&d.id).is_none())
-        .map(|d| (d.id.clone(), d.name.clone()))
+        .map(|d| (d.id.clone(), d.name.clone(), d.icon.clone()))
         .collect::<Vec<_>>();
 
-    for (window_id, name) in closed {
+    for (window_id, name, icon) in closed {
         // The click handler captures the window id + target area
         // directly instead of going through a component (which would
         // need `Entity`'s absent `Default` for the template system).
@@ -185,6 +185,24 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
             }
         })
         .with(move |ui| {
+            let (icon_src, icon_color) = match &icon {
+                Some(icon) => (icon.clone(), text_color),
+                None => (
+                    PLACEHOLDER_ICON.to_string(),
+                    text_color.with_alpha(0.0),
+                ),
+            };
+            ui.bsn(bsn! {
+                ImageNode {
+                    image: {icon_src},
+                    color: {icon_color},
+                }
+                Node {
+                    width: Val::Px(12.0),
+                    height: Val::Px(12.0),
+                    margin: UiRect::right(Val::Px(6.0)),
+                }
+            });
             ui.bsn(bsn! {
                 Text({name})
                 TextFont { font_size: FontSize::Px(12.0) }

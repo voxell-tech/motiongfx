@@ -13,6 +13,21 @@ use super::tabs::{DockTabCloseIcon, tab_tile_node};
 use super::tree::{DockTree, TabId};
 use crate::glass::Glass;
 
+/// Shown when a tab has no [`DockWindowDescriptor::icon`](
+/// super::registry::DockWindowDescriptor::icon): the slot stays
+/// reserved but fully transparent rather than being conditionally
+/// omitted.
+pub(super) const PLACEHOLDER_ICON: &str =
+    "icons/general/placeholder.png";
+
+/// Icon for the tab bar's "add tab" button.
+const PLUS_ICON: &str = "icons/general/plus.png";
+
+/// Marker on a tab's icon image so activation can retint it alongside
+/// the label.
+#[derive(Component, Default, Clone)]
+pub struct DockTabIcon;
+
 #[derive(Component, Clone, Debug)]
 pub struct DockArea {
     pub id: String,
@@ -46,6 +61,7 @@ pub struct DockTabProps {
     pub window_id: String,
     pub tab_id: TabId,
     pub label: String,
+    pub icon: Option<String>,
     pub area: Entity,
     pub is_active: bool,
     pub text_color: Color,
@@ -58,6 +74,7 @@ impl Default for DockTabProps {
             window_id: String::new(),
             tab_id: TabId::default(),
             label: String::new(),
+            icon: None,
             area: Entity::PLACEHOLDER,
             is_active: false,
             text_color: Color::WHITE,
@@ -79,6 +96,7 @@ impl DockTab {
             window_id,
             tab_id,
             label,
+            icon,
             area,
             is_active,
             text_color,
@@ -92,6 +110,17 @@ impl DockTab {
             "DockTab requires `@area`"
         );
         let close_id = window_id.clone();
+        // No conditional children in `bsn!`, so a tab without an
+        // icon still reserves the slot: the placeholder art loads
+        // but sits fully transparent.
+        let has_icon = icon.is_some();
+        let icon_src =
+            icon.unwrap_or_else(|| PLACEHOLDER_ICON.into());
+        let icon_color = if has_icon {
+            text_color
+        } else {
+            text_color.with_alpha(0.0)
+        };
         bsn! {
             DockTab {
                 window_id: {window_id},
@@ -114,6 +143,14 @@ impl DockTab {
             })
             template_value(tab_tile_node())
             Children [
+                (
+                    DockTabIcon
+                    ImageNode {
+                        image: {icon_src},
+                        color: {icon_color},
+                    }
+                    Node { width: Val::Px(12.0), height: Val::Px(12.0) }
+                ),
                 (
                     Text({label})
                     TextLayout { linebreak: LineBreak::NoWrap }
@@ -246,9 +283,11 @@ impl DockTabAddButton {
                 flex_shrink: 0.0,
             }
             Children [(
-                Text("+")
-                TextFont { font_size: FontSize::Px(11.0) }
-                TextColor({icon_color})
+                ImageNode {
+                    image: {PLUS_ICON},
+                    color: {icon_color},
+                }
+                Node { width: Val::Px(11.0), height: Val::Px(11.0) }
             )]
         }
     }
