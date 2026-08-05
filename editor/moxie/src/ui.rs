@@ -178,26 +178,22 @@ fn register_windows(
                 }
             })
             .with(move |ui| {
-                ui.node(move |world, node| {
-                    world
-                        .entity_mut(node)
-                        .insert(ImageNode::new(preview.clone()));
-                })
-                // Letterboxed to fit the area above, which is this
-                // node's parent.
-                .bind_field::<Node, _>(
-                    value_changed(crate::view::preview_fit),
-                    crate::view::preview_fit,
-                    |node, size| {
-                        // `None` while the area has no size yet:
-                        // leave the node alone rather than
-                        // collapsing it to zero.
-                        if let Some((width, height)) = size {
-                            node.width = width;
-                            node.height = height;
-                        }
-                    },
-                );
+                ui.bundle(ImageNode::new(preview.clone()))
+                    // Letterboxed to fit the area above, which is this
+                    // node's parent.
+                    .bind_field::<Node, _>(
+                        value_changed(crate::view::preview_fit),
+                        crate::view::preview_fit,
+                        |node, size| {
+                            // `None` while the area has no size yet:
+                            // leave the node alone rather than
+                            // collapsing it to zero.
+                            if let Some((width, height)) = size {
+                                node.width = width;
+                                node.height = height;
+                            }
+                        },
+                    );
             });
         }),
     });

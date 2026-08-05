@@ -81,44 +81,40 @@ pub(super) fn build_tab_bar(
     tabs: Vec<(TabId, String, String, Option<String>)>,
     ui: &mut BevyUi,
 ) {
-    ui.node(|world, node| {
-        world.entity_mut(node).insert((
+    ui.bundle((
+        Node {
+            flex_direction: FlexDirection::Row,
+            justify_content: JustifyContent::SpaceBetween,
+            align_items: AlignItems::Center,
+            width: Val::Percent(100.0),
+            height: Val::Px(TAB_HEIGHT),
+            // No left padding: first tab sits flush to the edge.
+            padding: UiRect::new(
+                Val::ZERO,
+                Val::Px(8.0),
+                Val::Px(1.0),
+                Val::ZERO,
+            ),
+            flex_shrink: 0.0,
+            ..default()
+        },
+        Glass::Bar,
+    ))
+    .with(move |ui| {
+        ui.bundle((
+            DockTabRow,
             Node {
                 flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Center,
-                width: Val::Percent(100.0),
-                height: Val::Px(TAB_HEIGHT),
-                // No left padding: first tab sits flush to the edge.
-                padding: UiRect::new(
-                    Val::ZERO,
-                    Val::Px(8.0),
-                    Val::Px(1.0),
-                    Val::ZERO,
-                ),
-                flex_shrink: 0.0,
+                column_gap: Val::Px(2.0),
+                height: Val::Percent(100.0),
+                overflow: Overflow::scroll_x(),
+                flex_shrink: 1.0,
+                min_width: Val::Px(0.0),
                 ..default()
             },
-            Glass::Bar,
-        ));
-    })
-    .with(move |ui| {
-        ui.node(|world, node| {
-            world.entity_mut(node).insert((
-                DockTabRow,
-                Node {
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    column_gap: Val::Px(2.0),
-                    height: Val::Percent(100.0),
-                    overflow: Overflow::scroll_x(),
-                    flex_shrink: 1.0,
-                    min_width: Val::Px(0.0),
-                    ..default()
-                },
-                ScrollPosition::default(),
-            ));
-        })
+            ScrollPosition::default(),
+        ))
         .with(move |ui| {
             for (tab_id, window_id, label, icon) in tabs {
                 build_tab(
