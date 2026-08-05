@@ -17,10 +17,6 @@ use super::{PANEL_PADDING, TrackViewportCamera};
 /// Indent per hierarchy level.
 const INDENT: f32 = 12.0;
 
-/// Marks the scrollable panel the rows are built into.
-#[derive(Component, Default, Clone)]
-struct HierarchyPanel;
-
 /// One row: an entity's depth and display name.
 #[derive(Clone, PartialEq)]
 struct Row {
@@ -69,7 +65,6 @@ pub(super) fn panel(ui: &mut BevyUi) {
     let mut queries: Option<HierarchyQueries> = None;
 
     ui.bsn(bsn! {
-        HierarchyPanel
         Node {
             width: Val::Percent(100.0),
             flex_grow: 1.0,

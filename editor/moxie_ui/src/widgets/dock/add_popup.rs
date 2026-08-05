@@ -39,10 +39,6 @@ struct OpenPopup {
     top: f32,
 }
 
-/// Full-screen click-catcher behind the popup.
-#[derive(Component, Default, Clone)]
-pub struct AddWindowPopupBackdrop;
-
 /// The popup, as kernel nodes. Rebuilds when the state changes, which
 /// covers opening, closing, and moving between buttons.
 pub(super) fn add_window_popup(ui: &mut BevyUi) {
@@ -124,7 +120,6 @@ fn build_popup(ui: &mut BevyUi) {
     // Catches the outside-click, but lets hover/clicks through to the
     // UI beneath rather than freezing it.
     ui.bsn(bsn! {
-        AddWindowPopupBackdrop
         on(close_popup)
         Pickable {
             should_block_lower: false,
