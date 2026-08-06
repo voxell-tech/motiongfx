@@ -131,14 +131,21 @@ pub struct ActionClip {
     pub id: ActionId,
     pub start: Duration,
     pub duration: Duration,
+    /// Tie-breaker for clips that overlap in time on the same field.
+    pub order: u32,
 }
 
 impl ActionClip {
-    pub const fn new(id: ActionId, duration: Duration) -> Self {
+    pub const fn new(
+        id: ActionId,
+        duration: Duration,
+        order: u32,
+    ) -> Self {
         Self {
             id,
             start: Duration::ZERO,
             duration,
+            order,
         }
     }
 
@@ -147,6 +154,16 @@ impl ActionClip {
     #[inline]
     pub fn end(&self) -> Duration {
         self.start.saturating_add(self.duration)
+    }
+
+    /// Does this clip overlap `other` in time?
+    ///
+    /// Touching is not overlapping. Keep it strict: this filters the
+    /// coverers in the overlap sweep, and a merely touching clip
+    /// counted as covering invents a clash that is not there.
+    #[inline]
+    pub fn overlaps(&self, other: &Self) -> bool {
+        self.start < other.end() && other.start < self.end()
     }
 
     /// Normalized progress of `time` through this clip, in
@@ -198,6 +215,7 @@ mod tests {
             id: ActionId::PLACEHOLDER,
             start,
             duration,
+            order: 0,
         }
     }
 
@@ -218,6 +236,7 @@ mod tests {
             id: ActionId::PLACEHOLDER,
             start: Duration::MAX,
             duration: Duration::MAX,
+            order: 0,
         };
 
         assert_eq!(clip.end(), Duration::MAX);

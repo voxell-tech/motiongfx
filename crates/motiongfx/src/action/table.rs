@@ -35,6 +35,8 @@ pub struct ActionTable {
     resources: Resources,
     key_col: ColumnId,
     ease_col: ColumnId,
+    /// Monotonic source for [`ActionClip::order`]. Never recycled.
+    next_order: u32,
 }
 
 impl ActionTable {
@@ -49,6 +51,7 @@ impl ActionTable {
             resources: Resources::default(),
             key_col,
             ease_col,
+            next_order: 0,
         }
     }
 
@@ -78,10 +81,14 @@ impl ActionTable {
         self.table.insert_by_column(id, key, self.key_col);
         self.table.insert(id, ActionStorage::new(action));
 
+        let order = self.next_order;
+        self.next_order = self.next_order.wrapping_add(1);
+
         ActionBuilder {
             table: &mut self.table,
             id,
             key,
+            order,
             ease_col: self.ease_col,
             _phantom: PhantomData,
         }
@@ -181,6 +188,7 @@ pub struct ActionBuilder<'w, T> {
     table: &'w mut TypeTable<ActionId>,
     id: ActionId,
     key: ActionKey,
+    order: u32,
     ease_col: ColumnId,
     _phantom: PhantomData<T>,
 }
@@ -236,7 +244,7 @@ impl<T> InterpActionBuilder<'_, T> {
     pub fn play(self, duration: Duration) -> TrackFragment {
         TrackFragment::single(
             self.inner.key,
-            ActionClip::new(self.id(), duration),
+            ActionClip::new(self.id(), duration, self.inner.order),
         )
     }
 }

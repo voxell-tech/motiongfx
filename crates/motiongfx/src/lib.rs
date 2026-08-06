@@ -42,7 +42,7 @@ pub mod prelude {
     pub use crate::time::{cs, ms, ns, s};
     pub use crate::timeline::{Timeline, TimelineBuilder};
     pub use crate::track::{
-        Track, TrackFragment, TrackList, TrackOrdering,
+        ClipOverlap, Track, TrackFragment, TrackList, TrackOrdering,
     };
     pub use crate::world::SubjectSource;
 }

@@ -149,6 +149,138 @@ pub fn delay(
     track
 }
 
+/// A clip covered by a later-authored one on the same field of the
+/// same subject. One entry per **covered clip**, not per pair.
+///
+/// Wherever clips overlap, the one authored later wins.
+#[derive(Debug, Clone)]
+pub struct ClipOverlap {
+    /// The subject and field both clips target.
+    pub key: ActionKey,
+    /// Authored first, hidden wherever the two overlap.
+    pub overwritten: ActionClip,
+    /// One of the clips covering `overwritten`, the earliest to
+    /// start, not necessarily the one that wins.
+    ///
+    /// "Later" means authored later: this clip may begin *earlier*
+    /// on the timeline than the one it covers.
+    pub overwrites: ActionClip,
+    /// `true` when `overwritten` never plays at any playhead
+    /// position.
+    pub never_visible: bool,
+}
+
+impl core::fmt::Display for ClipOverlap {
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        write!(
+            f,
+            "overlapping actions on `{}` (subject {:?}): ",
+            self.key.field().field_path(),
+            self.key.subject_id().uid(),
+        )?;
+
+        if self.never_visible {
+            write!(
+                f,
+                "the clip at [{:?}..{:?}] is completely hidden by \
+                 later-authored actions, one of them at \
+                 [{:?}..{:?}], so it never plays; it has been \
+                 removed",
+                self.overwritten.start,
+                self.overwritten.end(),
+                self.overwrites.start,
+                self.overwrites.end(),
+            )
+        } else {
+            write!(
+                f,
+                "the clip at [{:?}..{:?}] is overwritten by a \
+                 later-authored one at [{:?}..{:?}] wherever they \
+                 overlap",
+                self.overwritten.start,
+                self.overwritten.end(),
+                self.overwrites.start,
+                self.overwrites.end(),
+            )
+        }
+    }
+}
+
+/// Records one [`ClipOverlap`] per covered clip in `sequence`, and
+/// removes the clips that turn out to never be visible at all.
+///
+/// A clip is never visible when the clips authored after it cover its
+/// whole span between them. It is dropped rather than kept: it shows
+/// nothing, but would still shift the baked values of everything
+/// after it.
+fn resolve_overlaps(
+    key: ActionKey,
+    sequence: &mut Sequence,
+    overlaps: &mut Vec<ClipOverlap>,
+) {
+    let clips = &sequence.clips;
+
+    if clips.iter().is_sorted_by(|a, b| a.end() <= b.start) {
+        return;
+    }
+
+    let mut kept = Vec::with_capacity(clips.len());
+
+    for clip in clips.iter() {
+        let mut covered_to = clip.start;
+        let mut overwrites = None;
+
+        for other in clips.iter().filter(|other| {
+            other.order > clip.order && other.overlaps(clip)
+        }) {
+            overwrites.get_or_insert(*other);
+
+            // A gap, and nothing starting later can close it.
+            if other.start > covered_to {
+                break;
+            }
+
+            covered_to = covered_to.max(other.end());
+
+            // Hidden to its end; later clips add nothing.
+            if covered_to >= clip.end() {
+                break;
+            }
+        }
+
+        // Nothing covers it, so there is nothing to report.
+        let Some(overwrites) = overwrites else {
+            kept.push(*clip);
+            continue;
+        };
+
+        // Correct after either break: a gap stops the sweep below
+        // `clip.end()`, full coverage stops it at or past.
+        let never_visible = covered_to >= clip.end();
+
+        // One record per covered clip; per pair would grow with the
+        // square of the lane and repeat itself.
+        overlaps.push(ClipOverlap {
+            key,
+            overwritten: *clip,
+            overwrites,
+            never_visible,
+        });
+
+        if !never_visible {
+            kept.push(*clip);
+        }
+    }
+
+    // The last-authored clip has nothing above it, so it always
+    // survives.
+    sequence.clips = NonEmpty::from_vec(kept)
+        .expect("the highest-order clip is never hidden");
+}
+
 pub struct TrackFragment {
     sequences: HashMap<ActionKey, Sequence>,
     duration: Duration,
@@ -189,9 +321,7 @@ impl TrackFragment {
         new_sequence: Sequence,
     ) -> Self {
         match self.sequences.get_mut(&key) {
-            Some(sequence) => {
-                sequence.extend(new_sequence);
-            }
+            Some(existing) => existing.merge(new_sequence),
             None => {
                 self.sequences.insert(key, new_sequence);
             }
@@ -208,12 +338,20 @@ impl TrackFragment {
             return Track {
                 field_lookups: Box::new([]),
                 sequence_spans: Box::new([]),
+                last_to_finish: Box::new([]),
                 clip_arena: Box::new([]),
+                overlaps: Box::new([]),
                 duration: self.duration,
             };
         }
 
         sequences.sort_by_key(|(key, _)| *key.field());
+
+        // Record every overlap and drop the clips that never surface.
+        let mut overlaps = Vec::new();
+        for (key, seq) in sequences.iter_mut() {
+            resolve_overlaps(*key, seq, &mut overlaps);
+        }
 
         // The combinators accumulate `duration` independently of the
         // clip offsets, so pin them together here: the clamp in
@@ -228,6 +366,7 @@ impl TrackFragment {
 
         let mut seq_offset = 0;
         let mut sequence_spans = Vec::with_capacity(sequences.len());
+        let mut last_to_finish = Vec::with_capacity(sequences.len());
 
         let mut field = sequences[0].0.field();
         let mut field_offset = 0;
@@ -242,6 +381,17 @@ impl TrackFragment {
                     len: seq.len(),
                 },
             ));
+
+            // Ties go to the one authored later, which is the one on screen there.
+            last_to_finish.push(
+                seq.clips
+                    .iter()
+                    .enumerate()
+                    .max_by_key(|(_, clip)| (clip.end(), clip.order))
+                    .map(|(i, _)| i)
+                    .expect("sequences are non-empty"),
+            );
+
             seq_offset += seq.len();
 
             if key.field() != field {
@@ -254,7 +404,9 @@ impl TrackFragment {
                 ));
 
                 field = key.field();
-                field_offset = field_len;
+                // The next run starts after every lane so far, not
+                // just the one that ended.
+                field_offset += field_len;
                 field_len = 0;
             }
             field_len += 1;
@@ -277,7 +429,9 @@ impl TrackFragment {
         Track {
             field_lookups: field_lookups.into_boxed_slice(),
             sequence_spans: sequence_spans.into_boxed_slice(),
+            last_to_finish: last_to_finish.into_boxed_slice(),
             clip_arena,
+            overlaps: overlaps.into_boxed_slice(),
             duration,
         }
     }
@@ -311,8 +465,20 @@ pub struct Track {
     /// `clip_arena`.
     sequence_spans: Box<[(ActionKey, Span)]>,
 
+    /// For each sequence, the offset into its own clips of the one
+    /// that finishes last. Parallel to `sequence_spans`.
+    last_to_finish: Box<[usize]>,
+
     /// Contiguous storage of all action clips.
+    ///
+    /// Clips within a sequence are sorted by [`ActionClip::start`]
+    /// and may overlap.
     clip_arena: Box<[ActionClip]>,
+
+    /// Overlaps found while building this track. Usually empty.
+    ///
+    /// Never read during playback; see [`Track::overlaps`].
+    overlaps: Box<[ClipOverlap]>,
 
     /// Total duration of the track.
     ///
@@ -322,6 +488,29 @@ pub struct Track {
 }
 
 impl Track {
+    /// One entry per clip that a later-authored one covers.
+    ///
+    /// Empty for a track where nothing overlaps. A non-empty result
+    /// is not necessarily an error — the later-authored clip simply
+    /// wins while it covers the other — but it is worth surfacing,
+    /// and any entry with [`ClipOverlap::never_visible`] set almost
+    /// certainly is a mistake. See [`ClipOverlap`].
+    #[inline]
+    pub fn overlaps(&self) -> &[ClipOverlap] {
+        &self.overlaps
+    }
+
+    /// Which clip of the sequence at `index` in
+    /// [`Track::sequences_spans`] finishes last, as an offset into
+    /// that sequence's own [`Track::clips`].
+    ///
+    /// Not its last element: clips are sorted by start, so an
+    /// overlapping clip that began earlier can still outlive it.
+    #[inline]
+    pub fn last_to_finish(&self, index: usize) -> usize {
+        self.last_to_finish[index]
+    }
+
     pub fn lookup_field_spans(
         &self,
         field: impl Into<UntypedField>,
@@ -430,7 +619,13 @@ mod tests {
     }
 
     const fn clip(centis: u64) -> ActionClip {
-        ActionClip::new(ActionId::PLACEHOLDER, cs(centis))
+        ActionClip::new(ActionId::PLACEHOLDER, cs(centis), 0)
+    }
+
+    /// A clip carrying an explicit authoring order, for the tests
+    /// that care which of two overlapping clips wins.
+    const fn clip_ord(centis: u64, order: u32) -> ActionClip {
+        ActionClip::new(ActionId::PLACEHOLDER, cs(centis), order)
     }
 
     #[test]
@@ -588,7 +783,11 @@ mod tests {
         let huge = |path: &'static str| {
             TrackFragment::single(
                 key(path),
-                ActionClip::new(ActionId::PLACEHOLDER, Duration::MAX),
+                ActionClip::new(
+                    ActionId::PLACEHOLDER,
+                    Duration::MAX,
+                    0,
+                ),
             )
         };
 
@@ -617,5 +816,243 @@ mod tests {
 
         assert_eq!(track.duration(), Duration::ZERO);
         assert!(track.sequences_spans().is_empty());
+    }
+
+    #[test]
+    fn field_spans_cover_every_lane() {
+        const DUMMY: Sequence = Sequence::new(clip(0));
+
+        let fa = UntypedField::placeholder_with_path("a");
+        let fb = UntypedField::placeholder_with_path("b");
+        let fc = UntypedField::placeholder_with_path("c");
+
+        let mut ids = IdRegistry::new();
+        let s1 = ids.register_instance(DummyId(1));
+        let s2 = ids.register_instance(DummyId(2));
+
+        let k = |sid, field| {
+            ActionKey::new(
+                UntypedSubjectId::new::<DummyId>(sid),
+                field,
+            )
+        };
+
+        let track = TrackFragment::new()
+            .upsert_sequence(k(s1, fa), DUMMY.clone())
+            .upsert_sequence(k(s2, fa), DUMMY.clone())
+            .upsert_sequence(k(s1, fb), DUMMY.clone())
+            .upsert_sequence(k(s1, fc), DUMMY.clone())
+            .compile();
+
+        for (field, expected) in [(fa, 2), (fb, 1), (fc, 1)] {
+            let spans = track
+                .lookup_field_spans(field)
+                .expect("field was compiled in");
+
+            assert_eq!(spans.len(), expected, "{field:?}");
+            assert!(
+                spans.iter().all(|(key, _)| *key.field() == field),
+                "{field:?} span points at the wrong lanes",
+            );
+        }
+    }
+
+    /// A fragment holding one clip at `start`, lasting `duration`,
+    /// authored `order`-th. All times in centiseconds.
+    fn at(start: u64, duration: u64, order: u32) -> TrackFragment {
+        delay(
+            cs(start),
+            TrackFragment::single(
+                key("a"),
+                clip_ord(duration, order),
+            ),
+        )
+    }
+
+    /// Clip count of the one sequence in a compiled track.
+    fn kept(track: &Track) -> usize {
+        track.sequences_spans()[0].1.len
+    }
+
+    /// Merging must not depend on the order fragments are listed in.
+    /// These two are a full second apart and both belong.
+    #[test]
+    fn out_of_order_merge_keeps_both_sorted() {
+        let track = [at(200, 100, 0), at(0, 100, 1)].ord_all();
+        let clips = &track.sequences[&key("a")].clips;
+
+        assert_eq!(clips.len(), 2);
+        // Sorted, despite the later-starting clip being merged first.
+        assert_eq!(clips.head.start, cs(0));
+        assert_eq!(clips.last().start, cs(200));
+    }
+
+    /// Overlapping clips are kept, not dropped — playback resolves
+    /// them by authoring order.
+    #[test]
+    fn partial_overlap_keeps_both_clips() {
+        // 0..5s authored first, 1..2s authored second.
+        let track =
+            [at(0, 500, 0), at(100, 100, 1)].ord_all().compile();
+
+        assert_eq!(kept(&track), 2);
+        assert_eq!(track.overlaps().len(), 1);
+
+        let overlap = &track.overlaps()[0];
+        assert!(!overlap.never_visible);
+        assert_eq!(overlap.overwritten.start, cs(0));
+        // The later clip sits entirely inside the earlier one, so it
+        // covers 1s..2s and the earlier one resumes after.
+        assert_eq!(overlap.overwrites.start, cs(100));
+        assert_eq!(overlap.overwrites.end(), cs(200));
+    }
+
+    /// A clip merely touching another is not covered by it, even in
+    /// a lane that overlaps elsewhere and so runs the full sweep.
+    #[test]
+    fn touching_clips_are_not_reported_as_covered() {
+        // 0..5s, then 5..7s touching it, then 6..8s overlapping that
+        // last one — so the lane fails the cheap no-overlap check
+        // and every pair goes through `ActionClip::overlaps`.
+        let track = [at(0, 500, 0), at(500, 200, 1), at(600, 200, 2)]
+            .ord_all()
+            .compile();
+
+        assert_eq!(kept(&track), 3);
+        assert_eq!(track.overlaps().len(), 1);
+        // The 5..7s clip, covered by 6..8s. The 0..5s one only
+        // touches it and must not be reported.
+        assert_eq!(track.overlaps()[0].overwritten.start, cs(500));
+    }
+
+    /// A clip authored later can begin *earlier* on the timeline, so
+    /// `overwrites` is not necessarily later than `overwritten` in
+    /// time. The warning says "later-authored" for exactly this.
+    #[test]
+    fn a_later_authored_clip_can_start_earlier() {
+        // 3..8s authored first, 1..5s authored second.
+        let track =
+            [at(300, 500, 0), at(100, 400, 1)].ord_all().compile();
+
+        assert_eq!(track.overlaps().len(), 1);
+        let overlap = &track.overlaps()[0];
+
+        assert_eq!(overlap.overwritten.start, cs(300));
+        assert!(
+            overlap.overwrites.start < overlap.overwritten.start,
+            "the coverer should start earlier in time",
+        );
+    }
+
+    /// A clip the later one covers completely can never be seen, so
+    /// it is removed rather than left to shift baked values.
+    #[test]
+    fn never_visible_clip_is_dropped() {
+        let track =
+            [at(0, 200, 0), at(0, 200, 1)].ord_all().compile();
+
+        assert_eq!(kept(&track), 1);
+        assert_eq!(track.overlaps().len(), 1);
+        assert!(track.overlaps()[0].never_visible);
+        // The survivor is the one authored last.
+        let (_, span) = track.sequences_spans()[0];
+        assert_eq!(track.clips(span)[0].order, 1);
+    }
+
+    /// Coverage is by the *union* of later clips: neither hides it
+    /// alone, but together they leave no gap.
+    #[test]
+    fn union_of_later_clips_hides_a_clip() {
+        let track = [
+            at(0, 400, 0),   // 0..4  authored first
+            at(0, 200, 1),   // 0..2
+            at(200, 300, 2), // 2..5
+        ]
+        .ord_all()
+        .compile();
+
+        assert_eq!(kept(&track), 2);
+        assert_eq!(
+            track
+                .overlaps()
+                .iter()
+                .filter(|o| o.never_visible)
+                .count(),
+            1
+        );
+    }
+
+    /// The same shape but with a hole between the covering clips —
+    /// the clip shows through, so it stays.
+    #[test]
+    fn gap_between_covering_clips_keeps_it_visible() {
+        let track = [
+            at(0, 400, 0),   // 0..4  authored first
+            at(0, 100, 1),   // 0..1
+            at(300, 200, 2), // 3..5, leaving 1..3 uncovered
+        ]
+        .ord_all()
+        .compile();
+
+        assert_eq!(kept(&track), 3);
+        assert!(track.overlaps().iter().all(|o| !o.never_visible));
+    }
+
+    /// A sequence's resting value belongs to the clip that finishes
+    /// last, which with overlaps is not the last element.
+    #[test]
+    fn boundary_clips_follow_time_not_position() {
+        // 0..10s authored first, 1..2s authored second. Sorted by
+        // start the short clip is last, but the long one outlives it.
+        let track =
+            [at(0, 1000, 0), at(100, 100, 1)].ord_all().compile();
+
+        let (_, span) = track.sequences_spans()[0];
+        let clips = track.clips(span);
+
+        // The short clip is stored last, but the long one outlives
+        // it, so it owns the lane's resting value.
+        assert_eq!(clips.last().unwrap().duration, cs(100));
+        assert_eq!(clips[track.last_to_finish(0)].duration, cs(1000));
+    }
+
+    /// Zero-duration spacers at the same instant do not count as
+    /// overlapping, so none of them is discarded.
+    #[test]
+    fn zero_duration_spacers_coexist() {
+        let track = [at(0, 0, 0), at(0, 0, 1)].ord_all().compile();
+
+        assert_eq!(kept(&track), 2);
+        assert!(track.overlaps().is_empty());
+    }
+
+    #[test]
+    fn no_overlap_reports_nothing() {
+        let track =
+            [at(0, 100, 0), at(100, 100, 1)].ord_all().compile();
+
+        assert_eq!(kept(&track), 2);
+        assert!(track.overlaps().is_empty());
+    }
+
+    /// `any` reports the *minimum* duration without shortening its
+    /// clips, so a following `chain` under-delays and genuinely
+    /// overlaps. That used to panic; it is now handled and reported.
+    #[test]
+    fn any_then_chain_overlap_is_handled() {
+        let inner = [
+            TrackFragment::single(key("a"), clip_ord(100, 0)),
+            TrackFragment::single(key("b"), clip_ord(300, 1)),
+        ]
+        .ord_any();
+        let next = TrackFragment::single(key("b"), clip_ord(100, 2));
+
+        let track = [inner, next].ord_chain().compile();
+
+        assert!(!track.overlaps().is_empty());
+        assert!(
+            track.overlaps().iter().all(|o| o.key == key("b")),
+            "only the shared key should clash"
+        );
     }
 }

@@ -4,7 +4,12 @@ use nonempty::NonEmpty;
 
 use crate::action::ActionClip;
 
-/// A non-overlapping sequence of [`ActionClip`]s.
+/// The [`ActionClip`]s driving one field of one subject, sorted by
+/// [`ActionClip::start`].
+///
+/// Clips **may overlap**. Where they do, the highest
+/// [`ActionClip::order`] plays and the others are hidden until it
+/// stops covering them.
 #[derive(Debug, Clone)]
 pub struct Sequence {
     pub clips: NonEmpty<ActionClip>,
@@ -32,7 +37,12 @@ impl Sequence {
     /// Get the end time of the sequence.
     #[inline]
     pub fn end(&self) -> Duration {
-        self.clips.last().end()
+        self.clips
+            .tail
+            .iter()
+            .fold(self.clips.head.end(), |end, clip| {
+                end.max(clip.end())
+            })
     }
 
     /// Get the duration of the sequence.
@@ -46,16 +56,39 @@ impl Sequence {
             clip.start = clip.start.saturating_add(duration);
         }
     }
+
+    /// Merges `other` into `self`, keeping the clips sorted by
+    /// [`ActionClip::start`].
+    ///
+    /// Nothing is dropped. Overlaps are resolved at playback.
+    pub(crate) fn merge(&mut self, other: Self) {
+        // Already sorted: append as is.
+        if self.clips.last().start <= other.start() {
+            self.clips.extend(other.clips);
+            return;
+        }
+
+        let NonEmpty { head, tail } = &mut self.clips;
+
+        tail.insert(0, *head);
+        tail.extend(other.clips);
+        tail.sort_by_key(|clip| clip.start);
+        *head = tail.remove(0);
+    }
 }
 
 impl Sequence {
+    /// Appends a clip.
+    ///
+    /// Does **not** sort. Overlapping the last clip is fine; starting
+    /// before it is not, and nothing downstream will catch it.
     #[inline]
     pub fn push(&mut self, span: ActionClip) {
         debug_assert!(
-            span.start >= self.end(),
-            "({:?} >= {:?}) `ActionClip`s shouldn't overlap!",
+            span.start >= self.clips.last().start,
+            "clips must be appended in start order: {:?} follows {:?}",
             span.start,
-            self.end(),
+            self.clips.last().start,
         );
 
         self.clips.push(span);
@@ -63,28 +96,15 @@ impl Sequence {
 }
 
 impl Extend<ActionClip> for Sequence {
+    /// Appends clips without sorting. See [`Sequence::push`].
     #[inline]
     fn extend<T: IntoIterator<Item = ActionClip>>(
         &mut self,
         iter: T,
     ) {
-        #[cfg(debug_assertions)]
-        let mut end = self.end();
-        #[cfg(debug_assertions)]
-        let iter = {
-            iter.into_iter().inspect(|clip| {
-                debug_assert!(
-                    clip.start >= end,
-                    "({:?} >= {:?}) `ActionClip`s shouldn't overlap!",
-                    clip.start,
-                    end,
-                );
-
-                end = clip.end();
-            })
-        };
-
-        self.clips.extend(iter);
+        for clip in iter {
+            self.push(clip);
+        }
     }
 }
 
