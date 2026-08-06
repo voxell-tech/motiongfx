@@ -82,7 +82,7 @@ impl ActionTable {
         self.table.insert(id, ActionStorage::new(action));
 
         let order = self.next_order;
-        self.next_order = self.next_order.wrapping_add(1);
+        self.next_order = self.next_order.saturating_add(1);
 
         ActionBuilder {
             table: &mut self.table,
