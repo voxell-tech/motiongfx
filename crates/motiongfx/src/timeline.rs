@@ -786,8 +786,6 @@ mod tests {
         assert!((in_gap - 2.0).abs() < 1e-5, "got {in_gap}");
     }
 
-
-
     /// Past the end of everything, the subject holds the value of the
     /// clip that finished last — which with overlaps is not the last
     /// clip in the span.
@@ -806,7 +804,6 @@ mod tests {
             sample_at(&registry, &mut timeline, &mut world, cs(1000));
         assert!((resting - 1.0).abs() < 1e-5, "got {resting}");
     }
-
 
     /// Two clips starting together where the later one is shorter:
     /// it wins while it lasts, then the first shows through its tail.
