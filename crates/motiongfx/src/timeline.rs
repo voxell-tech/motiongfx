@@ -646,38 +646,42 @@ mod tests {
         world.0[0]
     }
 
-    /// The clip later in the lane wins while it covers the playhead, and
-    /// the one underneath shows again once it passes — with no resume
-    /// logic, because nothing is overwriting it any more.
+    /// The later clip wins while it covers, the one underneath shows
+    /// again after. The two handovers are not symmetric: taking over
+    /// is seamless, handing back jumps — a clip has one segment, so
+    /// it cannot be reopened part way through.
     #[test]
     fn later_clip_overrides_then_the_earlier_one_resumes() {
-        // 0..5s authored first, 1..2s authored second.
+        // 0..5s, with 1..2s over it. The override runs 0.2 -> 1.2,
+        // opening on what the long clip shows at 1s.
         let (registry, mut timeline) =
             timeline_of(&[(0, 500), (100, 100)]);
 
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // Only the long clip covers 0.5s.
         let before =
             sample_at(&registry, &mut timeline, &mut world, cs(50));
         assert!((before - 0.1).abs() < 1e-5, "got {before}");
 
-        // Both cover 1.5s; the one later in the lane wins. It opens
-        // from what the lane was showing when it began — the long
-        // clip at 1s, which is 0.2 — so it runs 0.2 -> 1.2.
         let during =
             sample_at(&registry, &mut timeline, &mut world, cs(150));
         assert!((during - 0.7).abs() < 1e-5, "got {during}");
 
-        // Past the override, the long clip is on screen again at its
-        // own progress.
+        // The override's final instant, then the jump back.
+        let last =
+            sample_at(&registry, &mut timeline, &mut world, cs(200));
+        assert!((last - 1.2).abs() < 1e-5, "got {last}");
+
+        let resumed =
+            sample_at(&registry, &mut timeline, &mut world, cs(201));
+        assert!((resumed - 0.402).abs() < 1e-3, "got {resumed}");
+
         let after =
             sample_at(&registry, &mut timeline, &mut world, cs(250));
         assert!((after - 0.5).abs() < 1e-5, "got {after}");
 
-        // Arriving at 1.5s from the right gives the same answer:
-        // scrubbing resolves the winner independently of direction.
+        // Scrubbing back gives the same winner.
         let back =
             sample_at(&registry, &mut timeline, &mut world, cs(150));
         assert!((back - 0.7).abs() < 1e-5, "got {back}");
@@ -730,22 +734,20 @@ mod tests {
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // At 4s the first two have finished and the third has not
-        // begun. Baking chains 0 -> 1 -> 2, so the second one's end
-        // is 2.0; taking the first would give 1.0.
+        // At 4s two have finished and the third has not begun. The
+        // chain is 0 -> 1 -> 2, so the answer is 2.0; the first clip
+        // would give 1.0.
         let in_gap =
             sample_at(&registry, &mut timeline, &mut world, cs(400));
         assert!((in_gap - 2.0).abs() < 1e-5, "got {in_gap}");
     }
 
-    /// Past the end of everything, the subject holds the value of the
-    /// clip that finished last — which with overlaps is not the last
-    /// clip in the span.
+    /// Past the end, the subject holds the clip that finished last —
+    /// with overlaps, not the last clip in the lane.
     #[test]
     fn past_the_end_holds_the_last_clip_to_finish() {
-        // 0..10s authored first, 1..2s authored second. Sorted by
-        // start the short clip is second, but the long one outlives
-        // it, so it owns the resting value.
+        // 0..10s with 1..2s over it: the short clip is stored second
+        // but the long one outlives it.
         let (registry, mut timeline) =
             timeline_of(&[(0, 1000), (100, 100)]);
 
@@ -757,21 +759,18 @@ mod tests {
         assert!((resting - 1.0).abs() < 1e-5, "got {resting}");
     }
 
-    /// Two clips starting together where the later one is shorter:
-    /// it wins while it lasts, then the first shows through its tail.
-    /// Neither is fully hidden, so both survive.
+    /// Clips starting together: the later one wins while it lasts,
+    /// then the first shows through its tail.
     #[test]
     fn shared_start_with_a_visible_tail_keeps_both() {
-        // 0..3s authored first, 0..2s authored second.
+        // 0..3s and 0..2s. Sharing a start, the second opens where
+        // the first did (0.0) and bakes 0.0 -> 1.0.
         let (registry, mut timeline) =
             timeline_of(&[(0, 300), (0, 200)]);
 
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // Both cover 1s; the one stored second wins. They share a
-        // start, so it opens where the first one did — 0.0 — and
-        // bakes 0.0 -> 1.0, putting it halfway at 1s.
         let covered =
             sample_at(&registry, &mut timeline, &mut world, cs(100));
         assert!((covered - 0.5).abs() < 1e-5, "got {covered}");
@@ -782,27 +781,22 @@ mod tests {
         assert!((tail - 0.8333).abs() < 1e-3, "got {tail}");
     }
 
-    /// A covering clip opens on the value that is already on screen,
-    /// so taking over is continuous.
-    ///
-    /// This is what baking per-clip buys over chaining each clip off
-    /// the previous one's end: chaining opened B at 1.0 — A's end, a
-    /// value the lane never displayed — and cut to it mid-motion.
+    /// A covering clip opens on the value already on screen, so
+    /// taking over is continuous. Chaining off the covered clip's end
+    /// opened it on 1.0 — a value the lane never displayed.
     #[test]
     fn an_overlap_takes_over_without_a_jump() {
-        // A = 0..5s stored first, B = 3..5s stored second.
+        // 0..5s with 3..5s over it.
         let (registry, mut timeline) =
             timeline_of(&[(0, 500), (300, 200)]);
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // The last instant A owns.
+        // Last instant of the first clip, first of the second.
         let before =
             sample_at(&registry, &mut timeline, &mut world, cs(299));
         assert!((before - 0.598).abs() < 1e-3, "got {before}");
 
-        // The first instant B owns. A is at 0.6 there, so B starts
-        // there: no step across the handover.
         let after =
             sample_at(&registry, &mut timeline, &mut world, cs(300));
         assert!((after - 0.6).abs() < 1e-5, "got {after}");
@@ -811,22 +805,22 @@ mod tests {
             "jumped {before} -> {after}"
         );
 
-        // B still animates its own range from there: 0.6 -> 1.6.
+        // It still animates its own range: 0.6 -> 1.6.
         let end =
             sample_at(&registry, &mut timeline, &mut world, cs(500));
         assert!((end - 1.6).abs() < 1e-5, "got {end}");
     }
 
-    /// Baking walks every lane of a track in one pass, reusing its
-    /// scratch buffers. A lane must open on its own subject, not on
-    /// whatever the previous lane left behind.
+    /// Baking walks every lane of a track reusing one set of scratch
+    /// buffers, so a lane must open on its own subject rather than on
+    /// what the previous lane left behind.
     #[test]
     fn lanes_do_not_leak_into_each_other() {
         let mut registry = Registry::new();
         let mut builder = registry.create_builder::<World>();
 
-        // Two subjects, one track. The spans are disjoint so a leak
-        // resolves to the wrong lane's value rather than coinciding.
+        // Two subjects, one track, disjoint spans — so a leak reads
+        // the wrong lane rather than coinciding with the right value.
         let first = builder
             .act_builder(0u32, crate::path!(<f32>), |x| x + 10.0)
             .with_interp(linear)
@@ -845,11 +839,11 @@ mod tests {
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
+        // Subject 0 rests on its end; subject 1 is half way through
+        // its own 0.0 -> 1.0.
         let held =
             sample_at(&registry, &mut timeline, &mut world, cs(550));
-        // Subject 0 finished long ago and rests on its end.
         assert!((held - 10.0).abs() < 1e-5, "got {held}");
-        // Subject 1 is half way through its own 0.0 -> 1.0.
         assert!(
             (world.0[1] - 0.5).abs() < 1e-5,
             "got {}",
@@ -857,101 +851,56 @@ mod tests {
         );
     }
 
-    /// The other side of the handover, which baking per clip does
-    /// **not** fix: when the covering clip ends, the one underneath
-    /// resumes at its own progress rather than where the overlap left
-    /// off. A clip has a single segment, so it cannot be reopened
-    /// part way through.
-    ///
-    /// Pinned because the asymmetry is surprising: taking over is
-    /// seamless, handing back is not.
-    #[test]
-    fn handing_back_after_an_overlap_still_jumps() {
-        // A = 0..5s stored first, B = 1..2s sitting over it.
-        let (registry, mut timeline) =
-            timeline_of(&[(0, 500), (100, 100)]);
-
-        let mut world = World::new();
-        timeline.bake_actions(&registry, &world);
-
-        // B owns its final instant, and ends on 1.2.
-        let last =
-            sample_at(&registry, &mut timeline, &mut world, cs(200));
-        assert!((last - 1.2).abs() < 1e-5, "got {last}");
-
-        // A is back a centisecond later, at the value its own curve
-        // reached — nowhere near where B left the screen.
-        let resumed =
-            sample_at(&registry, &mut timeline, &mut world, cs(201));
-        assert!((resumed - 0.402).abs() < 1e-3, "got {resumed}");
-    }
-
-    /// Scrubbing back behind a lane holds the value from *before* any
-    /// of its clips ran, not a value from part-way through it.
-    ///
-    /// Only the first stored clip opens on the subject's untouched
-    /// value; every other clip opens on whatever the lane was already
-    /// showing. So the pre-lane branch has to name `clips[0]`
-    /// specifically — and this lane is shaped so that neither the
-    /// last clip nor the clip that finishes last is that one.
+    /// Only the first stored clip opens on the untouched value, so
+    /// the pre-lane branch must name `clips[0]` specifically.
     #[test]
     fn before_an_overlapping_lane_holds_the_untouched_value() {
-        // 5..6s stored first, 5.5..8s stored second — so the second
-        // is both last in the lane and the last to finish.
+        // 5..6s then 5.5..8s, so the second clip is both last in the
+        // lane and last to finish — neither is `clips[0]`.
         let (registry, mut timeline) =
             timeline_of(&[(500, 100), (550, 250)]);
 
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // Arrive from inside the lane so scrubbing back reaches the
-        // branch that holds the pre-lane value. The second clip opens
-        // half-way up the first (0.5) and runs 0.5 -> 1.5.
+        // Arrive from inside, so scrubbing back reaches the branch.
         let inside =
             sample_at(&registry, &mut timeline, &mut world, cs(600));
         assert!((inside - 0.7).abs() < 1e-5, "got {inside}");
 
-        // Either other candidate would show 0.5 here — a value from
-        // the middle of a lane that has not started.
+        // Either other candidate would read 0.5 — a value from the
+        // middle of a lane that has not started.
         let before =
             sample_at(&registry, &mut timeline, &mut world, cs(0));
         assert!(before.abs() < 1e-5, "got {before}");
     }
 
-    /// Two zero-duration clips at one instant occupy no time at all,
-    /// yet both are live there, so the winner is still decided by
-    /// position in the lane.
-    ///
-    /// Storage order is deliberately the reverse of authoring order.
-    /// The one stored later wins.
+    /// Two spacers at one instant occupy no time, yet both are live
+    /// there — position in the lane still decides.
     #[test]
     fn zero_duration_spacers_resolve_by_position() {
         let mut registry = Registry::new();
         let mut builder = registry.create_builder::<World>();
 
-        // Listed first, so stored first.
         let first = builder
             .act_builder(0u32, crate::path!(<f32>), |x| x + 1.0)
             .with_interp(linear)
             .play(Duration::ZERO);
-        // Stored later, so this one wins.
         let second = builder
             .act_builder(0u32, crate::path!(<f32>), |x| x + 5.0)
             .with_interp(linear)
             .play(Duration::ZERO);
 
-        // Listed the other way round, so `second` is stored first.
+        // Listed the other way round, so `second` is stored first and
+        // bakes 0 -> 5. `first` then opens on what the lane shows at
+        // 0s — `progress` is 1.0 for a spacer, so that is `second`'s
+        // end — giving 5 -> 6. `first` is stored last, so it wins.
         let track = [second, first].ord_all().compile();
         let mut timeline = builder.compile(track);
 
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // `second` is stored first, so it opens on the untouched
-        // value: 0 -> 5. `first` then opens on what the lane shows at
-        // 0s — and a zero-duration clip reports progress 1.0, so that
-        // is `second`'s *end* — giving 5 -> 6. `first` is stored
-        // last, so it wins: 6.0.
         let at_zero = sample_at(
             &registry,
             &mut timeline,
@@ -961,20 +910,15 @@ mod tests {
         assert!((at_zero - 6.0).abs() < 1e-5, "got {at_zero}");
     }
 
-    /// A zero-duration spacer sitting exactly where a longer clip
-    /// ends. Their spans do not overlap, but both are live at that
-    /// instant, so position in the lane still decides.
-    ///
-    /// Picking the later clip by position is *usually* harmless at a
-    /// touching boundary, since baking opens it on what the earlier
-    /// one is showing there. Not here: `progress` reports `1.0` for a
-    /// zero-duration clip, so it reads as its own *end* instead.
+    /// A spacer sitting exactly where a longer clip ends. Touching is
+    /// usually harmless, since the later clip opens on what the
+    /// earlier shows there — but `progress` is `1.0` for a spacer, so
+    /// it reads as its own *end* instead.
     #[test]
     fn zero_duration_clip_at_a_boundary_resolves_by_position() {
         let mut registry = Registry::new();
         let mut builder = registry.create_builder::<World>();
 
-        // Listed first, so stored first.
         let spacer = delay(
             cs(500),
             builder
@@ -982,7 +926,6 @@ mod tests {
                 .with_interp(linear)
                 .play(Duration::ZERO),
         );
-        // Stored later, so this one wins.
         let long = builder
             .act_builder(0u32, crate::path!(<f32>), |x| x + 1.0)
             .with_interp(linear)
@@ -994,9 +937,8 @@ mod tests {
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // Baking walks start order: long 0 -> 1, then spacer 1 -> 6.
-        // At 5s both are live; the spacer is stored later, so it
-        // wins, and `progress` reports 1.0 for it: 6.0.
+        // Start order puts long first: 0 -> 1, then spacer 1 -> 6.
+        // At 5s both are live and the spacer is stored later.
         let at_end =
             sample_at(&registry, &mut timeline, &mut world, cs(500));
         assert!((at_end - 6.0).abs() < 1e-5, "got {at_end}");
@@ -1024,26 +966,23 @@ mod tests {
         );
     }
 
-    /// A playhead that stops moving must not rewrite finished clips
-    /// every frame. The `time_range` guard is what prevents it.
+    /// A parked playhead must not rewrite finished clips every frame.
+    /// The `time_range` guard is what prevents it.
     #[test]
     fn parked_playhead_stops_requeueing() {
-        // A gap to park in. A single clip would not do: the target
-        // time is clamped to the track duration, which would leave
-        // the playhead sitting exactly on the clip's end — where it
-        // still counts as covered.
+        // A gap to park in — a single clip would leave the playhead
+        // on its end, where it still counts as covered.
         let (registry, mut timeline) =
             timeline_of(&[(0, 100), (500, 100)]);
 
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // Crossing the first clip queues it, to land on its end.
+        // Crossing the first clip queues it.
         sample_at(&registry, &mut timeline, &mut world, cs(300));
         assert!(!timeline.queue_cache().is_empty());
 
-        // Sitting still in the gap moves through nothing, so nothing
-        // is queued.
+        // Sitting still moves through nothing.
         sample_at(&registry, &mut timeline, &mut world, cs(300));
         assert!(
             timeline.queue_cache().is_empty(),
@@ -1051,28 +990,23 @@ mod tests {
         );
     }
 
-    /// Skipping *backwards* past a track resolves its lanes to the
-    /// value they held before any of their clips ran.
-    ///
-    /// Baking chains from the first stored clip, so only that clip's
-    /// start is the untouched value. The clip that finishes last is
-    /// the wrong end of the lane, and with overlaps it is a different
-    /// clip entirely.
+    /// Skipping *backwards* settles a lane on the value it held
+    /// before any of its clips ran — `clips[0]`'s start, not the clip
+    /// that finishes last.
     #[test]
     fn skipping_a_lane_backwards_holds_its_pre_lane_value() {
         let mut registry = Registry::new();
         let mut builder = registry.create_builder::<World>();
 
-        // Track 0 is only somewhere to jump back to.
+        // Somewhere to jump back to.
         let track0 = builder
             .act_builder(0u32, crate::path!(<f32>), |x| x + 1.0)
             .with_interp(linear)
             .play(cs(100))
             .compile();
 
-        // Track 1's lane: 0..1s, plus 0.5..3s overlapping it. Sorted
-        // by start, so the first stored clip is *not* the one that
-        // finishes last.
+        // 0..1s plus 0.5..3s over it, so the first stored clip is
+        // not the one that finishes last.
         let short = builder
             .act_builder(1u32, crate::path!(<f32>), |x| x + 1.0)
             .with_interp(linear)
@@ -1092,16 +1026,15 @@ mod tests {
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // Play track 1 out so subject 1 is far from where it began.
+        // Play it out so subject 1 is far from where it began.
         timeline.set_target_track(1);
         timeline.set_target_time(cs(300));
         timeline.queue_actions();
         timeline.sample_queued_actions(&registry, &mut world);
         assert!(world.0[1] > 1.0, "got {}", world.0[1]);
 
-        // Jump back. Track 1 is the skipped one, so its lane settles
-        // to 0.0. Taking the clip that finishes last would give 0.5 —
-        // where the long clip opened, part-way up the short one.
+        // Jump back: the skipped lane settles to 0.0. The clip that
+        // finishes last would give 0.5, part-way up the short one.
         timeline.set_target_track(0);
         timeline.set_target_time(Duration::ZERO);
         timeline.queue_actions();
@@ -1110,16 +1043,14 @@ mod tests {
         assert!(world.0[1].abs() < 1e-5, "got {}", world.0[1]);
     }
 
-    /// Skipping tracks resolves each skipped lane to its resting
-    /// value, and that value belongs to the clip finishing last —
-    /// not to the last clip in the span.
+    /// Skipping forward settles the skipped lane on the clip that
+    /// finishes last — with overlaps, not the last clip in the lane.
     #[test]
     fn track_skip_uses_the_clip_that_finishes_last() {
         let mut registry = Registry::new();
         let mut builder = registry.create_builder::<World>();
 
-        // Track 0 drives subject 0 with an overlapping pair: 0..10s
-        // authored first, 1..2s authored second.
+        // 0..10s stored first, 1..2s over it.
         let long = builder
             .act_builder(0u32, crate::path!(<f32>), |x| x + 1.0)
             .with_interp(linear)
@@ -1133,8 +1064,7 @@ mod tests {
         );
         let track0 = [long, short].ord_all().compile();
 
-        // Track 1 drives a different subject, so nothing overwrites
-        // subject 0 once we arrive.
+        // Somewhere to skip to, on another subject.
         let track1 = builder
             .act_builder(1u32, crate::path!(<f32>), |x| x + 1.0)
             .with_interp(linear)
@@ -1147,48 +1077,15 @@ mod tests {
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // Jump forward a track: track 0's lane resolves to its end.
         timeline.set_target_track(1);
         timeline.set_target_time(Duration::ZERO);
         timeline.queue_actions();
         timeline.sample_queued_actions(&registry, &mut world);
 
-        // The long clip finishes last, so it owns the resting value
-        // (0.0 -> 1.0). Taking the short clip instead would leave
-        // 5.1 — it opens at 0.1 and adds 5.
+        // The long clip finishes last: 0.0 -> 1.0. The short one
+        // would leave 5.1.
         assert!(
             (world.0[0] - 1.0).abs() < 1e-5,
-            "got {}",
-            world.0[0]
-        );
-
-        // Play track 1 out, so the backward jump has something to
-        // undo on the lane it will skip.
-        timeline.set_target_time(cs(100));
-        timeline.queue_actions();
-        timeline.sample_queued_actions(&registry, &mut world);
-        assert!(
-            (world.0[1] - 1.0).abs() < 1e-5,
-            "got {}",
-            world.0[1]
-        );
-
-        timeline.set_target_track(0);
-        timeline.set_target_time(Duration::ZERO);
-        timeline.queue_actions();
-        timeline.sample_queued_actions(&registry, &mut world);
-
-        // Track 1 is the *skipped* lane on the way back, so the
-        // transition path settles it to its opening value.
-        assert!(
-            (world.0[1] - 0.0).abs() < 1e-5,
-            "got {}",
-            world.0[1]
-        );
-        // Track 0 is the target, so its lane comes from the main
-        // loop at progress 0 — not from the transition path.
-        assert!(
-            (world.0[0] - 0.0).abs() < 1e-5,
             "got {}",
             world.0[0]
         );
@@ -1220,20 +1117,16 @@ mod tests {
         assert!((after_gap - 1.7).abs() < 1e-5, "got {after_gap}");
     }
 
-    /// A clip opens on what the one before it *shows* where they meet,
-    /// which is not the same as that clip's end value.
-    ///
-    /// Touching is not a gap: baking has to read the earlier clip
-    /// through its easing rather than short-circuit to its end. An
-    /// ease that never reaches 1.0 is what makes the two differ —
-    /// with a normalised one they agree and nothing can tell.
+    /// Touching is not a gap: baking reads the earlier clip through
+    /// its easing rather than short-circuiting to its end. Only an
+    /// ease that never reaches 1.0 can tell the two apart.
     #[test]
     fn a_touching_clip_opens_on_the_eased_last_frame() {
         let mut registry = Registry::new();
         let mut builder = registry.create_builder::<World>();
 
-        // Deliberately not normalised: this tops out at 0.5, so the
-        // clip leaves the screen half way through its range.
+        // Not normalised: tops out at 0.5, so the clip leaves the
+        // screen half way through its range.
         let first = builder
             .act_builder(0u32, crate::path!(<f32>), |x| x + 1.0)
             .with_interp(linear)

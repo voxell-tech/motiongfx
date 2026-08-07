@@ -578,20 +578,18 @@ mod tests {
         assert_eq!(track.duration(), cs(100));
     }
 
-    /// A lane ends when its last clip *finishes*, which with overlaps
-    /// is not the last clip in start order.
-    ///
-    /// `Sequence::end` has to scan for the maximum, not read the tail.
-    /// Reading the tail here would clamp `set_target_time` to 1s and
-    /// put the 3s clip's end permanently out of reach.
+    /// `Sequence::end` must scan for the maximum, not read the tail:
+    /// with overlaps the last clip in start order is not the last to
+    /// finish. Reading the tail would clamp `set_target_time` to 1s
+    /// and put the 3s clip's end out of reach.
     #[test]
     fn track_duration_covers_a_clip_that_outlives_the_last() {
-        // One lane, both starting at 0: 0..3s then 0..1s.
+        // One lane, both starting at 0: 0..3s then 0..1s. `any`
+        // reports the *minimum*, so the fragment duration is 1s and
+        // cannot mask a lane end that is too short.
         let long = TrackFragment::single(key("a"), clip(300));
         let short = TrackFragment::single(key("a"), clip(100));
 
-        // `any` reports the *minimum*, so the fragment duration is 1s
-        // and cannot mask a lane end that is too short.
         let track = [long, short].ord_any().compile();
 
         assert_eq!(track.duration(), cs(300));
@@ -677,8 +675,7 @@ mod tests {
         }
     }
 
-    /// A fragment holding one clip at `start`, lasting `duration`.
-    /// All times in centiseconds.
+    /// One clip at `start` lasting `duration`, in centiseconds.
     fn at(start: u64, duration: u64) -> TrackFragment {
         delay(
             cs(start),
@@ -692,61 +689,43 @@ mod tests {
     }
 
     /// Merging must not depend on the order fragments are listed in.
-    /// These two are a full second apart and both belong.
+    /// These two are a second apart and used to panic.
     #[test]
     fn out_of_order_merge_keeps_both_sorted() {
         let track = [at(200, 100), at(0, 100)].ord_all();
         let clips = &track.sequences[&key("a")].clips;
 
         assert_eq!(clips.len(), 2);
-        // Sorted, despite the later-starting clip being merged first.
         assert_eq!(clips.head.start, cs(0));
         assert_eq!(clips.last().start, cs(200));
     }
 
-    /// Overlapping clips are all kept, in start order. `compile`
-    /// does no overlap analysis; baking resolves them by position.
+    /// `compile` keeps every clip — it does no overlap analysis. A
+    /// fully covered clip used to be dropped, because the old chain
+    /// let an unseen clip shift every value after it.
     #[test]
-    fn overlapping_clips_are_all_kept() {
-        // 0..5s stored first, 1..2s stored second and inside it.
+    fn compile_keeps_every_clip() {
+        // Partial overlap, in start order.
         let track = [at(0, 500), at(100, 100)].ord_all().compile();
-
-        assert_eq!(kept(&track), 2);
-
         let (_, span) = track.sequences_spans()[0];
-        let clips = track.clips(span);
-        assert_eq!(clips[0].start, cs(0));
-        assert_eq!(clips[1].start, cs(100));
-    }
+        assert_eq!(kept(&track), 2);
+        assert_eq!(track.clips(span)[0].start, cs(0));
+        assert_eq!(track.clips(span)[1].start, cs(100));
 
-    /// A clip the later ones cover completely stays in the lane.
-    ///
-    /// It used to be dropped: the old bake chained each clip off the
-    /// previous one's end, so a clip nobody could see still shifted
-    /// every value after it. Baking now resolves each clip against
-    /// what is on screen, and an invisible clip is on nobody's
-    /// screen — so it feeds nobody and can simply stay.
-    #[test]
-    fn a_fully_covered_clip_is_kept() {
-        // Same start, and the second outlives the first entirely.
+        // Covered outright by one later clip.
         let track = [at(0, 200), at(0, 300)].ord_all().compile();
         assert_eq!(kept(&track), 2);
 
-        // Covered by the *union* of two later clips: neither hides it
-        // alone, but together they leave no gap.
-        let track = [
-            at(0, 400),   // 0..4  stored first
-            at(0, 200),   // 0..2
-            at(200, 300), // 2..5
-        ]
-        .ord_all()
-        .compile();
+        // Covered by the union of two, which leave no gap.
+        let track = [at(0, 400), at(0, 200), at(200, 300)]
+            .ord_all()
+            .compile();
         assert_eq!(kept(&track), 3);
     }
 
     /// `any` reports the *minimum* duration without shortening its
-    /// clips, so a following `chain` under-delays and genuinely
-    /// overlaps. That used to panic; overlapping lanes are legal now.
+    /// clips, so a following `chain` under-delays and overlaps. That
+    /// used to panic.
     #[test]
     fn any_then_chain_overlap_is_handled() {
         let inner = [
@@ -765,9 +744,8 @@ mod tests {
             .expect("key `b` was compiled in");
         let clips = track.clips(*span);
 
-        // Both survive, in start order. The chained clip lands at 1s
-        // — `any`'s minimum — rather than after the 3s clip it
-        // shares a lane with, so the two genuinely overlap.
+        // The chained clip lands at 1s — `any`'s minimum — rather
+        // than after the 3s clip sharing its lane, so they overlap.
         assert_eq!(clips.len(), 2);
         assert_eq!(clips[0].start, Duration::ZERO);
         assert_eq!(clips[1].start, cs(100));
