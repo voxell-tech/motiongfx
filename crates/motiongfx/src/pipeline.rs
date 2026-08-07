@@ -220,8 +220,8 @@ where
             continue;
         };
 
-        // The furthest end so far and which clip reached it. Ties go
-        // to the later clip, as in `resolve_clip`.
+        // A running argmax of clip ends, so a lane that never
+        // overlaps skips `resolve_clip`.
         let mut max_end = Duration::ZERO;
         let mut max_idx = 0;
 
