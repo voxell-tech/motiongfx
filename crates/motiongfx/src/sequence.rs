@@ -88,7 +88,7 @@ impl Sequence {
     pub fn push(&mut self, span: ActionClip) {
         debug_assert!(
             span.start >= self.clips.last().start,
-            "clips must be appended in start order: {:?} follows {:?}",
+            "({:?} >= {:?}) `ActionClip`s must be in start order!",
             span.start,
             self.clips.last().start,
         );
