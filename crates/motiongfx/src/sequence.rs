@@ -63,7 +63,7 @@ impl Sequence {
     pub(crate) fn merge(&mut self, other: Self) {
         // Already sorted: append as is.
         if self.clips.last().start <= other.start() {
-            self.clips.extend(other.clips);
+            self.extend(other.clips);
             return;
         }
 
