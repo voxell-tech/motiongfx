@@ -7,9 +7,8 @@ use crate::action::ActionClip;
 /// The [`ActionClip`]s driving one field of one subject, sorted by
 /// [`ActionClip::start`].
 ///
-/// Clips **may overlap**. Where they do, the highest
-/// [`ActionClip::order`] plays and the others are hidden until it
-/// stops covering them.
+/// Clips **may overlap**. Where they do, the one later in the list
+/// plays and the others are hidden until it stops covering them.
 #[derive(Debug, Clone)]
 pub struct Sequence {
     pub clips: NonEmpty<ActionClip>,

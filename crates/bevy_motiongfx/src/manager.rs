@@ -1,11 +1,9 @@
 use core::ops::{Deref, DerefMut};
 
-use alloc::vec::Vec;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_platform::collections::HashMap;
 use motiongfx::prelude::*;
-use tracing::warn;
 
 use crate::MotionGfxSystems;
 use crate::controller::FixedRatePlayer;
@@ -50,44 +48,6 @@ fn sample_timelines(world: &mut World) {
 /// A unique Id for a [`Timeline`].
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimelineId(u64);
-
-/// What makes two overlaps the same report: the field they clash on,
-/// and whether the covered clip survived.
-fn overlap_group(overlap: &ClipOverlap) -> (&'static str, bool) {
-    (overlap.key.field().field_path(), overlap.never_visible)
-}
-
-/// Logs the [`ClipOverlap`]s of a freshly loaded timeline.
-fn report_overlaps(id: &TimelineId, timeline: &BevyTimeline) {
-    let mut overlaps = timeline.overlaps().collect::<Vec<_>>();
-    if overlaps.is_empty() {
-        return;
-    }
-
-    // Sorting makes each group contiguous. The key must be unique or
-    // the example printed for a group varies between run.
-    overlaps.sort_unstable_by_key(|overlap| {
-        (
-            overlap_group(overlap),
-            overlap.key.subject_id().uid(),
-            overlap.overwritten.order,
-        )
-    });
-
-    let groups = overlaps
-        .chunk_by(|a, b| overlap_group(a) == overlap_group(b));
-
-    for group in groups {
-        match group.len() {
-            1 => warn!("timeline {id:?}: {}", group[0]),
-            n => warn!(
-                "timeline {id:?}: {} (and {} more on this field)",
-                group[0],
-                n - 1,
-            ),
-        }
-    }
-}
 
 /// Signal for complete timelines
 #[derive(Component)]
@@ -187,8 +147,6 @@ impl MotionGfxManager {
 
     pub fn load_pending_timelines(&mut self, world: &World) {
         for (id, mut timeline) in self.pending_timelines.drain() {
-            report_overlaps(&id, &timeline);
-
             timeline.bake_actions(
                 &self.registry,
                 BevyWorld::from_ref(world),

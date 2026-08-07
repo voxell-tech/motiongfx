@@ -4,6 +4,8 @@ use core::any::TypeId;
 use core::marker::PhantomData;
 use core::time::Duration;
 
+use alloc::vec::Vec;
+
 use func_pointers::{BakeFnPtr, SampleFnPtr};
 
 use crate::ThreadSafe;
@@ -14,6 +16,7 @@ use crate::action::{
 use crate::pipeline::func_pointers::{BakeFn, SampleFn};
 use crate::registry::AccessorRegistry;
 use crate::subject::SubjectId;
+use crate::timeline::resolve_clip;
 use crate::track::Track;
 use crate::world::SubjectSource;
 
@@ -191,7 +194,14 @@ where
     else {
         return;
     };
+    let interp_col =
+        ctx.action_table.table().type_column::<InterpStorage<T>>();
     let segment_col = ctx.action_table.ensure_segment_column::<T>();
+
+    // The lane baked so far, index for index. A skipped clip is in
+    // neither, so `resolve_clip` only picks one with a value to read.
+    let mut baked = Vec::<ActionClip>::new();
+    let mut segments = Vec::<Segment<T>>::new();
 
     for (key, span) in ctx.track.sequences_spans() {
         let Some(accessor) =
@@ -210,26 +220,99 @@ where
             continue;
         };
 
-        let mut start = accessor.get_ref(source).clone();
+        // The furthest end so far and which clip reached it. Ties go
+        // to the later clip, as in `resolve_clip`.
+        let mut max_end = Duration::ZERO;
+        let mut max_idx = 0;
 
-        for ActionClip { id, .. } in ctx.track.clips(*span) {
+        for clip in ctx.track.clips(*span) {
             let Some(action) = ctx
                 .action_table
-                .get_action_by_column::<T>(action_col, id)
+                .get_action_by_column::<T>(action_col, &clip.id)
             else {
                 continue;
             };
 
-            let end = action(&start);
-            let segment = Segment::new(start.clone(), end.clone());
+            // Open on what the lane is showing here, not on whatever
+            // ran last.
+            let start = if baked.is_empty() {
+                // Nothing has run yet, so the subject is untouched.
+                accessor.get_ref(source).clone()
+            } else {
+                // Nothing is still running, so nothing covers this
+                // clip.
+                let (i, mode) = if max_end < clip.start {
+                    (max_idx, SampleMode::End)
+                } else {
+                    resolve_clip(&baked, clip.start)
+                };
 
+                let segment = &segments[i];
+                let under = baked[i].id;
+
+                match mode {
+                    // Unreachable on a start-sorted lane, and the
+                    // right value if that ever broke.
+                    SampleMode::Start => {
+                        debug_assert!(
+                            false,
+                            "lane is not sorted by start"
+                        );
+                        segment.start.clone()
+                    }
+                    SampleMode::End => segment.end.clone(),
+                    SampleMode::Interp(t) => {
+                        let interp = interp_col.and_then(|col| {
+                            ctx.action_table
+                                .table()
+                                .get_by_column::<InterpStorage<T>>(
+                                    col, &under,
+                                )
+                        });
+
+                        match interp {
+                            Some(interp) => {
+                                let t = match ctx
+                                    .action_table
+                                    .ease(&under)
+                                {
+                                    Some(ease) => ease.0(t),
+                                    None => t,
+                                };
+
+                                interp.0(
+                                    &segment.start,
+                                    &segment.end,
+                                    t,
+                                )
+                            }
+                            // TODO: an action with no interpolation
+                            // is never drawn, so this opens the next
+                            // clip on a value the lane never showed.
+                            None => segment.end.clone(),
+                        }
+                    }
+                }
+            };
+
+            let end = action(&start);
+
+            baked.push(*clip);
+            segments.push(Segment::new(start, end));
+
+            if clip.end() >= max_end {
+                max_end = clip.end();
+                max_idx = baked.len() - 1;
+            }
+        }
+
+        for (clip, segment) in baked.drain(..).zip(segments.drain(..))
+        {
             ctx.action_table.set_segment_by_column(
-                *id,
+                clip.id,
                 segment,
                 segment_col,
             );
-
-            start = end;
         }
     }
 }
