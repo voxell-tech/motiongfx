@@ -98,15 +98,31 @@ impl Sequence {
 }
 
 impl Extend<ActionClip> for Sequence {
-    /// Appends clips without sorting. See [`Sequence::push`].
+    /// Appends clips without sorting, applying the same order
+    /// check as [`Sequence::push`] across the batch.
     #[inline]
     fn extend<T: IntoIterator<Item = ActionClip>>(
         &mut self,
         iter: T,
     ) {
-        for clip in iter {
-            self.push(clip);
-        }
+        #[cfg(debug_assertions)]
+        let mut last_start = self.clips.last().start;
+        #[cfg(debug_assertions)]
+        let iter = {
+            iter.into_iter().inspect(|clip| {
+                debug_assert!(
+                    clip.start >= last_start,
+                    "({:?} >= {:?}) `ActionClip`s must be in \
+                     start order!",
+                    clip.start,
+                    last_start,
+                );
+
+                last_start = clip.start;
+            })
+        };
+
+        self.clips.extend(iter);
     }
 }
 
