@@ -112,8 +112,7 @@ impl Extend<ActionClip> for Sequence {
             iter.into_iter().inspect(|clip| {
                 debug_assert!(
                     clip.start >= last_start,
-                    "({:?} >= {:?}) `ActionClip`s must be in \
-                     start order!",
+                    "({:?} >= {:?}) `ActionClip`s must be in start order!",
                     clip.start,
                     last_start,
                 );
