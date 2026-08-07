@@ -8,7 +8,9 @@ use crate::action::ActionClip;
 /// [`ActionClip::start`].
 ///
 /// Clips **may overlap**. Where they do, the one later in the list
-/// plays and the others are hidden until it stops covering them.
+/// wins. The list is sorted by start, so that is whichever began
+/// most recently, not whichever was authored last. Clips it covers
+/// show again when it ends, each at its own progress.
 #[derive(Debug, Clone)]
 pub struct Sequence {
     pub clips: NonEmpty<ActionClip>,
@@ -59,7 +61,8 @@ impl Sequence {
     /// Merges `other` into `self`, keeping the clips sorted by
     /// [`ActionClip::start`].
     ///
-    /// Nothing is dropped. Overlaps are resolved at playback.
+    /// Nothing is dropped; list order decides the winner, in baking
+    /// and at playback alike.
     pub(crate) fn merge(&mut self, other: Self) {
         // Already sorted: append as is.
         if self.clips.last().start <= other.start() {
@@ -80,7 +83,7 @@ impl Sequence {
     /// Appends a clip.
     ///
     /// Does **not** sort. Overlapping the last clip is fine; starting
-    /// before it is not, and nothing downstream will catch it.
+    /// before it is not.
     #[inline]
     pub fn push(&mut self, span: ActionClip) {
         debug_assert!(

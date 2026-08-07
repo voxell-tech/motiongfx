@@ -648,7 +648,7 @@ mod tests {
 
     /// The later clip wins while it covers, the one underneath shows
     /// again after. The two handovers are not symmetric: taking over
-    /// is seamless, handing back jumps — a clip has one segment, so
+    /// is seamless, handing back jumps: a clip has one segment, so
     /// it cannot be reopened part way through.
     #[test]
     fn later_clip_overrides_then_the_earlier_one_resumes() {
@@ -688,7 +688,7 @@ mod tests {
     }
 
     /// Which clip wins is decided by position in the lane, and lanes
-    /// are stored sorted by start — so listing the fragments the other
+    /// are stored sorted by start, so listing the fragments the other
     /// way round cannot change the answer.
     #[test]
     fn creation_order_does_not_decide_the_winner() {
@@ -742,8 +742,8 @@ mod tests {
         assert!((in_gap - 2.0).abs() < 1e-5, "got {in_gap}");
     }
 
-    /// Past the end, the subject holds the clip that finished last —
-    /// with overlaps, not the last clip in the lane.
+    /// Past the end, the subject holds the clip that finished last,
+    /// which with overlaps is not the last clip in the lane.
     #[test]
     fn past_the_end_holds_the_last_clip_to_finish() {
         // 0..10s with 1..2s over it: the short clip is stored second
@@ -783,7 +783,7 @@ mod tests {
 
     /// A covering clip opens on the value already on screen, so
     /// taking over is continuous. Chaining off the covered clip's end
-    /// opened it on 1.0 — a value the lane never displayed.
+    /// opened it on 1.0, a value the lane never displayed.
     #[test]
     fn an_overlap_takes_over_without_a_jump() {
         // 0..5s with 3..5s over it.
@@ -819,7 +819,7 @@ mod tests {
         let mut registry = Registry::new();
         let mut builder = registry.create_builder::<World>();
 
-        // Two subjects, one track, disjoint spans — so a leak reads
+        // Two subjects, one track, disjoint spans, so a leak reads
         // the wrong lane rather than coinciding with the right value.
         let first = builder
             .act_builder(0u32, crate::path!(<f32>), |x| x + 10.0)
@@ -856,7 +856,7 @@ mod tests {
     #[test]
     fn before_an_overlapping_lane_holds_the_untouched_value() {
         // 5..6s then 5.5..8s, so the second clip is both last in the
-        // lane and last to finish — neither is `clips[0]`.
+        // lane and last to finish, so neither is `clips[0]`.
         let (registry, mut timeline) =
             timeline_of(&[(500, 100), (550, 250)]);
 
@@ -868,7 +868,7 @@ mod tests {
             sample_at(&registry, &mut timeline, &mut world, cs(600));
         assert!((inside - 0.7).abs() < 1e-5, "got {inside}");
 
-        // Either other candidate would read 0.5 — a value from the
+        // Either other candidate would read 0.5, a value from the
         // middle of a lane that has not started.
         let before =
             sample_at(&registry, &mut timeline, &mut world, cs(0));
@@ -876,7 +876,7 @@ mod tests {
     }
 
     /// Two spacers at one instant occupy no time, yet both are live
-    /// there — position in the lane still decides.
+    /// there, so position in the lane still decides.
     #[test]
     fn zero_duration_spacers_resolve_by_position() {
         let mut registry = Registry::new();
@@ -893,8 +893,8 @@ mod tests {
 
         // Listed the other way round, so `second` is stored first and
         // bakes 0 -> 5. `first` then opens on what the lane shows at
-        // 0s — `progress` is 1.0 for a spacer, so that is `second`'s
-        // end — giving 5 -> 6. `first` is stored last, so it wins.
+        // 0s, and `progress` is 1.0 for a spacer, so that is `second`'s
+        // end, giving 5 -> 6. `first` is stored last, so it wins.
         let track = [second, first].ord_all().compile();
         let mut timeline = builder.compile(track);
 
@@ -912,7 +912,7 @@ mod tests {
 
     /// A spacer sitting exactly where a longer clip ends. Touching is
     /// usually harmless, since the later clip opens on what the
-    /// earlier shows there — but `progress` is `1.0` for a spacer, so
+    /// earlier shows there, but `progress` is `1.0` for a spacer, so
     /// it reads as its own *end* instead.
     #[test]
     fn zero_duration_clip_at_a_boundary_resolves_by_position() {
@@ -956,7 +956,7 @@ mod tests {
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // All three open at 0.2 — what A shows at 1s. At 1.5s their
+        // All three open at 0.2, what A shows at 1s. At 1.5s their
         // own progress then separates them: A 0.3, B 0.325, C 0.7.
         let during =
             sample_at(&registry, &mut timeline, &mut world, cs(150));
@@ -970,7 +970,7 @@ mod tests {
     /// The `time_range` guard is what prevents it.
     #[test]
     fn parked_playhead_stops_requeueing() {
-        // A gap to park in — a single clip would leave the playhead
+        // A gap to park in: a single clip would leave the playhead
         // on its end, where it still counts as covered.
         let (registry, mut timeline) =
             timeline_of(&[(0, 100), (500, 100)]);
@@ -991,7 +991,7 @@ mod tests {
     }
 
     /// Skipping *backwards* settles a lane on the value it held
-    /// before any of its clips ran — `clips[0]`'s start, not the clip
+    /// before any of its clips ran: `clips[0]`'s start, not the clip
     /// that finishes last.
     #[test]
     fn skipping_a_lane_backwards_holds_its_pre_lane_value() {
@@ -1044,7 +1044,7 @@ mod tests {
     }
 
     /// Skipping forward settles the skipped lane on the clip that
-    /// finishes last — with overlaps, not the last clip in the lane.
+    /// finishes last, which with overlaps is not the last in the lane.
     #[test]
     fn track_skip_uses_the_clip_that_finishes_last() {
         let mut registry = Registry::new();
@@ -1092,7 +1092,7 @@ mod tests {
     }
 
     /// When two clips finish together, the later one in the lane owns
-    /// what the lane rests on — both for a playhead sitting in the gap
+    /// what the lane rests on, both for a playhead sitting in the gap
     /// after them, and for the clip that opens on the far side of it.
     #[test]
     fn equal_ends_rest_on_the_later_clip() {
@@ -1147,7 +1147,7 @@ mod tests {
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // 0.5, where the first clip actually left off — not 1.0, the
+        // 0.5, where the first clip actually left off. Not 1.0, the
         // end value it never displayed.
         let handover =
             sample_at(&registry, &mut timeline, &mut world, cs(100));

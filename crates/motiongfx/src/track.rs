@@ -700,7 +700,7 @@ mod tests {
         assert_eq!(clips.last().start, cs(200));
     }
 
-    /// `compile` keeps every clip — it does no overlap analysis. A
+    /// `compile` keeps every clip: it does no overlap analysis. A
     /// fully covered clip used to be dropped, because the old chain
     /// let an unseen clip shift every value after it.
     #[test]
@@ -744,7 +744,7 @@ mod tests {
             .expect("key `b` was compiled in");
         let clips = track.clips(*span);
 
-        // The chained clip lands at 1s — `any`'s minimum — rather
+        // The chained clip lands at 1s, `any`'s minimum, rather
         // than after the 3s clip sharing its lane, so they overlap.
         assert_eq!(clips.len(), 2);
         assert_eq!(clips[0].start, Duration::ZERO);
