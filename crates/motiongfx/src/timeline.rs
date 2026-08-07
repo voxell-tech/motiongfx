@@ -719,27 +719,8 @@ mod tests {
         assert!((second - 1.5).abs() < 1e-5, "got {second}");
     }
 
-    /// A playhead parked in a gap holds the value the last clip left
-    /// behind, rather than jumping to one that has not started.
-    #[test]
-    fn gap_holds_the_previous_clip_end() {
-        // 0..1s, then nothing until 5..6s.
-        let (registry, mut timeline) =
-            timeline_of(&[(0, 100), (500, 100)]);
-
-        let mut world = World::new();
-        timeline.bake_actions(&registry, &world);
-
-        let in_gap =
-            sample_at(&registry, &mut timeline, &mut world, cs(300));
-        assert!((in_gap - 1.0).abs() < 1e-5, "got {in_gap}");
-    }
-
-    /// With several clips already finished, the gap holds the one
-    /// that finished *last*, not the first to have started.
-    ///
-    /// The test above cannot see the difference: only one clip has
-    /// started by the time it samples.
+    /// A playhead parked in a gap holds the clip that finished
+    /// *last*, not the first to have started.
     #[test]
     fn gap_holds_the_last_clip_to_finish_not_the_first() {
         // 0..1s, 2..3s, then 5..6s to keep the track running.
@@ -905,42 +886,6 @@ mod tests {
         assert!((resumed - 0.402).abs() < 1e-3, "got {resumed}");
     }
 
-    /// Baking reads the covered clip through its *own* easing. What
-    /// is on screen is the eased value, so that is what the clip
-    /// taking over has to open on.
-    #[test]
-    fn an_overlap_opens_on_the_eased_value() {
-        let mut registry = Registry::new();
-        let mut builder = registry.create_builder::<World>();
-
-        // 0..4s eased, so at 2s it has covered a quarter of its
-        // range rather than half: `quad::ease_in(0.5) == 0.25`.
-        let eased = builder
-            .act_builder(0u32, crate::path!(<f32>), |x| x + 1.0)
-            .with_interp(linear)
-            .with_ease(crate::ease::quad::ease_in)
-            .play(cs(400));
-        // 2..4s, covering its tail.
-        let over = delay(
-            cs(200),
-            builder
-                .act_builder(0u32, crate::path!(<f32>), |x| x + 1.0)
-                .with_interp(linear)
-                .play(cs(200)),
-        );
-
-        let track = [eased, over].ord_all().compile();
-        let mut timeline = builder.compile(track);
-
-        let mut world = World::new();
-        timeline.bake_actions(&registry, &world);
-
-        // 0.25, not the 0.5 the raw progress would give.
-        let handover =
-            sample_at(&registry, &mut timeline, &mut world, cs(200));
-        assert!((handover - 0.25).abs() < 1e-5, "got {handover}");
-    }
-
     /// Scrubbing back behind a lane holds the value from *before* any
     /// of its clips ran, not a value from part-way through it.
     ///
@@ -1077,27 +1022,6 @@ mod tests {
             (during - 0.7).abs() < 1e-5,
             "the last clip in the lane should win, got {during}"
         );
-    }
-
-    /// Scrubbing back before a lane begins resolves it to its opening
-    /// value rather than leaving whatever was last written.
-    #[test]
-    fn before_the_start_holds_the_opening_value() {
-        // A single clip running 5..6s.
-        let (registry, mut timeline) = timeline_of(&[(500, 100)]);
-
-        let mut world = World::new();
-        timeline.bake_actions(&registry, &world);
-
-        let midway =
-            sample_at(&registry, &mut timeline, &mut world, cs(550));
-        assert!((midway - 0.5).abs() < 1e-5, "got {midway}");
-
-        // Back before it starts: the clip's opening value, not its
-        // end and not whatever the playhead left behind.
-        let before =
-            sample_at(&registry, &mut timeline, &mut world, cs(0));
-        assert!((before - 0.0).abs() < 1e-5, "got {before}");
     }
 
     /// A playhead that stops moving must not rewrite finished clips

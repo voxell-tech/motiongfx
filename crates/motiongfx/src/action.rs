@@ -53,8 +53,8 @@ impl UntypedSubjectId {
     }
 }
 
-/// Key that uniquely identifies the lane of actions driving one
-/// field of one subject.
+/// Key that uniquely identifies a sequence of non-overlapping
+/// actions.
 ///
 /// Treated as immutable by convention: `track.rs` stores this as a
 /// `HashMap` key, so it must never be mutated in place after

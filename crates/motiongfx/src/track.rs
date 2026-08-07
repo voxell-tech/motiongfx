@@ -313,9 +313,6 @@ pub struct Track {
     sequence_spans: Box<[(ActionKey, Span)]>,
 
     /// Contiguous storage of all action clips.
-    ///
-    /// Clips within a sequence are sorted by [`ActionClip::start`]
-    /// and may overlap.
     clip_arena: Box<[ActionClip]>,
 
     /// Total duration of the track.
