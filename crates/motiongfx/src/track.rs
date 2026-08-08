@@ -217,11 +217,13 @@ impl TrackFragment {
 
         // The combinators accumulate `duration` independently of the
         // clip offsets, so pin them together here: the clamp in
-        // `Timeline::set_target_time` must be able to reach the last
-        // clip's end.
+        // `Timeline::set_target_time` must be able to reach the end
+        // of every clip. A lane is stored as listed, so the one that
+        // finishes last is not necessarily the one stored last.
         let duration = sequences
             .iter()
-            .map(|(_, seq)| seq.end())
+            .flat_map(|(_, seq)| seq.clips.iter())
+            .map(|clip| clip.end())
             .max()
             .unwrap_or(Duration::ZERO)
             .max(self.duration);
