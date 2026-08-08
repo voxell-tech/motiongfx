@@ -9,7 +9,7 @@
 //! Nothing here is specific to UI, or to any one kind of struct.
 //!
 //! ```ignore
-//! let size = Card::path().header().badge().icon().size().accessor();
+//! let size = Card::cursor().header().badge().icon().size().accessor();
 //! assert_eq!((size.get)(&card), Some(&12));
 //! ```
 
@@ -74,10 +74,10 @@ pub trait FieldPath: 'static {
     /// Appends the hops along this path, outermost first.
     ///
     /// One id per hop, so a walk that crosses into a nested struct
-    /// says so: the owner recognises the first id and hands the rest
-    /// to whoever owns the field. A single hop names a field of
-    /// `Source` itself.
-    fn ids(out: &mut Vec<FieldId>) {
+    /// says so: the owner recognises the first and hands the rest to
+    /// whoever owns the field. A single hop names a field of `Source`
+    /// itself.
+    fn hops(out: &mut Vec<FieldId>) {
         out.push(Self::id());
     }
 }
@@ -100,7 +100,7 @@ impl<S: 'static> FieldPath for Identity<S> {
     }
 
     /// The empty path has gone nowhere, so it names no hop.
-    fn ids(_out: &mut Vec<FieldId>) {}
+    fn hops(_out: &mut Vec<FieldId>) {}
 }
 
 /// `A`, then `B`. The `B::Source == A::Target` bound rejects a
@@ -126,9 +126,9 @@ where
         A::get_mut(source).and_then(B::get_mut)
     }
 
-    fn ids(out: &mut Vec<FieldId>) {
-        A::ids(out);
-        B::ids(out);
+    fn hops(out: &mut Vec<FieldId>) {
+        A::hops(out);
+        B::hops(out);
     }
 }
 
@@ -153,14 +153,29 @@ impl<P: FieldPath> Cursor<P> {
         P::erase()
     }
 
-    /// Ends the walk, naming the hops it took.
+    /// Ends the walk, naming the whole of it at once.
     ///
-    /// The same walk gives both the write and where the write lands:
-    /// [`accessor`](Self::accessor) reaches the value, this addresses
-    /// it.
-    pub fn ids(self) -> Vec<FieldId> {
+    /// However many hops it took, a walk is one type, so this is a
+    /// single id for the entire path, and two walks share it only if
+    /// they are the same walk. That is what a binding wants: it
+    /// distinguishes `top.text` from `bottom.text`, which no one hop
+    /// can.
+    ///
+    /// Not one of the [`hops`](Self::hops): a one hop walk is still a
+    /// [`Chain`] from [`Identity`], so its key is not the id of the
+    /// hop within it, and the two never belong in one map.
+    pub fn key(self) -> FieldId {
+        P::id()
+    }
+
+    /// Ends the walk, naming each hop it took.
+    ///
+    /// This is the route a patch follows, an id per element it passes
+    /// through. The same walk also reaches the value, with
+    /// [`accessor`](Self::accessor).
+    pub fn hops(self) -> Vec<FieldId> {
         let mut out = Vec::new();
-        P::ids(&mut out);
+        P::hops(&mut out);
         out
     }
 }

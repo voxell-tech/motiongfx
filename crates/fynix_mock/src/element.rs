@@ -35,7 +35,7 @@ pub trait Element<H: Host>: ElementVisual<H> {
     ) -> H::Node;
 
     /// Apply a change named by a path, as
-    /// [`Cursor::ids`](crate::lenz::Cursor::ids) reports it.
+    /// [`Cursor::hops`](crate::lenz::Cursor::hops) reports it.
     ///
     /// A path naming a child is walked down, one hop per element,
     /// until it reaches the one that owns it. Anything else is this

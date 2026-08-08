@@ -105,7 +105,7 @@ fn build_writes_the_element_and_its_children() {
 }
 
 #[test]
-fn an_absent_child_leaves_no_entry() {
+fn absent_child_leaves_no_entry() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
     let mut button = a_button();
@@ -118,7 +118,7 @@ fn an_absent_child_leaves_no_entry() {
 }
 
 #[test]
-fn a_path_into_a_child_is_patched_by_that_child() {
+fn path_into_a_child_is_patched_by_that_child() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
     let mut button = a_button();
@@ -126,9 +126,9 @@ fn a_path_into_a_child_is_patched_by_that_child() {
     let label = store.get(node, button_path::label::id()).unwrap();
 
     // Write through the lens, then patch the field it walked to.
-    let path = Button::path().label().text();
+    let path = Button::cursor().label().text();
     *(path.accessor().get_mut)(&mut button).unwrap() = "Saved".into();
-    button.patch(&mut world, node, &path.ids(), &mut store);
+    button.patch(&mut world, node, &path.hops(), &mut store);
 
     assert_eq!(world.get(label).text, "Saved");
     assert_eq!(world.get(label).size, 13);
@@ -136,22 +136,22 @@ fn a_path_into_a_child_is_patched_by_that_child() {
 }
 
 #[test]
-fn a_path_into_plain_data_is_finished_by_its_owner() {
+fn path_into_plain_data_is_finished_by_its_owner() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
     let mut button = a_button();
     let node = button.build(&mut world, parent, &mut store);
 
-    let path = Button::path().border().width();
+    let path = Button::cursor().border().width();
     *(path.accessor().get_mut)(&mut button).unwrap() = 2;
-    button.patch(&mut world, node, &path.ids(), &mut store);
+    button.patch(&mut world, node, &path.hops(), &mut store);
 
     assert_eq!(world.get(node).border_width, 2);
     assert_eq!(world.get(node).border_radius, 0);
 }
 
 #[test]
-fn an_elem_field_is_not_one_of_our_own() {
+fn elem_field_is_not_one_of_our_own() {
     // `label` and `icon` are elements, so they never reach `Button`'s
     // own dispatch: nothing there can name them.
     assert!(Button::field(button_path::label::id()).is_none());
@@ -171,7 +171,7 @@ fn patching_an_unnamed_field_changes_nothing() {
     let node = button.build(&mut world, parent, &mut store);
 
     // A real path, but to a field of something else entirely.
-    let path = Label::path().size().ids();
+    let path = Label::cursor().size().hops();
     button.patch(&mut world, node, &path, &mut store);
 
     assert_eq!(world.get(node).padding, 4);
@@ -212,11 +212,11 @@ fn pruning_drops_what_the_app_despawned() {
 }
 
 #[test]
-fn a_walk_names_one_id_per_hop() {
-    assert_eq!(Button::path().padding().ids().len(), 1);
-    assert_eq!(Button::path().label().text().ids().len(), 2);
+fn walk_names_one_id_per_hop() {
+    assert_eq!(Button::cursor().padding().hops().len(), 1);
+    assert_eq!(Button::cursor().label().text().hops().len(), 2);
     assert_eq!(
-        Button::path().label().ids()[0],
+        Button::cursor().label().hops()[0],
         button_path::label::id()
     );
 }

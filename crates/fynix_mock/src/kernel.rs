@@ -4,10 +4,8 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
-use hashbrown::HashMap;
-
 use crate::host::Host;
-use crate::ui::{Binding, BuildFn, ChangedFn, Records, Ui, Watcher};
+use crate::ui::{BuildFn, ChangedFn, Records, Ui, Watcher};
 
 /// Owns every watcher and binding, and the tree they maintain.
 pub struct Kernel<H: Host> {
@@ -32,7 +30,7 @@ impl<H: Host> Kernel<H> {
     /// Rebuild the subtree under `root` whenever `changed` fires.
     ///
     /// The bootstrap: every other watcher is declared inside a build,
-    /// through [`NodeMut::watch`](crate::ui::NodeMut::watch).
+    /// through [`ElementMut::watch`](crate::ui::ElementMut::watch).
     pub fn watch(
         &mut self,
         root: H::Node,
@@ -46,15 +44,33 @@ impl<H: Host> Kernel<H> {
         });
     }
 
+    /// How many watchers the kernel is holding.
+    ///
+    /// One per node it may rebuild, so this is what grows if a root
+    /// goes without its watcher going too.
+    pub fn watcher_len(&self) -> usize {
+        self.watchers.len()
+    }
+
+    /// How many elements the kernel is holding.
+    ///
+    /// Every one is a node it built and has not swept, so this is what
+    /// grows if a teardown ever misses.
+    pub fn element_len(&self) -> usize {
+        self.records.element_nodes.len()
+    }
+
+    /// How many bindings the kernel is holding.
+    ///
+    /// One per field bound to a live node, so this is what grows if a
+    /// rebuild ever leaves its old bindings behind.
+    pub fn binding_len(&self) -> usize {
+        self.records.bindings.len()
+    }
+
     /// Stop watching `root`. Its nodes are left alone.
     pub fn unwatch(&mut self, root: H::Node) {
         self.watchers.retain(|watcher| watcher.root != root);
-    }
-
-    /// Bind fields on an existing `node`, not one the kernel spawned.
-    /// The kernel still prunes it when `node` is despawned.
-    pub fn bind(&mut self, node: H::Node, binding: Binding<H>) {
-        self.records.bindings.entry(node).or_default().push(binding);
     }
 
     /// Run every watcher and binding whose predicate fires.
@@ -73,11 +89,7 @@ impl<H: Host> Kernel<H> {
                 continue;
             }
 
-            clear_children::<H>(
-                world,
-                watcher.root,
-                &mut records.bindings,
-            );
+            clear_children::<H>(world, watcher.root);
             let mut ui = Ui::new(world, watcher.root, records);
             (watcher.build)(&mut ui);
         }
@@ -85,43 +97,49 @@ impl<H: Host> Kernel<H> {
         watchers.append(&mut records.spawned);
         watchers.retain(|watcher| H::exists(world, watcher.root));
 
-        // Nodes can also be despawned by the app out from under a
-        // binding. Applying to a dead handle is the host's problem to
-        // panic about, so prune first.
-        records.bindings.retain(|node, _| H::exists(world, *node));
+        // Everything the kernel keeps is keyed on a node, and a node
+        // can go at any time: a rebuild above cleared one, or the app
+        // despawned another out from under us. One sweep covers both,
+        // and has to come before anything is applied to a dead handle.
+        records
+            .bindings
+            .retain(|(node, _), _| H::exists(world, *node));
+        records.store.prune(world);
 
-        for (node, list) in records.bindings.iter_mut() {
-            for binding in list.iter_mut() {
-                if (binding.changed)(world, *node) {
-                    (binding.apply)(world, *node);
-                }
+        // The table is keyed by type as well as node, so it cannot be
+        // asked what it holds. `element_nodes` is the list to sweep,
+        // and dropping the row takes the element whatever type it is.
+        records.element_nodes.retain(|node| {
+            let alive = H::exists(world, *node);
+            if !alive {
+                records.elements.remove_row(node);
             }
+            alive
+        });
+
+        let Records {
+            bindings,
+            elements,
+            store,
+            ..
+        } = records;
+
+        for ((node, _), binding) in bindings.iter_mut() {
+            if !(binding.changed)(world, *node) {
+                continue;
+            }
+            (binding.apply)(elements, world, *node, store);
         }
     }
 }
 
-/// Despawn the kernel's children of `root`, dropping their bindings.
-fn clear_children<H: Host>(
-    world: &mut H::World,
-    root: H::Node,
-    bindings: &mut HashMap<H::Node, Vec<Binding<H>>>,
-) {
+/// Despawn the kernel's children of `root`.
+///
+/// The host takes each subtree with it, and the sweep in
+/// [`Kernel::flush`] drops whatever those nodes left in the records:
+/// the same job for a rebuild as for a node the app removed itself.
+fn clear_children<H: Host>(world: &mut H::World, root: H::Node) {
     for child in H::children(world, root) {
-        drop_subtree::<H>(world, child, bindings);
         H::despawn(world, child);
-    }
-}
-
-/// Forget bindings for `node` and everything beneath it. Without this
-/// a rebuild leaks a binding per node, and stale ones keep firing
-/// against handles the host has already freed.
-fn drop_subtree<H: Host>(
-    world: &H::World,
-    node: H::Node,
-    bindings: &mut HashMap<H::Node, Vec<Binding<H>>>,
-) {
-    bindings.remove(&node);
-    for child in H::children(world, node) {
-        drop_subtree::<H>(world, child, bindings);
     }
 }

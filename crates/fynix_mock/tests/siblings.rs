@@ -56,8 +56,8 @@ fn two_children_of_one_type_keep_separate_nodes() {
 
     let node = pair.build(&mut world, parent, &mut store);
 
-    let top = Pair::path().top().ids();
-    let bottom = Pair::path().bottom().ids();
+    let top = Pair::cursor().top().hops();
+    let bottom = Pair::cursor().bottom().hops();
     assert_ne!(top[0], bottom[0]);
 
     let top = store.get(node, top[0]).unwrap();
@@ -74,13 +74,14 @@ fn patching_one_of_a_pair_leaves_the_other() {
     let mut store = Store::new();
     let mut pair = a_pair();
     let node = pair.build(&mut world, parent, &mut store);
-    let top = store.get(node, Pair::path().top().ids()[0]).unwrap();
+    let top =
+        store.get(node, Pair::cursor().top().hops()[0]).unwrap();
     let bottom =
-        store.get(node, Pair::path().bottom().ids()[0]).unwrap();
+        store.get(node, Pair::cursor().bottom().hops()[0]).unwrap();
 
-    let path = Pair::path().bottom().text();
+    let path = Pair::cursor().bottom().text();
     *(path.accessor().get_mut)(&mut pair).unwrap() = "DOWN".into();
-    pair.patch(&mut world, node, &path.ids(), &mut store);
+    pair.patch(&mut world, node, &path.hops(), &mut store);
 
     assert_eq!(world.get(bottom).text, "DOWN");
     assert_eq!(world.get(top).text, "up");

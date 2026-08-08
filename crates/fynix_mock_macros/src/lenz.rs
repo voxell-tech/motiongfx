@@ -128,8 +128,8 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         }
 
         impl<#decl> #name #ty #bounds {
-            /// Starts a walk at this struct.
-            pub fn path(
+            /// A cursor standing at this struct, to walk from.
+            pub fn cursor(
             ) -> #lenz::Cursor<#lenz::Identity<Self>> {
                 #lenz::Cursor::new()
             }

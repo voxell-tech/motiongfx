@@ -54,7 +54,7 @@ fn a_themed() -> Themed<Dark> {
 }
 
 #[test]
-fn a_generic_element_builds_its_children() {
+fn generic_element_builds_its_children() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
     let themed = a_themed();
@@ -63,20 +63,20 @@ fn a_generic_element_builds_its_children() {
 
     assert_eq!(world.get(node).glyph, '*');
 
-    let label = Themed::<Dark>::path().label().ids();
+    let label = Themed::<Dark>::cursor().label().hops();
     let label = store.get(node, label[0]).unwrap();
     assert_eq!(world.get(label).text, "Save");
 }
 
 #[test]
-fn a_generic_element_patches_through_its_child() {
+fn generic_element_patches_through_its_child() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
     let mut themed = a_themed();
     let node = themed.build(&mut world, parent, &mut store);
 
-    let path = Themed::<Dark>::path().label().text();
-    let ids = path.ids();
+    let path = Themed::<Dark>::cursor().label().text();
+    let ids = path.hops();
     let label = store.get(node, ids[0]).unwrap();
 
     *(path.accessor().get_mut)(&mut themed).unwrap() = "Saved".into();
@@ -86,8 +86,8 @@ fn a_generic_element_patches_through_its_child() {
 }
 
 #[test]
-fn a_generic_elem_field_is_still_left_out_of_the_enum() {
-    let label = Themed::<Dark>::path().label().ids();
+fn generic_elem_field_is_still_left_out_of_the_enum() {
+    let label = Themed::<Dark>::cursor().label().hops();
     assert!(Themed::<Dark>::field(label[0]).is_none());
 
     let look = Themed::<Dark>::field_id(ThemedField::Look);

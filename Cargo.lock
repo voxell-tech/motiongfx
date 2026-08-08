@@ -2839,6 +2839,7 @@ version = "0.3.0"
 dependencies = [
  "fynix_mock_macros",
  "hashbrown 0.17.1",
+ "typarena",
 ]
 
 [[package]]

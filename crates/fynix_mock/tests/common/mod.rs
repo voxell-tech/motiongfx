@@ -25,12 +25,21 @@ pub struct Node {
     pub border_radius: u32,
 }
 
+/// What a predicate watches and a binding reads. A real app would
+/// have state of its own; these tests need somewhere to put a change.
+#[derive(Default)]
+pub struct Source {
+    pub text: String,
+    pub changed: bool,
+}
+
 #[derive(Default)]
 pub struct World {
     nodes: HashMap<usize, Node>,
     /// Never reused, so a handle to a despawned node cannot come back
     /// as some later one.
     next: usize,
+    pub source: Source,
 }
 
 impl World {

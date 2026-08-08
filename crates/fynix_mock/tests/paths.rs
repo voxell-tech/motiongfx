@@ -64,7 +64,8 @@ fn card() -> Card {
 #[test]
 fn reads_through_four_hops_and_four_modules() {
     let c = card();
-    let size = Card::path().header().badge().icon().size().accessor();
+    let size =
+        Card::cursor().header().badge().icon().size().accessor();
 
     assert_eq!((size.get)(&c), Some(&12));
 }
@@ -72,7 +73,8 @@ fn reads_through_four_hops_and_four_modules() {
 #[test]
 fn writes_through_the_same_path() {
     let mut card = card();
-    let size = Card::path().header().badge().icon().size().accessor();
+    let size =
+        Card::cursor().header().badge().icon().size().accessor();
 
     *(size.get_mut)(&mut card).unwrap() = 16;
 
@@ -82,7 +84,8 @@ fn writes_through_the_same_path() {
 #[test]
 fn absent_link_short_circuits() {
     let mut card = card();
-    let size = Card::path().header().badge().icon().size().accessor();
+    let size =
+        Card::cursor().header().badge().icon().size().accessor();
 
     card.header.badge.icon = None;
 
@@ -93,7 +96,7 @@ fn absent_link_short_circuits() {
 #[test]
 fn leaf_on_the_root_element() {
     let card = card();
-    let title = Card::path().title().accessor();
+    let title = Card::cursor().title().accessor();
 
     assert_eq!(
         (title.get)(&card).map(String::as_str),
@@ -103,7 +106,8 @@ fn leaf_on_the_root_element() {
 
 #[test]
 fn accessors_are_plain_copyable_data() {
-    let size = Card::path().header().badge().icon().size().accessor();
+    let size =
+        Card::cursor().header().badge().icon().size().accessor();
     let copied = size;
 
     let card = card();
