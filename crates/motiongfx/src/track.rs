@@ -189,7 +189,9 @@ impl TrackFragment {
         new_sequence: Sequence,
     ) -> Self {
         match self.sequences.get_mut(&key) {
-            Some(existing) => existing.extend(new_sequence),
+            Some(sequence) => {
+                sequence.extend(new_sequence);
+            }
             None => {
                 self.sequences.insert(key, new_sequence);
             }
