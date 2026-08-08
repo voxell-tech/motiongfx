@@ -10,7 +10,7 @@ use crate::common::{
 pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     let root = crate_path();
     let name = &ast.ident;
-    let fields = named_fields(ast)?;
+    let fields = named_fields(ast, "Element")?;
 
     let generics = generics(ast)?;
     let decl = &generics.decl;

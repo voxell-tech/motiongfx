@@ -93,22 +93,23 @@ fn predicates(
     }
 }
 
-pub fn named_fields(
-    ast: &DeriveInput,
+pub fn named_fields<'a>(
+    ast: &'a DeriveInput,
+    derive: &str,
 ) -> syn::Result<
-    &syn::punctuated::Punctuated<syn::Field, syn::Token![,]>,
+    &'a syn::punctuated::Punctuated<syn::Field, syn::Token![,]>,
 > {
     match &ast.data {
         Data::Struct(data) => match &data.fields {
             Fields::Named(named) => Ok(&named.named),
             _ => Err(syn::Error::new_spanned(
                 &data.fields,
-                "`#[derive(Lenz)]` needs named fields",
+                format!("`#[derive({derive})]` needs named fields"),
             )),
         },
         _ => Err(syn::Error::new(
             Span::call_site(),
-            "`#[derive(Lenz)]` only applies to structs",
+            format!("`#[derive({derive})]` only applies to structs"),
         )),
     }
 }

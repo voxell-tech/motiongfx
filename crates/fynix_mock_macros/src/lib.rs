@@ -3,6 +3,7 @@
 mod common;
 mod element;
 mod lenz;
+mod override_default;
 
 use proc_macro::TokenStream;
 use syn::{DeriveInput, parse_macro_input};
@@ -32,6 +33,19 @@ pub fn derive_lenz(input: TokenStream) -> TokenStream {
 pub fn derive_element(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     match element::expand(&ast) {
+        Ok(tokens) => tokens.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}
+
+/// Generates a `Default` impl where a field can start from something
+/// other than its own default: `#[default(px(4))]` for a value, or
+/// `#[default(size: 24)]` to keep the field's default and override
+/// fields of it.
+#[proc_macro_derive(OverrideDefault, attributes(default))]
+pub fn derive_override_default(input: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+    match override_default::expand(&ast) {
         Ok(tokens) => tokens.into(),
         Err(err) => err.into_compile_error().into(),
     }
