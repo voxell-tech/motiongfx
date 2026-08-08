@@ -69,8 +69,8 @@ pub fn panel_handle() -> impl Bundle {
     (
         PanelHandle,
         Node {
-            min_width: Val::Px(HANDLE_SIZE),
-            min_height: Val::Px(HANDLE_SIZE),
+            min_width: px(HANDLE_SIZE),
+            min_height: px(HANDLE_SIZE),
             ..default()
         },
         BackgroundColor(Color::NONE),
@@ -145,12 +145,12 @@ fn recalculate_group(
         let pct = (panel.ratio / total) * 100.;
         match flex_direction {
             FlexDirection::Row | FlexDirection::RowReverse => {
-                node.width = Val::Percent(pct);
-                node.min_width = Val::Px(0.0);
+                node.width = percent(pct);
+                node.min_width = px(0);
             }
             FlexDirection::Column | FlexDirection::ColumnReverse => {
-                node.height = Val::Percent(pct);
-                node.min_height = Val::Px(0.0);
+                node.height = percent(pct);
+                node.min_height = px(0);
             }
         }
     }

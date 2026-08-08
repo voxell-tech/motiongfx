@@ -86,15 +86,10 @@ pub(super) fn build_tab_bar(
             flex_direction: FlexDirection::Row,
             justify_content: JustifyContent::SpaceBetween,
             align_items: AlignItems::Center,
-            width: Val::Percent(100.0),
-            height: Val::Px(TAB_HEIGHT),
+            width: percent(100),
+            height: px(TAB_HEIGHT),
             // No left padding: first tab sits flush to the edge.
-            padding: UiRect::new(
-                Val::ZERO,
-                Val::Px(8.0),
-                Val::Px(1.0),
-                Val::ZERO,
-            ),
+            padding: UiRect::new(Val::ZERO, px(8), px(1), Val::ZERO),
             flex_shrink: 0.0,
             ..default()
         },
@@ -106,11 +101,11 @@ pub(super) fn build_tab_bar(
             Node {
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::Center,
-                column_gap: Val::Px(2.0),
-                height: Val::Percent(100.0),
+                column_gap: px(2),
+                height: percent(100),
                 overflow: Overflow::scroll_x(),
                 flex_shrink: 1.0,
-                min_width: Val::Px(0.0),
+                min_width: px(0),
                 ..default()
             },
             ScrollPosition::default(),
@@ -222,9 +217,9 @@ pub(super) fn tab_tile_node() -> Node {
         flex_direction: FlexDirection::Row,
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
-        column_gap: Val::Px(4.0),
-        padding: UiRect::horizontal(Val::Px(8.0)),
-        height: Val::Percent(100.0),
+        column_gap: px(4),
+        padding: UiRect::horizontal(px(8)),
+        height: percent(100),
         flex_shrink: 0.0,
         ..default()
     }
@@ -259,8 +254,8 @@ pub(super) fn spawn_ghost_tab(
     // Matches the 14px close slot a real tab reserves.
     world.spawn((
         Node {
-            width: Val::Px(14.0),
-            height: Val::Px(14.0),
+            width: px(14),
+            height: px(14),
             ..default()
         },
         ChildOf(tile),

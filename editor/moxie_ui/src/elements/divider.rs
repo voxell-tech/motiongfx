@@ -19,7 +19,7 @@ pub struct DividerProps {
 impl Default for DividerProps {
     fn default() -> Self {
         Self {
-            thickness: Val::Px(DIVIDER_WIDTH),
+            thickness: px(DIVIDER_WIDTH),
             orientation: ControlOrientation::Horizontal,
         }
     }
@@ -33,16 +33,12 @@ impl Divider {
         }: DividerProps,
     ) -> impl Scene {
         let (height, width, cursor_icon) = match orientation {
-            ControlOrientation::Horizontal => (
-                thickness,
-                Val::Percent(100.0),
-                SystemCursorIcon::NsResize,
-            ),
-            ControlOrientation::Vertical => (
-                Val::Percent(100.0),
-                thickness,
-                SystemCursorIcon::EwResize,
-            ),
+            ControlOrientation::Horizontal => {
+                (thickness, percent(100), SystemCursorIcon::NsResize)
+            }
+            ControlOrientation::Vertical => {
+                (percent(100), thickness, SystemCursorIcon::EwResize)
+            }
         };
         bsn! {
             Divider

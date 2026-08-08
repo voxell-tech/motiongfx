@@ -57,12 +57,12 @@ struct NamePanel;
 pub(super) fn panel(ui: &mut BevyUi) {
     ui.bsn(bsn! {
         Node {
-            width: Val::Percent(100.0),
+            width: percent(100),
             // Fill the dock area; the dock split handle resizes it.
             flex_grow: 1.0,
-            min_height: Val::Px(0.0),
+            min_height: px(0),
             flex_direction: FlexDirection::Column,
-            padding: UiRect::bottom(Val::Px(PANEL_PADDING)),
+            padding: UiRect::bottom(px(PANEL_PADDING)),
         }
         template_value(Glass::Panel)
     })
@@ -76,12 +76,12 @@ pub(super) fn panel(ui: &mut BevyUi) {
 fn control_bar(ui: &mut BevyUi) {
     ui.bsn(bsn! {
         Node {
-            width: Val::Percent(100.0),
-            height: Val::Px(CONTROL_BAR_HEIGHT),
+            width: percent(100),
+            height: px(CONTROL_BAR_HEIGHT),
             flex_shrink: 0.0,
             align_items: AlignItems::Center,
-            column_gap: Val::Px(12.0),
-            padding: UiRect::horizontal(Val::Px(PANEL_PADDING)),
+            column_gap: px(12),
+            padding: UiRect::horizontal(px(PANEL_PADDING)),
         }
     })
     .with(|ui| {
@@ -93,17 +93,17 @@ fn control_bar(ui: &mut BevyUi) {
                 commands.trigger(TogglePlayback);
             })
             Node {
-                width: Val::Px(26.0),
-                height: Val::Px(26.0),
+                width: px(26),
+                height: px(26),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
-                border_radius: BorderRadius::all(Val::Px(6.0)),
+                border_radius: BorderRadius::all(px(6)),
             }
         })
         .with(|ui| {
             ui.bsn(bsn! {
                 ImageNode { image: {crate::icons::PLAY} }
-                Node { width: Val::Px(14.0), height: Val::Px(14.0) }
+                Node { width: px(14), height: px(14) }
             })
             .bind::<ImageNode>(
                 resource_changed::<EditorState>(),
@@ -141,14 +141,14 @@ fn control_bar(ui: &mut BevyUi) {
 fn track_area(ui: &mut BevyUi) {
     ui.bsn(bsn! {
         Node {
-            width: Val::Percent(100.0),
+            width: percent(100),
             flex_grow: 1.0,
             // Allow this flex item to shrink below its content height
             // so the viewport below can clip and scroll (flex items
             // default to `min-height: auto`).
-            min_height: Val::Px(0.0),
+            min_height: px(0),
             flex_direction: FlexDirection::Row,
-            padding: UiRect::horizontal(Val::Px(PANEL_PADDING)),
+            padding: UiRect::horizontal(px(PANEL_PADDING)),
         }
     })
     .with(|ui| {
@@ -156,13 +156,13 @@ fn track_area(ui: &mut BevyUi) {
             NamePanel
             ScrollPosition
             Node {
-                width: Val::Px(NAME_PANEL_WIDTH),
-                height: Val::Percent(100.0),
-                min_height: Val::Px(0.0),
+                width: px(NAME_PANEL_WIDTH),
+                height: percent(100),
+                min_height: px(0),
                 flex_shrink: 0.0,
                 flex_direction: FlexDirection::Column,
                 overflow: Overflow::scroll_y(),
-                padding: UiRect::top(Val::Px(TRACK_TOP_PADDING)),
+                padding: UiRect::top(px(TRACK_TOP_PADDING)),
             }
             template_value(Glass::Panel)
         })
@@ -176,7 +176,7 @@ fn track_area(ui: &mut BevyUi) {
 
         ui.bsn(bsn! {
             @Divider {
-                @thickness: Val::Px(4.0),
+                @thickness: px(4),
                 @orientation: ControlOrientation::Vertical
             }
             on(on_divider_drag)
@@ -186,12 +186,12 @@ fn track_area(ui: &mut BevyUi) {
             TrackViewport
             ScrollArea
             Node {
-                width: Val::Percent(100.0),
+                width: percent(100),
                 flex_grow: 1.0,
                 // `min: 0` lets the viewport shrink below its
                 // (tall/wide) content so it clips and scrolls.
-                min_width: Val::Px(0.0),
-                min_height: Val::Px(0.0),
+                min_width: px(0),
+                min_height: px(0),
                 overflow: Overflow::scroll(),
             }
             template_value(Glass::Panel)
@@ -220,8 +220,8 @@ fn track_area(ui: &mut BevyUi) {
                 ui.bsn(bsn! {
                     Node {
                         position_type: PositionType::Absolute,
-                        top: Val::Px(TRACK_TOP_PADDING),
-                        left: Val::Px(0.0),
+                        top: px(TRACK_TOP_PADDING),
+                        left: px(0),
                     }
                 })
                 .watch(value_changed(track_spans), build_track_boxes);
@@ -231,7 +231,7 @@ fn track_area(ui: &mut BevyUi) {
                         resource_changed::<MotionGfxManager>(),
                         current_time,
                         |node, time| {
-                            node.left = Val::Px(crate::px_for(time));
+                            node.left = px(crate::px_for(time));
                         },
                     );
             });
@@ -276,7 +276,7 @@ fn on_divider_drag(
     };
     if let Val::Px(w) = panel_node.width {
         let new_w = (w + delta).clamp(NAME_PANEL_MIN, NAME_PANEL_MAX);
-        panel_node.width = Val::Px(new_w);
+        panel_node.width = px(new_w);
     }
 }
 
@@ -297,7 +297,7 @@ fn current_time(world: &World, _: Entity) -> Duration {
 /// zero-duration track still lays out.
 fn track_width(world: &World, _: Entity) -> Val {
     let duration = world.resource::<EditorState>().duration;
-    Val::Px(crate::px_for(duration).max(1.0))
+    px(crate::px_for(duration).max(1.0))
 }
 
 /// Every track's duration, in order. The watcher's signal: a box only
@@ -331,11 +331,11 @@ fn build_track_boxes(ui: &mut BevyUi) {
         ui.bsn(bsn! {
             Node {
                 position_type: PositionType::Absolute,
-                top: Val::Px({top}),
-                left: Val::Px(0.0),
-                width: Val::Px({width}),
-                height: Val::Px(TRACK_HEIGHT),
-                border_radius: BorderRadius::all(Val::Px(3.0)),
+                top: px(top),
+                left: px(0),
+                width: px(width),
+                height: px(TRACK_HEIGHT),
+                border_radius: BorderRadius::all(px(3)),
             }
             BackgroundColor({fill.with_alpha(0.35)})
         });

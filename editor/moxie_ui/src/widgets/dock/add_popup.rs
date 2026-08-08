@@ -50,10 +50,10 @@ pub(super) fn add_window_popup(ui: &mut BevyUi) {
         Pickable::IGNORE
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(0.0),
-            top: Val::Px(0.0),
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
+            left: px(0),
+            top: px(0),
+            width: percent(100),
+            height: percent(100),
         }
         AddWindowPopupState
     })
@@ -127,10 +127,10 @@ fn build_popup(ui: &mut BevyUi) {
         }
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(0.0),
-            top: Val::Px(0.0),
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
+            left: px(0),
+            top: px(0),
+            width: percent(100),
+            height: percent(100),
         }
         GlobalZIndex(180)
     });
@@ -138,16 +138,16 @@ fn build_popup(ui: &mut BevyUi) {
     let (left, top, area) = (open.left, open.top, open.area);
     ui.bsn(bsn! {
         @Frame {
-            @width: {Val::Px(POPUP_WIDTH)},
+            @width: {px(POPUP_WIDTH)},
             @direction: {FlexDirection::Column},
-            @padding: {UiRect::all(Val::Px(4.0))},
-            @radius: {Val::Px(6.0)},
+            @padding: {UiRect::all(px(4))},
+            @radius: {px(6)},
             @glass: {Some(Glass::Popup)},
         }
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px({left}),
-            top: Val::Px({top}),
+            left: px(left),
+            top: px(top),
         }
         GlobalZIndex(181)
     })
@@ -186,11 +186,11 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
                 }
             })
             @Frame {
-                @width: {Val::Percent(100.0)},
+                @width: {percent(100)},
                 @justify: {JustifyContent::FlexStart},
                 @align: {AlignItems::Center},
-                @padding: {UiRect::axes(Val::Px(8.0), Val::Px(4.0))},
-                @radius: {Val::Px(4.0)},
+                @padding: {UiRect::axes(px(8), px(4))},
+                @radius: {px(4)},
             }
         })
         .with(move |ui| {
@@ -207,9 +207,9 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
                     color: {icon_color},
                 }
                 Node {
-                    width: Val::Px(12.0),
-                    height: Val::Px(12.0),
-                    margin: UiRect::right(Val::Px(6.0)),
+                    width: px(12),
+                    height: px(12),
+                    margin: UiRect::right(px(6)),
                 }
             });
             ui.bsn(bsn! {

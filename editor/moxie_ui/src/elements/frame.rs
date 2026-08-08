@@ -26,8 +26,8 @@ pub struct FrameProps {
 impl Default for FrameProps {
     fn default() -> Self {
         Self {
-            width: Val::Auto,
-            height: Val::Auto,
+            width: auto(),
+            height: auto(),
             direction: FlexDirection::Row,
             align: AlignItems::FlexStart,
             justify: JustifyContent::FlexStart,

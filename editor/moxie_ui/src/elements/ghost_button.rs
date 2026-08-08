@@ -26,8 +26,8 @@ impl Default for GhostButtonProps {
         Self {
             icon: String::new(),
             color: Color::WHITE,
-            size: Val::Px(18.0),
-            icon_size: Val::Px(11.0),
+            size: px(18),
+            icon_size: px(11),
             radius: Val::ZERO,
         }
     }

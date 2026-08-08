@@ -61,5 +61,5 @@ pub(crate) fn preview_fit(
         h = avail.y;
         w = h * aspect;
     }
-    Some((Val::Px(w), Val::Px(h)))
+    Some((px(w), px(h)))
 }

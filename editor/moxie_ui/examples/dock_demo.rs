@@ -58,7 +58,7 @@ fn setup(
                 ui.bsn(bsn! {
                     Node {
                         flex_grow: 1.0,
-                        width: Val::Percent(100.0),
+                        width: percent(100),
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::Center,
                     }
@@ -92,10 +92,10 @@ fn setup(
     let root = commands
         .spawn(Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(0.0),
-            top: Val::Px(0.0),
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
+            left: px(0),
+            top: px(0),
+            width: percent(100),
+            height: percent(100),
             flex_direction: FlexDirection::Column,
             ..default()
         })
