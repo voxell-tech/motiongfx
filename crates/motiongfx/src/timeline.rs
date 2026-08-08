@@ -52,29 +52,24 @@ pub struct Timeline<W> {
 /// covering `target`. When nothing covers it, the lane holds whatever
 /// wrote its value last.
 ///
-/// `clips` is a lane as [`Track::clips`] hands it back: sorted by
-/// [`ActionClip::start`] and non-empty.
+/// `clips` is a lane as [`Track::clips`] hands it back: in the order
+/// its fragments were listed, and non-empty.
 pub(crate) fn resolve_clip(
     clips: &[ActionClip],
     target: Duration,
 ) -> (usize, SampleMode) {
-    // Only clips that have begun can matter, and the lane is
-    // start-sorted, so they are a prefix. Everything below works off
-    // it and can drop the `start` half of its test.
-    let started =
-        &clips[..clips.partition_point(|clip| clip.start <= target)];
-
     // Clips later in the lane win, so scan backwards and stop at the
-    // first that is still running.
-    if let Some(i) =
-        started.iter().rposition(|clip| target <= clip.end())
-    {
+    // first that has begun and is still running.
+    if let Some(i) = clips.iter().rposition(|clip| {
+        clip.start <= target && target <= clip.end()
+    }) {
         return (i, SampleMode::Interp(clips[i].progress(target)));
     }
 
-    match started
+    match clips
         .iter()
         .enumerate()
+        .filter(|(_, clip)| clip.start <= target)
         .max_by_key(|(_, clip)| clip.end())
     {
         Some((i, _)) => (i, SampleMode::End),
@@ -688,11 +683,11 @@ mod tests {
     }
 
     /// Which clip wins is decided by position in the lane, and lanes
-    /// are stored sorted by start, so listing the fragments the other
-    /// way round cannot change the answer.
+    /// are stored exactly as listed, so listing the fragments the
+    /// other way round changes the answer.
     #[test]
-    fn creation_order_does_not_decide_the_winner() {
-        // The same two spans as above, created the other way round.
+    fn listing_order_decides_the_winner() {
+        // The same two spans as above, listed the other way round.
         let (registry, mut timeline) =
             timeline_of(&[(100, 100), (0, 500)]);
 
@@ -701,7 +696,7 @@ mod tests {
 
         let during =
             sample_at(&registry, &mut timeline, &mut world, cs(150));
-        assert!((during - 0.7).abs() < 1e-5, "got {during}");
+        assert!((during - 0.3).abs() < 1e-5, "got {during}");
     }
 
     /// With no overlap the winner lookup must agree with the plain
@@ -910,10 +905,8 @@ mod tests {
         assert!((at_zero - 6.0).abs() < 1e-5, "got {at_zero}");
     }
 
-    /// A spacer sitting exactly where a longer clip ends. Touching is
-    /// usually harmless, since the later clip opens on what the
-    /// earlier shows there, but `progress` is `1.0` for a spacer, so
-    /// it reads as its own *end* instead.
+    /// A spacer sitting exactly where a longer clip ends, listed
+    /// ahead of it.
     #[test]
     fn zero_duration_clip_at_a_boundary_resolves_by_position() {
         let mut registry = Registry::new();
@@ -937,11 +930,12 @@ mod tests {
         let mut world = World::new();
         timeline.bake_actions(&registry, &world);
 
-        // Start order puts long first: 0 -> 1, then spacer 1 -> 6.
-        // At 5s both are live and the spacer is stored later.
+        // Listing order bakes the spacer first, off the untouched
+        // value: 0 -> 5, then long 0 -> 1. At 5s both are live and
+        // long is listed later, so it wins with a progress of 1.
         let at_end =
             sample_at(&registry, &mut timeline, &mut world, cs(500));
-        assert!((at_end - 6.0).abs() < 1e-5, "got {at_end}");
+        assert!((at_end - 1.0).abs() < 1e-5, "got {at_end}");
     }
 
     /// Three clips over one instant: the last in the lane wins

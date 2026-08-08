@@ -251,15 +251,7 @@ where
                 let under = baked[i].id;
 
                 match mode {
-                    // Unreachable on a start-sorted lane, and the
-                    // right value if that ever broke.
-                    SampleMode::Start => {
-                        debug_assert!(
-                            false,
-                            "lane is not sorted by start"
-                        );
-                        segment.start.clone()
-                    }
+                    SampleMode::Start => segment.start.clone(),
                     SampleMode::End => segment.end.clone(),
                     SampleMode::Interp(t) => {
                         let interp = interp_col.and_then(|col| {

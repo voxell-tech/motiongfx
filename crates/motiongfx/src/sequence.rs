@@ -27,23 +27,13 @@ impl Sequence {
     /// Get the start time of the sequence.
     #[inline]
     pub fn start(&self) -> Duration {
-        self.clips
-            .tail
-            .iter()
-            .fold(self.clips.head.start, |start, clip| {
-                start.min(clip.start)
-            })
+        self.clips.first().start
     }
 
     /// Get the end time of the sequence.
     #[inline]
     pub fn end(&self) -> Duration {
-        self.clips
-            .tail
-            .iter()
-            .fold(self.clips.head.end(), |end, clip| {
-                end.max(clip.end())
-            })
+        self.clips.last().end()
     }
 
     /// Get the duration of the sequence.

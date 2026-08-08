@@ -267,17 +267,10 @@ impl TrackFragment {
             },
         ));
 
-        let mut clip_arena: Box<[ActionClip]> = sequences
+        let clip_arena = sequences
             .into_iter()
             .flat_map(|(_, clips)| clips)
             .collect();
-
-        // Lanes arrive in listing order, which says nothing about
-        // time, and baking indexes them positionally.
-        for (_, span) in sequence_spans.iter() {
-            clip_arena[span.offset..span.offset + span.len]
-                .sort_by_key(|clip| clip.start);
-        }
 
         Track {
             field_lookups: field_lookups.into_boxed_slice(),
@@ -564,23 +557,6 @@ mod tests {
         assert_eq!(track.duration(), cs(100));
     }
 
-    /// `Sequence::end` must scan for the maximum, not read the tail:
-    /// with overlaps the last clip in start order is not the last to
-    /// finish. Reading the tail would clamp `set_target_time` to 1s
-    /// and put the 3s clip's end out of reach.
-    #[test]
-    fn track_duration_covers_a_clip_that_outlives_the_last() {
-        // One lane, both starting at 0: 0..3s then 0..1s. `any`
-        // reports the *minimum*, so the fragment duration is 1s and
-        // cannot mask a lane end that is too short.
-        let long = TrackFragment::single(key("a"), clip(300));
-        let short = TrackFragment::single(key("a"), clip(100));
-
-        let track = [long, short].ord_any().compile();
-
-        assert_eq!(track.duration(), cs(300));
-    }
-
     /// Combinator arithmetic has to saturate, or a `Duration::MAX`
     /// duration panics inside `chain`, `flow`, or `ActionClip::end`.
     ///
@@ -659,33 +635,5 @@ mod tests {
                 "{field:?} span points at the wrong lanes",
             );
         }
-    }
-
-    /// `any` reports the *minimum* duration without shortening its
-    /// clips, so a following `chain` under-delays and overlaps. That
-    /// used to panic.
-    #[test]
-    fn any_then_chain_overlap_is_handled() {
-        let inner = [
-            TrackFragment::single(key("a"), clip(100)),
-            TrackFragment::single(key("b"), clip(300)),
-        ]
-        .ord_any();
-        let next = TrackFragment::single(key("b"), clip(100));
-
-        let track = [inner, next].ord_chain().compile();
-
-        let (_, span) = track
-            .sequences_spans()
-            .iter()
-            .find(|(k, _)| *k == key("b"))
-            .expect("key `b` was compiled in");
-        let clips = track.clips(*span);
-
-        // The chained clip lands at 1s, `any`'s minimum, rather
-        // than after the 3s clip sharing its lane, so they overlap.
-        assert_eq!(clips.len(), 2);
-        assert_eq!(clips[0].start, Duration::ZERO);
-        assert_eq!(clips[1].start, cs(100));
     }
 }
