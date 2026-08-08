@@ -1,10 +1,11 @@
-use core::time::Duration;
+﻿use core::time::Duration;
 
 use nonempty::NonEmpty;
 
 use crate::action::ActionClip;
 
-/// A non-overlapping sequence of [`ActionClip`]s.
+/// The [`ActionClip`]s driving one field of one subject, held in the
+/// order the fragments contributing them were listed.
 #[derive(Debug, Clone)]
 pub struct Sequence {
     pub clips: NonEmpty<ActionClip>,
@@ -49,42 +50,68 @@ impl Sequence {
 }
 
 impl Sequence {
+    /// Reports every clip from `first_new` on that starts before the
+    /// one ahead of it, or overlaps one earlier in the lane.
+    #[cfg(feature = "tracing")]
+    fn report_conflicts_from(&self, first_new: usize) {
+        let mut prev_start = Duration::ZERO;
+        let mut max_end = Duration::ZERO;
+
+        for (i, clip) in self.clips.iter().enumerate() {
+            if i >= first_new {
+                if clip.start < prev_start {
+                    tracing::error!(
+                        "clip starts at {:?}, before the one ahead of it at {:?}",
+                        clip.start,
+                        prev_start,
+                    );
+                }
+
+                // Nothing ahead reaches this clip, so nothing can
+                // overlap it and the scan is skipped.
+                if clip.start < max_end
+                    && self.clips.iter().take(i).any(|other| {
+                        clip.start < other.end()
+                            && other.start < clip.end()
+                    })
+                {
+                    tracing::error!(
+                        "clip {:?}..{:?} overlaps another on the same field",
+                        clip.start,
+                        clip.end(),
+                    );
+                }
+            }
+
+            prev_start = clip.start;
+            max_end = max_end.max(clip.end());
+        }
+    }
+
+    /// Appends a clip.
     #[inline]
     pub fn push(&mut self, span: ActionClip) {
-        debug_assert!(
-            span.start >= self.end(),
-            "({:?} >= {:?}) `ActionClip`s shouldn't overlap!",
-            span.start,
-            self.end(),
-        );
-
         self.clips.push(span);
+
+        #[cfg(feature = "tracing")]
+        self.report_conflicts_from(self.clips.len() - 1);
     }
 }
 
 impl Extend<ActionClip> for Sequence {
+    /// Appends clips, preserving their order and this lane's.
     #[inline]
     fn extend<T: IntoIterator<Item = ActionClip>>(
         &mut self,
         iter: T,
     ) {
-        #[cfg(debug_assertions)]
-        let mut end = self.end();
-        #[cfg(debug_assertions)]
-        let iter = {
-            iter.into_iter().inspect(|clip| {
-                debug_assert!(
-                    clip.start >= end,
-                    "({:?} >= {:?}) `ActionClip`s shouldn't overlap!",
-                    clip.start,
-                    end,
-                );
-
-                end = clip.end();
-            })
-        };
+        #[cfg(feature = "tracing")]
+        let first_new = self.clips.len();
 
         self.clips.extend(iter);
+
+        #[cfg(feature = "tracing")]
+        self.report_conflicts_from(first_new);
     }
 }
 

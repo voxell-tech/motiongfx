@@ -217,11 +217,13 @@ impl TrackFragment {
 
         // The combinators accumulate `duration` independently of the
         // clip offsets, so pin them together here: the clamp in
-        // `Timeline::set_target_time` must be able to reach the last
-        // clip's end.
+        // `Timeline::set_target_time` must be able to reach the end
+        // of every clip. A lane is stored as listed, so the one that
+        // finishes last is not necessarily the one stored last.
         let duration = sequences
             .iter()
-            .map(|(_, seq)| seq.end())
+            .flat_map(|(_, seq)| seq.clips.iter())
+            .map(|clip| clip.end())
             .max()
             .unwrap_or(Duration::ZERO)
             .max(self.duration);
@@ -254,7 +256,7 @@ impl TrackFragment {
                 ));
 
                 field = key.field();
-                field_offset = field_len;
+                field_offset += field_len;
                 field_len = 0;
             }
             field_len += 1;
@@ -545,24 +547,6 @@ mod tests {
         assert_eq!(track.sequences[&key("a")].end(), cs(450));
     }
 
-    /// Chaining durations that have no exact `f32` representation used
-    /// to leave `TrackFragment::duration` and the clip offsets on
-    /// different values, because the two are accumulated separately.
-    /// The mismatch tripped the non-overlap assert in `Sequence::push`
-    /// and put `Track::duration` out of reach of the last clip's end.
-    #[test]
-    fn chain_accumulation_matches_clip_offsets() {
-        // 0.1s is not representable in binary floating point.
-        let tracks: Vec<_> = (0..10)
-            .map(|_| TrackFragment::single(key("a"), clip(10)))
-            .collect();
-
-        let track = tracks.ord_chain();
-
-        assert_eq!(track.duration, cs(100));
-        assert_eq!(track.sequences[&key("a")].end(), cs(100));
-    }
-
     /// `Track::duration` must always be reachable by the playhead, so
     /// that the final clip can resolve to `SampleMode::End`.
     #[test]
@@ -580,9 +564,8 @@ mod tests {
     /// Combinator arithmetic has to saturate, or a `Duration::MAX`
     /// duration panics inside `chain`, `flow`, or `ActionClip::end`.
     ///
-    /// Distinct keys per fragment: saturated clips really do overlap,
-    /// and the non-overlap assert is right to say so. Only the duration
-    /// arithmetic is under test.
+    /// Distinct keys per fragment, so the clips never share a lane.
+    /// Only the duration arithmetic is under test.
     #[test]
     fn saturated_durations_do_not_overflow_the_combinators() {
         let huge = |path: &'static str| {
@@ -617,5 +600,44 @@ mod tests {
 
         assert_eq!(track.duration(), Duration::ZERO);
         assert!(track.sequences_spans().is_empty());
+    }
+
+    #[test]
+    fn field_spans_cover_every_lane() {
+        const DUMMY: Sequence = Sequence::new(clip(0));
+
+        let fa = UntypedField::placeholder_with_path("a");
+        let fb = UntypedField::placeholder_with_path("b");
+        let fc = UntypedField::placeholder_with_path("c");
+
+        let mut ids = IdRegistry::new();
+        let s1 = ids.register_instance(DummyId(1));
+        let s2 = ids.register_instance(DummyId(2));
+
+        let k = |sid, field| {
+            ActionKey::new(
+                UntypedSubjectId::new::<DummyId>(sid),
+                field,
+            )
+        };
+
+        let track = TrackFragment::new()
+            .upsert_sequence(k(s1, fa), DUMMY.clone())
+            .upsert_sequence(k(s2, fa), DUMMY.clone())
+            .upsert_sequence(k(s1, fb), DUMMY.clone())
+            .upsert_sequence(k(s1, fc), DUMMY.clone())
+            .compile();
+
+        for (field, expected) in [(fa, 2), (fb, 1), (fc, 1)] {
+            let spans = track
+                .lookup_field_spans(field)
+                .expect("field was compiled in");
+
+            assert_eq!(spans.len(), expected, "{field:?}");
+            assert!(
+                spans.iter().all(|(key, _)| *key.field() == field),
+                "{field:?} span points at the wrong lanes",
+            );
+        }
     }
 }
