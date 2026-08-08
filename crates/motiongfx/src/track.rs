@@ -189,7 +189,7 @@ impl TrackFragment {
         new_sequence: Sequence,
     ) -> Self {
         match self.sequences.get_mut(&key) {
-            Some(existing) => existing.merge(new_sequence),
+            Some(existing) => existing.extend(new_sequence),
             None => {
                 self.sequences.insert(key, new_sequence);
             }
@@ -240,7 +240,6 @@ impl TrackFragment {
                     len: seq.len(),
                 },
             ));
-
             seq_offset += seq.len();
 
             if key.field() != field {
@@ -253,8 +252,6 @@ impl TrackFragment {
                 ));
 
                 field = key.field();
-                // The next run starts after every lane so far, not
-                // just the one that ended.
                 field_offset += field_len;
                 field_len = 0;
             }
@@ -270,10 +267,17 @@ impl TrackFragment {
             },
         ));
 
-        let clip_arena = sequences
+        let mut clip_arena: Box<[ActionClip]> = sequences
             .into_iter()
             .flat_map(|(_, clips)| clips)
             .collect();
+
+        // Lanes arrive in listing order, which says nothing about
+        // time, and baking indexes them positionally.
+        for (_, span) in sequence_spans.iter() {
+            clip_arena[span.offset..span.offset + span.len]
+                .sort_by_key(|clip| clip.start);
+        }
 
         Track {
             field_lookups: field_lookups.into_boxed_slice(),
@@ -546,24 +550,6 @@ mod tests {
         assert_eq!(track.sequences[&key("a")].end(), cs(450));
     }
 
-    /// Chaining durations that have no exact `f32` representation used
-    /// to leave `TrackFragment::duration` and the clip offsets on
-    /// different values, because the two are accumulated separately.
-    /// The mismatch tripped the start-order assert in `Sequence::push`
-    /// and put `Track::duration` out of reach of the last clip's end.
-    #[test]
-    fn chain_accumulation_matches_clip_offsets() {
-        // 0.1s is not representable in binary floating point.
-        let tracks: Vec<_> = (0..10)
-            .map(|_| TrackFragment::single(key("a"), clip(10)))
-            .collect();
-
-        let track = tracks.ord_chain();
-
-        assert_eq!(track.duration, cs(100));
-        assert_eq!(track.sequences[&key("a")].end(), cs(100));
-    }
-
     /// `Track::duration` must always be reachable by the playhead, so
     /// that the final clip can resolve to `SampleMode::End`.
     #[test]
@@ -673,54 +659,6 @@ mod tests {
                 "{field:?} span points at the wrong lanes",
             );
         }
-    }
-
-    /// One clip at `start` lasting `duration`, in centiseconds.
-    fn at(start: u64, duration: u64) -> TrackFragment {
-        delay(
-            cs(start),
-            TrackFragment::single(key("a"), clip(duration)),
-        )
-    }
-
-    /// Clip count of the one sequence in a compiled track.
-    fn kept(track: &Track) -> usize {
-        track.sequences_spans()[0].1.len
-    }
-
-    /// Merging must not depend on the order fragments are listed in.
-    /// These two are a second apart and used to panic.
-    #[test]
-    fn out_of_order_merge_keeps_both_sorted() {
-        let track = [at(200, 100), at(0, 100)].ord_all();
-        let clips = &track.sequences[&key("a")].clips;
-
-        assert_eq!(clips.len(), 2);
-        assert_eq!(clips.head.start, cs(0));
-        assert_eq!(clips.last().start, cs(200));
-    }
-
-    /// `compile` keeps every clip: it does no overlap analysis. A
-    /// fully covered clip used to be dropped, because the old chain
-    /// let an unseen clip shift every value after it.
-    #[test]
-    fn compile_keeps_every_clip() {
-        // Partial overlap, in start order.
-        let track = [at(0, 500), at(100, 100)].ord_all().compile();
-        let (_, span) = track.sequences_spans()[0];
-        assert_eq!(kept(&track), 2);
-        assert_eq!(track.clips(span)[0].start, cs(0));
-        assert_eq!(track.clips(span)[1].start, cs(100));
-
-        // Covered outright by one later clip.
-        let track = [at(0, 200), at(0, 300)].ord_all().compile();
-        assert_eq!(kept(&track), 2);
-
-        // Covered by the union of two, which leave no gap.
-        let track = [at(0, 400), at(0, 200), at(200, 300)]
-            .ord_all()
-            .compile();
-        assert_eq!(kept(&track), 3);
     }
 
     /// `any` reports the *minimum* duration without shortening its

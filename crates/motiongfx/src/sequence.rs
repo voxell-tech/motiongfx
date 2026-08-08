@@ -1,16 +1,11 @@
-use core::time::Duration;
+﻿use core::time::Duration;
 
 use nonempty::NonEmpty;
 
 use crate::action::ActionClip;
 
-/// The [`ActionClip`]s driving one field of one subject, sorted by
-/// [`ActionClip::start`].
-///
-/// Clips **may overlap**. Where they do, the one later in the list
-/// wins. The list is sorted by start, so that is whichever began
-/// most recently, not whichever was authored last. Clips it covers
-/// show again when it ends, each at its own progress.
+/// The [`ActionClip`]s driving one field of one subject, held in the
+/// order the fragments contributing them were listed.
 #[derive(Debug, Clone)]
 pub struct Sequence {
     pub clips: NonEmpty<ActionClip>,
@@ -32,7 +27,12 @@ impl Sequence {
     /// Get the start time of the sequence.
     #[inline]
     pub fn start(&self) -> Duration {
-        self.clips.first().start
+        self.clips
+            .tail
+            .iter()
+            .fold(self.clips.head.start, |start, clip| {
+                start.min(clip.start)
+            })
     }
 
     /// Get the end time of the sequence.
@@ -57,71 +57,71 @@ impl Sequence {
             clip.start = clip.start.saturating_add(duration);
         }
     }
-
-    /// Merges `other` into `self`, keeping the clips sorted by
-    /// [`ActionClip::start`].
-    ///
-    /// Nothing is dropped; list order decides the winner, in baking
-    /// and at playback alike.
-    pub(crate) fn merge(&mut self, other: Self) {
-        // Already sorted: append as is.
-        if self.clips.last().start <= other.start() {
-            self.extend(other.clips);
-            return;
-        }
-
-        let NonEmpty { head, tail } = &mut self.clips;
-
-        tail.insert(0, *head);
-        tail.extend(other.clips);
-        tail.sort_by_key(|clip| clip.start);
-        *head = tail.remove(0);
-    }
 }
 
 impl Sequence {
+    /// Reports every clip from `first_new` on that starts before the
+    /// one ahead of it, or overlaps one earlier in the lane.
+    #[cfg(feature = "tracing")]
+    fn report_conflicts_from(&self, first_new: usize) {
+        let mut prev_start = Duration::ZERO;
+        let mut max_end = Duration::ZERO;
+
+        for (i, clip) in self.clips.iter().enumerate() {
+            if i >= first_new {
+                if clip.start < prev_start {
+                    tracing::error!(
+                        "clip starts at {:?}, before the one ahead of it at {:?}",
+                        clip.start,
+                        prev_start,
+                    );
+                }
+
+                // Nothing ahead reaches this clip, so nothing can
+                // overlap it and the scan is skipped.
+                if clip.start < max_end
+                    && self.clips.iter().take(i).any(|other| {
+                        clip.start < other.end()
+                            && other.start < clip.end()
+                    })
+                {
+                    tracing::error!(
+                        "clip {:?}..{:?} overlaps another on the same field",
+                        clip.start,
+                        clip.end(),
+                    );
+                }
+            }
+
+            prev_start = clip.start;
+            max_end = max_end.max(clip.end());
+        }
+    }
+
     /// Appends a clip.
-    ///
-    /// Does **not** sort. Overlapping the last clip is fine; starting
-    /// before it is not.
     #[inline]
     pub fn push(&mut self, span: ActionClip) {
-        debug_assert!(
-            span.start >= self.clips.last().start,
-            "({:?} >= {:?}) `ActionClip`s must be in start order!",
-            span.start,
-            self.clips.last().start,
-        );
-
         self.clips.push(span);
+
+        #[cfg(feature = "tracing")]
+        self.report_conflicts_from(self.clips.len() - 1);
     }
 }
 
 impl Extend<ActionClip> for Sequence {
-    /// Appends clips without sorting, applying the same order
-    /// check as [`Sequence::push`] across the batch.
+    /// Appends clips, preserving their order and this lane's.
     #[inline]
     fn extend<T: IntoIterator<Item = ActionClip>>(
         &mut self,
         iter: T,
     ) {
-        #[cfg(debug_assertions)]
-        let mut last_start = self.clips.last().start;
-        #[cfg(debug_assertions)]
-        let iter = {
-            iter.into_iter().inspect(|clip| {
-                debug_assert!(
-                    clip.start >= last_start,
-                    "({:?} >= {:?}) `ActionClip`s must be in start order!",
-                    clip.start,
-                    last_start,
-                );
-
-                last_start = clip.start;
-            })
-        };
+        #[cfg(feature = "tracing")]
+        let first_new = self.clips.len();
 
         self.clips.extend(iter);
+
+        #[cfg(feature = "tracing")]
+        self.report_conflicts_from(first_new);
     }
 }
 

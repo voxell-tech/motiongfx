@@ -16,6 +16,7 @@ hashbrown = { workspace = true, features = ["default-hasher"] }
 nonempty = { workspace = true }
 typarena = { workspace = true }
 libm = { workspace = true }
+tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -28,5 +29,5 @@ harness = false
 workspace = true
 
 [features]
-default = ["std"]
+default = ["std", "tracing"]
 std = []
