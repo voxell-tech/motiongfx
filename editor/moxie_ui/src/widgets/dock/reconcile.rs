@@ -43,8 +43,8 @@ pub fn dock(ui: &mut BevyUi) {
     ui.bundle((
         DockTreeHost,
         Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
+            width: percent(100),
+            height: percent(100),
             flex_direction: FlexDirection::Column,
             ..default()
         },
@@ -131,8 +131,8 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
         NodeBinding(id),
         PanelGroup { min_ratio: 0.05 },
         Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
+            width: percent(100),
+            height: percent(100),
             flex_direction,
             overflow: Overflow::clip(),
             ..default()
@@ -145,8 +145,8 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
             PanelHandle,
             NodeBinding(id),
             Node {
-                min_width: Val::Px(3.0),
-                min_height: Val::Px(3.0),
+                min_width: px(3),
+                min_height: px(3),
                 display: display(handle_visible),
                 ..default()
             },
@@ -167,11 +167,7 @@ fn build_panel(
     visible: bool,
     ui: &mut BevyUi,
 ) {
-    let size = if visible {
-        Val::Percent(100.0)
-    } else {
-        Val::Px(0.0)
-    };
+    let size = if visible { percent(100) } else { px(0) };
     ui.node(move |world, node| {
         let ratio = ratio_of(world, split_id, is_a);
         world.entity_mut(node).insert((
@@ -266,8 +262,8 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
             ActiveDockWindow(active),
             NodeBinding(id),
             Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
+                width: percent(100),
+                height: percent(100),
                 flex_direction,
                 overflow: Overflow::clip(),
                 ..default()
@@ -331,8 +327,8 @@ fn build_content(
 fn content_node(display: Display) -> Node {
     Node {
         flex_grow: 1.0,
-        width: Val::Percent(100.0),
-        min_height: Val::Px(0.0),
+        width: percent(100),
+        min_height: px(0),
         flex_direction: FlexDirection::Column,
         overflow: Overflow::clip(),
         display,

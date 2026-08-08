@@ -40,19 +40,19 @@ pub fn glass_checkbox() -> impl Scene {
         template_value(Glass::Field)
         EntityCursor::System(SystemCursorIcon::Pointer)
         Node {
-            width: Val::Px(16.0),
-            height: Val::Px(16.0),
+            width: px(16),
+            height: px(16),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
-            border_radius: BorderRadius::all(Val::Px(4.0)),
+            border_radius: BorderRadius::all(px(4)),
         }
         Children [(
             GlassCheckMark
             // Shown by `update_glass_checkmarks` when checked.
             Node {
-                width: Val::Px(8.0),
-                height: Val::Px(8.0),
-                border_radius: BorderRadius::all(Val::Px(2.0)),
+                width: px(8),
+                height: px(8),
+                border_radius: BorderRadius::all(px(2)),
                 display: Display::None,
             }
             BackgroundColor(Color::NONE)
@@ -69,7 +69,7 @@ pub fn glass_number_field(format: NumberFormat) -> impl Scene {
         }
         template_value(Glass::Field)
         Node {
-            width: Val::Px(110.0),
+            width: px(110),
             flex_grow: 0.0,
         }
     }

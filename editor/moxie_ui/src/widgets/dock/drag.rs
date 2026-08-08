@@ -318,13 +318,11 @@ fn on_drag_move(
                         DropOverlay,
                         Node {
                             position_type: PositionType::Absolute,
-                            left: Val::Px(overlay_pos.x),
-                            top: Val::Px(overlay_pos.y),
-                            width: Val::Px(overlay_size.x),
-                            height: Val::Px(overlay_size.y),
-                            border_radius: BorderRadius::all(
-                                Val::Px(4.0),
-                            ),
+                            left: px(overlay_pos.x),
+                            top: px(overlay_pos.y),
+                            width: px(overlay_size.x),
+                            height: px(overlay_size.y),
+                            border_radius: BorderRadius::all(px(4)),
                             ..Default::default()
                         },
                         Glass::Overlay,
@@ -360,16 +358,12 @@ fn on_drag_move(
                                 Node {
                                     position_type:
                                         PositionType::Absolute,
-                                    left: Val::Px(overlay_rect.min.x),
-                                    top: Val::Px(overlay_rect.min.y),
-                                    width: Val::Px(
-                                        overlay_rect.size().x,
-                                    ),
-                                    height: Val::Px(
-                                        overlay_rect.size().y,
-                                    ),
+                                    left: px(overlay_rect.min.x),
+                                    top: px(overlay_rect.min.y),
+                                    width: px(overlay_rect.size().x),
+                                    height: px(overlay_rect.size().y),
                                     border_radius: BorderRadius::all(
-                                        Val::Px(4.0),
+                                        px(4),
                                     ),
                                     ..default()
                                 },
@@ -388,16 +382,12 @@ fn on_drag_move(
                                 Node {
                                     position_type:
                                         PositionType::Absolute,
-                                    left: Val::Px(area_rect.min.x),
-                                    top: Val::Px(area_rect.min.y),
-                                    width: Val::Px(
-                                        area_rect.size().x,
-                                    ),
-                                    height: Val::Px(
-                                        area_rect.size().y,
-                                    ),
+                                    left: px(area_rect.min.x),
+                                    top: px(area_rect.min.y),
+                                    width: px(area_rect.size().x),
+                                    height: px(area_rect.size().y),
                                     border_radius: BorderRadius::all(
-                                        Val::Px(4.0),
+                                        px(4),
                                     ),
                                     ..default()
                                 },
@@ -531,9 +521,9 @@ fn cancel_drag_on_escape(
 fn ghost_node(cursor: Vec2) -> Node {
     Node {
         position_type: PositionType::Absolute,
-        left: Val::Px(cursor.x - 40.0),
-        top: Val::Px(cursor.y - 12.0),
-        height: Val::Px(super::TAB_HEIGHT),
+        left: px(cursor.x - 40.0),
+        top: px(cursor.y - 12.0),
+        height: px(super::TAB_HEIGHT),
         ..default()
     }
 }

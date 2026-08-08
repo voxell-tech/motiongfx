@@ -134,8 +134,8 @@ fn setup_editor_ui(
         .spawn((
             UiTargetCamera(ui_camera),
             Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
+                width: percent(100),
+                height: percent(100),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
@@ -169,9 +169,9 @@ fn register_windows(
             let preview = preview.clone();
             ui.bsn(bsn! {
                 Node {
-                    width: Val::Percent(100.0),
+                    width: percent(100),
                     flex_grow: 1.0,
-                    min_height: Val::Px(0.0),
+                    min_height: px(0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     overflow: Overflow::clip(),
@@ -220,11 +220,11 @@ fn register_windows(
         build: Arc::new(|ui: &mut BevyUi| {
             ui.bsn(bsn! {
                 Node {
-                    width: Val::Percent(100.0),
+                    width: percent(100),
                     flex_grow: 1.0,
                     flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(8.0),
-                    padding: UiRect::all(Val::Px(PANEL_PADDING)),
+                    row_gap: px(8),
+                    padding: UiRect::all(px(PANEL_PADDING)),
                     overflow: Overflow::scroll_y(),
                 }
                 template_value(Glass::Panel)
@@ -246,11 +246,11 @@ fn register_windows(
                             commands.queue(SaveSettingsSync::Always);
                         })
                         Node {
-                            width: Val::Px(64.0),
-                            height: Val::Px(24.0),
+                            width: px(64),
+                            height: px(24),
                             align_items: AlignItems::Center,
                             justify_content: JustifyContent::Center,
-                            border_radius: BorderRadius::all(Val::Px(6.0)),
+                            border_radius: BorderRadius::all(px(6)),
                         }
                         Children [(
                             @Label { @text: {"Save".to_string()} }

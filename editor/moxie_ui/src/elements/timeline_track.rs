@@ -21,9 +21,9 @@ impl TimelineTrack {
             TimelineTrack
             Node {
                 position_type: PositionType::Relative,
-                width: Val::Px(width),
-                min_width: Val::Px(width),
-                height: Val::Percent(100.0),
+                width: px(width),
+                min_width: px(width),
+                height: percent(100),
             }
         }
     }

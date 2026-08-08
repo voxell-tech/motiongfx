@@ -20,10 +20,10 @@ impl PlayheadLine {
             PlayheadLine
             Node {
                 position_type: PositionType::Absolute,
-                top: Val::Px(0.0),
-                bottom: Val::Px(0.0),
-                left: Val::Px(left),
-                width: Val::Px(2.0),
+                top: px(0),
+                bottom: px(0),
+                left: px(left),
+                width: px(2),
             }
             ZIndex(10)
             BackgroundColor(PLAYHEAD_COLOR)

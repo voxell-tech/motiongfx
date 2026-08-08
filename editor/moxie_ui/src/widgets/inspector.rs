@@ -337,9 +337,9 @@ pub fn inspector_fields(ui: &mut BevyUi, target: InspectorTarget) {
     ui.bsn(bsn! {
         TabGroup::new(0)
         Node {
-            width: Val::Percent(100.0),
+            width: percent(100),
             flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(4.0),
+            row_gap: px(4),
         }
     })
     .watch(shape_changed(target), move |ui| {
@@ -362,12 +362,12 @@ fn build_fields(ui: &mut BevyUi, target: InspectorTarget) {
         let label = leaf.path;
         ui.bsn(bsn! {
             Node {
-                width: Val::Percent(100.0),
+                width: percent(100),
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Center,
-                column_gap: Val::Px(8.0),
-                padding: UiRect::vertical(Val::Px(2.0)),
+                column_gap: px(8),
+                padding: UiRect::vertical(px(2)),
             }
         })
         .with(move |ui| {
