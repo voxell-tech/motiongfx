@@ -4,9 +4,10 @@ mod common;
 mod element;
 mod lenz;
 mod override_default;
+mod style;
 
 use proc_macro::TokenStream;
-use syn::{DeriveInput, parse_macro_input};
+use syn::{DeriveInput, ItemFn, parse_macro_input};
 
 /// Generates the field paths for a struct: a zero-sized
 /// `FieldPath` marker per field, and a `Cursor` method that walks to
@@ -46,6 +47,30 @@ pub fn derive_element(input: TokenStream) -> TokenStream {
 pub fn derive_override_default(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     match override_default::expand(&ast) {
+        Ok(tokens) => tokens.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}
+
+/// Writes a `Style` from the function that applies it.
+///
+/// The struct is named after the function, carries every argument
+/// after the first as a field, and the body writes to the first.
+#[proc_macro_attribute]
+pub fn style(attr: TokenStream, item: TokenStream) -> TokenStream {
+    if !attr.is_empty() {
+        let attr: proc_macro2::TokenStream = attr.into();
+        return syn::Error::new_spanned(
+            attr,
+            "`#[style]` takes no arguments: the element is the first \
+             one the function does",
+        )
+        .into_compile_error()
+        .into();
+    }
+
+    let item = parse_macro_input!(item as ItemFn);
+    match style::expand(&item) {
         Ok(tokens) => tokens.into(),
         Err(err) => err.into_compile_error().into(),
     }

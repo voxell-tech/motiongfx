@@ -14,7 +14,7 @@ use fynix_mock::elem;
 use fynix_mock::element::Element;
 use fynix_mock::host::Host;
 use fynix_mock::store::Store;
-use fynix_mock::style::{Raw, Style, StyledElem};
+use fynix_mock::style::{Raw, Style, StyledElem, style};
 
 /// A style with something to say, so a test can see it run.
 struct Title;
@@ -213,4 +213,29 @@ fn the_builder_takes_a_styled_element_whole() {
     let children = Backend::children(&world, root);
     assert_eq!(world.get(children[0]).text, "Save");
     assert_eq!(world.get(children[0]).size, 10);
+}
+
+#[test]
+fn styles_are_written_as_the_function_that_applies_them() {
+    #[style]
+    fn bold(label: &mut Label) {
+        label.size = 20;
+    }
+
+    #[style]
+    fn heading(label: &mut Label, level: u32) {
+        label.size = 10 * level;
+
+        if level == 1 {
+            label.text = "Heading".into();
+        }
+    }
+
+    assert_eq!(elem!(Bold).create().size, 20);
+    assert_eq!(elem!(Heading { level: 3 }).create().size, 30);
+
+    let one = elem!(Heading { level: 1 }, { size = 40u32 }).create();
+
+    assert_eq!(one.text, "Heading", "the style ran");
+    assert_eq!(one.size, 40, "and the call site after it");
 }

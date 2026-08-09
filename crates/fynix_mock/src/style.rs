@@ -12,11 +12,39 @@
 
 use core::marker::PhantomData;
 
+// Same name as the trait, in the macro namespace, the way `Default`
+// and `Clone` do it.
+pub use fynix_mock_macros::style;
+
 /// A look, as a mutation of an element that already has its defaults.
 ///
 /// Nothing here names a backend: `apply` only writes fields, so one
 /// style serves every [`Host`](crate::host::Host) the element is drawn
 /// on.
+/// Written by hand, or by [`#[style]`](style) from the function that
+/// applies it:
+///
+/// ```
+/// use fynix_mock::style::{Style, StyledElem, style};
+///
+/// #[derive(Default)]
+/// pub struct Label { size: u32, weight: u32 }
+///
+/// /// Every argument after the element is a field of `Heading`.
+/// #[style]
+/// pub fn heading(label: &mut Label, level: u32) {
+///     label.size = 20 / level;
+///
+///     if level == 1 {
+///         label.weight = 700;
+///     }
+/// }
+///
+/// let label = Heading { level: 1 }.create();
+///
+/// assert_eq!(label.size, 20);
+/// assert_eq!(label.weight, 700);
+/// ```
 pub trait Style {
     type Element: Default;
 
