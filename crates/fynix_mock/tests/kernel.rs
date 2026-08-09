@@ -4,9 +4,9 @@
 mod common;
 
 use common::{Backend, Label, LabelCursor, World};
+use fynix_mock::Fynix;
 use fynix_mock::elem;
 use fynix_mock::host::Host;
-use fynix_mock::kernel::Kernel;
 
 /// Fires on the first flush and never again, the way a bootstrap
 /// build does. A stateful predicate consumes its own signal.
@@ -26,7 +26,7 @@ fn only_child(world: &World, root: usize) -> usize {
 #[test]
 fn flush_builds_what_a_watcher_declares() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
         ui.elem(elem!(!Label));
@@ -44,7 +44,7 @@ fn flush_builds_what_a_watcher_declares() {
 #[test]
 fn flush_builds_nothing_when_no_predicate_fires() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     kernel.watch(
         root,
@@ -62,7 +62,7 @@ fn flush_builds_nothing_when_no_predicate_fires() {
 #[test]
 fn binding_writes_and_patches_one_field() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
         ui.elem(elem!(!Label)).bind(
@@ -92,7 +92,7 @@ fn binding_writes_and_patches_one_field() {
 #[test]
 fn binding_stays_quiet_until_its_predicate_fires() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
         ui.elem(elem!(!Label)).bind(
@@ -115,7 +115,7 @@ fn binding_stays_quiet_until_its_predicate_fires() {
 #[test]
 fn rebuild_replaces_the_children() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     kernel.watch(
         root,
@@ -142,7 +142,7 @@ fn rebuild_replaces_the_children() {
 #[test]
 fn dead_node_is_not_patched() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
         ui.elem(elem!(!Label)).bind(
@@ -170,7 +170,7 @@ fn dead_node_is_not_patched() {
 #[test]
 fn swept_node_takes_its_element_with_it() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     kernel.watch(
         root,
@@ -203,7 +203,7 @@ fn swept_node_takes_its_element_with_it() {
 #[test]
 fn dead_root_takes_its_watcher_with_it() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     // Under the root, so the watcher's own root can be despawned
     // without taking the whole world with it.
@@ -226,7 +226,7 @@ fn dead_root_takes_its_watcher_with_it() {
 #[test]
 fn dead_node_takes_its_bindings_with_it() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
         ui.elem(elem!(!Label)).bind(

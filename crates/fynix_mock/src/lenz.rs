@@ -8,7 +8,22 @@
 //!
 //! Nothing here is specific to UI, or to any one kind of struct.
 //!
-//! ```ignore
+//! ```
+//! use fynix_mock::lenz::Lenz;
+//! #[derive(Lenz)]
+//! pub struct Card { pub header: Header }
+//! #[derive(Lenz)]
+//! pub struct Header { pub badge: Option<Badge> }
+//! #[derive(Lenz)]
+//! pub struct Badge { pub icon: Icon }
+//! #[derive(Lenz)]
+//! pub struct Icon { pub size: u32 }
+//!
+//! let card = Card {
+//!     header: Header {
+//!         badge: Some(Badge { icon: Icon { size: 12 } }),
+//!     },
+//! };
 //! let size = Card::cursor().header().badge().icon().size().accessor();
 //! assert_eq!((size.get)(&card), Some(&12));
 //! ```

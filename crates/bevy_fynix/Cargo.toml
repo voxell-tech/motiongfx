@@ -1,0 +1,19 @@
+[package]
+name = "bevy_fynix"
+description = "Bevy backend for fynix."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# fynix
+fynix_mock = { workspace = true }
+
+# bevy
+bevy_app = { workspace = true }
+bevy_ecs = { workspace = true }
+bevy_ui = { workspace = true }
+
+[lints]
+workspace = true

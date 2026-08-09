@@ -9,10 +9,10 @@ use core::marker::PhantomData;
 mod common;
 
 use common::{Backend, Label, World};
+use fynix_mock::Fynix;
 use fynix_mock::elem;
 use fynix_mock::element::Element;
 use fynix_mock::host::Host;
-use fynix_mock::kernel::Kernel;
 use fynix_mock::store::Store;
 use fynix_mock::style::{Raw, Style, StyledElem};
 
@@ -198,7 +198,7 @@ fn what_the_cascade_left_is_what_gets_built() {
 #[test]
 fn the_builder_takes_a_styled_element_whole() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Kernel::new();
+    let mut kernel = Fynix::new();
 
     kernel.watch(
         root,

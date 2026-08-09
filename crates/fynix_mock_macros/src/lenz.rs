@@ -25,6 +25,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     let cursor_trait = format_ident!("{}Cursor", name);
 
     let mut markers = Vec::new();
+    let mut impls = Vec::new();
     let mut signatures = Vec::new();
     let mut bodies = Vec::new();
 
@@ -51,12 +52,14 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         };
 
         // A marker carries the struct's parameters, because what it
-        // points at may be one of them.
+        // points at may be one of them. Its bounds are left to the
+        // impl below, so the declaration names nothing the module
+        // would have to import.
         let declare = if idents.is_empty() {
             quote!(pub struct #field_name;)
         } else {
             quote! {
-                pub struct #field_name<#decl>(
+                pub struct #field_name<#(#idents),*>(
                     ::core::marker::PhantomData<
                         fn() -> (#(#idents,)*)
                     >,
@@ -64,10 +67,15 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             }
         };
 
-        markers.push(quote! {
-            #declare
+        markers.push(declare);
 
-            impl<#decl> #lenz::FieldPath for #field_name #ty
+        // Outside the module, where the struct and its field types
+        // are already in scope: nothing has to be reached through
+        // `super`, which a module declared in a function body cannot
+        // do.
+        impls.push(quote! {
+            impl<#decl> #lenz::FieldPath
+                for #path_mod::#field_name #ty
             #bounds
             {
                 type Source = #source;
@@ -107,10 +115,10 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     Ok(quote! {
         #[allow(non_camel_case_types)]
         pub mod #path_mod {
-            use super::*;
-
             #(#markers)*
         }
+
+        #(#impls)*
 
         // The struct's parameters ride along, so that the impl below
         // constrains every one of them.
