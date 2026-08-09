@@ -22,7 +22,7 @@ pub use fynix_mock_macros::Element;
 /// Written by `#[derive(Element)]`, once for every backend at a time:
 /// the owner never names a child's backend, and never says twice how
 /// a child is drawn.
-pub trait Element<H: Host>: ElementVisual<H> {
+pub trait Element<H: Host>: ElementVisual<H> + Default {
     /// Build this element under `parent`, children and all.
     ///
     /// Every child's node is recorded in `store`, which is what lets

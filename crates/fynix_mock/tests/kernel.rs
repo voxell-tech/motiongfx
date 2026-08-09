@@ -3,7 +3,8 @@
 
 mod common;
 
-use common::{Backend, LabelCursor, World, a_label};
+use common::{Backend, Label, LabelCursor, World};
+use fynix_mock::elem;
 use fynix_mock::host::Host;
 use fynix_mock::kernel::Kernel;
 
@@ -28,7 +29,7 @@ fn flush_builds_what_a_watcher_declares() {
     let mut kernel = Kernel::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.element(a_label());
+        ui.elem(elem!(!Label));
     });
 
     assert!(Backend::children(&world, root).is_empty());
@@ -36,7 +37,7 @@ fn flush_builds_what_a_watcher_declares() {
     kernel.flush(&mut world);
 
     let label = only_child(&world, root);
-    assert_eq!(world.get(label).text, "Save");
+    assert_eq!(world.get(label).text, "Label");
     assert_eq!(world.get(label).size, 13);
 }
 
@@ -49,7 +50,7 @@ fn flush_builds_nothing_when_no_predicate_fires() {
         root,
         |_, _| false,
         |ui| {
-            ui.element(a_label());
+            ui.elem(elem!(!Label));
         },
     );
 
@@ -64,7 +65,7 @@ fn binding_writes_and_patches_one_field() {
     let mut kernel = Kernel::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.element(a_label()).bind(
+        ui.elem(elem!(!Label)).bind(
             |label| label.text(),
             |world, _| world.source.changed,
             |world, _| world.source.text.clone(),
@@ -75,7 +76,7 @@ fn binding_writes_and_patches_one_field() {
     // element still holds what it was built with.
     kernel.flush(&mut world);
     let label = only_child(&world, root);
-    assert_eq!(world.get(label).text, "Save");
+    assert_eq!(world.get(label).text, "Label");
 
     world.source.text = "Saved".into();
     world.source.changed = true;
@@ -94,7 +95,7 @@ fn binding_stays_quiet_until_its_predicate_fires() {
     let mut kernel = Kernel::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.element(a_label()).bind(
+        ui.elem(elem!(!Label)).bind(
             |label| label.text(),
             |world, _| world.source.changed,
             |world, _| world.source.text.clone(),
@@ -108,7 +109,7 @@ fn binding_stays_quiet_until_its_predicate_fires() {
     world.source.text = "Saved".into();
     kernel.flush(&mut world);
 
-    assert_eq!(world.get(label).text, "Save");
+    assert_eq!(world.get(label).text, "Label");
 }
 
 #[test]
@@ -120,7 +121,7 @@ fn rebuild_replaces_the_children() {
         root,
         |world: &World, _| world.source.changed,
         |ui| {
-            ui.element(a_label());
+            ui.elem(elem!(!Label));
         },
     );
 
@@ -135,7 +136,7 @@ fn rebuild_replaces_the_children() {
     // beside it.
     assert_ne!(first, second, "rebuilt, not added to");
     assert!(!Backend::exists(&world, first));
-    assert_eq!(world.get(second).text, "Save");
+    assert_eq!(world.get(second).text, "Label");
 }
 
 #[test]
@@ -144,7 +145,7 @@ fn dead_node_is_not_patched() {
     let mut kernel = Kernel::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.element(a_label()).bind(
+        ui.elem(elem!(!Label)).bind(
             |label| label.text(),
             |world, _| world.source.changed,
             |world, _| world.source.text.clone(),
@@ -175,7 +176,7 @@ fn swept_node_takes_its_element_with_it() {
         root,
         |world: &World, _| world.source.changed,
         |ui| {
-            ui.element(a_label());
+            ui.elem(elem!(!Label));
         },
     );
 
@@ -209,7 +210,7 @@ fn dead_root_takes_its_watcher_with_it() {
     let branch = Backend::spawn(&mut world, root);
 
     kernel.watch(branch, once(), |ui| {
-        ui.element(a_label());
+        ui.elem(elem!(!Label));
     });
     assert_eq!(kernel.watcher_len(), 1);
 
@@ -228,7 +229,7 @@ fn dead_node_takes_its_bindings_with_it() {
     let mut kernel = Kernel::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.element(a_label()).bind(
+        ui.elem(elem!(!Label)).bind(
             |label| label.text(),
             |world, _| world.source.changed,
             |world, _| world.source.text.clone(),

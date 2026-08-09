@@ -4,16 +4,22 @@
 mod common;
 
 use common::{Label, LabelCursor, World};
+use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::lenz::Lenz;
 use fynix_mock::store::Store;
 
-#[derive(Lenz, Element)]
+/// Two labels that already say which is which, so a test can tell one
+/// node from the other without setting anything up.
+#[derive(OverrideDefault, Lenz, Element)]
 pub struct Pair {
     #[elem]
+    #[default(text: String::from("up"), size: 1)]
     pub top: Label,
     #[elem]
+    #[default(text: String::from("down"), size: 2)]
     pub bottom: Label,
+    #[default(7)]
     pub gap: u32,
 }
 
@@ -34,25 +40,11 @@ impl ElementVisual<common::Backend> for Pair {
     }
 }
 
-fn a_pair() -> Pair {
-    Pair {
-        top: Label {
-            text: "up".into(),
-            size: 1,
-        },
-        bottom: Label {
-            text: "down".into(),
-            size: 2,
-        },
-        gap: 7,
-    }
-}
-
 #[test]
 fn two_children_of_one_type_keep_separate_nodes() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
-    let pair = a_pair();
+    let pair = Pair::default();
 
     let node = pair.build(&mut world, parent, &mut store);
 
@@ -72,7 +64,7 @@ fn two_children_of_one_type_keep_separate_nodes() {
 fn patching_one_of_a_pair_leaves_the_other() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
-    let mut pair = a_pair();
+    let mut pair = Pair::default();
     let node = pair.build(&mut world, parent, &mut store);
     let top =
         store.get(node, Pair::cursor().top().hops()[0]).unwrap();

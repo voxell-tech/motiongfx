@@ -7,6 +7,7 @@
 // Each test file uses a different part of this.
 #![allow(dead_code)]
 
+use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
 use fynix_mock::lenz::Lenz;
@@ -105,9 +106,13 @@ impl Host for Backend {
     }
 }
 
-#[derive(Lenz, Element)]
+/// The default is what a test gets when it only cares that a label is
+/// there, so nothing has to spell one out.
+#[derive(OverrideDefault, Lenz, Element)]
 pub struct Label {
+    #[default(String::from("Label"))]
     pub text: String,
+    #[default(13)]
     pub size: u32,
 }
 
@@ -129,13 +134,5 @@ impl ElementVisual<Backend> for Label {
             }
             LabelField::Size => world.node(node).size = self.size,
         }
-    }
-}
-
-/// A label, for tests that only care that a child exists.
-pub fn a_label() -> Label {
-    Label {
-        text: "Save".into(),
-        size: 13,
     }
 }

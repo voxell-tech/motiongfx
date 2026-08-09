@@ -19,6 +19,7 @@ use crate::element::Element;
 use crate::host::Host;
 use crate::lenz::{Cursor, FieldId, FieldPath, Identity};
 use crate::store::Store;
+use crate::style::StyledElem;
 
 /// Predicate over the world, polled once per flush.
 ///
@@ -154,17 +155,23 @@ impl<'a, H: Host> Ui<'a, H> {
         self.parent
     }
 
-    /// Build `element` and everything beneath it.
+    /// Run a [`StyledElem`]'s cascade, then build what it left, and
+    /// everything beneath it.
     ///
-    /// The kernel keeps the element, because patching a field later
-    /// means reading it back.
-    pub fn element<E>(
+    /// What [`elem!`](crate::elem) is for: the macro says how the
+    /// element is described, and this says where it goes. The kernel
+    /// keeps the element, because patching a field later means reading
+    /// it back.
+    pub fn elem<S, E>(
         &mut self,
-        element: E,
+        styled: S,
     ) -> ElementMut<'_, 'a, H, E>
     where
+        S: StyledElem<Element = E>,
         E: Element<H> + Send + Sync,
     {
+        let element = styled.create();
+
         let node = element.build(
             self.world,
             self.parent,

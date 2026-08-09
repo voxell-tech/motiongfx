@@ -4,48 +4,38 @@
 //! backend. A walk is built from types, costs nothing at runtime, and
 //! ends in one of three ways — reach the value, name the whole walk,
 //! or list the hops it took.
-//!
-//! Run with `cargo run -p fynix_mock --example lenz`.
 
+use fynix_mock::OverrideDefault;
 use fynix_mock::lenz::Lenz;
 
-#[derive(Lenz)]
+#[derive(OverrideDefault, Lenz)]
 pub struct Card {
     pub header: Header,
 }
 
-#[derive(Lenz)]
+#[derive(OverrideDefault, Lenz)]
 pub struct Header {
-    /// Optional, so a walk through it can come back empty.
+    /// Optional, so a walk through it can come back empty. Present by
+    /// default: the one walk that wants it gone says so.
+    #[default(..)]
     pub badge: Option<Badge>,
 }
 
-#[derive(Lenz)]
+#[derive(OverrideDefault, Lenz)]
 pub struct Badge {
     pub icon: Icon,
 }
 
-#[derive(Lenz)]
+#[derive(OverrideDefault, Lenz)]
 pub struct Icon {
+    #[default(12)]
     pub size: u32,
-}
-
-fn a_card(badge: Option<Badge>) -> Card {
-    Card {
-        header: Header { badge },
-    }
-}
-
-fn a_badge(size: u32) -> Option<Badge> {
-    Some(Badge {
-        icon: Icon { size },
-    })
 }
 
 fn main() {
     reaching_the_value();
     writing_through_the_same_walk();
-    an_absent_link_stops_the_walk();
+    absent_link_stops_the_walk();
     hops_are_the_route();
     the_key_is_the_whole_walk();
 
@@ -55,7 +45,7 @@ fn main() {
 /// Four hops across four structs, ending in a pair of function
 /// pointers that read the field.
 fn reaching_the_value() {
-    let card = a_card(a_badge(12));
+    let card = Card::default();
     let size = Card::cursor().header().badge().icon().size();
 
     println!("\nreaching the value");
@@ -67,7 +57,7 @@ fn reaching_the_value() {
 /// The walk is `Copy` and zero sized, so the same one reads and
 /// writes.
 fn writing_through_the_same_walk() {
-    let mut card = a_card(a_badge(12));
+    let mut card = Card::default();
     let size = Card::cursor().header().badge().icon().size();
 
     *(size.accessor().get_mut)(&mut card).unwrap() = 24;
@@ -81,8 +71,10 @@ fn writing_through_the_same_walk() {
 /// An `Option` field is just another hop. When it is empty the walk
 /// answers `None` rather than panicking, and the caller never has to
 /// know which link along the way was optional.
-fn an_absent_link_stops_the_walk() {
-    let card = a_card(None);
+fn absent_link_stops_the_walk() {
+    let card = Card {
+        header: Header { badge: None },
+    };
     let size = Card::cursor().header().badge().icon().size();
 
     println!("\nan absent link stops the walk");

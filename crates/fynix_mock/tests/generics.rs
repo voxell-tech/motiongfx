@@ -3,15 +3,17 @@
 
 mod common;
 
-use common::{Label, LabelCursor, World, a_label};
+use common::{Label, LabelCursor, World};
 use fynix_mock::element::{Element, ElementVisual, Fields};
 use fynix_mock::lenz::Lenz;
 use fynix_mock::store::Store;
 
-pub trait Look: 'static {
+/// `Default`, so an element generic over its look has one too.
+pub trait Look: Default + 'static {
     fn glyph(&self) -> char;
 }
 
+#[derive(Default)]
 pub struct Dark;
 
 impl Look for Dark {
@@ -20,7 +22,7 @@ impl Look for Dark {
     }
 }
 
-#[derive(Lenz, Element)]
+#[derive(Default, Lenz, Element)]
 pub struct Themed<L: Look> {
     #[elem]
     pub label: Label,
@@ -46,18 +48,11 @@ impl<L: Look> ElementVisual<common::Backend> for Themed<L> {
     }
 }
 
-fn a_themed() -> Themed<Dark> {
-    Themed {
-        label: a_label(),
-        look: Dark,
-    }
-}
-
 #[test]
 fn generic_element_builds_its_children() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
-    let themed = a_themed();
+    let themed = Themed::<Dark>::default();
 
     let node = themed.build(&mut world, parent, &mut store);
 
@@ -65,14 +60,14 @@ fn generic_element_builds_its_children() {
 
     let label = Themed::<Dark>::cursor().label().hops();
     let label = store.get(node, label[0]).unwrap();
-    assert_eq!(world.get(label).text, "Save");
+    assert_eq!(world.get(label).text, "Label");
 }
 
 #[test]
 fn generic_element_patches_through_its_child() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
-    let mut themed = a_themed();
+    let mut themed = Themed::<Dark>::default();
     let node = themed.build(&mut world, parent, &mut store);
 
     let path = Themed::<Dark>::cursor().label().text();

@@ -9,14 +9,14 @@
 use fynix_mock::element::{Element, Fields};
 use fynix_mock::lenz::{FieldId, Lenz};
 
-#[derive(Lenz, Element)]
+#[derive(Default, Lenz, Element)]
 pub struct Label {
     pub text: String,
     pub size: u32,
 }
 
 /// Two children of the same type, side by side.
-#[derive(Lenz, Element)]
+#[derive(Default, Lenz, Element)]
 pub struct Pair {
     #[elem]
     pub top: Label,
@@ -26,7 +26,7 @@ pub struct Pair {
 }
 
 /// A different struct, with a field of the same name and type.
-#[derive(Lenz, Element)]
+#[derive(Default, Lenz, Element)]
 pub struct Stack {
     #[elem]
     pub top: Label,
@@ -34,28 +34,31 @@ pub struct Stack {
 }
 
 /// Reached through two owners, to walk the same `Label` twice over.
-#[derive(Lenz, Element)]
+#[derive(Default, Lenz, Element)]
 pub struct Card {
     #[elem]
     pub header: Label,
 }
 
-#[derive(Lenz, Element)]
+#[derive(Default, Lenz, Element)]
 pub struct Panel {
     #[elem]
     pub header: Label,
 }
 
-pub trait Look: 'static {}
+/// `Default`, so an element generic over its look has one too.
+pub trait Look: Default + 'static {}
 
+#[derive(Default)]
 pub struct Dark;
+#[derive(Default)]
 pub struct Light;
 
 impl Look for Dark {}
 impl Look for Light {}
 
 /// Generic, so its paths differ per argument.
-#[derive(Lenz, Element)]
+#[derive(Default, Lenz, Element)]
 pub struct Themed<L: Look> {
     #[elem]
     pub label: Label,
