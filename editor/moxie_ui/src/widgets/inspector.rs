@@ -17,13 +17,15 @@ use std::sync::Arc;
 
 use bevy::ecs::change_detection::{ComponentTicks, Tick};
 use bevy::ecs::reflect::ReflectComponent;
-use bevy::feathers::theme::ThemedText;
 use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::prelude::*;
 use bevy::reflect::{GetPath, ReflectRef, TypeRegistry};
-use bevy::scene::EntityWorldMutSceneExt;
 
-use crate::reactive::{BevyUi, BevyUiExt};
+use bevy_fynix::ElementMutExt;
+use fynix_mock::elem;
+
+use crate::fynix::{Frame, Label};
+use crate::reactive::BevyUi;
 pub use widget::{Inspect, InspectAppExt, ReflectInspect};
 
 /// Where an inspector reads and writes the value it edits.
@@ -334,24 +336,22 @@ fn shape_changed(
 /// Editable rows for everything reflectable under `target`, as kernel
 /// nodes.
 pub fn inspector_fields(ui: &mut BevyUi, target: InspectorTarget) {
-    ui.bsn(bsn! {
-        TabGroup::new(0)
-        Node {
-            width: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(4.0),
-        }
-    })
+    ui.elem(elem!(!Frame {
+        width = Val::Percent(100.0);
+        direction = FlexDirection::Column;
+        gap = Val::Px(4.0)
+    }))
+    .insert(TabGroup::new(0))
     .watch(shape_changed(target), move |ui| {
         build_fields(ui, target);
     });
 }
 
 fn build_fields(ui: &mut BevyUi, target: InspectorTarget) {
-    for leaf in leaves(ui.world(), target) {
+    for leaf in leaves(ui.world, target) {
         let drawer = {
             let registry =
-                ui.world().resource::<AppTypeRegistry>().read();
+                ui.world.resource::<AppTypeRegistry>().read();
             registry
                 .get_type_data::<ReflectInspect>(leaf.type_id)
                 .cloned()
@@ -360,35 +360,17 @@ fn build_fields(ui: &mut BevyUi, target: InspectorTarget) {
 
         let field = Field::new(target, leaf.path.clone());
         let label = leaf.path;
-        ui.bsn(bsn! {
-            Node {
-                width: Val::Percent(100.0),
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::Center,
-                column_gap: Val::Px(8.0),
-                padding: UiRect::vertical(Val::Px(2.0)),
-            }
-        })
+        ui.elem(elem!(!Frame {
+            width = Val::Percent(100.0);
+            direction = FlexDirection::Row;
+            justify = JustifyContent::SpaceBetween;
+            align = AlignItems::Center;
+            gap = Val::Px(8.0);
+            padding = UiRect::vertical(Val::Px(2.0))
+        }))
         .with(move |ui| {
-            ui.bsn(bsn! {
-                Text({label})
-                ThemedText
-                TextFont { font_size: FontSize::Px(12.0) }
-            });
+            ui.elem(elem!(!Label { text = label; size = 12.0 }));
             drawer.build(&field, ui);
         });
-    }
-}
-
-/// Applies `scene` to a node the kernel already spawned, for widgets
-/// that are built by a function rather than named in a `bsn!` tree.
-pub(crate) fn apply_scene_to(
-    world: &mut World,
-    node: Entity,
-    scene: impl Scene,
-) {
-    if let Err(err) = world.entity_mut(node).apply_scene(scene) {
-        error!("failed to build inspector field: {err}");
     }
 }

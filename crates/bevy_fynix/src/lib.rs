@@ -8,8 +8,10 @@ pub mod host;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_ecs::system::IntoObserverSystem;
 use fynix_mock::Fynix;
-use fynix_mock::ui::{BuildFn, Ui};
+use fynix_mock::element::Element;
+use fynix_mock::ui::{BuildFn, ElementMut, Ui};
 
 use crate::host::BevyHost;
 
@@ -59,4 +61,35 @@ fn flush(world: &mut World) {
     world.resource_scope(|world, mut kernel: Mut<BevyFynix>| {
         kernel.0.flush(world);
     });
+}
+
+/// What bevy wants on a node that the element itself has no say in.
+pub trait ElementMutExt {
+    /// Watch this node for `E`.
+    fn observe<V: EntityEvent, B: Bundle, M>(
+        self,
+        observer: impl IntoObserverSystem<V, B, M>,
+    ) -> Self;
+
+    /// Put `bundle` on this node, once, now.
+    fn insert(self, bundle: impl Bundle) -> Self;
+}
+
+impl<E: Element<BevyHost>> ElementMutExt
+    for ElementMut<'_, '_, BevyHost, E>
+{
+    fn observe<V: EntityEvent, B: Bundle, M>(
+        self,
+        observer: impl IntoObserverSystem<V, B, M>,
+    ) -> Self {
+        let node = self.id();
+        self.ui.world.entity_mut(node).observe(observer);
+        self
+    }
+
+    fn insert(self, bundle: impl Bundle) -> Self {
+        let node = self.id();
+        self.ui.world.entity_mut(node).insert(bundle);
+        self
+    }
 }

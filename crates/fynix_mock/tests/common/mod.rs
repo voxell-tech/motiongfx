@@ -108,7 +108,7 @@ impl Host for Backend {
 
 /// The default is what a test gets when it only cares that a label is
 /// there, so nothing has to spell one out.
-#[derive(OverrideDefault, Lenz, Element)]
+#[derive(Element, OverrideDefault, Lenz)]
 pub struct Label {
     #[default(String::from("Label"))]
     pub text: String,

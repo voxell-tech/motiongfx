@@ -3718,7 +3718,9 @@ name = "moxie"
 version = "0.3.0"
 dependencies = [
  "bevy",
+ "bevy_fynix",
  "bevy_motiongfx",
+ "fynix_mock",
  "moxie_ui",
 ]
 
@@ -3727,14 +3729,8 @@ name = "moxie_ui"
 version = "0.3.0"
 dependencies = [
  "bevy",
- "moxie_ui_kernel",
-]
-
-[[package]]
-name = "moxie_ui_kernel"
-version = "0.3.0"
-dependencies = [
- "hashbrown 0.17.1",
+ "bevy_fynix",
+ "fynix_mock",
 ]
 
 [[package]]

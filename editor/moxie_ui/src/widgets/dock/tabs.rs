@@ -1,70 +1,22 @@
 //! Tab bar widget: a row of `DockTab`s + an "add tab" button for a
 //! leaf, built as kernel nodes.
 
-use bevy::picking::hover::Hovered;
+use bevy::feathers::constants::icons as feathers_icons;
+use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
-use bevy::ui::widget::ImageNode;
+use bevy::ui_widgets::Activate;
+use bevy_fynix::ElementMutExt;
+use fynix_mock::elem;
 
-use super::TAB_HEIGHT;
-use super::area::{DockTab, DockTabAddButton, DockTabCloseButton};
+use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
-use crate::glass::Glass;
-use crate::reactive::{BevyUi, BevyUiExt, resource_changed};
+use crate::fynix::{
+    Button, ButtonLook, Icon, IconCursor, Label, LabelCursor, Tab,
+    TabBar, TabCursor, TabRow,
+};
+use crate::icons;
+use crate::reactive::{BevyUi, resource_changed};
 use crate::theme::EditorTheme;
-
-/// Hover feedback for a tab: the resting pill swap, and the close
-/// icon fading in.
-///
-/// Driven by [`Hovered`] rather than `Pointer<Over>`/`Out`: it already
-/// accounts for descendants, so crossing from the tab's label onto its
-/// close button doesn't read as leaving the tab. It's immutable, so
-/// every replacement fires `Insert`.
-pub(super) fn on_tab_hover(
-    insert: On<Insert, Hovered>,
-    q_tabs: Query<(&Hovered, &Glass, &Children), With<DockTab>>,
-    drag_state: Res<super::drag::DockDragState>,
-    close_buttons: Query<&Children, With<DockTabCloseButton>>,
-    // A close button's only child is its icon: no marker needed to
-    // pick it out.
-    mut icons: Query<&mut ImageNode>,
-    mut commands: Commands,
-) {
-    let tab = insert.entity;
-    let Ok((hovered, glass, children)) = q_tabs.get(tab) else {
-        return;
-    };
-    let hovered = hovered.get();
-
-    // Swap the resting pill for the faint hover one. Re-inserting
-    // [`Glass`] triggers the material swap; active tabs keep
-    // [`Glass::TabActive`].
-    let next = match (hovered, glass) {
-        (false, Glass::TabHover) => Some(Glass::TabIdle),
-        (true, Glass::TabIdle) => Some(Glass::TabHover),
-        _ => None,
-    };
-    if let Some(next) = next {
-        commands.entity(tab).insert(next);
-    }
-
-    // The close icon is alpha-toggled rather than shown/hidden so the
-    // tab never reflows. Stays hidden mid-drag.
-    let dragging = matches!(
-        *drag_state,
-        super::drag::DockDragState::Dragging { .. }
-    );
-    let alpha = if hovered && !dragging { 1.0 } else { 0.0 };
-    for child in children.iter() {
-        let Ok(close_children) = close_buttons.get(child) else {
-            continue;
-        };
-        for grandchild in close_children.iter() {
-            if let Ok(mut image) = icons.get_mut(grandchild) {
-                image.color = image.color.with_alpha(alpha);
-            }
-        }
-    }
-}
 
 #[derive(Component)]
 pub struct DockTabRow;
@@ -81,41 +33,8 @@ pub(super) fn build_tab_bar(
     tabs: Vec<(TabId, String, String, Option<String>)>,
     ui: &mut BevyUi,
 ) {
-    ui.bundle((
-        Node {
-            flex_direction: FlexDirection::Row,
-            justify_content: JustifyContent::SpaceBetween,
-            align_items: AlignItems::Center,
-            width: Val::Percent(100.0),
-            height: Val::Px(TAB_HEIGHT),
-            // No left padding: first tab sits flush to the edge.
-            padding: UiRect::new(
-                Val::ZERO,
-                Val::Px(8.0),
-                Val::Px(1.0),
-                Val::ZERO,
-            ),
-            flex_shrink: 0.0,
-            ..default()
-        },
-        Glass::Bar,
-    ))
-    .with(move |ui| {
-        ui.bundle((
-            DockTabRow,
-            Node {
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::Center,
-                column_gap: Val::Px(2.0),
-                height: Val::Percent(100.0),
-                overflow: Overflow::scroll_x(),
-                flex_shrink: 1.0,
-                min_width: Val::Px(0.0),
-                ..default()
-            },
-            ScrollPosition::default(),
-        ))
-        .with(move |ui| {
+    ui.elem(elem!(!TabBar)).with(move |ui| {
+        ui.elem(elem!(!TabRow)).with(move |ui| {
             for (tab_id, window_id, label, icon) in tabs {
                 build_tab(
                     leaf, area, tab_id, window_id, label, icon, ui,
@@ -123,14 +42,20 @@ pub(super) fn build_tab_bar(
             }
         });
 
-        let muted = ui.world().resource::<EditorTheme>().text_muted;
-        ui.bsn(bsn! {
-            @DockTabAddButton {
-                @area: {area},
-                @icon_color: {muted},
-            }
-        });
+        build_add_button(area, ui);
     });
+}
+
+/// The "+" at the end of the bar, which opens the window list.
+fn build_add_button(area: Entity, ui: &mut BevyUi) {
+    let muted = ui.world.resource::<EditorTheme>().text_muted;
+
+    ui.elem(elem!(!Button {
+        look = ButtonLook::Ghost;
+        icon = Icon { image: icons::PLUS.into(), color: muted, ..default() }
+    }))
+    .insert(DockTabAddButton { area_entity: area })
+    .observe(super::add_popup::on_add_click);
 }
 
 /// One tab. Active styling is a binding: switching tabs must not
@@ -145,67 +70,91 @@ fn build_tab(
     icon: Option<String>,
     ui: &mut BevyUi,
 ) {
-    let is_active = active_of(ui.world(), leaf) == Some(tab_id);
-    let (text_color, close_color) = {
-        let theme = ui.world().resource::<EditorTheme>();
-        let text = if is_active {
-            theme.text_primary
-        } else {
-            theme.text_muted
-        };
-        (text, theme.text_muted.with_alpha(0.0))
-    };
+    let is_active = active_of(ui.world, leaf) == Some(tab_id);
+    let lit = text_color(ui.world, leaf, tab_id);
+    let close_color = ui.world.resource::<EditorTheme>().text_muted;
 
-    ui.bsn(bsn! {
-        @DockTab {
-            @window_id: {window_id},
-            @tab_id: {tab_id},
-            @label: {label},
-            @icon: {icon},
-            @area: {area},
-            @is_active: {is_active},
-            @text_color: {text_color},
-            @close_color: {close_color},
+    let tab = ui.elem(elem!(!Tab {
+        window_id = window_id;
+        tab = tab_id;
+        active = is_active;
+        icon = icon.map(|image| Icon {
+            image,
+            color: lit,
+            size: Val::Px(12.0),
+        });
+        label = Label {
+            text: label,
+            size: 12.0,
+            color: Some(lit),
+            bold: true,
+            wrap: false,
+        };
+        close = Button {
+            look: ButtonLook::Ghost,
+            width: Val::Px(14.0),
+            height: Val::Px(14.0),
+            radius: Val::Px(2.0),
+            icon: Some(Icon {
+                image: feathers_icons::X.to_string(),
+                color: close_color,
+                size: Val::Px(10.0),
+            }),
+            ..default()
         }
-    })
-    .bind_raw(
+    }))
+    // Which tab is active follows the tree, and must not rebuild the
+    // tab: a drag in progress would go with it.
+    .bind(
+        |tab| tab.active(),
         resource_changed::<DockTree>(),
-        move |world, node| {
-            let is_active = active_of(world, leaf) == Some(tab_id);
-            let color = {
-                let theme = world.resource::<EditorTheme>();
-                if is_active {
-                    theme.text_primary
-                } else {
-                    theme.text_muted
-                }
-            };
-            // Re-inserting the preset swaps the tab's material.
-            world.entity_mut(node).insert(Glass::tab(is_active));
-            let children = world
-                .get::<Children>(node)
-                .map(|children| children.to_vec())
-                .unwrap_or_default();
-            for child in children {
-                if let Some(mut text) =
-                    world.get_mut::<TextColor>(child)
-                {
-                    text.0 = color;
-                }
-                // Icon-less tabs keep their slot at alpha 0; only the
-                // hue follows the active/inactive swap. A tab's icon
-                // is its only direct child carrying `ImageNode` (the
-                // close button's icon is a grandchild), so no marker
-                // is needed to single it out.
-                if let Some(mut image) =
-                    world.get_mut::<ImageNode>(child)
-                {
-                    let alpha = image.color.alpha();
-                    image.color = color.with_alpha(alpha);
-                }
+        move |world, _| active_of(world, leaf) == Some(tab_id),
+    )
+    // What the tab holds is lit by the same signal, and separately:
+    // the fill is the tab's own field, these are its children's.
+    .bind(
+        |tab| tab.label().color(),
+        resource_changed::<DockTree>(),
+        move |world, _| text_color(world, leaf, tab_id),
+    )
+    .bind(
+        |tab| tab.icon().color(),
+        resource_changed::<DockTree>(),
+        move |world, _| text_color(world, leaf, tab_id),
+    )
+    .observe(
+        move |mut click: On<Pointer<Click>>,
+              bindings: Query<&super::reconcile::LeafBinding>,
+              mut tree: ResMut<DockTree>| {
+            click.propagate(false);
+
+            if let Ok(binding) = bindings.get(area) {
+                tree.set_active(binding.0, tab_id);
             }
         },
     );
+
+    // On the close button itself: a `Button` takes the click for
+    // itself, so nothing the tab observes ever hears it.
+    if let Some(close) = tab.child(|tab| tab.close()) {
+        tab.ui.world.entity_mut(close).observe(
+            move |_: On<Activate>, mut tree: ResMut<DockTree>| {
+                tree.remove_tab(tab_id);
+            },
+        );
+    }
+}
+
+/// What a tab's text and icon are lit with: the active one reads
+/// bright, the rest recede.
+fn text_color(world: &World, leaf: NodeId, tab: TabId) -> Color {
+    let theme = world.resource::<EditorTheme>();
+
+    if active_of(world, leaf) == Some(tab) {
+        theme.text_primary
+    } else {
+        theme.text_muted
+    }
 }
 
 fn active_of(world: &World, leaf: NodeId) -> Option<TabId> {
@@ -243,7 +192,11 @@ pub(super) fn spawn_ghost_tab(
 ) {
     let color = world.resource::<EditorTheme>().text_primary;
     let tile = world
-        .spawn((tab_tile_node(), Glass::tab(true), ChildOf(wrapper)))
+        .spawn((
+            tab_tile_node(),
+            BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.06)),
+            ChildOf(wrapper),
+        ))
         .id();
     world.spawn((
         Text::new(label.to_string()),

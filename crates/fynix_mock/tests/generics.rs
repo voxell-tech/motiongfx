@@ -22,7 +22,7 @@ impl Look for Dark {
     }
 }
 
-#[derive(Default, Lenz, Element)]
+#[derive(Element, Default, Lenz)]
 pub struct Themed<L: Look> {
     #[elem]
     pub label: Label,

@@ -17,7 +17,6 @@ bevy_motiongfx = { version = "0.3.0", path = "crates/bevy_motiongfx", default-fe
 peniko_motiongfx = { version = "0.3.0", path = "crates/peniko_motiongfx" }
 moxie = { version = "0.3.0", path = "editor/moxie" }
 moxie_ui = { version = "0.3.0", path = "editor/moxie_ui" }
-moxie_ui_kernel = { version = "0.3.0", path = "editor/moxie_ui_kernel" }
 fynix_mock = { version = "0.3.0", path = "crates/fynix_mock" }
 fynix_mock_macros = { version = "0.3.0", path = "crates/fynix_mock_macros" }
 bevy_fynix = { version = "0.3.0", path = "crates/bevy_fynix" }

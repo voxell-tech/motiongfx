@@ -11,7 +11,7 @@ use fynix_mock::store::Store;
 
 /// Two labels that already say which is which, so a test can tell one
 /// node from the other without setting anything up.
-#[derive(OverrideDefault, Lenz, Element)]
+#[derive(Element, OverrideDefault, Lenz)]
 pub struct Pair {
     #[elem]
     #[default(text: String::from("up"), size: 1)]

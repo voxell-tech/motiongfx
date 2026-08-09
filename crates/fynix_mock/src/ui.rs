@@ -126,7 +126,10 @@ impl<H: Host> Default for Records<H> {
 
 /// Builds elements under a parent and records their reactivity.
 pub struct Ui<'a, H: Host> {
-    world: &'a mut H::World,
+    /// What the builders read and the applies write. Public, because
+    /// a host's own extensions need it and a build is the one place
+    /// holding it.
+    pub world: &'a mut H::World,
     parent: H::Node,
     records: &'a mut Records<H>,
 }
@@ -142,12 +145,6 @@ impl<'a, H: Host> Ui<'a, H> {
             parent,
             records,
         }
-    }
-
-    /// The world, for reads. Collect what you need from it before
-    /// building: the borrow cannot outlive the next builder call.
-    pub fn world(&self) -> &H::World {
-        self.world
     }
 
     /// The node these children are being built under.
@@ -193,7 +190,7 @@ impl<'a, H: Host> Ui<'a, H> {
 /// It remembers which element it built, so a binding can only be made
 /// from a walk that starts there.
 pub struct ElementMut<'u, 'a, H: Host, E: Element<H>> {
-    ui: &'u mut Ui<'a, H>,
+    pub ui: &'u mut Ui<'a, H>,
     node: H::Node,
     element: PhantomData<fn() -> E>,
 }
@@ -221,6 +218,26 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             build: Box::new(build),
         });
         self
+    }
+
+    /// The node an `#[elem]` child took.
+    ///
+    /// For what the child owns rather than the element does: an
+    /// observer on the button inside a tab fires for that button, and
+    /// nothing above it ever sees the click. `None` when the walk
+    /// names a field that is not an element, or an `Option` child that
+    /// is absent.
+    pub fn child<P>(
+        &self,
+        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
+    ) -> Option<H::Node>
+    where
+        P: FieldPath<Source = E>,
+    {
+        field(Cursor::new()).hops().into_iter().try_fold(
+            self.node,
+            |node, hop| self.ui.records.store.get(node, hop),
+        )
     }
 
     /// Build children under this element.

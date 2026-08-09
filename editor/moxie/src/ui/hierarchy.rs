@@ -8,8 +8,10 @@ use std::sync::{Arc, Mutex};
 
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
-use moxie_ui::glass::Glass;
-use moxie_ui::reactive::{BevyUi, BevyUiExt};
+use bevy_fynix::ElementMutExt;
+use fynix_mock::elem;
+use moxie_ui::fynix::{Frame, Label};
+use moxie_ui::reactive::BevyUi;
 use moxie_ui::theme::EditorTheme;
 
 use super::{PANEL_PADDING, TrackViewportCamera};
@@ -64,17 +66,21 @@ pub(super) fn panel(ui: &mut BevyUi) {
     let seen = rows.clone();
     let mut queries: Option<HierarchyQueries> = None;
 
-    ui.bsn(bsn! {
-        Node {
-            width: Val::Percent(100.0),
-            flex_grow: 1.0,
-            min_height: Val::Px(0.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(2.0),
-            padding: UiRect::all(Val::Px(PANEL_PADDING)),
-            overflow: Overflow::scroll_y(),
-        }
-        template_value(Glass::Panel)
+    ui.elem(elem!(!Frame {
+        width = Val::Percent(100.0);
+        direction = FlexDirection::Column;
+        gap = Val::Px(2.0);
+        padding = UiRect::all(Val::Px(PANEL_PADDING))
+    }))
+    .insert(Node {
+        width: Val::Percent(100.0),
+        flex_grow: 1.0,
+        min_height: Val::Px(0.0),
+        flex_direction: FlexDirection::Column,
+        row_gap: Val::Px(2.0),
+        padding: UiRect::all(Val::Px(PANEL_PADDING)),
+        overflow: Overflow::scroll_y(),
+        ..default()
     })
     .watch(
         move |world, _| {
@@ -153,25 +159,22 @@ fn push_subtree(
 }
 
 fn build_rows(ui: &mut BevyUi, rows: &[Row]) {
-    let text_color =
-        ui.world().resource::<EditorTheme>().text_primary;
+    let text_color = ui.world.resource::<EditorTheme>().text_primary;
 
     for row in rows {
         let indent = row.depth as f32 * INDENT;
         let name = row.name.clone();
-        ui.bsn(bsn! {
-            Node {
-                width: Val::Percent(100.0),
-                align_items: AlignItems::Center,
-                padding: UiRect::left(Val::Px(indent)),
-            }
-        })
+        ui.elem(elem!(!Frame {
+            width = Val::Percent(100.0);
+            align = AlignItems::Center;
+            padding = UiRect::left(Val::Px(indent))
+        }))
         .with(move |ui| {
-            ui.bsn(bsn! {
-                Text({name})
-                TextFont { font_size: FontSize::Px(12.0) }
-                TextColor({text_color})
-            });
+            ui.elem(elem!(!Label {
+                text = name;
+                size = 12.0;
+                color = Some(text_color)
+            }));
         });
     }
 }

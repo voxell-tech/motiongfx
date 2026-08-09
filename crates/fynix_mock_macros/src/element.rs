@@ -30,7 +30,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     let mut patches = Vec::new();
     let mut despawns = Vec::new();
 
-    for field in fields {
+    for field in fields.iter() {
         let field_name =
             field.ident.as_ref().expect("named fields checked above");
         let marker = quote!(#path_mod::#field_name #ty);

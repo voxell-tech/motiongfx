@@ -1,6 +1,9 @@
+use std::borrow::Cow;
+
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
+use syn::punctuated::Punctuated;
 use syn::{
     Data, DeriveInput, Fields, GenericArgument, GenericParam, Ident,
     PathArguments, Type, WhereClause,
@@ -93,18 +96,24 @@ fn predicates(
     }
 }
 
+/// A struct's named fields, of which a unit struct has none.
+///
+/// An element with no data of its own is an ordinary thing to want:
+/// what it draws is fixed, and only where it sits varies.
 pub fn named_fields<'a>(
     ast: &'a DeriveInput,
     derive: &str,
-) -> syn::Result<
-    &'a syn::punctuated::Punctuated<syn::Field, syn::Token![,]>,
-> {
+) -> syn::Result<Cow<'a, Punctuated<syn::Field, syn::Token![,]>>> {
     match &ast.data {
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => Ok(&named.named),
-            _ => Err(syn::Error::new_spanned(
+            Fields::Named(named) => Ok(Cow::Borrowed(&named.named)),
+            Fields::Unit => Ok(Cow::Owned(Punctuated::new())),
+            Fields::Unnamed(_) => Err(syn::Error::new_spanned(
                 &data.fields,
-                format!("`#[derive({derive})]` needs named fields"),
+                format!(
+                    "`#[derive({derive})]` needs named fields, or \
+                     none at all"
+                ),
             )),
         },
         _ => Err(syn::Error::new(

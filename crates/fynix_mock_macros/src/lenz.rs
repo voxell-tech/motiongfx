@@ -29,7 +29,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     let mut signatures = Vec::new();
     let mut bodies = Vec::new();
 
-    for field in fields {
+    for field in fields.iter() {
         let field_name =
             field.ident.as_ref().expect("named fields checked above");
 

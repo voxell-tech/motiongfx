@@ -12,9 +12,7 @@ use bevy_motiongfx::prelude::*;
 
 use crate::ui::TimelineContent;
 use crate::{EditorState, PIXELS_PER_SECOND};
-use bevy::ecs::query::QueryState;
 use bevy_motiongfx::prelude::TimelineId;
-use moxie_ui::reactive::BevyUi;
 
 /// Command to flip playback, dispatched from the play/pause button
 /// and the spacebar hotkey and handled in one place
@@ -62,60 +60,30 @@ pub(crate) fn on_toggle_playback(
 
 /// Keep [`EditorState`] tracking the first timeline.
 ///
-/// A binding, not a per-frame system: the predicate only fires when
-/// the duration actually changes. It hangs off a UI node purely for
-/// lifetime; the write lands on a resource, and the timeline it reads
-/// is resolved through a lazily-built query since a predicate only
-/// ever holds `&World`.
-pub(crate) fn bind_timeline_state(ui: &mut BevyUi) {
-    let mut timelines: Option<QueryState<&'static TimelineId>> = None;
-    let mut seen: Option<(TimelineId, Duration)> = None;
+/// A system rather than a binding: the write lands on a resource, so
+/// it belongs to no node, and hanging it off one purely for lifetime
+/// was always a fiction. It writes only when the answer moves, so a
+/// change detecting reader still sees one change per change.
+pub(crate) fn track_first_timeline(
+    timelines: Query<&TimelineId>,
+    manager: Res<MotionGfxManager>,
+    mut state: ResMut<EditorState>,
+) {
+    let Some(&id) = timelines.iter().next() else {
+        return;
+    };
 
-    ui.empty_node().bind_raw(
-        move |world, _| {
-            let timelines = match &mut timelines {
-                Some(query) => query,
-                slot => match QueryState::try_new(world) {
-                    Some(query) => slot.insert(query),
-                    None => return false,
-                },
-            };
-            timelines.update_archetypes(world);
-            let current = timelines
-                .iter_manual(world)
-                .next()
-                .copied()
-                .map(|id| (id, duration_of(world, id)));
-            let changed = seen != current;
-            seen = current;
-            changed
-        },
-        |world, _| {
-            let Some(id) = first_timeline(world) else {
-                return;
-            };
-            let duration = duration_of(world, id);
-            let mut state = world.resource_mut::<EditorState>();
-            state.timeline = Some(id);
-            state.duration = duration;
-        },
-    );
-}
-
-/// The first timeline in the world, or `None`.
-fn first_timeline(world: &mut World) -> Option<TimelineId> {
-    world.query::<&TimelineId>().iter(world).next().copied()
-}
-
-/// Duration of the timeline's first track, or zero if it is gone.
-fn duration_of(world: &World, id: TimelineId) -> Duration {
-    world
-        .resource::<MotionGfxManager>()
+    let duration = manager
         .get_timeline(&id)
         .and_then(|timeline| {
             timeline.tracks().first().map(|track| track.duration())
         })
-        .unwrap_or(Duration::ZERO)
+        .unwrap_or(Duration::ZERO);
+
+    if state.timeline != Some(id) || state.duration != duration {
+        state.timeline = Some(id);
+        state.duration = duration;
+    }
 }
 
 /// Present on the timeline track while a scrub is in progress. A

@@ -10,7 +10,7 @@ use fynix_mock::host::Host;
 use fynix_mock::lenz::{FieldPath, Lenz};
 use fynix_mock::store::Store;
 
-#[derive(OverrideDefault, Lenz, Element)]
+#[derive(Element, OverrideDefault, Lenz)]
 pub struct Icon {
     #[default('+')]
     pub glyph: char,
@@ -18,13 +18,13 @@ pub struct Icon {
 
 /// Plain data, not an element: no node of its own, so `Button` draws
 /// it.
-#[derive(Default, Lenz, Element)]
+#[derive(Element, Default, Lenz)]
 pub struct Border {
     pub width: u32,
     pub radius: u32,
 }
 
-#[derive(OverrideDefault, Lenz, Element)]
+#[derive(Element, OverrideDefault, Lenz)]
 pub struct Button {
     #[elem]
     pub label: Label,
