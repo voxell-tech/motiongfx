@@ -19,7 +19,7 @@ use crate::with_kernel;
 
 /// One queued aim: point a field somewhere on the kernel, given the
 /// node it belongs to.
-type Aim = Arc<dyn Fn(&mut Fynix<BevyHost>, Entity) + Send + Sync>;
+type Aim = Box<dyn Fn(&mut Fynix<BevyHost>, Entity) + Send + Sync>;
 
 /// Aims queued for one event type on one node, until they are dropped
 /// onto a single observer.
@@ -56,7 +56,7 @@ impl<E: 'static, V: EntityEvent> Aiming<'_, E, V> {
         P: FieldPath<Source = E>,
         P::Target: Clone + Send + Sync,
     {
-        self.aims.push(Arc::new(move |kernel, node| {
+        self.aims.push(Box::new(move |kernel, node| {
             kernel.aim(node, field, target.clone());
         }));
         self
