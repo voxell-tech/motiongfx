@@ -68,7 +68,15 @@ pub trait Style {
 
     /// A style meant to be applied more than once is implemented for
     /// `&Self`.
-    fn apply(self, element: &mut Self::Element);
+    ///
+    /// Nothing, by default, for a style that only moves — see
+    /// [`attach`](Self::attach).
+    fn apply(self, element: &mut Self::Element)
+    where
+        Self: Sized,
+    {
+        let _ = element;
+    }
 
     /// What this style hangs on the node once it exists: lanes, and
     /// what aims them. Nothing, by default.

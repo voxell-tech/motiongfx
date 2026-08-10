@@ -23,6 +23,7 @@ mod timeline_track;
 // it, and the walk is what those provide.
 pub use button::{
     Button, GhostButton, RawButton, RawButtonCursor, RawButtonField,
+    TintButton,
 };
 pub use divider::{Divider, DividerCursor, DividerField};
 pub use field::{

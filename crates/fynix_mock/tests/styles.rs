@@ -10,11 +10,11 @@ mod common;
 
 use common::{Backend, Label, World};
 use fynix_mock::Fynix;
-use fynix_mock::{elem, val};
 use fynix_mock::element::Element;
 use fynix_mock::host::Host;
 use fynix_mock::store::Store;
 use fynix_mock::style::{Raw, Style, StyledElem};
+use fynix_mock::{elem, val};
 
 /// What the cascade produced, for a test that only wants the value.
 /// `create` says nothing about a backend, but the type it is called on

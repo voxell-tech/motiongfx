@@ -9,6 +9,7 @@
 pub mod fynix;
 pub mod icons;
 pub mod motion;
+pub mod palette;
 pub mod reactive;
 pub mod theme;
 pub mod widgets;

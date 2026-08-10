@@ -11,12 +11,16 @@ use fynix_mock::{elem, val};
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
 use crate::fynix::{
-    GhostButton, Icon, IconCursor, Label, LabelCursor, Tab, TabBar,
-    TabCursor, TabRow,
+    GhostButton, Icon, IconCursor, Label, LabelCursor,
+    RawButtonCursor, Tab, TabBar, TabCursor, TabRow, TintButton,
 };
 use crate::icons;
+use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed};
 use crate::theme::EditorTheme;
+
+/// What the close button's icon tints to under the cursor.
+const CLOSE_HOVER: Color = crate::palette::RED;
 
 #[derive(Component)]
 pub struct DockTabRow;
@@ -51,7 +55,7 @@ fn build_add_button(area: Entity, ui: &mut BevyUi) {
     let muted = ui.world.resource::<EditorTheme>().text_muted;
 
     ui.elem(elem!(
-        !GhostButton,
+        !TintButton,
         icon = val!(Icon, image = icons::PLUS, color = muted)
     ))
     .insert(DockTabAddButton { area_entity: area })
@@ -139,12 +143,20 @@ fn build_tab(
         );
 
     // On the close button itself: a `Button` takes the click for
-    // itself, so nothing the tab observes ever hears it.
+    // itself, so nothing the tab observes ever hears it. Its hover
+    // tint watches the same node, rather than the whole tab.
     if let Some(close) = tab.child(|tab| tab.close()) {
         tab.ui.world.entity_mut(close).observe(
             move |_: On<Activate>, mut tree: ResMut<DockTree>| {
                 tree.remove_tab(tab_id);
             },
+        );
+
+        tab.lit_entity(
+            close,
+            |tab| tab.close().icon().color(),
+            CLOSE_HOVER,
+            CLOSE_HOVER,
         );
     }
 }

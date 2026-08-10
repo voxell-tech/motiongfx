@@ -9,11 +9,14 @@ use fynix_mock::lenz::Lenz;
 use fynix_mock::style::Style;
 use fynix_mock::ui::ElementMut;
 
-use super::{Icon, Label};
+use super::{Icon, IconCursor, Label, LabelCursor};
 use crate::motion::{self, MotionExt};
 
 /// The faint surface a filled button rests at.
 const FILL: Color = Color::srgba(1.0, 1.0, 1.0, 0.06);
+
+/// A tinted button's icon and label colour.
+const TINT: Color = crate::palette::BLUE;
 
 /// A hit area holding an icon, a label, both, or whatever is built
 /// under it. Undressed: [`Button`] and [`GhostButton`] are the two
@@ -92,6 +95,23 @@ impl Style for Button {
     }
 }
 
+/// A button whose icon and label carry the accent under the cursor,
+/// for the one action in a group the eye should land on first.
+pub struct TintButton;
+
+impl Style for TintButton {
+    type Host = BevyHost;
+    type Element = RawButton;
+
+    fn attach(elem: ElementMut<BevyHost, RawButton>) {
+        elem.lit(|button| button.icon().color(), TINT, TINT).lit(
+            |button| button.label().color(),
+            TINT,
+            TINT,
+        );
+    }
+}
+
 /// A button with no surface of its own until the cursor is on it, for
 /// one that sits in a row of its own kind or on something that is
 /// already a surface.
@@ -110,9 +130,11 @@ impl Style for GhostButton {
     }
 }
 
-/// Either look lights up the same way.
-fn lit(elem: ElementMut<BevyHost, RawButton>) {
-    elem.lit(|button| button.fill(), motion::HOVER, motion::PRESS);
+/// Every look lights up the same way.
+fn lit<'u, 'a>(
+    elem: ElementMut<'u, 'a, BevyHost, RawButton>,
+) -> ElementMut<'u, 'a, BevyHost, RawButton> {
+    elem.lit(|button| button.fill(), motion::HOVER, motion::PRESS)
 }
 
 impl ElementVisual<BevyHost> for RawButton {

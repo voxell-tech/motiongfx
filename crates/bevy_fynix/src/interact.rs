@@ -27,8 +27,14 @@ type Aim = Arc<dyn Fn(&mut Fynix<BevyHost>, Entity) + Send + Sync>;
 /// A statement's worth of `.aim(...)` calls, so
 /// `label.on::<V>().aim(a).aim(b);` registers one observer that runs
 /// both, rather than one observer per field.
+///
+/// `watch` and `aim` differ for a lane on a `#[elem]` child: the event
+/// has to come from the child's own hit area, but the lane lives
+/// keyed on the owner, which is where every `.transition()` and
+/// `.bind()` on it puts things.
 pub struct Aiming<'w, E: 'static, V: EntityEvent> {
-    node: Entity,
+    aim: Entity,
+    watch: Entity,
     world: &'w mut World,
     aims: Vec<Aim>,
     marker: PhantomData<fn() -> (E, V)>,
@@ -64,11 +70,16 @@ impl<E: 'static, V: EntityEvent> Drop for Aiming<'_, E, V> {
             return;
         }
 
-        watch::<V>(self.world, self.node, move |kernel, node| {
-            for aim in &aims {
-                aim(kernel, node);
-            }
-        });
+        watch::<V>(
+            self.world,
+            self.watch,
+            self.aim,
+            move |kernel, node| {
+                for aim in &aims {
+                    aim(kernel, node);
+                }
+            },
+        );
     }
 }
 
@@ -77,12 +88,31 @@ pub trait OnExt<E: Element<BevyHost>> {
     /// Open a group of aims that fire together whenever `V` happens to
     /// this node. Ends, and registers as one observer, at the `;`.
     fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, V>;
+
+    /// The same, but watching `child` rather than this node — for a
+    /// lane on a `#[elem]` field whose own hit area should be what
+    /// reacts, found with [`ElementMut::child`].
+    fn on_entity<V: EntityEvent>(
+        &mut self,
+        child: Entity,
+    ) -> Aiming<'_, E, V>;
 }
 
-impl<E: Element<BevyHost>> OnExt<E> for ElementMut<'_, '_, BevyHost, E> {
+impl<E: Element<BevyHost>> OnExt<E>
+    for ElementMut<'_, '_, BevyHost, E>
+{
     fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, V> {
+        let node = self.id();
+        self.on_entity(node)
+    }
+
+    fn on_entity<V: EntityEvent>(
+        &mut self,
+        entity: Entity,
+    ) -> Aiming<'_, E, V> {
         Aiming {
-            node: self.id(),
+            aim: self.id(),
+            watch: entity,
             world: self.ui.world,
             aims: Vec::new(),
             marker: PhantomData,
@@ -90,24 +120,26 @@ impl<E: Element<BevyHost>> OnExt<E> for ElementMut<'_, '_, BevyHost, E> {
     }
 }
 
-/// Run `aim` whenever `V` fires on `node`.
+/// Run `aim` whenever `V` fires on `watch`, naming `aim_node` as what
+/// it moves.
 ///
 /// Queued rather than run there and then, because a flush owns the
 /// kernel while it runs and an observer cannot know it isn't inside
 /// one.
 fn watch<V: EntityEvent>(
     world: &mut World,
-    node: Entity,
+    watch: Entity,
+    aim_node: Entity,
     aim: impl Fn(&mut Fynix<BevyHost>, Entity) + Send + Sync + 'static,
 ) {
     let aim = Arc::new(aim);
 
-    world.entity_mut(node).observe(
+    world.entity_mut(watch).observe(
         move |_: On<V>, mut commands: Commands| {
             let aim = Arc::clone(&aim);
 
             commands.queue(move |world: &mut World| {
-                with_kernel(world, |kernel, _| aim(kernel, node));
+                with_kernel(world, |kernel, _| aim(kernel, aim_node));
             });
         },
     );

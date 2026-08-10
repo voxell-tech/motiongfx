@@ -104,4 +104,3 @@ impl<E: Element<BevyHost>> ElementMutExt<E>
         self
     }
 }
-

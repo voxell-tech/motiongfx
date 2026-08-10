@@ -9,7 +9,11 @@
 
 use bevy::prelude::*;
 
-/// Raw Monokai Pro palette.
+use crate::palette;
+
+/// Raw Monokai Pro palette, as the fields the rest of the editor reads
+/// by name. [`palette`] carries the same colours as `const`s, for
+/// wherever there is no [`EditorTheme`] resource to read this from.
 #[derive(Clone, Debug)]
 pub struct Palette {
     pub red: Color,
@@ -25,23 +29,13 @@ pub struct Palette {
 impl Default for Palette {
     fn default() -> Self {
         Self {
-            red: Color::srgb_u8(0xFF, 0x61, 0x88),
-            orange: Color::srgb_u8(0xFC, 0x98, 0x67),
-            yellow: Color::srgb_u8(0xFF, 0xD8, 0x66),
-            green: Color::srgb_u8(0xA9, 0xDC, 0x76),
-            blue: Color::srgb_u8(0x78, 0xDC, 0xE8),
-            purple: Color::srgb_u8(0xAB, 0x9D, 0xF2),
-            base: [
-                Color::srgb_u8(0x19, 0x18, 0x1A),
-                Color::srgb_u8(0x22, 0x1F, 0x22),
-                Color::srgb_u8(0x2D, 0x2A, 0x2E),
-                Color::srgb_u8(0x40, 0x3E, 0x41),
-                Color::srgb_u8(0x5B, 0x59, 0x5C),
-                Color::srgb_u8(0x72, 0x70, 0x72),
-                Color::srgb_u8(0x93, 0x92, 0x93),
-                Color::srgb_u8(0xC1, 0xC0, 0xC0),
-                Color::srgb_u8(0xFC, 0xFC, 0xFA),
-            ],
+            red: palette::RED,
+            orange: palette::ORANGE,
+            yellow: palette::YELLOW,
+            green: palette::GREEN,
+            blue: palette::BLUE,
+            purple: palette::PURPLE,
+            base: palette::BASE,
         }
     }
 }
