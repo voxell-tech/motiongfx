@@ -35,6 +35,10 @@ pub struct Frame {
     /// layout.
     #[default(Color::NONE)]
     pub background: Color,
+    /// `None` hides it, which is how a frame that depends on a size it
+    /// has not measured yet avoids showing up at its intrinsic size
+    /// for a frame.
+    pub display: Display,
     /// Where it sits in the window's stack, for a frame that has to
     /// be above what it does not sit inside. `None` leaves it in its
     /// parent's, where the tree already puts it.
@@ -58,6 +62,7 @@ impl Frame {
             row_gap: self.row_gap,
             column_gap: self.column_gap,
             border_radius: BorderRadius::all(self.radius),
+            display: self.display,
             ..default()
         }
     }
@@ -110,7 +115,8 @@ impl ElementVisual<BevyHost> for Frame {
             | FrameField::Padding
             | FrameField::RowGap
             | FrameField::ColumnGap
-            | FrameField::Radius => {
+            | FrameField::Radius
+            | FrameField::Display => {
                 world.entity_mut(node).insert(self.node());
             }
         }

@@ -172,24 +172,30 @@ fn register_windows(
             .with(move |ui| {
                 let fit =
                     crate::view::preview_fit(ui.world, ui.parent());
+                let shown = fit.is_some();
 
+                // Letterboxed to fit the area above. Hidden until that
+                // area has a size: at a fresh `ComputedNode` it does
+                // not, and `Auto` would flash at the image's native
+                // size for a frame.
                 ui.elem(elem!(
                     Frame,
-                    width = fit.map_or(Val::Auto, |(width, _)| width),
+                    width = fit.map_or(Val::ZERO, |(width, _)| width),
                     height =
-                        fit.map_or(Val::Auto, |(_, height)| height)
+                        fit.map_or(Val::ZERO, |(_, height)| height),
+                    display = if shown {
+                        Display::Flex
+                    } else {
+                        Display::None
+                    }
                 ))
                 .insert(ImageNode::new(preview.clone()))
-                // Letterboxed to fit the area above, which is this
-                // node's parent. `None` while that area has no size
-                // yet leaves the node alone rather than collapsing
-                // it to nothing.
                 .bind(
                     |frame| frame.width(),
                     value_changed(crate::view::preview_fit),
                     |world, node| {
                         crate::view::preview_fit(world, node)
-                            .map_or(Val::Auto, |(width, _)| width)
+                            .map_or(Val::ZERO, |(width, _)| width)
                     },
                 )
                 .bind(
@@ -197,7 +203,20 @@ fn register_windows(
                     value_changed(crate::view::preview_fit),
                     |world, node| {
                         crate::view::preview_fit(world, node)
-                            .map_or(Val::Auto, |(_, height)| height)
+                            .map_or(Val::ZERO, |(_, height)| height)
+                    },
+                )
+                .bind(
+                    |frame| frame.display(),
+                    value_changed(crate::view::preview_fit),
+                    |world, node| {
+                        if crate::view::preview_fit(world, node)
+                            .is_some()
+                        {
+                            Display::Flex
+                        } else {
+                            Display::None
+                        }
                     },
                 );
             });
