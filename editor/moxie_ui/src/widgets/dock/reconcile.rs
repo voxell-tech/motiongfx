@@ -41,7 +41,7 @@ impl Plugin for ReconcilePlugin {
 /// builder handed to [`build_root`](crate::reactive::build_root).
 pub fn dock(ui: &mut BevyUi) {
     super::add_popup::add_window_popup(ui);
-    ui.elem(elem!(!DockHost)).watch(
+    ui.elem(elem!(DockHost)).watch(
         structure_changed::<DockTree, _>(topology),
         build_dock,
     );
@@ -122,20 +122,18 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
     let b_visible = leaf_visible(ui.world, split.b);
     let handle_visible = a_visible && b_visible;
 
-    ui.elem(elem!(!SplitGroup {
-        node = id;
-        axis = flex_direction
-    }))
-    .with(move |ui| {
-        build_panel(id, split.a, true, a_visible, ui);
+    ui.elem(elem!(SplitGroup, node = id, axis = flex_direction))
+        .with(move |ui| {
+            build_panel(id, split.a, true, a_visible, ui);
 
-        ui.elem(elem!(!SplitHandle {
-            node = id;
-            visible = handle_visible
-        }));
+            ui.elem(elem!(
+                SplitHandle,
+                node = id,
+                visible = handle_visible
+            ));
 
-        build_panel(id, split.b, false, b_visible, ui);
-    });
+            build_panel(id, split.b, false, b_visible, ui);
+        });
 }
 
 /// One side of a split. The ratio is a binding, not part of the
@@ -150,16 +148,13 @@ fn build_panel(
 ) {
     let ratio = ratio_of(ui.world, split_id, is_a);
 
-    ui.elem(elem!(!SplitPanel {
-        ratio = ratio;
-        visible = visible
-    }))
-    .bind(
-        |panel| panel.ratio(),
-        resource_changed::<DockTree>(),
-        move |world, _| ratio_of(world, split_id, is_a),
-    )
-    .with(move |ui| build_node(child, ui));
+    ui.elem(elem!(SplitPanel, ratio = ratio, visible = visible))
+        .bind(
+            |panel| panel.ratio(),
+            resource_changed::<DockTree>(),
+            move |world, _| ratio_of(world, split_id, is_a),
+        )
+        .with(move |ui| build_node(child, ui));
 }
 
 /// This side's share of its split.
@@ -215,12 +210,13 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
     let active = active_of(ui.world, id);
 
     let area = ui
-        .elem(elem!(!Area {
-            node = id;
-            id = area_id;
-            style = style;
+        .elem(elem!(
+            Area,
+            node = id,
+            id = area_id,
+            style = style,
             active = ActiveDockWindow(active)
-        }))
+        ))
         .bind(
             |area| area.active(),
             resource_changed::<DockTree>(),
@@ -254,11 +250,12 @@ fn build_content(
 ) {
     let active = active_of(ui.world, leaf) == Some(tab);
 
-    ui.elem(elem!(!TabContent {
-        window_id = window_id;
-        tab = tab;
+    ui.elem(elem!(
+        TabContent,
+        window_id = window_id,
+        tab = tab,
         showing = active
-    }))
+    ))
     .bind(
         |content| content.showing(),
         resource_changed::<DockTree>(),

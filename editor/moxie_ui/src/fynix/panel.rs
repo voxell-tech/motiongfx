@@ -14,8 +14,12 @@ pub struct Panel {
     pub align: AlignItems,
     pub justify: JustifyContent,
     pub padding: UiRect,
+    /// Between rows, and between columns: a row of things wants the
+    /// second, a column the first.
     #[default(Val::ZERO)]
-    pub gap: Val,
+    pub row_gap: Val,
+    #[default(Val::ZERO)]
+    pub column_gap: Val,
     pub scrolls: bool,
     /// How far down it is scrolled, for a panel whose scroll follows
     /// something else.
@@ -32,8 +36,8 @@ impl Panel {
             align_items: self.align,
             justify_content: self.justify,
             padding: self.padding,
-            row_gap: self.gap,
-            column_gap: self.gap,
+            row_gap: self.row_gap,
+            column_gap: self.column_gap,
             overflow: if self.scrolls {
                 Overflow::scroll_y()
             } else {
@@ -70,7 +74,8 @@ impl ElementVisual<BevyHost> for Panel {
             | PanelField::Align
             | PanelField::Justify
             | PanelField::Padding
-            | PanelField::Gap
+            | PanelField::RowGap
+            | PanelField::ColumnGap
             | PanelField::Scrolls => {
                 world.entity_mut(node).insert(self.node());
             }

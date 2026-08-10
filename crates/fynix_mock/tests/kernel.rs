@@ -29,7 +29,7 @@ fn flush_builds_what_a_watcher_declares() {
     let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(!Label));
+        ui.elem(elem!(Label));
     });
 
     assert!(Backend::children(&world, root).is_empty());
@@ -50,7 +50,7 @@ fn flush_builds_nothing_when_no_predicate_fires() {
         root,
         |_, _| false,
         |ui| {
-            ui.elem(elem!(!Label));
+            ui.elem(elem!(Label));
         },
     );
 
@@ -65,7 +65,7 @@ fn binding_writes_and_patches_one_field() {
     let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(!Label)).bind(
+        ui.elem(elem!(Label)).bind(
             |label| label.text(),
             |world, _| world.source.changed,
             |world, _| world.source.text.clone(),
@@ -95,7 +95,7 @@ fn binding_stays_quiet_until_its_predicate_fires() {
     let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(!Label)).bind(
+        ui.elem(elem!(Label)).bind(
             |label| label.text(),
             |world, _| world.source.changed,
             |world, _| world.source.text.clone(),
@@ -121,7 +121,7 @@ fn rebuild_replaces_the_children() {
         root,
         |world: &World, _| world.source.changed,
         |ui| {
-            ui.elem(elem!(!Label));
+            ui.elem(elem!(Label));
         },
     );
 
@@ -145,7 +145,7 @@ fn dead_node_is_not_patched() {
     let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(!Label)).bind(
+        ui.elem(elem!(Label)).bind(
             |label| label.text(),
             |world, _| world.source.changed,
             |world, _| world.source.text.clone(),
@@ -176,7 +176,7 @@ fn swept_node_takes_its_element_with_it() {
         root,
         |world: &World, _| world.source.changed,
         |ui| {
-            ui.elem(elem!(!Label));
+            ui.elem(elem!(Label));
         },
     );
 
@@ -210,7 +210,7 @@ fn dead_root_takes_its_watcher_with_it() {
     let branch = Backend::spawn(&mut world, root);
 
     kernel.watch(branch, once(), |ui| {
-        ui.elem(elem!(!Label));
+        ui.elem(elem!(Label));
     });
     assert_eq!(kernel.watcher_len(), 1);
 
@@ -229,7 +229,7 @@ fn dead_node_takes_its_bindings_with_it() {
     let mut kernel = Fynix::new();
 
     kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(!Label)).bind(
+        ui.elem(elem!(Label)).bind(
             |label| label.text(),
             |world, _| world.source.changed,
             |world, _| world.source.text.clone(),

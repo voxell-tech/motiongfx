@@ -7,11 +7,63 @@
 // Each test file uses a different part of this.
 #![allow(dead_code)]
 
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
-use fynix_mock::lenz::Lenz;
+use fynix_mock::lenz::{Cursor, FieldPath, Identity, Lenz};
+use fynix_mock::ui::ElementMut;
+use fynix_mock::{Fynix, OverrideDefault};
 use hashbrown::HashMap;
+
+/// What this test stands in for a pointer with: not fynix's concern,
+/// so it is defined here rather than imported.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Interact {
+    Enter,
+    Leave,
+}
+
+/// What a backend does when an interaction fires: point a lane
+/// somewhere. Only needs the kernel, since [`Fynix::aim`] does too.
+type Aim = Box<dyn Fn(&mut Fynix<Backend>) + Send + Sync>;
+
+/// The `aim_on` a real backend would build for itself, over whatever
+/// events it actually has. This one is a stand-in for a pointer.
+pub trait TestAim<E> {
+    fn aim_on<P>(
+        self,
+        on: Interact,
+        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+        target: Option<P::Target>,
+    ) -> Self
+    where
+        P: FieldPath<Source = E>,
+        P::Target: Clone + Send + Sync;
+}
+
+impl<E: Element<Backend>> TestAim<E>
+    for ElementMut<'_, '_, Backend, E>
+{
+    fn aim_on<P>(
+        self,
+        on: Interact,
+        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+        target: Option<P::Target>,
+    ) -> Self
+    where
+        P: FieldPath<Source = E>,
+        P::Target: Clone + Send + Sync,
+    {
+        let node = self.id();
+        self.ui.world.interactions.push((
+            node,
+            on,
+            Box::new(move |kernel: &mut Fynix<Backend>| {
+                kernel.aim(node, field, target.clone());
+            }),
+        ));
+        self
+    }
+}
 
 /// Whatever the elements under test write. A real backend would have
 /// components; this one has a field per thing anybody writes.
@@ -41,6 +93,12 @@ pub struct World {
     /// as some later one.
     next: usize,
     pub source: Source,
+    /// What a flush advances a transition by. A test sets it outright
+    /// rather than owning a clock.
+    pub delta: f32,
+    /// What a style asked to be told about. A real backend would hand
+    /// these to its pointer; a test fires them by hand.
+    interactions: Vec<(usize, Interact, Aim)>,
 }
 
 impl World {
@@ -65,6 +123,27 @@ impl World {
     pub fn get(&self, node: usize) -> &Node {
         self.nodes.get(&node).expect("live node")
     }
+
+    /// Do to `node` what a pointer would, and run whatever asked to
+    /// hear about it.
+    pub fn interact(
+        &mut self,
+        kernel: &mut Fynix<Backend>,
+        node: usize,
+        on: Interact,
+    ) {
+        // Taken out for the call: an aim is handed the world it was
+        // registered in.
+        let interactions = core::mem::take(&mut self.interactions);
+
+        for (target, kind, aim) in &interactions {
+            if (*target, *kind) == (node, on) {
+                aim(kernel);
+            }
+        }
+
+        self.interactions = interactions;
+    }
 }
 
 pub struct Backend;
@@ -72,6 +151,10 @@ pub struct Backend;
 impl Host for Backend {
     type Node = usize;
     type World = World;
+
+    fn delta(world: &World) -> f32 {
+        world.delta
+    }
 
     fn spawn(world: &mut World, parent: usize) -> usize {
         world.insert(Node {

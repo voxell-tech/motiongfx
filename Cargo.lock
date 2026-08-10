@@ -827,6 +827,8 @@ version = "0.3.0"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
+ "bevy_picking",
+ "bevy_time",
  "bevy_ui",
  "fynix_mock",
 ]

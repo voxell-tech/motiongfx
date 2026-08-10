@@ -10,16 +10,24 @@ mod common;
 
 use common::{Backend, Label, World};
 use fynix_mock::Fynix;
-use fynix_mock::elem;
+use fynix_mock::{elem, val};
 use fynix_mock::element::Element;
 use fynix_mock::host::Host;
 use fynix_mock::store::Store;
-use fynix_mock::style::{Raw, Style, StyledElem, style};
+use fynix_mock::style::{Raw, Style, StyledElem};
+
+/// What the cascade produced, for a test that only wants the value.
+/// `create` says nothing about a backend, but the type it is called on
+/// has to name one.
+fn create<S: StyledElem<Host = Backend>>(styled: S) -> S::Element {
+    styled.create()
+}
 
 /// A style with something to say, so a test can see it run.
 struct Title;
 
 impl Style for Title {
+    type Host = Backend;
     type Element = Label;
 
     fn apply(self, label: &mut Label) {
@@ -29,7 +37,7 @@ impl Style for Title {
 
 #[test]
 fn style_writes_over_the_default() {
-    let label = elem!(Title).create();
+    let label = create(elem!(!Title));
 
     assert_eq!(label.size, 10, "the style's");
     assert_eq!(label.text, "Label", "untouched, so the default's");
@@ -37,7 +45,7 @@ fn style_writes_over_the_default() {
 
 #[test]
 fn fields_are_written_after_the_style() {
-    let label = elem!(Title, { text = "Save" }).create();
+    let label = create(elem!(!Title, text = "Save"));
 
     assert_eq!(label.size, 10);
     assert_eq!(label.text, "Save");
@@ -45,7 +53,7 @@ fn fields_are_written_after_the_style() {
 
 #[test]
 fn the_call_site_wins_over_the_style() {
-    let label = elem!(Title, { size = 32u32 }).create();
+    let label = create(elem!(!Title, size = 32u32));
 
     assert_eq!(label.size, 32, "the style set 10 first");
 }
@@ -55,6 +63,7 @@ fn the_style_can_be_any_expression() {
     struct Exactly(u32);
 
     impl Style for Exactly {
+        type Host = Backend;
         type Element = Label;
 
         fn apply(self, label: &mut Label) {
@@ -64,9 +73,9 @@ fn the_style_can_be_any_expression() {
 
     // A literal, and a call. Both are told from the fields that
     // follow by the comma, so neither has to be a bare path.
-    assert_eq!(elem!(Exactly(7)).create().size, 7);
+    assert_eq!(create(elem!(!Exactly(7))).size, 7);
     assert_eq!(
-        elem!(Exactly(7), { text = "Save" }).create().text,
+        create(elem!(!Exactly(7), text = "Save")).text,
         "Save"
     );
 }
@@ -85,6 +94,7 @@ fn generic_elements_and_styles_both_carry_their_arguments() {
     struct Wide<L>(PhantomData<fn() -> L>);
 
     impl<L: Default> Style for Wide<L> {
+        type Host = Backend;
         type Element = Themed<L>;
 
         fn apply(self, themed: &mut Themed<L>) {
@@ -93,21 +103,21 @@ fn generic_elements_and_styles_both_carry_their_arguments() {
     }
 
     // The element is a type, so its arguments are written as one.
-    let themed = elem!(!Themed<Dark> { size = 32u32 }).create();
+    let themed = create(elem!(Themed<Dark>, size = 32u32));
 
     assert_eq!(themed.size, 32);
     assert_eq!(themed.look, Dark);
 
     // The style is an expression, so it needs the turbofish that any
     // other expression would.
-    let themed = elem!(Wide::<Dark>(PhantomData)).create();
+    let themed = create(elem!(!Wide::<Dark>(PhantomData)));
 
     assert_eq!(themed.size, 10);
 }
 
 #[test]
 fn fields_alone_start_from_the_default() {
-    let label = elem!(!Label { text = "Save" }).create();
+    let label = create(elem!(Label, text = "Save"));
 
     assert_eq!(label.text, "Save");
     assert_eq!(label.size, 13, "no style ran, so the default's");
@@ -128,6 +138,7 @@ fn field_paths_reach_as_deep_as_they_go() {
     struct Wide;
 
     impl Style for Wide {
+        type Host = Backend;
         type Element = Card;
 
         fn apply(self, card: &mut Card) {
@@ -135,32 +146,27 @@ fn field_paths_reach_as_deep_as_they_go() {
         }
     }
 
-    let card = elem!(Wide, { font.size = 32u32 }).create();
+    let card = create(elem!(!Wide, font.size = 32u32));
 
     assert_eq!(card.font.size, 32);
 }
 
 #[test]
 fn closures_are_there_for_what_fields_cannot_say() {
-    let label = elem!(Title, |label: &mut Label| {
+    let label = create(elem!(!Title, |label: &mut Label| {
         label.size = if label.text.is_empty() { 1 } else { 32 };
-    })
-    .create();
+    }));
 
     assert_eq!(label.size, 32);
 }
 
 #[test]
 fn every_case_is_the_same_argument() {
-    fn create<S: StyledElem>(styled: S) -> S::Element {
-        styled.create()
-    }
-
-    assert_eq!(create(elem!(Title)).size, 10);
-    assert_eq!(create(elem!(Title, { size = 32u32 })).size, 32);
-    assert_eq!(create(elem!(!Label { size = 32u32 })).size, 32);
+    assert_eq!(create(elem!(!Title)).size, 10);
+    assert_eq!(create(elem!(!Title, size = 32u32)).size, 32);
+    assert_eq!(create(elem!(Label, size = 32u32)).size, 32);
     assert_eq!(
-        create(Raw(Label {
+        create(Raw::new(Label {
             text: "Save".into(),
             size: 32,
         }))
@@ -171,11 +177,10 @@ fn every_case_is_the_same_argument() {
 
 #[test]
 fn finished_element_passes_through_untouched() {
-    let label = Raw(Label {
+    let label = create(Raw::new(Label {
         text: "Save".into(),
         size: 32,
-    })
-    .create();
+    }));
 
     assert_eq!(label.text, "Save");
     assert_eq!(label.size, 32, "no default, and no style");
@@ -186,7 +191,7 @@ fn what_the_cascade_left_is_what_gets_built() {
     let (mut world, parent) = World::with_root();
     let mut store = Store::new();
 
-    let label = elem!(Title, { text = "Save" }).create();
+    let label = create(elem!(!Title, text = "Save"));
     let node = Element::<Backend>::build(
         &label, &mut world, parent, &mut store,
     );
@@ -204,7 +209,7 @@ fn the_builder_takes_a_styled_element_whole() {
         root,
         |_: &World, _| true,
         |ui| {
-            ui.elem(elem!(Title, { text = "Save" }));
+            ui.elem(elem!(!Title, text = "Save"));
         },
     );
 
@@ -216,26 +221,9 @@ fn the_builder_takes_a_styled_element_whole() {
 }
 
 #[test]
-fn styles_are_written_as_the_function_that_applies_them() {
-    #[style]
-    fn bold(label: &mut Label) {
-        label.size = 20;
-    }
+fn nested_value_can_be_a_style() {
+    let label: Label = val!(!Title, text = "Save");
 
-    #[style]
-    fn heading(label: &mut Label, level: u32) {
-        label.size = 10 * level;
-
-        if level == 1 {
-            label.text = "Heading".into();
-        }
-    }
-
-    assert_eq!(elem!(Bold).create().size, 20);
-    assert_eq!(elem!(Heading { level: 3 }).create().size, 30);
-
-    let one = elem!(Heading { level: 1 }, { size = 40u32 }).create();
-
-    assert_eq!(one.text, "Heading", "the style ran");
-    assert_eq!(one.size, 40, "and the call site after it");
+    assert_eq!(label.size, 10, "the style ran");
+    assert_eq!(label.text, "Save", "then the fields");
 }

@@ -9,6 +9,7 @@
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
+use bevy::ui_widgets::Activate;
 
 use super::area::DockTabAddButton;
 use super::drag::logical_rect;
@@ -16,9 +17,9 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tree::DockTree;
 use bevy_fynix::ElementMutExt;
-use fynix_mock::elem;
+use fynix_mock::{elem, val};
 
-use crate::fynix::{Button, ButtonLook, Frame, Icon, Label, Overlay};
+use crate::fynix::{Frame, GhostButton, Icon, Label, Overlay};
 use crate::icons;
 use crate::reactive::{BevyUi, component_changed};
 use crate::theme::EditorTheme;
@@ -46,9 +47,8 @@ struct OpenPopup {
 pub(super) fn add_window_popup(ui: &mut BevyUi) {
     // A full-window overlay, because the popup positions itself in
     // window coordinates and an absolute child positions against its
-    // parent. `IGNORE` so it doesn't swallow every click meant for
-    // the dock underneath.
-    ui.elem(elem!(!Overlay { blocking = false }))
+    // parent. It is always there, so it catches nothing.
+    ui.elem(elem!(Overlay))
         .insert(AddWindowPopupState::default())
         .watch(
             component_changed::<AddWindowPopupState>(),
@@ -92,6 +92,34 @@ pub(super) fn on_add_click(
     });
 }
 
+/// What a row adds when it is picked, so the handler is a system
+/// rather than a closure holding the two.
+#[derive(Component)]
+struct AddsWindow {
+    area: Entity,
+    window_id: String,
+}
+
+/// Add the row's window to its area, and close the popup.
+fn on_pick(
+    pick: On<Activate>,
+    rows: Query<&AddsWindow>,
+    areas: Query<&NodeBinding>,
+    mut tree: ResMut<DockTree>,
+    mut popup: Query<&mut AddWindowPopupState>,
+) {
+    let Ok(row) = rows.get(pick.entity) else {
+        return;
+    };
+
+    if let Ok(binding) = areas.get(row.area) {
+        tree.add_tab(binding.0, row.window_id.clone());
+    }
+    if let Ok(mut state) = popup.single_mut() {
+        state.open = None;
+    }
+}
+
 /// Close on any click that isn't on the popup itself.
 fn close_popup(
     mut click: On<Pointer<Click>>,
@@ -115,29 +143,27 @@ fn build_popup(ui: &mut BevyUi) {
 
     // Catches the click outside, but lets hover and clicks through to
     // the UI beneath rather than freezing it.
-    ui.elem(elem!(!Overlay { z = 180 })).observe(close_popup);
+    ui.elem(elem!(Overlay, catches = true, z = 180))
+        .observe(close_popup);
 
     let (left, top, area) = (open.left, open.top, open.area);
 
-    ui.elem(elem!(!Frame {
-        width = Val::Px(POPUP_WIDTH);
-        direction = FlexDirection::Column;
-        padding = UiRect::all(Val::Px(4.0));
-        radius = Val::Px(6.0);
-        background = Color::srgba(0.11, 0.10, 0.11, 0.98)
-    }))
-    .insert((
-        Node {
-            position_type: PositionType::Absolute,
-            left: Val::Px(left),
-            top: Val::Px(top),
-            width: Val::Px(POPUP_WIDTH),
-            flex_direction: FlexDirection::Column,
-            padding: UiRect::all(Val::Px(4.0)),
-            border_radius: BorderRadius::all(Val::Px(6.0)),
-            ..default()
-        },
-        GlobalZIndex(181),
+    ui.elem(elem!(
+        Frame,
+        position = PositionType::Absolute,
+        inset = UiRect::new(
+            Val::Px(left),
+            Val::Auto,
+            Val::Px(top),
+            Val::Auto,
+        ),
+        width = Val::Px(POPUP_WIDTH),
+        direction = FlexDirection::Column,
+        row_gap = Val::Px(2.0),
+        padding = UiRect::all(Val::Px(4.0)),
+        radius = Val::Px(6.0),
+        background = Color::srgba(0.11, 0.10, 0.11, 0.98),
+        z = Some(181)
     ))
     .with(move |ui| build_rows(ui, area));
 }
@@ -159,20 +185,12 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
     if closed.is_empty() {
         let muted = ui.world.resource::<EditorTheme>().text_muted;
 
-        ui.elem(elem!(!Button {
-            look = ButtonLook::Ghost;
-            width = Val::Percent(100.0);
-            height = Val::Auto;
-            justify = JustifyContent::FlexStart;
-            padding = UiRect::axes(Val::Px(8.0), Val::Px(4.0))
-        }))
-        .with(move |ui| {
-            ui.elem(elem!(!Label {
-                text = "Nothing left to add";
-                size = 12.0;
-                color = Some(muted)
-            }));
-        });
+        ui.elem(elem!(
+            Label,
+            text = "Nothing left to add",
+            size = 12.0,
+            color = Some(muted)
+        ));
         return;
     }
 
@@ -185,38 +203,29 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
             ),
         };
 
-        ui.elem(elem!(!Button {
-            look = ButtonLook::Normal;
-            width = Val::Percent(100.0);
-            height = Val::Auto;
-            justify = JustifyContent::FlexStart;
-            padding = UiRect::axes(Val::Px(8.0), Val::Px(4.0));
-            radius = Val::Px(4.0);
-            icon = Icon { image, color: icon_color, size: Val::Px(12.0) }
-        }))
-        // The handler captures the window and the area directly,
-        // rather than going through a component.
-        .observe(
-            move |mut click: On<Pointer<Click>>,
-                  q_bindings: Query<&NodeBinding>,
-                  mut tree: ResMut<DockTree>,
-                  mut q_state: Query<&mut AddWindowPopupState>| {
-                click.propagate(false);
-
-                if let Ok(binding) = q_bindings.get(area) {
-                    tree.add_tab(binding.0, window_id.clone());
-                }
-                if let Ok(mut state) = q_state.single_mut() {
-                    state.open = None;
-                }
-            },
-        )
+        ui.elem(elem!(
+            !GhostButton,
+            width = Val::Percent(100.0),
+            height = Val::Auto,
+            justify = JustifyContent::FlexStart,
+            padding = UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
+            radius = Val::Px(4.0),
+            icon = val!(
+                Icon,
+                image = image,
+                color = icon_color,
+                size = Val::Px(12.0)
+            ),
+        ))
+        .insert(AddsWindow { area, window_id })
+        .observe(on_pick)
         .with(move |ui| {
-            ui.elem(elem!(!Label {
-                text = name;
-                size = 12.0;
+            ui.elem(elem!(
+                Label,
+                text = name,
+                size = 12.0,
                 color = Some(text_color)
-            }));
+            ));
         });
     }
 }

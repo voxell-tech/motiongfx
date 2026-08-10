@@ -11,6 +11,7 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use crate::host::Host;
+use crate::lenz::{Cursor, FieldPath, Identity};
 use crate::ui::{BuildFn, ChangedFn, Records, Ui, Watcher};
 
 mod elem;
@@ -19,6 +20,7 @@ pub mod host;
 pub mod lenz;
 pub mod store;
 pub mod style;
+pub mod transition;
 pub mod ui;
 
 /// Writes the `Default` an element starts from, before a style and then
@@ -172,6 +174,7 @@ impl<H: Host> Fynix<H> {
         records
             .bindings
             .retain(|(node, _), _| H::exists(world, *node));
+        records.lanes.retain(|(node, _), _| H::exists(world, *node));
         records.store.prune(world);
 
         // The table is keyed by type as well as node, so it cannot be
@@ -187,6 +190,7 @@ impl<H: Host> Fynix<H> {
 
         let Records {
             bindings,
+            lanes,
             elements,
             store,
             ..
@@ -198,6 +202,42 @@ impl<H: Host> Fynix<H> {
             }
             (binding.apply)(elements, world, *node, store);
         }
+
+        // After the bindings, so a lane gets the last word over the
+        // base they left.
+        let delta = H::delta(world);
+
+        for ((node, _), lane) in lanes.iter_mut() {
+            lane.advance(delta, elements, world, *node, store);
+        }
+    }
+
+    /// Point a transitioning field at `target`, or release it back to
+    /// its base with `None`.
+    ///
+    /// The primitive every trigger goes through, polled or fired.
+    /// Aiming a field with no lane does nothing.
+    pub fn aim<E, P>(
+        &mut self,
+        node: H::Node,
+        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
+        target: Option<P::Target>,
+    ) where
+        E: 'static,
+        P: FieldPath<Source = E>,
+        P::Target: 'static,
+    {
+        let key = field(Cursor::new()).key();
+
+        if let Some(lane) = self.records.lanes.get_mut(&(node, key)) {
+            let mut target = target;
+            lane.aim(&mut target);
+        }
+    }
+
+    /// How many transitioning fields the kernel is holding.
+    pub fn lane_len(&self) -> usize {
+        self.records.lanes.len()
     }
 }
 

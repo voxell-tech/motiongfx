@@ -15,11 +15,11 @@ use crate::playback::{
     on_track_drag, on_track_press, on_track_release,
 };
 use bevy_fynix::ElementMutExt;
-use fynix_mock::elem;
+use fynix_mock::{elem, val};
 use moxie_ui::fynix::{
-    Button, ButtonCursor, ButtonLook, Divider, Frame, Icon,
-    IconCursor, Label, LabelCursor, Panel, PanelCursor, PlayheadLine,
-    PlayheadLineCursor, TimelineTrack, TimelineTrackCursor,
+    Button, Divider, Frame, Icon, IconCursor, Label, LabelCursor,
+    Panel, PanelCursor, PlayheadLine, PlayheadLineCursor,
+    RawButtonCursor, TimelineTrack, TimelineTrackCursor,
 };
 use moxie_ui::reactive::{BevyUi, resource_changed, value_changed};
 use moxie_ui::theme::EditorTheme;
@@ -54,10 +54,11 @@ struct NamePanel;
 /// time label and friends have to be `NodeMut`s to carry their own
 /// binds.
 pub(super) fn panel(ui: &mut BevyUi) {
-    ui.elem(elem!(!Panel {
-        direction = FlexDirection::Column;
+    ui.elem(elem!(
+        Panel,
+        direction = FlexDirection::Column,
         padding = UiRect::bottom(Val::Px(PANEL_PADDING))
-    }))
+    ))
     .with(|ui| {
         control_bar(ui);
         track_area(ui);
@@ -66,25 +67,23 @@ pub(super) fn panel(ui: &mut BevyUi) {
 
 /// Play/pause + time readout.
 fn control_bar(ui: &mut BevyUi) {
-    ui.elem(elem!(!Frame {
-        width = Val::Percent(100.0);
-        height = Val::Px(CONTROL_BAR_HEIGHT);
-        align = AlignItems::Center;
-        gap = Val::Px(12.0);
+    ui.elem(elem!(
+        Frame,
+        width = Val::Percent(100.0),
+        height = Val::Px(CONTROL_BAR_HEIGHT),
+        align = AlignItems::Center,
+        column_gap = Val::Px(12.0),
         padding = UiRect::horizontal(Val::Px(PANEL_PADDING))
-    }))
+    ))
     .with(|ui| {
-        ui.elem(elem!(!Button {
-            look = ButtonLook::Normal;
-            width = Val::Px(26.0);
-            height = Val::Px(26.0);
-            radius = Val::Px(6.0);
-            icon = Icon {
-                image: crate::icons::PLAY.into(),
-                size: Val::Px(14.0),
-                ..default()
-            }
-        }))
+        ui.elem(elem!(
+            !Button,
+            icon = val!(
+                Icon,
+                image = crate::icons::PLAY,
+                size = Val::Px(14.0)
+            )
+        ))
         .observe(
             |mut click: On<Pointer<Click>>,
              mut commands: Commands| {
@@ -104,7 +103,7 @@ fn control_bar(ui: &mut BevyUi) {
             },
         );
 
-        ui.elem(elem!(!Label { text = "0.00s" })).bind(
+        ui.elem(elem!(Label, text = "0.00s")).bind(
             |label| label.text(),
             resource_changed::<MotionGfxManager>(),
             |world, entity| {
@@ -119,16 +118,18 @@ fn control_bar(ui: &mut BevyUi) {
 
 /// Name column | divider | scroll viewport.
 fn track_area(ui: &mut BevyUi) {
-    ui.elem(elem!(!Panel {
-        direction = FlexDirection::Row;
+    ui.elem(elem!(
+        Panel,
+        direction = FlexDirection::Row,
         padding = UiRect::horizontal(Val::Px(PANEL_PADDING))
-    }))
+    ))
     .with(|ui| {
-        ui.elem(elem!(!Panel {
-            direction = FlexDirection::Column;
-            padding = UiRect::top(Val::Px(TRACK_TOP_PADDING));
+        ui.elem(elem!(
+            Panel,
+            direction = FlexDirection::Column,
+            padding = UiRect::top(Val::Px(TRACK_TOP_PADDING)),
             scrolls = true
-        }))
+        ))
         .insert((
             NamePanel,
             Node {
@@ -150,13 +151,14 @@ fn track_area(ui: &mut BevyUi) {
             viewport_scroll,
         );
 
-        ui.elem(elem!(!Divider {
-            thickness = Val::Px(4.0);
+        ui.elem(elem!(
+            Divider,
+            thickness = Val::Px(4.0),
             orientation = ControlOrientation::Vertical
-        }))
+        ))
         .observe(on_divider_drag);
 
-        ui.elem(elem!(!Frame { width = Val::Percent(100.0) }))
+        ui.elem(elem!(Frame, width = Val::Percent(100.0)))
             .insert((
                 TrackViewport,
                 ScrollArea,
@@ -172,7 +174,7 @@ fn track_area(ui: &mut BevyUi) {
                 },
             ))
             .with(|ui| {
-                ui.elem(elem!(!TimelineTrack { width = 1.0 }))
+                ui.elem(elem!(TimelineTrack, width = 1.0))
                     .insert(TimelineContent)
                     .observe(on_track_press)
                     .observe(on_track_drag)
@@ -191,7 +193,7 @@ fn track_area(ui: &mut BevyUi) {
                         // The boxes get a container of their own, so
                         // the watcher's rebuild cannot take the
                         // playhead with it.
-                        ui.elem(elem!(!Frame {}))
+                        ui.elem(elem!(Frame,))
                             .insert(Node {
                                 position_type: PositionType::Absolute,
                                 top: Val::Px(TRACK_TOP_PADDING),
@@ -203,7 +205,7 @@ fn track_area(ui: &mut BevyUi) {
                                 build_track_boxes,
                             );
 
-                        ui.elem(elem!(!PlayheadLine)).bind(
+                        ui.elem(elem!(PlayheadLine)).bind(
                             |line| line.left(),
                             resource_changed::<MotionGfxManager>(),
                             |world, node| {
@@ -306,12 +308,13 @@ fn build_track_boxes(ui: &mut BevyUi) {
     for (index, duration) in spans.into_iter().enumerate() {
         let top = index as f32 * (TRACK_HEIGHT + TRACK_GAP);
         let width = crate::px_for(duration).max(1.0);
-        ui.elem(elem!(!Frame {
-            width = Val::Px(width);
-            height = Val::Px(TRACK_HEIGHT);
-            radius = Val::Px(3.0);
+        ui.elem(elem!(
+            Frame,
+            width = Val::Px(width),
+            height = Val::Px(TRACK_HEIGHT),
+            radius = Val::Px(3.0),
             background = fill.with_alpha(0.35)
-        }))
+        ))
         .insert(Node {
             position_type: PositionType::Absolute,
             top: Val::Px(top),

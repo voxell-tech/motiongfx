@@ -10,6 +10,7 @@
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::any::Any;
 use core::marker::PhantomData;
 
 use hashbrown::{HashMap, HashSet};
@@ -17,9 +18,10 @@ use typarena::type_table::TypeTable;
 
 use crate::element::Element;
 use crate::host::Host;
-use crate::lenz::{Cursor, FieldId, FieldPath, Identity};
+use crate::lenz::{Accessor, Cursor, FieldId, FieldPath, Identity};
 use crate::store::Store;
 use crate::style::StyledElem;
+use crate::transition::Transition;
 
 /// Predicate over the world, polled once per flush.
 ///
@@ -78,6 +80,118 @@ pub struct Binding<H: Host> {
     pub(crate) apply: BoxedApply<H>,
 }
 
+/// A field on its way somewhere, kept beside the element rather than
+/// in it.
+///
+/// The element keeps the value the cascade gave it, the *base*; a lane
+/// keeps what the backend is showing, and pushes it through the
+/// element's own patch by swapping it in for the length of one call.
+pub(crate) trait Lane<H: Host>: Send + Sync {
+    /// Point this lane somewhere new: a boxed `Option<T>`, `None` to
+    /// release back to the base. Another type is ignored.
+    fn aim(&mut self, target: &mut dyn Any);
+
+    /// Advance by `dt` and push what it reached. `false` once it has
+    /// nothing left to say and the base is what shows.
+    fn advance(
+        &mut self,
+        dt: f32,
+        elements: &mut Elements<H>,
+        world: &mut H::World,
+        node: H::Node,
+        store: &mut Store<H>,
+    ) -> bool;
+}
+
+/// One lane, with the types it was made from still in hand.
+struct Travel<H: Host, E, T: 'static> {
+    accessor: Accessor<E, T>,
+    hops: Vec<FieldId>,
+    transition: Transition<T>,
+    /// What the backend is showing.
+    shown: T,
+    /// Where this leg started.
+    from: T,
+    /// Where it is heading: the target, or the base once released.
+    heading: T,
+    /// The override, or `None` while released.
+    target: Option<T>,
+    elapsed: f32,
+    host: PhantomData<fn() -> H>,
+}
+
+impl<H, E, T> Lane<H> for Travel<H, E, T>
+where
+    H: Host,
+    E: Element<H> + Send + Sync,
+    T: PartialEq + Clone + Send + Sync + 'static,
+{
+    fn aim(&mut self, target: &mut dyn Any) {
+        if let Some(target) = target.downcast_mut::<Option<T>>() {
+            self.target = target.take();
+        }
+    }
+
+    fn advance(
+        &mut self,
+        dt: f32,
+        elements: &mut Elements<H>,
+        world: &mut H::World,
+        node: H::Node,
+        store: &mut Store<H>,
+    ) -> bool {
+        let Some(element) = elements.get_mut::<E>(&node) else {
+            return false;
+        };
+        let Some(base) = (self.accessor.get)(element) else {
+            return false;
+        };
+
+        // The base moves under a running leg whenever a binding writes
+        // it, so where this is heading is worked out afresh each time.
+        let heading =
+            self.target.clone().unwrap_or_else(|| base.clone());
+
+        if heading != self.heading {
+            self.from = self.shown.clone();
+            self.heading = heading;
+            self.elapsed = 0.0;
+        }
+
+        if self.shown == self.heading {
+            // Released and arrived: the base already shows.
+            if self.target.is_none() {
+                return false;
+            }
+        } else {
+            self.elapsed += dt;
+            self.shown = if self.transition.done(self.elapsed) {
+                self.heading.clone()
+            } else {
+                (self.transition.lerp)(
+                    &self.from,
+                    &self.heading,
+                    self.transition.at(self.elapsed),
+                )
+            };
+        }
+
+        // Pushed even when it did not move, so that a binding writing
+        // the base this same flush cannot be the last word.
+        let Some(field) = (self.accessor.get_mut)(element) else {
+            return false;
+        };
+        let base = core::mem::replace(field, self.shown.clone());
+
+        element.patch(world, node, &self.hops, store);
+
+        if let Some(field) = (self.accessor.get_mut)(element) {
+            *field = base;
+        }
+        true
+    }
+}
+
 /// A watcher rooted at a node.
 pub struct Watcher<H: Host> {
     pub(crate) root: H::Node,
@@ -100,6 +214,9 @@ pub struct Records<H: Host> {
     /// bindings and binding a field twice replaces rather than
     /// doubles.
     pub(crate) bindings: HashMap<(H::Node, FieldId), Binding<H>>,
+    /// Keyed like the bindings, and one per field: two overlays on one
+    /// field would each be the last word.
+    pub(crate) lanes: HashMap<(H::Node, FieldId), Box<dyn Lane<H>>>,
     pub(crate) elements: Elements<H>,
     /// Which nodes have a row in `mounts`. The table is keyed by type
     /// as well as node, so there is no way to ask it what it holds
@@ -116,6 +233,7 @@ impl<H: Host> Default for Records<H> {
     fn default() -> Self {
         Self {
             bindings: HashMap::new(),
+            lanes: HashMap::new(),
             elements: Elements::<H>::new(),
             element_nodes: HashSet::new(),
             store: Store::new(),
@@ -164,7 +282,7 @@ impl<'a, H: Host> Ui<'a, H> {
         styled: S,
     ) -> ElementMut<'_, 'a, H, E>
     where
-        S: StyledElem<Element = E>,
+        S: StyledElem<Host = H, Element = E>,
         E: Element<H> + Send + Sync,
     {
         let element = styled.create();
@@ -176,6 +294,14 @@ impl<'a, H: Host> Ui<'a, H> {
         );
         self.records.elements.insert(node, element);
         self.records.element_nodes.insert(node);
+
+        // The style's other half. It takes the element whole, so what
+        // is handed back is a second borrow.
+        S::attach(ElementMut {
+            ui: self,
+            node,
+            element: PhantomData,
+        });
 
         ElementMut {
             ui: self,
@@ -234,10 +360,12 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     where
         P: FieldPath<Source = E>,
     {
-        field(Cursor::new()).hops().into_iter().try_fold(
-            self.node,
-            |node, hop| self.ui.records.store.get(node, hop),
-        )
+        field(Cursor::new())
+            .hops()
+            .into_iter()
+            .try_fold(self.node, |node, hop| {
+                self.ui.records.store.get(node, hop)
+            })
     }
 
     /// Build children under this element.
@@ -245,6 +373,54 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         let mut child =
             Ui::new(self.ui.world, self.node, self.ui.records);
         f(&mut child);
+        self
+    }
+
+    /// Let this field travel rather than snap.
+    ///
+    /// Declares the lane and its curve; what it is *aimed* at is
+    /// [`Fynix::aim`](crate::Fynix::aim), and until something aims it
+    /// the base shows. The element is never written, so a target
+    /// arriving mid flight carries on from where it had got to.
+    pub fn transition<P>(
+        self,
+        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
+        transition: Transition<P::Target>,
+    ) -> Self
+    where
+        E: Send + Sync,
+        P: FieldPath<Source = E>,
+        P::Target: PartialEq + Clone + Send + Sync,
+    {
+        let cursor = field(Cursor::new());
+        let accessor = cursor.accessor();
+
+        // Where it starts is what the cascade left.
+        let base = self
+            .ui
+            .records
+            .elements
+            .get::<E>(&self.node)
+            .and_then(|element| (accessor.get)(element))
+            .cloned();
+        let Some(base) = base else {
+            return self;
+        };
+
+        self.ui.records.lanes.insert(
+            (self.node, cursor.key()),
+            Box::new(Travel::<H, E, P::Target> {
+                accessor,
+                hops: cursor.hops(),
+                transition,
+                shown: base.clone(),
+                from: base.clone(),
+                heading: base,
+                target: None,
+                elapsed: 0.0,
+                host: PhantomData,
+            }),
+        );
         self
     }
 

@@ -3,17 +3,29 @@
 //! Everything an element or the kernel needs from a UI backend, and
 //! nothing more: no layout, no painting, no identity of its own. A
 //! host supplies an opaque node handle and four operations over it.
+//!
+//! What a host does *not* supply: any notion of an interaction.
+//! [`Fynix::aim`](crate::Fynix::aim) is the one primitive for pointing
+//! a lane somewhere, and it takes only a node, a field, and a target —
+//! nothing about when to call it. Wiring that to an event is entirely
+//! the backend's own business, because the events differ by backend
+//! and even within one backend there's no single "interaction" that
+//! covers every trigger a style wants.
 
 use alloc::vec::Vec;
 use core::hash::Hash;
 
-pub trait Host: Send + Sync + 'static {
+pub trait Host: Sized + Send + Sync + 'static {
     /// Opaque handle to a node. The kernel never inspects it.
     type Node: Copy + Eq + Hash + Send + Sync + 'static;
 
     /// State the builders read and the applies write. One type, not
     /// two: the kernel only ever holds one of `&` or `&mut` at a time.
     type World: 'static;
+
+    /// Seconds since the last flush, which is what a transition
+    /// advances by. The kernel has no clock of its own.
+    fn delta(world: &Self::World) -> f32;
 
     /// Create an empty node under `parent`.
     ///

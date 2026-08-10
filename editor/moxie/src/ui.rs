@@ -24,9 +24,7 @@ use crate::{
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::fynix::{
-    Button, ButtonLook, Frame, FrameCursor, Label, Panel,
-};
+use moxie_ui::fynix::{Button, Frame, FrameCursor, Label, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
@@ -166,17 +164,21 @@ fn register_windows(
         icon: Some(crate::icons::VIEWPORT.into()),
         build: Arc::new(move |ui: &mut BevyUi| {
             let preview = preview.clone();
-            ui.elem(elem!(!Panel {
-                justify = JustifyContent::Center;
+            ui.elem(elem!(
+                Panel,
+                justify = JustifyContent::Center,
                 align = AlignItems::Center
-            }))
+            ))
             .with(move |ui| {
-                let fit = crate::view::preview_fit(ui.world, ui.parent());
+                let fit =
+                    crate::view::preview_fit(ui.world, ui.parent());
 
-                ui.elem(elem!(!Frame {
-                    width = fit.map_or(Val::Auto, |(width, _)| width);
-                    height = fit.map_or(Val::Auto, |(_, height)| height)
-                }))
+                ui.elem(elem!(
+                    Frame,
+                    width = fit.map_or(Val::Auto, |(width, _)| width),
+                    height =
+                        fit.map_or(Val::Auto, |(_, height)| height)
+                ))
                 .insert(ImageNode::new(preview.clone()))
                 // Letterboxed to fit the area above, which is this
                 // node's parent. `None` while that area has no size
@@ -222,12 +224,13 @@ fn register_windows(
         name: "Settings".into(),
         icon: Some(crate::icons::SETTINGS.into()),
         build: Arc::new(|ui: &mut BevyUi| {
-            ui.elem(elem!(!Panel {
-                direction = FlexDirection::Column;
-                gap = Val::Px(8.0);
-                padding = UiRect::all(Val::Px(PANEL_PADDING));
+            ui.elem(elem!(
+                Panel,
+                direction = FlexDirection::Column,
+                row_gap = Val::Px(8.0),
+                padding = UiRect::all(Val::Px(PANEL_PADDING)),
                 scrolls = true
-            }))
+            ))
             .with(|ui| {
                 // Editable rows built by the reflect inspector.
                 inspector_fields(
@@ -235,16 +238,10 @@ fn register_windows(
                     InspectorTarget::resource::<EditorSettings>(),
                 );
                 // Save row.
-                ui.elem(elem!(!Frame {
-                    direction = FlexDirection::Row
-                }))
-                .with(|ui| {
-                    ui.elem(elem!(!Button {
-                        look = ButtonLook::Normal;
-                        width = Val::Px(64.0);
-                        height = Val::Px(24.0);
-                        radius = Val::Px(6.0)
-                    }))
+                ui.elem(elem!(Frame, direction = FlexDirection::Row))
+                    .with(|ui| {
+                        ui.elem(elem!(!Button, width = Val::Px(64.0),
+                        height = Val::Px(24.0)))
                     .observe(
                         |mut click: On<Pointer<Click>>,
                          mut commands: Commands| {
@@ -253,9 +250,9 @@ fn register_windows(
                         },
                     )
                     .with(|ui| {
-                        ui.elem(elem!(!Label { text = "Save" }));
+                        ui.elem(elem!(Label, text = "Save"));
                     });
-                });
+                    });
             });
         }),
     });

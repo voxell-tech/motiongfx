@@ -33,7 +33,7 @@ fn label_writes_its_fields_as_components() {
     let (mut app, root) = app_with_root();
 
     watch_root(app.world_mut(), root, |ui| {
-        ui.elem(elem!(!Label { text = "Save"; size = 20.0 }));
+        ui.elem(elem!(Label, text = "Save", size = 20.0));
     });
 
     app.update();
@@ -53,7 +53,7 @@ fn bound_field_is_patched_without_a_rebuild() {
     let (mut app, root) = app_with_root();
 
     watch_root(app.world_mut(), root, |ui| {
-        ui.elem(elem!(!Label)).bind(
+        ui.elem(elem!(Label)).bind(
             |label| label.text(),
             |world: &World, _| world.is_resource_changed::<Caption>(),
             |world: &World, _| world.resource::<Caption>().0.clone(),

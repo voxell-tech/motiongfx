@@ -6,13 +6,13 @@ use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::ElementMutExt;
-use fynix_mock::elem;
+use fynix_mock::{elem, val};
 
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
 use crate::fynix::{
-    Button, ButtonLook, Icon, IconCursor, Label, LabelCursor, Tab,
-    TabBar, TabCursor, TabRow,
+    GhostButton, Icon, IconCursor, Label, LabelCursor, Tab, TabBar,
+    TabCursor, TabRow,
 };
 use crate::icons;
 use crate::reactive::{BevyUi, resource_changed};
@@ -33,8 +33,8 @@ pub(super) fn build_tab_bar(
     tabs: Vec<(TabId, String, String, Option<String>)>,
     ui: &mut BevyUi,
 ) {
-    ui.elem(elem!(!TabBar)).with(move |ui| {
-        ui.elem(elem!(!TabRow)).with(move |ui| {
+    ui.elem(elem!(TabBar)).with(move |ui| {
+        ui.elem(elem!(TabRow)).with(move |ui| {
             for (tab_id, window_id, label, icon) in tabs {
                 build_tab(
                     leaf, area, tab_id, window_id, label, icon, ui,
@@ -50,10 +50,10 @@ pub(super) fn build_tab_bar(
 fn build_add_button(area: Entity, ui: &mut BevyUi) {
     let muted = ui.world.resource::<EditorTheme>().text_muted;
 
-    ui.elem(elem!(!Button {
-        look = ButtonLook::Ghost;
-        icon = Icon { image: icons::PLUS.into(), color: muted, ..default() }
-    }))
+    ui.elem(elem!(
+        !GhostButton,
+        icon = val!(Icon, image = icons::PLUS, color = muted)
+    ))
     .insert(DockTabAddButton { area_entity: area })
     .observe(super::add_popup::on_add_click);
 }
@@ -74,65 +74,69 @@ fn build_tab(
     let lit = text_color(ui.world, leaf, tab_id);
     let close_color = ui.world.resource::<EditorTheme>().text_muted;
 
-    let tab = ui.elem(elem!(!Tab {
-        window_id = window_id;
-        tab = tab_id;
-        active = is_active;
-        icon = icon.map(|image| Icon {
-            image,
-            color: lit,
-            size: Val::Px(12.0),
-        });
-        label = Label {
-            text: label,
-            size: 12.0,
-            color: Some(lit),
-            bold: true,
-            wrap: false,
-        };
-        close = Button {
-            look: ButtonLook::Ghost,
-            width: Val::Px(14.0),
-            height: Val::Px(14.0),
-            radius: Val::Px(2.0),
-            icon: Some(Icon {
-                image: feathers_icons::X.to_string(),
-                color: close_color,
-                size: Val::Px(10.0),
-            }),
-            ..default()
-        }
-    }))
-    // Which tab is active follows the tree, and must not rebuild the
-    // tab: a drag in progress would go with it.
-    .bind(
-        |tab| tab.active(),
-        resource_changed::<DockTree>(),
-        move |world, _| active_of(world, leaf) == Some(tab_id),
-    )
-    // What the tab holds is lit by the same signal, and separately:
-    // the fill is the tab's own field, these are its children's.
-    .bind(
-        |tab| tab.label().color(),
-        resource_changed::<DockTree>(),
-        move |world, _| text_color(world, leaf, tab_id),
-    )
-    .bind(
-        |tab| tab.icon().color(),
-        resource_changed::<DockTree>(),
-        move |world, _| text_color(world, leaf, tab_id),
-    )
-    .observe(
-        move |mut click: On<Pointer<Click>>,
-              bindings: Query<&super::reconcile::LeafBinding>,
-              mut tree: ResMut<DockTree>| {
-            click.propagate(false);
+    let tab = ui
+        .elem(elem!(
+            Tab,
+            window_id = window_id,
+            tab = tab_id,
+            active = is_active,
+            icon = icon.map(|image| val!(
+                Icon,
+                image = image,
+                color = lit,
+                size = Val::Px(12.0)
+            )),
+            label = val!(
+                Label,
+                text = label,
+                size = 12.0,
+                color = Some(lit),
+                bold = true,
+                wrap = false
+            ),
+            close = val!(
+                !GhostButton,
+                width = Val::Px(14.0),
+                height = Val::Px(14.0),
+                radius = Val::Px(2.0),
+                icon = val!(
+                    Icon,
+                    image = feathers_icons::X,
+                    color = close_color,
+                    size = Val::Px(10.0)
+                )
+            )
+        ))
+        // Which tab is active follows the tree, and must not rebuild the
+        // tab: a drag in progress would go with it.
+        .bind(
+            |tab| tab.active(),
+            resource_changed::<DockTree>(),
+            move |world, _| active_of(world, leaf) == Some(tab_id),
+        )
+        // What the tab holds is lit by the same signal, and separately:
+        // the fill is the tab's own field, these are its children's.
+        .bind(
+            |tab| tab.label().color(),
+            resource_changed::<DockTree>(),
+            move |world, _| text_color(world, leaf, tab_id),
+        )
+        .bind(
+            |tab| tab.icon().color(),
+            resource_changed::<DockTree>(),
+            move |world, _| text_color(world, leaf, tab_id),
+        )
+        .observe(
+            move |mut click: On<Pointer<Click>>,
+                  bindings: Query<&super::reconcile::LeafBinding>,
+                  mut tree: ResMut<DockTree>| {
+                click.propagate(false);
 
-            if let Ok(binding) = bindings.get(area) {
-                tree.set_active(binding.0, tab_id);
-            }
-        },
-    );
+                if let Ok(binding) = bindings.get(area) {
+                    tree.set_active(binding.0, tab_id);
+                }
+            },
+        );
 
     // On the close button itself: a `Button` takes the click for
     // itself, so nothing the tab observes ever hears it.

@@ -66,12 +66,13 @@ pub(super) fn panel(ui: &mut BevyUi) {
     let seen = rows.clone();
     let mut queries: Option<HierarchyQueries> = None;
 
-    ui.elem(elem!(!Frame {
-        width = Val::Percent(100.0);
-        direction = FlexDirection::Column;
-        gap = Val::Px(2.0);
+    ui.elem(elem!(
+        Frame,
+        width = Val::Percent(100.0),
+        direction = FlexDirection::Column,
+        row_gap = Val::Px(2.0),
         padding = UiRect::all(Val::Px(PANEL_PADDING))
-    }))
+    ))
     .insert(Node {
         width: Val::Percent(100.0),
         flex_grow: 1.0,
@@ -164,17 +165,19 @@ fn build_rows(ui: &mut BevyUi, rows: &[Row]) {
     for row in rows {
         let indent = row.depth as f32 * INDENT;
         let name = row.name.clone();
-        ui.elem(elem!(!Frame {
-            width = Val::Percent(100.0);
-            align = AlignItems::Center;
+        ui.elem(elem!(
+            Frame,
+            width = Val::Percent(100.0),
+            align = AlignItems::Center,
             padding = UiRect::left(Val::Px(indent))
-        }))
+        ))
         .with(move |ui| {
-            ui.elem(elem!(!Label {
-                text = name;
-                size = 12.0;
+            ui.elem(elem!(
+                Label,
+                text = name,
+                size = 12.0,
                 color = Some(text_color)
-            }));
+            ));
         });
     }
 }

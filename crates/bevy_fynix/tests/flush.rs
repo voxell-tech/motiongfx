@@ -63,7 +63,7 @@ fn flush_builds_what_a_root_declares() {
     let (mut app, root) = app_with_root();
 
     watch_root(app.world_mut(), root, |ui| {
-        ui.elem(elem!(!Label { text = "Save" }));
+        ui.elem(elem!(Label, text = "Save"));
     });
 
     app.update();
@@ -80,7 +80,7 @@ fn root_is_built_once() {
     let (mut app, root) = app_with_root();
 
     watch_root(app.world_mut(), root, |ui| {
-        ui.elem(elem!(!Label));
+        ui.elem(elem!(Label));
     });
 
     app.update();
@@ -104,7 +104,7 @@ fn binding_patches_the_node_it_built() {
     app.init_resource::<Source>();
 
     watch_root(app.world_mut(), root, |ui| {
-        ui.elem(elem!(!Label)).bind(
+        ui.elem(elem!(Label)).bind(
             |label| label.text(),
             |world: &World, _| world.resource::<Source>().changed,
             |world: &World, _| {

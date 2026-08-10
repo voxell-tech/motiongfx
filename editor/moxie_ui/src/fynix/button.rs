@@ -6,31 +6,35 @@ use bevy_fynix::host::BevyHost;
 use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::lenz::Lenz;
+use fynix_mock::style::Style;
+use fynix_mock::ui::ElementMut;
 
-use super::Icon;
+use super::{Icon, Label};
+use crate::motion::{self, MotionExt};
 
-/// How a button is dressed. Only the look differs: either one is a
-/// button, and behaves as one.
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-pub enum ButtonLook {
-    /// A filled pill.
-    #[default]
-    Normal,
-    /// Nothing of its own, so the hit area is all there is around
-    /// whatever the button holds.
-    Ghost,
-}
+/// The faint surface a filled button rests at.
+const FILL: Color = Color::srgba(1.0, 1.0, 1.0, 0.06);
 
-/// A hit area holding an icon, or whatever is built under it.
+/// A hit area holding an icon, a label, both, or whatever is built
+/// under it. Undressed: [`Button`] and [`GhostButton`] are the two
+/// looks the editor gives it.
 #[derive(Element, OverrideDefault, Lenz)]
-pub struct Button {
+pub struct RawButton {
     /// A node of its own, so its image and colour can be bound
     /// without touching the button.
     #[elem]
     pub icon: Option<Icon>,
-    pub look: ButtonLook,
-    /// What [`ButtonLook::Normal`] fills with.
-    #[default(Color::srgba(1.0, 1.0, 1.0, 0.06))]
+    /// A node of its own, so its text can be bound without touching
+    /// the button.
+    #[elem]
+    pub label: Option<Label>,
+    /// Between the icon and the label, when both are there.
+    #[default(Val::ZERO)]
+    pub column_gap: Val,
+    /// What the background shows. Nothing by default, which is a
+    /// [`GhostButton`]; [`Button`] rests at [`FILL`], and interaction
+    /// lights either of them up.
+    #[default(Color::NONE)]
     pub fill: Color,
     /// The hit area, which an icon button wants square and a button
     /// with a word in it does not.
@@ -46,29 +50,72 @@ pub struct Button {
     pub radius: Val,
 }
 
-impl Button {
+impl RawButton {
     fn node(&self) -> Node {
         Node {
             width: self.width,
             height: self.height,
             justify_content: self.justify,
             align_items: AlignItems::Center,
+            column_gap: self.column_gap,
             padding: self.padding,
             border_radius: BorderRadius::all(self.radius),
             ..default()
         }
     }
 
-    /// What the look brings, which is a surface or nothing.
+    /// `fill` alone, so a lane aiming it under the cursor takes
+    /// effect whichever look the button wears.
     fn background(&self) -> BackgroundColor {
-        match self.look {
-            ButtonLook::Normal => BackgroundColor(self.fill),
-            ButtonLook::Ghost => BackgroundColor(Color::NONE),
-        }
+        BackgroundColor(self.fill)
     }
 }
 
-impl ElementVisual<BevyHost> for Button {
+/// The editor's own button: a filled, rounded pill sized for a
+/// toolbar, which lights up under the cursor. A call site that holds a
+/// word rather than an icon says so by resizing it.
+pub struct Button;
+
+impl Style for Button {
+    type Host = BevyHost;
+    type Element = RawButton;
+
+    fn apply(self, button: &mut RawButton) {
+        button.fill = FILL;
+        button.width = Val::Px(26.0);
+        button.height = Val::Px(26.0);
+        button.radius = Val::Px(6.0);
+    }
+
+    fn attach(elem: ElementMut<BevyHost, RawButton>) {
+        lit(elem);
+    }
+}
+
+/// A button with no surface of its own until the cursor is on it, for
+/// one that sits in a row of its own kind or on something that is
+/// already a surface.
+pub struct GhostButton;
+
+impl Style for GhostButton {
+    type Host = BevyHost;
+    type Element = RawButton;
+
+    fn apply(self, button: &mut RawButton) {
+        button.fill = Color::NONE;
+    }
+
+    fn attach(elem: ElementMut<BevyHost, RawButton>) {
+        lit(elem);
+    }
+}
+
+/// Either look lights up the same way.
+fn lit(elem: ElementMut<BevyHost, RawButton>) {
+    elem.lit(|button| button.fill(), motion::HOVER, motion::PRESS);
+}
+
+impl ElementVisual<BevyHost> for RawButton {
     fn build_fields(&self, world: &mut World, node: Entity) {
         let mut entity = world.entity_mut(node);
 
@@ -84,21 +131,22 @@ impl ElementVisual<BevyHost> for Button {
         &self,
         world: &mut World,
         node: Entity,
-        field: ButtonField,
+        field: RawButtonField,
     ) {
         let mut entity = world.entity_mut(node);
 
         match field {
-            ButtonField::Look | ButtonField::Fill => {
+            RawButtonField::Fill => {
                 entity.insert(self.background());
             }
             // Every other field is one of `Node`'s, and writing it
             // whole is one insert either way.
-            ButtonField::Width
-            | ButtonField::Height
-            | ButtonField::Justify
-            | ButtonField::Padding
-            | ButtonField::Radius => {
+            RawButtonField::Width
+            | RawButtonField::Height
+            | RawButtonField::Justify
+            | RawButtonField::ColumnGap
+            | RawButtonField::Padding
+            | RawButtonField::Radius => {
                 entity.insert(self.node());
             }
         }

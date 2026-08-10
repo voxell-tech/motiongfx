@@ -8,7 +8,7 @@ use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::lenz::Lenz;
 
-use super::{Button, Icon, Label};
+use super::{Icon, Label, RawButton};
 use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
 
 /// The strip across the top of a leaf.
@@ -101,7 +101,7 @@ pub struct Tab {
     #[elem]
     pub label: Label,
     #[elem]
-    pub close: Option<Button>,
+    pub close: Option<RawButton>,
     pub window_id: String,
     #[default(TabId(0))]
     pub tab: TabId,

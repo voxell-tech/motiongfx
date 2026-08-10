@@ -85,7 +85,7 @@ impl Inspect for bool {
         let read = field.clone();
         let checked = read.get::<bool>(ui.world).unwrap_or_default();
 
-        ui.elem(elem!(!CheckBox { checked = checked }))
+        ui.elem(elem!(CheckBox, checked = checked))
             .observe(
                 move |change: On<ValueChange<bool>>,
                       mut commands: Commands| {
@@ -130,10 +130,11 @@ fn number_field<T, V>(
 
     let shown = read.get::<T>(ui.world).map(to_input);
 
-    ui.elem(elem!(!NumberField {
-        format = format;
+    ui.elem(elem!(
+        NumberField,
+        format = format,
         value = shown.unwrap_or(NumberInputValue::F32(0.0))
-    }))
+    ))
     .observe(
         move |change: On<ValueChange<V>>, mut commands: Commands| {
             let (field, value) =

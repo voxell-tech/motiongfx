@@ -13,6 +13,8 @@ fynix_mock = { workspace = true }
 # bevy
 bevy_app = { workspace = true }
 bevy_ecs = { workspace = true }
+bevy_picking = { workspace = true }
+bevy_time = { workspace = true }
 bevy_ui = { workspace = true }
 
 [lints]

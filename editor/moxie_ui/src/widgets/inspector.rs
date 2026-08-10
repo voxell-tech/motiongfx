@@ -336,11 +336,12 @@ fn shape_changed(
 /// Editable rows for everything reflectable under `target`, as kernel
 /// nodes.
 pub fn inspector_fields(ui: &mut BevyUi, target: InspectorTarget) {
-    ui.elem(elem!(!Frame {
-        width = Val::Percent(100.0);
-        direction = FlexDirection::Column;
-        gap = Val::Px(4.0)
-    }))
+    ui.elem(elem!(
+        Frame,
+        width = Val::Percent(100.0),
+        direction = FlexDirection::Column,
+        row_gap = Val::Px(4.0)
+    ))
     .insert(TabGroup::new(0))
     .watch(shape_changed(target), move |ui| {
         build_fields(ui, target);
@@ -360,16 +361,17 @@ fn build_fields(ui: &mut BevyUi, target: InspectorTarget) {
 
         let field = Field::new(target, leaf.path.clone());
         let label = leaf.path;
-        ui.elem(elem!(!Frame {
-            width = Val::Percent(100.0);
-            direction = FlexDirection::Row;
-            justify = JustifyContent::SpaceBetween;
-            align = AlignItems::Center;
-            gap = Val::Px(8.0);
+        ui.elem(elem!(
+            Frame,
+            width = Val::Percent(100.0),
+            direction = FlexDirection::Row,
+            justify = JustifyContent::SpaceBetween,
+            align = AlignItems::Center,
+            column_gap = Val::Px(8.0),
             padding = UiRect::vertical(Val::Px(2.0))
-        }))
+        ))
         .with(move |ui| {
-            ui.elem(elem!(!Label { text = label; size = 12.0 }));
+            ui.elem(elem!(Label, text = label, size = 12.0));
             drawer.build(&field, ui);
         });
     }

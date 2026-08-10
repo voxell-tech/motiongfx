@@ -5,6 +5,7 @@
 //! Elements and styles live above this.
 
 pub mod host;
+pub mod interact;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -58,14 +59,24 @@ pub fn watch_root(
 }
 
 fn flush(world: &mut World) {
+    with_kernel(world, |kernel, world| kernel.flush(world));
+}
+
+/// Run `f` with the kernel out of the world, which is the only way to
+/// have both. Not for anything a flush can reach: the kernel is gone
+/// from the world for as long as this runs.
+pub(crate) fn with_kernel(
+    world: &mut World,
+    f: impl FnOnce(&mut Fynix<BevyHost>, &mut World),
+) {
     world.resource_scope(|world, mut kernel: Mut<BevyFynix>| {
-        kernel.0.flush(world);
+        f(&mut kernel.0, world);
     });
 }
 
 /// What bevy wants on a node that the element itself has no say in.
-pub trait ElementMutExt {
-    /// Watch this node for `E`.
+pub trait ElementMutExt<E: Element<BevyHost>> {
+    /// Watch this node for `V`.
     fn observe<V: EntityEvent, B: Bundle, M>(
         self,
         observer: impl IntoObserverSystem<V, B, M>,
@@ -75,7 +86,7 @@ pub trait ElementMutExt {
     fn insert(self, bundle: impl Bundle) -> Self;
 }
 
-impl<E: Element<BevyHost>> ElementMutExt
+impl<E: Element<BevyHost>> ElementMutExt<E>
     for ElementMut<'_, '_, BevyHost, E>
 {
     fn observe<V: EntityEvent, B: Bundle, M>(
@@ -93,3 +104,4 @@ impl<E: Element<BevyHost>> ElementMutExt
         self
     }
 }
+

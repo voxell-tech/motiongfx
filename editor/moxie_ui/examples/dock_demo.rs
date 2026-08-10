@@ -57,19 +57,21 @@ fn setup(
             icon: None,
             build: Arc::new(move |ui: &mut BevyUi| {
                 let label = label.clone();
-                ui.elem(elem!(!Frame {
-                    width = Val::Percent(100.0);
-                    height = Val::Percent(100.0);
-                    align = AlignItems::Center;
-                    justify = JustifyContent::Center;
+                ui.elem(elem!(
+                    Frame,
+                    width = Val::Percent(100.0),
+                    height = Val::Percent(100.0),
+                    align = AlignItems::Center,
+                    justify = JustifyContent::Center,
                     background = color
-                }))
+                ))
                 .with(move |ui| {
-                    ui.elem(elem!(!Label {
-                        text = label;
-                        size = 20.0;
+                    ui.elem(elem!(
+                        Label,
+                        text = label,
+                        size = 20.0,
                         color = Some(Color::srgb(0.9, 0.9, 0.92))
-                    }));
+                    ));
                 });
             }),
         });
