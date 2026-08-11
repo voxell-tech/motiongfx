@@ -68,18 +68,18 @@ pub(super) fn panel(ui: &mut BevyUi) {
 
     ui.elem(elem!(
         Frame,
-        width = Val::Percent(100.0),
+        width = percent(100),
         direction = FlexDirection::Column,
-        row_gap = Val::Px(2.0),
-        padding = UiRect::all(Val::Px(PANEL_PADDING))
+        row_gap = px(2),
+        padding = UiRect::all(px(PANEL_PADDING))
     ))
     .insert(Node {
-        width: Val::Percent(100.0),
+        width: percent(100),
         flex_grow: 1.0,
-        min_height: Val::Px(0.0),
+        min_height: px(0),
         flex_direction: FlexDirection::Column,
-        row_gap: Val::Px(2.0),
-        padding: UiRect::all(Val::Px(PANEL_PADDING)),
+        row_gap: px(2),
+        padding: UiRect::all(px(PANEL_PADDING)),
         overflow: Overflow::scroll_y(),
         ..default()
     })
@@ -167,9 +167,9 @@ fn build_rows(ui: &mut BevyUi, rows: &[Row]) {
         let name = row.name.clone();
         ui.elem(elem!(
             Frame,
-            width = Val::Percent(100.0),
+            width = percent(100),
             align = AlignItems::Center,
-            padding = UiRect::left(Val::Px(indent))
+            padding = UiRect::left(px(indent))
         ))
         .with(move |ui| {
             ui.elem(elem!(

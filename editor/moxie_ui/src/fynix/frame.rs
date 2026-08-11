@@ -17,7 +17,7 @@ pub struct Frame {
     pub position: PositionType,
     /// How far each edge sits from the parent's, for an absolute
     /// frame. `Auto` on an edge leaves that one to the layout.
-    #[default(UiRect::all(Val::Auto))]
+    #[default(UiRect::all(auto()))]
     pub inset: UiRect,
     pub direction: FlexDirection,
     pub align: AlignItems,

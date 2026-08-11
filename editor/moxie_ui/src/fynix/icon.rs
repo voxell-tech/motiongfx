@@ -13,7 +13,7 @@ pub struct Icon {
     /// Asset path.
     pub image: String,
     pub color: Color,
-    #[default(Val::Px(11.0))]
+    #[default(px(11))]
     pub size: Val,
 }
 

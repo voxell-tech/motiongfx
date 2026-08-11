@@ -31,10 +31,10 @@ impl ElementVisual<BevyHost> for Overlay {
         world.entity_mut(node).insert((
             Node {
                 position_type: PositionType::Absolute,
-                left: Val::Px(0.0),
-                top: Val::Px(0.0),
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
+                left: px(0),
+                top: px(0),
+                width: percent(100),
+                height: percent(100),
                 ..default()
             },
             self.pickable(),

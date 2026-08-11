@@ -59,8 +59,8 @@ fn setup(
                 let label = label.clone();
                 ui.elem(elem!(
                     Frame,
-                    width = Val::Percent(100.0),
-                    height = Val::Percent(100.0),
+                    width = percent(100),
+                    height = percent(100),
                     align = AlignItems::Center,
                     justify = JustifyContent::Center,
                     background = color
@@ -94,10 +94,10 @@ fn setup(
     let root = commands
         .spawn(Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(0.0),
-            top: Val::Px(0.0),
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
+            left: px(0),
+            top: px(0),
+            width: percent(100),
+            height: percent(100),
             flex_direction: FlexDirection::Column,
             ..default()
         })

@@ -29,9 +29,9 @@ pub struct Panel {
 impl Panel {
     fn node(&self) -> Node {
         Node {
-            width: Val::Percent(100.0),
+            width: percent(100),
             flex_grow: 1.0,
-            min_height: Val::Px(0.0),
+            min_height: px(0),
             flex_direction: self.direction,
             align_items: self.align,
             justify_content: self.justify,

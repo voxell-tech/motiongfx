@@ -25,13 +25,13 @@ impl ElementVisual<BevyHost> for TabBar {
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Center,
-                width: Val::Percent(100.0),
-                height: Val::Px(TAB_HEIGHT),
+                width: percent(100),
+                height: px(TAB_HEIGHT),
                 // No left padding: the first tab sits flush.
                 padding: UiRect::new(
                     Val::ZERO,
-                    Val::Px(8.0),
-                    Val::Px(1.0),
+                    px(8),
+                    px(1),
                     Val::ZERO,
                 ),
                 flex_shrink: 0.0,
@@ -68,11 +68,11 @@ impl ElementVisual<BevyHost> for TabRow {
             Node {
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::Center,
-                column_gap: Val::Px(2.0),
-                height: Val::Percent(100.0),
+                column_gap: px(2),
+                height: percent(100),
                 overflow: Overflow::scroll_x(),
                 flex_shrink: 1.0,
-                min_width: Val::Px(0.0),
+                min_width: px(0),
                 ..default()
             },
             ScrollPosition::default(),
@@ -133,11 +133,11 @@ impl ElementVisual<BevyHost> for Tab {
             Node {
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::Center,
-                column_gap: Val::Px(6.0),
-                padding: UiRect::axes(Val::Px(8.0), Val::Px(3.0)),
-                height: Val::Percent(100.0),
+                column_gap: px(6),
+                padding: UiRect::axes(px(8), px(3)),
+                height: percent(100),
                 flex_shrink: 0.0,
-                border_radius: BorderRadius::all(Val::Px(4.0)),
+                border_radius: BorderRadius::all(px(4)),
                 ..default()
             },
             self.background(),

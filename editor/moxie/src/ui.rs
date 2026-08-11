@@ -133,8 +133,8 @@ fn setup_editor_ui(
         .spawn((
             UiTargetCamera(ui_camera),
             Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
+                width: percent(100),
+                height: percent(100),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
@@ -246,8 +246,8 @@ fn register_windows(
             ui.elem(elem!(
                 Panel,
                 direction = FlexDirection::Column,
-                row_gap = Val::Px(8.0),
-                padding = UiRect::all(Val::Px(PANEL_PADDING)),
+                row_gap = px(8),
+                padding = UiRect::all(px(PANEL_PADDING)),
                 scrolls = true
             ))
             .with(|ui| {
@@ -259,8 +259,8 @@ fn register_windows(
                 // Save row.
                 ui.elem(elem!(Frame, direction = FlexDirection::Row))
                     .with(|ui| {
-                        ui.elem(elem!(!Button, width = Val::Px(64.0),
-                        height = Val::Px(24.0)))
+                        ui.elem(elem!(!Button, width = px(64),
+                        height = px(24)))
                     .observe(
                         |mut click: On<Pointer<Click>>,
                          mut commands: Commands| {

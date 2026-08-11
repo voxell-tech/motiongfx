@@ -17,9 +17,9 @@ impl TimelineTrack {
     fn node(&self) -> Node {
         Node {
             position_type: PositionType::Relative,
-            width: Val::Px(self.width),
-            min_width: Val::Px(self.width),
-            height: Val::Percent(100.0),
+            width: px(self.width),
+            min_width: px(self.width),
+            height: percent(100),
             ..default()
         }
     }

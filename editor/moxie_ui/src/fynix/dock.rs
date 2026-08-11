@@ -21,8 +21,8 @@ use crate::widgets::dock::{
 /// Column that fills its parent, which most of the dock's nodes are.
 fn filled(direction: FlexDirection) -> Node {
     Node {
-        width: Val::Percent(100.0),
-        height: Val::Percent(100.0),
+        width: percent(100),
+        height: percent(100),
         flex_direction: direction,
         overflow: Overflow::clip(),
         ..default()
@@ -46,8 +46,8 @@ impl ElementVisual<BevyHost> for DockHost {
         world.entity_mut(node).insert((
             DockTreeHost,
             Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
+                width: percent(100),
+                height: percent(100),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
@@ -124,8 +124,8 @@ pub struct SplitHandle {
 impl SplitHandle {
     fn node(&self) -> Node {
         Node {
-            min_width: Val::Px(3.0),
-            min_height: Val::Px(3.0),
+            min_width: px(3),
+            min_height: px(3),
             display: display(self.visible),
             ..default()
         }
@@ -175,11 +175,7 @@ pub struct SplitPanel {
 
 impl SplitPanel {
     fn node(&self) -> Node {
-        let size = if self.visible {
-            Val::Percent(100.0)
-        } else {
-            Val::Px(0.0)
-        };
+        let size = if self.visible { percent(100) } else { px(0) };
 
         Node {
             width: size,
@@ -295,8 +291,8 @@ impl ElementVisual<BevyHost> for TabContent {
             },
             Node {
                 flex_grow: 1.0,
-                width: Val::Percent(100.0),
-                min_height: Val::Px(0.0),
+                width: percent(100),
+                min_height: px(0),
                 flex_direction: FlexDirection::Column,
                 overflow: Overflow::clip(),
                 display: display(self.showing),

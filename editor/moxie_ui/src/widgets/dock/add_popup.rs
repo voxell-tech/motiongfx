@@ -151,17 +151,12 @@ fn build_popup(ui: &mut BevyUi) {
     ui.elem(elem!(
         Frame,
         position = PositionType::Absolute,
-        inset = UiRect::new(
-            Val::Px(left),
-            Val::Auto,
-            Val::Px(top),
-            Val::Auto,
-        ),
-        width = Val::Px(POPUP_WIDTH),
+        inset = UiRect::new(px(left), auto(), px(top), auto(),),
+        width = px(POPUP_WIDTH),
         direction = FlexDirection::Column,
-        row_gap = Val::Px(2.0),
-        padding = UiRect::all(Val::Px(4.0)),
-        radius = Val::Px(6.0),
+        row_gap = px(2),
+        padding = UiRect::all(px(4)),
+        radius = px(6),
         background = Color::srgba(0.11, 0.10, 0.11, 0.98),
         z = Some(181)
     ))
@@ -205,16 +200,16 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
 
         ui.elem(elem!(
             !GhostButton,
-            width = Val::Percent(100.0),
-            height = Val::Auto,
+            width = percent(100),
+            height = auto(),
             justify = JustifyContent::FlexStart,
-            padding = UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
-            radius = Val::Px(4.0),
+            padding = UiRect::axes(px(8), px(4)),
+            radius = px(4),
             icon = val!(
                 Icon,
                 image = image,
                 color = icon_color,
-                size = Val::Px(12.0)
+                size = px(12)
             ),
         ))
         .insert(AddsWindow { area, window_id })

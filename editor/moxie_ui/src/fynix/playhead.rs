@@ -16,10 +16,10 @@ impl PlayheadLine {
     fn node(&self) -> Node {
         Node {
             position_type: PositionType::Absolute,
-            top: Val::Px(0.0),
-            bottom: Val::Px(0.0),
-            left: Val::Px(self.left),
-            width: Val::Px(2.0),
+            top: px(0),
+            bottom: px(0),
+            left: px(self.left),
+            width: px(2),
             ..default()
         }
     }
@@ -43,7 +43,7 @@ impl ElementVisual<BevyHost> for PlayheadLine {
         match field {
             PlayheadLineField::Left => {
                 if let Some(mut node) = world.get_mut::<Node>(node) {
-                    node.left = Val::Px(self.left);
+                    node.left = px(self.left);
                 }
             }
         }

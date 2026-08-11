@@ -84,11 +84,11 @@ impl ElementVisual<BevyHost> for CheckBox {
             CheckboxBehavior,
             EntityCursor::System(SystemCursorIcon::Pointer),
             Node {
-                width: Val::Px(16.0),
-                height: Val::Px(16.0),
+                width: px(16),
+                height: px(16),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
-                border_radius: BorderRadius::all(Val::Px(4.0)),
+                border_radius: BorderRadius::all(px(4)),
                 ..default()
             },
             BackgroundColor(self.fill),
@@ -98,9 +98,9 @@ impl ElementVisual<BevyHost> for CheckBox {
             .spawn((
                 CheckMark,
                 Node {
-                    width: Val::Px(8.0),
-                    height: Val::Px(8.0),
-                    border_radius: BorderRadius::all(Val::Px(2.0)),
+                    width: px(8),
+                    height: px(8),
+                    border_radius: BorderRadius::all(px(2)),
                     display: Display::None,
                     ..default()
                 },
@@ -139,7 +139,7 @@ pub struct NumberField {
     /// edit wins.
     #[default(NumberInputValue::F32(0.0))]
     pub value: NumberInputValue,
-    #[default(Val::Px(110.0))]
+    #[default(px(110))]
     pub width: Val,
 }
 

@@ -12,7 +12,7 @@ const DIVIDER_WIDTH: f32 = 6.0;
 /// The draggable line between two panes.
 #[derive(Element, OverrideDefault, Lenz)]
 pub struct Divider {
-    #[default(Val::Px(DIVIDER_WIDTH))]
+    #[default(px(DIVIDER_WIDTH))]
     pub thickness: Val,
     #[default(::Horizontal)]
     pub orientation: ControlOrientation,
@@ -26,13 +26,13 @@ impl Divider {
     fn shape(&self) -> (Node, SystemCursorIcon) {
         let (width, height, cursor) = match self.orientation {
             ControlOrientation::Horizontal => (
-                Val::Percent(100.0),
+                percent(100),
                 self.thickness,
                 SystemCursorIcon::NsResize,
             ),
             ControlOrientation::Vertical => (
                 self.thickness,
-                Val::Percent(100.0),
+                percent(100),
                 SystemCursorIcon::EwResize,
             ),
         };

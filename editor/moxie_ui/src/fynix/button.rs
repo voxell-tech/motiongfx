@@ -41,9 +41,9 @@ pub struct RawButton {
     pub fill: Color,
     /// The hit area, which an icon button wants square and a button
     /// with a word in it does not.
-    #[default(Val::Px(18.0))]
+    #[default(px(18))]
     pub width: Val,
-    #[default(Val::Px(18.0))]
+    #[default(px(18))]
     pub height: Val,
     /// Centred, for a button that is only as big as what it holds.
     #[default(::Center)]
@@ -85,9 +85,9 @@ impl Style for Button {
 
     fn apply(self, button: &mut RawButton) {
         button.fill = FILL;
-        button.width = Val::Px(26.0);
-        button.height = Val::Px(26.0);
-        button.radius = Val::Px(6.0);
+        button.width = px(26);
+        button.height = px(26);
+        button.radius = px(6);
     }
 
     fn attach(elem: ElementMut<BevyHost, RawButton>) {

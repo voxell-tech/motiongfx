@@ -88,7 +88,7 @@ fn build_tab(
                 Icon,
                 image = image,
                 color = lit,
-                size = Val::Px(12.0)
+                size = px(12)
             )),
             label = val!(
                 Label,
@@ -100,14 +100,14 @@ fn build_tab(
             ),
             close = val!(
                 !GhostButton,
-                width = Val::Px(14.0),
-                height = Val::Px(14.0),
-                radius = Val::Px(2.0),
+                width = px(14),
+                height = px(14),
+                radius = px(2),
                 icon = val!(
                     Icon,
                     image = feathers_icons::X,
                     color = close_color,
-                    size = Val::Px(10.0)
+                    size = px(10)
                 )
             )
         ))
@@ -187,9 +187,9 @@ pub(super) fn tab_tile_node() -> Node {
         flex_direction: FlexDirection::Row,
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
-        column_gap: Val::Px(4.0),
-        padding: UiRect::horizontal(Val::Px(8.0)),
-        height: Val::Percent(100.0),
+        column_gap: px(4),
+        padding: UiRect::horizontal(px(8)),
+        height: percent(100),
         flex_shrink: 0.0,
         ..default()
     }
@@ -228,8 +228,8 @@ pub(super) fn spawn_ghost_tab(
     // Matches the 14px close slot a real tab reserves.
     world.spawn((
         Node {
-            width: Val::Px(14.0),
-            height: Val::Px(14.0),
+            width: px(14),
+            height: px(14),
             ..default()
         },
         ChildOf(tile),

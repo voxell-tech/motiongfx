@@ -57,7 +57,7 @@ pub(super) fn panel(ui: &mut BevyUi) {
     ui.elem(elem!(
         Panel,
         direction = FlexDirection::Column,
-        padding = UiRect::bottom(Val::Px(PANEL_PADDING))
+        padding = UiRect::bottom(px(PANEL_PADDING))
     ))
     .with(|ui| {
         control_bar(ui);
@@ -69,20 +69,17 @@ pub(super) fn panel(ui: &mut BevyUi) {
 fn control_bar(ui: &mut BevyUi) {
     ui.elem(elem!(
         Frame,
-        width = Val::Percent(100.0),
-        height = Val::Px(CONTROL_BAR_HEIGHT),
+        width = percent(100),
+        height = px(CONTROL_BAR_HEIGHT),
         align = AlignItems::Center,
-        column_gap = Val::Px(12.0),
-        padding = UiRect::horizontal(Val::Px(PANEL_PADDING))
+        column_gap = px(12),
+        padding = UiRect::horizontal(px(PANEL_PADDING))
     ))
     .with(|ui| {
         ui.elem(elem!(
             !Button,
-            icon = val!(
-                Icon,
-                image = crate::icons::PLAY,
-                size = Val::Px(14.0)
-            )
+            icon =
+                val!(Icon, image = crate::icons::PLAY, size = px(14))
         ))
         .observe(
             |mut click: On<Pointer<Click>>,
@@ -121,25 +118,25 @@ fn track_area(ui: &mut BevyUi) {
     ui.elem(elem!(
         Panel,
         direction = FlexDirection::Row,
-        padding = UiRect::horizontal(Val::Px(PANEL_PADDING))
+        padding = UiRect::horizontal(px(PANEL_PADDING))
     ))
     .with(|ui| {
         ui.elem(elem!(
             Panel,
             direction = FlexDirection::Column,
-            padding = UiRect::top(Val::Px(TRACK_TOP_PADDING)),
+            padding = UiRect::top(px(TRACK_TOP_PADDING)),
             scrolls = true
         ))
         .insert((
             NamePanel,
             Node {
-                width: Val::Px(NAME_PANEL_WIDTH),
-                height: Val::Percent(100.0),
-                min_height: Val::Px(0.0),
+                width: px(NAME_PANEL_WIDTH),
+                height: percent(100),
+                min_height: px(0),
                 flex_shrink: 0.0,
                 flex_direction: FlexDirection::Column,
                 overflow: Overflow::scroll_y(),
-                padding: UiRect::top(Val::Px(TRACK_TOP_PADDING)),
+                padding: UiRect::top(px(TRACK_TOP_PADDING)),
                 ..default()
             },
         ))
@@ -153,22 +150,22 @@ fn track_area(ui: &mut BevyUi) {
 
         ui.elem(elem!(
             Divider,
-            thickness = Val::Px(4.0),
+            thickness = px(4),
             orientation = ControlOrientation::Vertical
         ))
         .observe(on_divider_drag);
 
-        ui.elem(elem!(Frame, width = Val::Percent(100.0)))
+        ui.elem(elem!(Frame, width = percent(100)))
             .insert((
                 TrackViewport,
                 ScrollArea,
                 Node {
-                    width: Val::Percent(100.0),
+                    width: percent(100),
                     flex_grow: 1.0,
                     // `min: 0` lets the viewport shrink below its
                     // content so it clips and scrolls.
-                    min_width: Val::Px(0.0),
-                    min_height: Val::Px(0.0),
+                    min_width: px(0),
+                    min_height: px(0),
                     overflow: Overflow::scroll(),
                     ..default()
                 },
@@ -196,8 +193,8 @@ fn track_area(ui: &mut BevyUi) {
                         ui.elem(elem!(Frame,))
                             .insert(Node {
                                 position_type: PositionType::Absolute,
-                                top: Val::Px(TRACK_TOP_PADDING),
-                                left: Val::Px(0.0),
+                                top: px(TRACK_TOP_PADDING),
+                                left: px(0),
                                 ..default()
                             })
                             .watch(
@@ -256,7 +253,7 @@ fn on_divider_drag(
     };
     if let Val::Px(w) = panel_node.width {
         let new_w = (w + delta).clamp(NAME_PANEL_MIN, NAME_PANEL_MAX);
-        panel_node.width = Val::Px(new_w);
+        panel_node.width = px(new_w);
     }
 }
 
@@ -277,7 +274,7 @@ fn current_time(world: &World, _: Entity) -> Duration {
 /// zero-duration track still lays out.
 fn track_width(world: &World, _: Entity) -> Val {
     let duration = world.resource::<EditorState>().duration;
-    Val::Px(crate::px_for(duration).max(1.0))
+    px(crate::px_for(duration).max(1.0))
 }
 
 /// Every track's duration, in order. The watcher's signal: a box only
@@ -310,18 +307,18 @@ fn build_track_boxes(ui: &mut BevyUi) {
         let width = crate::px_for(duration).max(1.0);
         ui.elem(elem!(
             Frame,
-            width = Val::Px(width),
-            height = Val::Px(TRACK_HEIGHT),
-            radius = Val::Px(3.0),
+            width = px(width),
+            height = px(TRACK_HEIGHT),
+            radius = px(3),
             background = fill.with_alpha(0.35)
         ))
         .insert(Node {
             position_type: PositionType::Absolute,
-            top: Val::Px(top),
-            left: Val::Px(0.0),
-            width: Val::Px(width),
-            height: Val::Px(TRACK_HEIGHT),
-            border_radius: BorderRadius::all(Val::Px(3.0)),
+            top: px(top),
+            left: px(0),
+            width: px(width),
+            height: px(TRACK_HEIGHT),
+            border_radius: BorderRadius::all(px(3)),
             ..default()
         });
     }
