@@ -1,10 +1,11 @@
 //! Demonstrates the [`MoxiePlugin`] timeline editor.
 //!
-//! A row of cubes animates through a single track containing several
-//! actions. The editor docks a timeline panel at the bottom of the
-//! window: use the play/pause button to control playback and drag on
-//! the timeline to scrub. If the track is wider than the window, scroll
-//! the panel horizontally to reveal the rest.
+//! A row of cubes runs through four phases - pop in together, rotate
+//! in staggered pairs, race each other, then settle - deliberately
+//! mixing every [`Combinator`] and nesting them inside one another, so
+//! the timeline panel has a real tree to show. The editor docks a
+//! timeline panel at the bottom of the window: use the play/pause
+//! button to control playback and drag on the timeline to scrub.
 
 use bevy::color::palettes;
 use bevy::prelude::*;
@@ -43,9 +44,78 @@ fn main() {
         .run();
 }
 
-/// Spawns a row of cubes and an [`EditorScene`] animating them: each
-/// cube grows, then the whole row spins, staggered so the timeline
-/// panel has plenty of nested blocks to show.
+/// One cube: its subject id and spawn `x`, so later phases can move it
+/// relative to where it started.
+struct Cube {
+    subject: SceneUid,
+    x: f32,
+}
+
+/// Sets `subject`'s scale to `target`, eased.
+fn scale_to(
+    subject: SceneUid,
+    values: &mut ValuePool,
+    target: Vec3,
+    duration: core::time::Duration,
+) -> AnimNode<Backend> {
+    AnimNode::action(ActionCmd {
+        subject,
+        field: field_ref(path!(<Transform>::scale)),
+        op: AnimOp::To,
+        value: values.insert(target),
+        duration,
+        ease: Some(AnimEase::CubicEaseInOut),
+        interp: Some(AnimInterp::Linear),
+    })
+}
+
+/// Sets `subject`'s rotation to `target`, eased.
+fn rotate_to(
+    subject: SceneUid,
+    values: &mut ValuePool,
+    target: Quat,
+    duration: core::time::Duration,
+) -> AnimNode<Backend> {
+    AnimNode::action(ActionCmd {
+        subject,
+        field: field_ref(path!(<Transform>::rotation)),
+        op: AnimOp::To,
+        value: values.insert(target),
+        duration,
+        ease: Some(AnimEase::CubicEaseInOut),
+        interp: Some(AnimInterp::Linear),
+    })
+}
+
+/// Sets `subject`'s translation to `target`, eased.
+fn move_to(
+    subject: SceneUid,
+    values: &mut ValuePool,
+    target: Vec3,
+    duration: core::time::Duration,
+) -> AnimNode<Backend> {
+    AnimNode::action(ActionCmd {
+        subject,
+        field: field_ref(path!(<Transform>::translation)),
+        op: AnimOp::To,
+        value: values.insert(target),
+        duration,
+        ease: Some(AnimEase::CubicEaseInOut),
+        interp: Some(AnimInterp::Linear),
+    })
+}
+
+/// Spawns a row of cubes and an [`EditorScene`] animating them through
+/// four phases, deliberately mixing and nesting every [`Combinator`]:
+///
+/// 1. **Scale in** (`All`) - every cube pops in at once.
+/// 2. **Paired rotate** (`Flow` of `All` pairs) - cubes rotate two at a
+///    time, each pair staggered after the last.
+/// 3. **Race** (`Any` of an action and a `Chain`) - two cubes chase the
+///    same finish line; the phase ends the instant the faster one
+///    does, leaving the slower one mid-flight.
+/// 4. **Finale** (`Chain` of `All` then `Flow`) - every cube settles
+///    its scale together, then unwinds its rotation one at a time.
 ///
 /// Built as a [`Scene`] rather than through `motiongfx`'s imperative
 /// track builder - the scene is what the editor edits, saves and
@@ -58,57 +128,140 @@ fn spawn_timeline(
 ) {
     let mesh = meshes.add(Cuboid::default());
     let mut values = ValuePool::default();
-    let mut grow: Vec<AnimNode<Backend>> =
-        Vec::with_capacity(CUBE_COUNT);
-    let mut spin: Vec<AnimNode<Backend>> =
-        Vec::with_capacity(CUBE_COUNT);
 
-    for i in 0..CUBE_COUNT {
-        let x = (i as f32) - (CUBE_COUNT as f32 - 1.0) * 0.5;
-        let material = materials.add(StandardMaterial::from_color(
-            palettes::tailwind::SKY_400,
-        ));
-        let uid = EntityUid::new();
-        commands.spawn((
-            uid,
-            Mesh3d(mesh.clone()),
-            MeshMaterial3d(material),
-            Transform::from_xyz(x * 1.5, 0.0, 0.0)
-                .with_scale(Vec3::ZERO),
-        ));
-        let subject = SceneUid::Entity(uid);
+    let cubes: Vec<Cube> = (0..CUBE_COUNT)
+        .map(|i| {
+            let x = (i as f32) - (CUBE_COUNT as f32 - 1.0) * 0.5;
+            let material =
+                materials.add(StandardMaterial::from_color(
+                    palettes::tailwind::SKY_400,
+                ));
+            let uid = EntityUid::new();
+            commands.spawn((
+                uid,
+                Mesh3d(mesh.clone()),
+                MeshMaterial3d(material),
+                Transform::from_xyz(x * 1.5, 0.0, 0.0)
+                    .with_scale(Vec3::ZERO),
+            ));
+            Cube {
+                subject: SceneUid::Entity(uid),
+                x: x * 1.5,
+            }
+        })
+        .collect();
 
-        grow.push(AnimNode::action(ActionCmd {
-            subject,
-            field: field_ref(path!(<Transform>::scale)),
-            op: AnimOp::To,
-            value: values.insert(Vec3::ONE),
-            duration: cs(60),
-            ease: Some(AnimEase::CubicEaseInOut),
-            interp: Some(AnimInterp::Linear),
-        }));
+    // Phase 1 - every cube pops in together.
+    let scale_in = Block {
+        combinator: Combinator::All,
+        children: cubes
+            .iter()
+            .map(|cube| {
+                scale_to(cube.subject, &mut values, Vec3::ONE, cs(40))
+            })
+            .collect(),
+    };
 
-        spin.push(AnimNode::action(ActionCmd {
-            subject,
-            field: field_ref(path!(<Transform>::rotation)),
-            op: AnimOp::To,
-            value: values
-                .insert(Quat::from_rotation_y(std::f32::consts::PI)),
-            duration: s(1),
-            ease: Some(AnimEase::CubicEaseInOut),
-            interp: Some(AnimInterp::Linear),
-        }));
-    }
+    // Phase 2 - cubes rotate two at a time (an `All` pair), each pair
+    // staggered after the last (a `Flow` of those pairs).
+    let paired_rotate = Block {
+        combinator: Combinator::Flow(cs(25)),
+        children: cubes
+            .chunks(2)
+            .map(|pair| {
+                AnimNode::block(Block {
+                    combinator: Combinator::All,
+                    children: pair
+                        .iter()
+                        .map(|cube| {
+                            rotate_to(
+                                cube.subject,
+                                &mut values,
+                                Quat::from_rotation_y(
+                                    core::f32::consts::PI,
+                                ),
+                                s(1),
+                            )
+                        })
+                        .collect(),
+                })
+            })
+            .collect(),
+    };
+
+    // Phase 3 - two cubes race for the same finish line: a lone slow
+    // hop against a `Chain` of two quick hops. `Any` ends the instant
+    // the faster one does, so the slow hop is left unfinished.
+    let race = Block {
+        combinator: Combinator::Any,
+        children: vec![
+            move_to(
+                cubes[0].subject,
+                &mut values,
+                Vec3::new(cubes[0].x, 1.5, 0.0),
+                s(2),
+            ),
+            AnimNode::block(Block {
+                combinator: Combinator::Chain,
+                children: vec![
+                    move_to(
+                        cubes[1].subject,
+                        &mut values,
+                        Vec3::new(cubes[1].x, 1.0, 0.0),
+                        cs(50),
+                    ),
+                    move_to(
+                        cubes[1].subject,
+                        &mut values,
+                        Vec3::new(cubes[1].x, 0.0, 0.0),
+                        cs(50),
+                    ),
+                ],
+            }),
+        ],
+    };
+
+    // Phase 4 - settle every cube's scale together (`All`), then
+    // unwind their rotation one at a time (`Flow`).
+    let finale = Block {
+        combinator: Combinator::Chain,
+        children: vec![
+            AnimNode::block(Block {
+                combinator: Combinator::All,
+                children: cubes
+                    .iter()
+                    .map(|cube| {
+                        scale_to(
+                            cube.subject,
+                            &mut values,
+                            Vec3::splat(0.7),
+                            cs(30),
+                        )
+                    })
+                    .collect(),
+            }),
+            AnimNode::block(Block {
+                combinator: Combinator::Flow(cs(8)),
+                children: cubes
+                    .iter()
+                    .map(|cube| {
+                        rotate_to(
+                            cube.subject,
+                            &mut values,
+                            Quat::IDENTITY,
+                            cs(40),
+                        )
+                    })
+                    .collect(),
+            }),
+        ],
+    };
 
     let animation = Block::chain(vec![
-        AnimNode::block(Block {
-            combinator: Combinator::Flow(cs(15)),
-            children: grow,
-        }),
-        AnimNode::block(Block {
-            combinator: Combinator::Flow(cs(10)),
-            children: spin,
-        }),
+        AnimNode::block(scale_in),
+        AnimNode::block(paired_rotate),
+        AnimNode::block(race),
+        AnimNode::block(finale),
     ]);
 
     let scene = AnimScene {
