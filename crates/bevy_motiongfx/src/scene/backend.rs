@@ -16,6 +16,23 @@ use crate::scene::id::{EntityUid, SceneUid};
 use crate::scene::value_pool::ValuePool;
 use crate::world::BevyWorld;
 
+/// The [`FieldRef`] a [`FieldAccessor`] resolves to once registered
+/// through [`SceneRegistryExt::register_reflected_field`] - same
+/// name-building rule
+/// ([`SceneRegistry::register_field_with_key`](motiongfx_scene::registry::SceneRegistry::register_field_with_key)),
+/// exposed so callers building [`ActionCmd`](motiongfx_scene::block::ActionCmd)s
+/// by hand (an editor, a scene author) can name a field the same way
+/// the registry does, without duplicating the `TypeName::new(S::type_path())`
+/// pairing themselves.
+pub fn field_ref<S: TypePath, T>(
+    field_acc: FieldAccessor<S, T>,
+) -> FieldRef {
+    FieldRef::new(
+        TypeName::new(S::type_path()),
+        field_acc.field.field_path(),
+    )
+}
+
 /// The concrete [`SceneBackend`] for Bevy.
 pub struct Backend;
 

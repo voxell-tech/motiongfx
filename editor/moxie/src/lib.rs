@@ -10,8 +10,10 @@
 // Inherent to Bevy ECS: systems take many params and query tuples.
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
+mod block_layout;
 mod icons;
 mod playback;
+mod scene;
 mod ui;
 mod view;
 
@@ -22,6 +24,8 @@ use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
 };
 use bevy_motiongfx::prelude::TimelineId;
+
+pub use scene::EditorScene;
 
 /// Plugin that renders a timeline editor UI for the first
 /// [`Timeline`](bevy_motiongfx::prelude::BevyTimeline).

@@ -7,7 +7,10 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-bevy_motiongfx = { workspace = true, default-features = true }
+bevy_motiongfx = { workspace = true, default-features = true, features = [
+    "scene",
+] }
+motiongfx_scene = { workspace = true, features = ["std"] }
 moxie_ui = { workspace = true }
 bevy_fynix = { workspace = true }
 fynix_mock = { workspace = true }

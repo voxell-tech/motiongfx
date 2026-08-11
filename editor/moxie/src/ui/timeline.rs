@@ -3,30 +3,29 @@
 
 use core::time::Duration;
 
-use bevy::picking::events::{Click, Drag, Pointer};
+use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
-use bevy::ui_widgets::{ControlOrientation, ScrollArea};
+use bevy::ui_widgets::ScrollArea;
 use bevy_motiongfx::prelude::MotionGfxManager;
 
 use super::PANEL_PADDING;
-use crate::EditorState;
+use crate::block_layout::{self, Row};
 use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_click_release,
     on_track_drag, on_track_press, on_track_release,
 };
+use crate::{EditorScene, EditorState};
 use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
 use moxie_ui::fynix::{
-    Button, Divider, Frame, Icon, IconCursor, Label, LabelCursor,
-    Panel, PanelCursor, PlayheadLine, PlayheadLineCursor,
-    RawButtonCursor, TimelineTrack, TimelineTrackCursor,
+    Button, Frame, Icon, IconCursor, Label, LabelCursor, Panel,
+    PanelCursor, PlayheadLine, PlayheadLineCursor, RawButtonCursor,
+    TimelineTrack, TimelineTrackCursor,
 };
 use moxie_ui::reactive::{BevyUi, resource_changed, value_changed};
 use moxie_ui::theme::EditorTheme;
 
 const NAME_PANEL_WIDTH: f32 = 140.0;
-const NAME_PANEL_MIN: f32 = 60.0;
-const NAME_PANEL_MAX: f32 = 400.0;
 const CONTROL_BAR_HEIGHT: f32 = 40.0;
 const TRACK_TOP_PADDING: f32 = 12.0;
 /// Height of one track's box, and the gap below it.
@@ -148,13 +147,6 @@ fn track_area(ui: &mut BevyUi) {
             viewport_scroll,
         );
 
-        ui.elem(elem!(
-            Divider,
-            thickness = px(4),
-            orientation = ControlOrientation::Vertical
-        ))
-        .observe(on_divider_drag);
-
         ui.elem(elem!(Frame, width = percent(100)))
             .insert((
                 TrackViewport,
@@ -198,7 +190,7 @@ fn track_area(ui: &mut BevyUi) {
                                 ..default()
                             })
                             .watch(
-                                value_changed(track_spans),
+                                value_changed(block_rows),
                                 build_track_boxes,
                             );
 
@@ -235,28 +227,6 @@ fn viewport_scroll(world: &World, node: Entity) -> f32 {
         .unwrap_or(0.0)
 }
 
-/// Drag handler for the name-panel / track resize divider.
-fn on_divider_drag(
-    drag: On<Pointer<Drag>>,
-    q_name_panel: Query<Entity, With<NamePanel>>,
-    mut q_nodes: Query<&mut Node>,
-) {
-    let delta = drag.delta.x;
-    if delta == 0.0 {
-        return;
-    }
-    let Ok(name_panel) = q_name_panel.single() else {
-        return;
-    };
-    let Ok(mut panel_node) = q_nodes.get_mut(name_panel) else {
-        return;
-    };
-    if let Val::Px(w) = panel_node.width {
-        let new_w = (w + delta).clamp(NAME_PANEL_MIN, NAME_PANEL_MAX);
-        panel_node.width = px(new_w);
-    }
-}
-
 /// `timeline.target_time()`, or zero if no timeline is focused yet.
 fn current_time(world: &World, _: Entity) -> Duration {
     let state = world.resource::<EditorState>();
@@ -277,49 +247,57 @@ fn track_width(world: &World, _: Entity) -> Val {
     px(crate::px_for(duration).max(1.0))
 }
 
-/// Every track's duration, in order. The watcher's signal: a box only
-/// needs rebuilding when a track is added, removed or re-timed.
-fn track_spans(world: &World, _: Entity) -> Vec<Duration> {
-    let state = world.resource::<EditorState>();
-    let Some(id) = state.timeline else {
-        return Vec::new();
-    };
+/// The editor scene's animation tree, flattened depth-first. The
+/// watcher's signal: a box only needs rebuilding when a node is added,
+/// removed, re-timed or re-nested.
+fn block_rows(world: &World, _: Entity) -> Vec<Row> {
     world
-        .resource::<MotionGfxManager>()
-        .get_timeline(&id)
-        .map(|timeline| {
-            timeline
-                .tracks()
-                .iter()
-                .map(|track| track.duration())
-                .collect()
+        .get_resource::<EditorScene>()
+        .map(|editor_scene| {
+            block_layout::rows(&editor_scene.scene().0.animation)
         })
         .unwrap_or_default()
 }
 
-/// One box per track, stacked top to bottom and scaled to duration.
+/// One box per row, stacked top to bottom and placed at its resolved
+/// start time. Block-header rows (a [`Node::Block`](motiongfx_scene::block::Node::Block)'s
+/// combinator) draw as a hollow outline spanning their children;
+/// action leaves draw filled - the nesting itself reads from which
+/// rows a header's outline encloses, not from indentation, since the
+/// horizontal axis is already spoken for by time.
 fn build_track_boxes(ui: &mut BevyUi) {
-    let spans = track_spans(ui.world, ui.parent());
-    let fill = ui.world.resource::<EditorTheme>().palette.blue;
+    let rows = block_rows(ui.world, ui.parent());
+    let theme = ui.world.resource::<EditorTheme>();
+    let action_fill = theme.palette.blue;
+    let block_outline = theme.text_primary;
 
-    for (index, duration) in spans.into_iter().enumerate() {
+    for (index, row) in rows.into_iter().enumerate() {
         let top = index as f32 * (TRACK_HEIGHT + TRACK_GAP);
-        let width = crate::px_for(duration).max(1.0);
+        let left = crate::px_for(row.start);
+        let width = crate::px_for(row.duration).max(1.0);
+
+        let (background, border) = match row.combinator {
+            Some(_) => (Color::NONE, block_outline.with_alpha(0.4)),
+            None => (action_fill.with_alpha(0.35), Color::NONE),
+        };
+
         ui.elem(elem!(
             Frame,
             width = px(width),
             height = px(TRACK_HEIGHT),
             radius = px(3),
-            background = fill.with_alpha(0.35)
+            background = background
         ))
         .insert(Node {
             position_type: PositionType::Absolute,
             top: px(top),
-            left: px(0),
+            left: px(left),
             width: px(width),
             height: px(TRACK_HEIGHT),
+            border: UiRect::all(px(1)),
             border_radius: BorderRadius::all(px(3)),
             ..default()
-        });
+        })
+        .insert(BorderColor::all(border));
     }
 }
