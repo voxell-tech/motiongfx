@@ -154,13 +154,15 @@ fn measure_block(
     }
 }
 
-/// Measures every child, then packs them into lanes: an item joins the
-/// first lane whose last occupant already ended by the time it
-/// starts, opening a new lane (one row further down) whenever it would
-/// otherwise overlap in time. A `Chain`'s children never overlap, so
-/// this always settles into one lane - `All`/`Any`/`Flow` typically
-/// need several, exactly where they'd otherwise draw on top of each
-/// other.
+/// Measures every child, then lays them into lanes (rows): a `Chain`'s
+/// children never overlap in time by construction, so they all share
+/// one lane, side by side - every other combinator gives each child
+/// its own dedicated lane, always, rather than repacking lanes as
+/// earlier children free up. Packing would occasionally let two
+/// children share a lane (e.g. a `Flow`'s first and fifth child, once
+/// the first has finished) - correct, but it reads as one fused bar
+/// instead of two separate actions, which is worse than the extra
+/// row it would have cost to keep them apart.
 fn measure_children(
     children: &[Node<Backend>],
     combinator: &Combinator,
@@ -199,25 +201,20 @@ fn measure_children(
         .map(|(child, start)| measure_node(child, start))
         .collect();
 
-    let mut order: Vec<usize> = (0..measured.len()).collect();
-    order.sort_by_key(|&i| measured[i].start);
+    let lane_of: Vec<usize> = match combinator {
+        Combinator::Chain => vec![0; measured.len()],
+        Combinator::All | Combinator::Any | Combinator::Flow(_) => {
+            (0..measured.len()).collect()
+        }
+    };
+    let lane_count = match combinator {
+        Combinator::Chain => 1,
+        Combinator::All | Combinator::Any | Combinator::Flow(_) => {
+            measured.len()
+        }
+    };
 
-    let mut lane_last_end: Vec<Duration> = Vec::new();
-    let mut lane_of = vec![0usize; measured.len()];
-    for i in order {
-        let m = &measured[i];
-        let lane = lane_last_end
-            .iter()
-            .position(|&end| end <= m.start)
-            .unwrap_or_else(|| {
-                lane_last_end.push(Duration::ZERO);
-                lane_last_end.len() - 1
-            });
-        lane_last_end[lane] = m.end;
-        lane_of[i] = lane;
-    }
-
-    let mut lane_height = vec![0f32; lane_last_end.len()];
+    let mut lane_height = vec![0f32; lane_count];
     for (i, m) in measured.iter().enumerate() {
         lane_height[lane_of[i]] =
             lane_height[lane_of[i]].max(m.height);
