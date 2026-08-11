@@ -12,8 +12,9 @@ use bevy_fynix::interact::OnExt as _;
 use fynix_mock::element::Element;
 use fynix_mock::host::Host;
 use fynix_mock::lenz::{Cursor, FieldPath, Identity};
-use fynix_mock::transition::{Transition, ease};
+use fynix_mock::transition::Transition;
 use fynix_mock::ui::ElementMut;
+use motiongfx_interp::ease;
 
 /// Long enough to read as a fade, short enough to feel immediate.
 const INTERACT_MS: u32 = 120;
@@ -117,7 +118,8 @@ impl<E: Element<BevyHost> + Send + Sync> MotionExt<E>
     {
         let mut elem = self.transition(
             field,
-            Transition::ms(INTERACT_MS, T::mix).ease(ease::cubic_out),
+            Transition::ms(INTERACT_MS, T::mix)
+                .ease(ease::cubic::ease_out),
         );
 
         elem.on_entity::<Pointer<Over>>(entity)
