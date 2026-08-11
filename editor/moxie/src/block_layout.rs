@@ -1,40 +1,81 @@
-//! Flattens a scene's [`Block`] tree into timeline rows: one per node,
-//! depth-first, each carrying its resolved start time and duration.
+//! Lays a scene's [`Block`] tree out as nested boxes: a block is a
+//! bordered container spanning its time range, holding its children -
+//! actions as filled bars, nested blocks as containers of their own -
+//! rather than one flat row per node.
 //!
-//! Mirrors the timing math `motiongfx::track`'s `chain`/`all`/`any`/
-//! `flow` apply when a [`Block`] compiles into a `Track`, but stays
-//! entirely off the registry: every leaf's `duration` sits right on
-//! its [`ActionCmd`](motiongfx_scene::block::ActionCmd), so a row's
-//! start/duration needs nothing beyond the tree itself.
+//! Horizontal position always comes straight from a node's resolved
+//! start time ([`crate::px_for`]); nesting only ever affects the
+//! *vertical* axis, so a block's box literally encloses its children's
+//! boxes instead of merely implying the relationship through
+//! indentation.
 
 use core::time::Duration;
 
 use bevy_motiongfx::scene::backend::Backend;
 use motiongfx_scene::block::{Block, Combinator, Node};
 
-/// One row in the timeline panel: a [`Node::Block`] header or a
-/// [`Node::Action`] leaf, at its resolved start time.
+/// Height of an action leaf's bar, and of a block's header strip.
+const ROW_HEIGHT: f32 = 20.0;
+const HEADER_HEIGHT: f32 = 20.0;
+/// Vertical gap between lanes that would otherwise overlap in time.
+const LANE_GAP: f32 = 4.0;
+const MIN_WIDTH: f32 = 2.0;
+
+/// One box to draw: a block header (its combinator, as a label) or an
+/// action leaf.
 #[derive(Clone, PartialEq)]
-pub(crate) struct Row {
+pub(crate) struct Placed {
+    pub(crate) x: f32,
+    pub(crate) y: f32,
+    pub(crate) w: f32,
+    pub(crate) h: f32,
     pub(crate) depth: usize,
-    pub(crate) start: Duration,
-    pub(crate) duration: Duration,
-    /// `Some` for a block header row (its combinator); `None` for an
-    /// action leaf.
-    pub(crate) combinator: Option<Combinator>,
+    /// `Some` for a block header box; `None` for an action leaf.
+    pub(crate) label: Option<String>,
 }
 
-/// Every row of `block`'s subtree, depth-first. `block` itself gets no
-/// row of its own - its children start at depth `0`, matching the
-/// timeline panel's previous one-row-per-top-level-track look.
-pub(crate) fn rows(block: &Block<Backend>) -> Vec<Row> {
+/// Every box in `animation`'s tree, depth-first - `animation` itself
+/// gets a box too (depth `0`), playing the role of the whole
+/// timeline's outer frame.
+pub(crate) fn layout(animation: &Block<Backend>) -> Vec<Placed> {
+    let root = measure_block(animation, Duration::ZERO);
     let mut out = Vec::new();
-    layout_block(block, 0, Duration::ZERO, &mut out);
+    flatten(&root, 0.0, 0, &mut out);
     out
 }
 
+/// A subtree's resolved extent and, if it's a block, its own laid-out
+/// children (each tagged with its lane's vertical offset, relative to
+/// this block's content area).
+struct Measured {
+    start: Duration,
+    end: Duration,
+    height: f32,
+    kind: MeasuredKind,
+}
+
+enum MeasuredKind {
+    Action,
+    Block {
+        label: String,
+        children: Vec<(f32, Measured)>,
+    },
+}
+
+fn combinator_label(combinator: &Combinator) -> String {
+    match combinator {
+        Combinator::Chain => "Chain".into(),
+        Combinator::All => "All".into(),
+        Combinator::Any => "Any".into(),
+        Combinator::Flow(delay) => {
+            format!("Flow {:.2}s", delay.as_secs_f32())
+        }
+    }
+}
+
 /// A node's own duration, including its `delay`: how much it advances
-/// its parent block's chain/flow position.
+/// its parent block's chain/flow position. Mirrors the timing math
+/// `motiongfx::track`'s `chain`/`flow` apply at compile time.
 fn node_duration(node: &Node<Backend>) -> Duration {
     let (delay, inner) = match node {
         Node::Action { delay, action } => (delay, action.duration),
@@ -77,12 +118,7 @@ fn block_duration(block: &Block<Backend>) -> Duration {
     }
 }
 
-fn layout_node(
-    node: &Node<Backend>,
-    depth: usize,
-    start: Duration,
-    out: &mut Vec<Row>,
-) {
+fn measure_node(node: &Node<Backend>, start: Duration) -> Measured {
     let delay = match node {
         Node::Action { delay, .. } | Node::Block { delay, .. } => {
             delay.unwrap_or_default()
@@ -91,48 +127,149 @@ fn layout_node(
     let start = start.saturating_add(delay);
 
     match node {
-        Node::Action { action, .. } => out.push(Row {
-            depth,
+        Node::Action { action, .. } => Measured {
             start,
-            duration: action.duration,
-            combinator: None,
-        }),
-        Node::Block { block, .. } => {
-            out.push(Row {
-                depth,
-                start,
-                duration: block_duration(block),
-                combinator: Some(block.combinator.clone()),
-            });
-            layout_block(block, depth + 1, start, out);
-        }
+            end: start.saturating_add(action.duration),
+            height: ROW_HEIGHT,
+            kind: MeasuredKind::Action,
+        },
+        Node::Block { block, .. } => measure_block(block, start),
     }
 }
 
-fn layout_block(
+fn measure_block(
     block: &Block<Backend>,
-    depth: usize,
     start: Duration,
-    out: &mut Vec<Row>,
-) {
-    match block.combinator {
+) -> Measured {
+    let (children, content_height) =
+        measure_children(&block.children, &block.combinator, start);
+    Measured {
+        start,
+        end: start.saturating_add(block_duration(block)),
+        height: HEADER_HEIGHT + content_height,
+        kind: MeasuredKind::Block {
+            label: combinator_label(&block.combinator),
+            children,
+        },
+    }
+}
+
+/// Measures every child, then packs them into lanes: an item joins the
+/// first lane whose last occupant already ended by the time it
+/// starts, opening a new lane (one row further down) whenever it would
+/// otherwise overlap in time. A `Chain`'s children never overlap, so
+/// this always settles into one lane - `All`/`Any`/`Flow` typically
+/// need several, exactly where they'd otherwise draw on top of each
+/// other.
+fn measure_children(
+    children: &[Node<Backend>],
+    combinator: &Combinator,
+    block_start: Duration,
+) -> (Vec<(f32, Measured)>, f32) {
+    if children.is_empty() {
+        return (Vec::new(), 0.0);
+    }
+
+    let starts: Vec<Duration> = match *combinator {
         Combinator::Chain => {
-            let mut t = start;
-            for child in &block.children {
-                layout_node(child, depth, t, out);
-                t = t.saturating_add(node_duration(child));
-            }
+            let mut t = block_start;
+            children
+                .iter()
+                .map(|child| {
+                    let start = t;
+                    t = t.saturating_add(node_duration(child));
+                    start
+                })
+                .collect()
         }
         Combinator::All | Combinator::Any => {
-            for child in &block.children {
-                layout_node(child, depth, start, out);
-            }
+            children.iter().map(|_| block_start).collect()
         }
-        Combinator::Flow(delay) => {
-            for (i, child) in block.children.iter().enumerate() {
-                let child_start = start
-                    .saturating_add(delay.saturating_mul(i as u32));
-                layout_node(child, depth, child_start, out);
+        Combinator::Flow(delay) => (0..children.len())
+            .map(|i| {
+                block_start
+                    .saturating_add(delay.saturating_mul(i as u32))
+            })
+            .collect(),
+    };
+
+    let measured: Vec<Measured> = children
+        .iter()
+        .zip(starts)
+        .map(|(child, start)| measure_node(child, start))
+        .collect();
+
+    let mut order: Vec<usize> = (0..measured.len()).collect();
+    order.sort_by_key(|&i| measured[i].start);
+
+    let mut lane_last_end: Vec<Duration> = Vec::new();
+    let mut lane_of = vec![0usize; measured.len()];
+    for i in order {
+        let m = &measured[i];
+        let lane = lane_last_end
+            .iter()
+            .position(|&end| end <= m.start)
+            .unwrap_or_else(|| {
+                lane_last_end.push(Duration::ZERO);
+                lane_last_end.len() - 1
+            });
+        lane_last_end[lane] = m.end;
+        lane_of[i] = lane;
+    }
+
+    let mut lane_height = vec![0f32; lane_last_end.len()];
+    for (i, m) in measured.iter().enumerate() {
+        lane_height[lane_of[i]] =
+            lane_height[lane_of[i]].max(m.height);
+    }
+    let mut lane_y = vec![0f32; lane_height.len()];
+    let mut y = 0.0;
+    for (lane, h) in lane_height.iter().enumerate() {
+        lane_y[lane] = y;
+        y += h + LANE_GAP;
+    }
+    let content_height = (y - LANE_GAP).max(0.0);
+
+    let placed = measured
+        .into_iter()
+        .enumerate()
+        .map(|(i, m)| (lane_y[lane_of[i]], m))
+        .collect();
+    (placed, content_height)
+}
+
+fn flatten(
+    measured: &Measured,
+    y: f32,
+    depth: usize,
+    out: &mut Vec<Placed>,
+) {
+    let x = crate::px_for(measured.start);
+    let w =
+        crate::px_for(measured.end.saturating_sub(measured.start))
+            .max(MIN_WIDTH);
+
+    match &measured.kind {
+        MeasuredKind::Action => out.push(Placed {
+            x,
+            y,
+            w,
+            h: measured.height,
+            depth,
+            label: None,
+        }),
+        MeasuredKind::Block { label, children } => {
+            out.push(Placed {
+                x,
+                y,
+                w,
+                h: measured.height,
+                depth,
+                label: Some(label.clone()),
+            });
+            let content_top = y + HEADER_HEIGHT;
+            for (lane_y, child) in children {
+                flatten(child, content_top + lane_y, depth + 1, out);
             }
         }
     }
