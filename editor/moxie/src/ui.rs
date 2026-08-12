@@ -5,8 +5,6 @@
 mod hierarchy;
 mod timeline;
 
-pub(crate) use timeline::TimelineContent;
-
 use std::sync::Arc;
 
 use bevy::camera::Hdr;

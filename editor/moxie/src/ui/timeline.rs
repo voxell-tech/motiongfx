@@ -32,13 +32,6 @@ const CONTROL_BAR_HEIGHT: f32 = 40.0;
 #[derive(Component, Default, Clone)]
 struct TrackViewport;
 
-/// The scrubbable track, sized to the timeline's duration at
-/// [`PIXELS_PER_SECOND`](crate::PIXELS_PER_SECOND). Holds the track
-/// boxes and the playhead; scrubbing comes from pointer observers on
-/// it, so a drag can only start from a press that lands inside.
-#[derive(Component, Default, Clone)]
-pub(crate) struct TimelineContent;
-
 /// The timeline panel, as kernel nodes.
 ///
 /// Each reactive field binds at the node that owns it, which is why
@@ -104,7 +97,6 @@ fn control_bar(ui: &mut BevyUi) {
 /// it's neither scrolled nor clipped by the [`ScrollArea`].
 fn track_area(ui: &mut BevyUi) {
     ui.elem(elem!(Frame, width = percent(100), flex_grow = 1.0))
-        .insert(TimelineContent)
         .observe(on_track_press)
         .observe(on_track_drag)
         .observe(on_track_release)
