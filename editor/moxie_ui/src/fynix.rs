@@ -17,6 +17,7 @@ mod overlay;
 mod panel;
 mod playhead;
 mod tab;
+mod timeline_block;
 mod timeline_track;
 
 // The cursor traits come too: a binding names a field by walking to
@@ -41,6 +42,9 @@ pub use playhead::{
 pub use tab::{
     Tab, TabBar, TabBarCursor, TabBarField, TabCursor, TabField,
     TabRow, TabRowCursor, TabRowField,
+};
+pub use timeline_block::{
+    TimelineBlock, TimelineBlockCursor, TimelineBlockField,
 };
 pub use timeline_track::{
     TimelineTrack, TimelineTrackCursor, TimelineTrackField,

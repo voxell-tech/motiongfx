@@ -20,8 +20,8 @@ use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
 use moxie_ui::fynix::{
     Button, Frame, Icon, IconCursor, Label, LabelCursor, Panel,
-    PlayheadLine, PlayheadLineCursor, RawButtonCursor, TimelineTrack,
-    TimelineTrackCursor,
+    PlayheadLine, PlayheadLineCursor, RawButtonCursor, TimelineBlock,
+    TimelineTrack, TimelineTrackCursor,
 };
 use moxie_ui::reactive::{BevyUi, resource_changed, value_changed};
 use moxie_ui::theme::EditorTheme;
@@ -198,12 +198,13 @@ fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
         .unwrap_or_default()
 }
 
-/// One box per placement: a block's header box drawn as a hollow
-/// outline enclosing its children, an action leaf drawn filled. A
-/// `dotted` piece (an `Any`'s losing branch, past the group's official
-/// end) draws ghosted instead - faint enough to read as "still
-/// playing, but no longer part of this group's timing" - and skips its
-/// own label, since the solid piece right before it already showed one.
+/// One box per placement: a block's header - a [`TimelineBlock`],
+/// which owns its own label - or, for anything without one (an action
+/// leaf, or a `dotted` overflow piece that skips its own label since
+/// the solid piece right before it already showed one), a plain
+/// filled [`Frame`]. A `dotted` piece (an `Any`'s losing branch, past
+/// the group's official end) draws ghosted - faint enough to read as
+/// "still playing, but no longer part of this group's timing".
 fn build_block_boxes(ui: &mut BevyUi) {
     let placements = block_placements(ui.world, ui.parent());
     let theme = ui.world.resource::<EditorTheme>();
@@ -222,43 +223,44 @@ fn build_block_boxes(ui: &mut BevyUi) {
             (action_fill.with_alpha(0.35 * ghost), Color::NONE)
         };
 
-        ui.elem(elem!(
-            Frame,
-            width = px(placed.w),
-            height = px(placed.h),
-            radius = px(3),
-            background = background
-        ))
-        .insert(Node {
-            position_type: PositionType::Absolute,
-            top: px(placed.y),
-            left: px(placed.x),
-            width: px(placed.w),
-            height: px(placed.h),
-            border: UiRect::all(px(1)),
-            border_radius: BorderRadius::all(px(3)),
-            ..default()
-        })
-        .insert(BorderColor::all(border))
-        .with(|ui| {
-            if placed.dotted {
-                return;
+        match placed.label.filter(|_| !placed.dotted) {
+            Some(label) => {
+                ui.elem(elem!(
+                    TimelineBlock,
+                    label = val!(
+                        Label,
+                        text = label,
+                        size = 10.0,
+                        color = Some(block_outline.with_alpha(0.8))
+                    ),
+                    top = placed.y,
+                    left = placed.x,
+                    width = placed.w,
+                    height = placed.h,
+                    background = background,
+                    border = border
+                ));
             }
-            let Some(label) = placed.label.clone() else {
-                return;
-            };
-            ui.elem(elem!(
-                Label,
-                text = label,
-                size = 10.0,
-                color = Some(block_outline.with_alpha(0.8))
-            ))
-            .insert(Node {
-                position_type: PositionType::Absolute,
-                top: px(2),
-                left: px(4),
-                ..default()
-            });
-        });
+            None => {
+                ui.elem(elem!(
+                    Frame,
+                    width = px(placed.w),
+                    height = px(placed.h),
+                    radius = px(3),
+                    background = background
+                ))
+                .insert(Node {
+                    position_type: PositionType::Absolute,
+                    top: px(placed.y),
+                    left: px(placed.x),
+                    width: px(placed.w),
+                    height: px(placed.h),
+                    border: UiRect::all(px(1)),
+                    border_radius: BorderRadius::all(px(3)),
+                    ..default()
+                })
+                .insert(BorderColor::all(border));
+            }
+        }
     }
 }
