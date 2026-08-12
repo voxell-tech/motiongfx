@@ -228,14 +228,14 @@ fn register_windows(
         id: "timeline".into(),
         name: "Timeline".into(),
         icon: Some(crate::icons::TIMELINE.into()),
-        build: Arc::new(|ui: &mut BevyUi| timeline::panel(ui)),
+        build: Arc::new(timeline::panel),
     });
 
     registry.register(DockWindowDescriptor {
         id: "hierarchy".into(),
         name: "Hierarchy".into(),
         icon: Some(crate::icons::HIERARCHY.into()),
-        build: Arc::new(|ui: &mut BevyUi| hierarchy::panel(ui)),
+        build: Arc::new(hierarchy::panel),
     });
 
     // Settings: a reflect inspector over `EditorSettings` + Save.

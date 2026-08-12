@@ -32,7 +32,7 @@ pub struct ButtonElem {
     #[elem]
     pub label: Option<Label>,
     /// Between the icon and the label, when both are there.
-    #[default(::ZERO)]
+    #[default(px(6))]
     pub column_gap: Val,
     /// What the background shows. Nothing by default, which is a
     /// [`GhostButton`]; [`Button`] rests at `FILL`, and interaction
@@ -49,7 +49,7 @@ pub struct ButtonElem {
     #[default(::Center)]
     pub justify: JustifyContent,
     pub padding: UiRect,
-    #[default(Val::ZERO)]
+    #[default(::ZERO)]
     pub radius: Val,
 }
 

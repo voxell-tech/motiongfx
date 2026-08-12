@@ -15,7 +15,7 @@ pub use motiongfx_interp::ease::EaseFn;
 /// value itself is walked.
 pub struct Transition<T> {
     /// Seconds. Zero arrives on the next flush.
-    pub duration: f32,
+    pub duration: f32, // TODO: Change to Duration.
     pub ease: EaseFn,
     pub lerp: LerpFn<T>,
 }
