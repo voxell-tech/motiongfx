@@ -371,7 +371,7 @@ fn build_fields(ui: &mut BevyUi, target: InspectorTarget) {
             padding = UiRect::vertical(px(2))
         ))
         .with(move |ui| {
-            ui.elem(elem!(Label, text = label, size = 12.0));
+            ui.elem(elem!(Label, text = label));
             drawer.build(&field, ui);
         });
     }
