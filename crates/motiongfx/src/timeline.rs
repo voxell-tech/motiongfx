@@ -12,12 +12,12 @@ use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionTable,
     InterpActionBuilder, SampleMode,
 };
-use motiongfx_interp::interpolation::Interpolation;
 use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
 use crate::track::{Track, TrackList};
 use crate::world::SubjectSource;
+use motiongfx_interp::interpolation::Interpolation;
 
 pub struct Timeline<W> {
     action_table: ActionTable,
