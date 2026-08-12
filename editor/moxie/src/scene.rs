@@ -1,7 +1,7 @@
 //! [`EditorScene`]: the editor's authoritative `Scene<Backend>`. It is
 //! what gets edited (and, later, saved/loaded) - the `Timeline` in
 //! [`MotionGfxManager`] is a compiled, disposable view of it,
-//! rebuilt by [`recompile_dirty_scene`] whenever it changes.
+//! rebuilt by `recompile_dirty_scene` whenever it changes.
 
 use bevy::prelude::*;
 use bevy_motiongfx::prelude::*;
@@ -13,7 +13,7 @@ use bevy_motiongfx::scene::backend::{
 /// and whether it's changed since the last compile.
 ///
 /// Nothing edits the animation tree yet (that's the inspector, still
-/// to come) - for now this only holds what [`recompile_dirty_scene`]
+/// to come) - for now this only holds what `recompile_dirty_scene`
 /// compiles and the timeline panel's row layout reads.
 ///
 /// Public (unlike most of this crate's state) because the example
@@ -27,7 +27,7 @@ pub struct EditorScene {
 }
 
 impl EditorScene {
-    /// Wraps `scene`, marked dirty so [`recompile_dirty_scene`] compiles
+    /// Wraps `scene`, marked dirty so `recompile_dirty_scene` compiles
     /// it on the very next run.
     pub fn new(scene: MotionGfxScene) -> Self {
         Self {

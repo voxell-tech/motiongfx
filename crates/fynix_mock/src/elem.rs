@@ -6,6 +6,10 @@
 //! [`Style`]: crate::style::Style
 //! [`Inline`]: crate::style::Inline
 
+// For docs.
+#[expect(unused_imports)]
+use crate::elem;
+
 /// The ways of asking for an element, as one value.
 ///
 /// The arguments after the first are assignments to the element,
@@ -97,8 +101,8 @@ macro_rules! elem {
 /// A value that starts from its [`Default`] and takes the fields
 /// named, for what an element holds rather than what it is.
 ///
-/// The same assignments [`elem!`] takes, so a value nested in one
-/// reads like the element around it:
+/// The same assignments [`elem!`](crate::elem!) takes, so a value
+/// nested in one reads like the element around it:
 ///
 /// ```
 /// # use fynix_mock::val;

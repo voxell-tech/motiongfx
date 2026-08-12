@@ -35,7 +35,7 @@ pub struct ButtonElem {
     #[default(::ZERO)]
     pub column_gap: Val,
     /// What the background shows. Nothing by default, which is a
-    /// [`GhostButton`]; [`Button`] rests at [`FILL`], and interaction
+    /// [`GhostButton`]; [`Button`] rests at `FILL`, and interaction
     /// lights either of them up.
     #[default(::NONE)]
     pub fill: Color,
