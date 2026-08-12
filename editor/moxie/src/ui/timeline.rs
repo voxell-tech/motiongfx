@@ -155,17 +155,15 @@ fn block_view(
 }
 
 /// One box per placement: a block's header - a [`TimelineBlock`],
-/// which owns its own label - or, for anything without one (an action
-/// leaf, or a `dotted` overflow piece that skips its own label since
-/// the solid piece right before it already showed one), a plain
-/// filled [`Frame`]. A `dotted` piece (an `Any`'s losing branch, past
-/// the group's official end) draws ghosted - faint enough to read as
-/// "still playing, but no longer part of this group's timing".
+/// which owns its own label - or an action leaf's own [`TimelineAction`],
+/// which lights up under the cursor and outlines in the theme's
+/// accent when [`SelectedAction`] names its path - clicking it writes
+/// that path in.
 ///
-/// An action leaf (dotted tail included, since it's the same action
-/// split across two boxes) lights up under the cursor and outlines in
-/// the theme's accent when [`SelectedAction`] names its path - clicking
-/// it writes that path in.
+/// An `Any` block's box (and any ancestor whose visual extent it
+/// bleeds into) is already sized to its losing branch's full
+/// duration - see [`block_layout::layout`] - so nothing here needs to
+/// clip or fade anything to keep a slower action fully visible.
 fn build_block_boxes(ui: &mut BevyUi) {
     let (placements, selected) = block_view(ui.world, ui.parent());
     let theme = ui.world.resource::<EditorTheme>();
@@ -174,22 +172,9 @@ fn build_block_boxes(ui: &mut BevyUi) {
     let accent = theme.accent;
 
     for placed in placements {
-        let is_block = placed.label.is_some();
         let is_selected = selected.as_ref() == Some(&placed.path);
-        let ghost = if placed.dotted { 0.45 } else { 1.0 };
-        let (background, border) = if is_block {
-            (
-                block_outline.with_alpha(0.04 * ghost),
-                block_outline.with_alpha(0.4 * ghost),
-            )
-        } else {
-            (
-                action_fill.with_alpha(0.35 * ghost),
-                if is_selected { accent } else { Color::NONE },
-            )
-        };
 
-        match placed.label.filter(|_| !placed.dotted) {
+        match placed.label {
             Some(label) => {
                 ui.elem(elem!(
                     TimelineBlock,
@@ -203,33 +188,9 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     left = placed.x,
                     width = placed.w,
                     height = placed.h,
-                    background = background,
-                    border = border
+                    background = block_outline.with_alpha(0.04),
+                    border = block_outline.with_alpha(0.4)
                 ));
-            }
-            // A dotted block-header piece skipped its label above
-            // (it's a `TimelineBlock`'s overflow tail, not an
-            // action's), so it stays a plain, non-interactive `Frame`
-            // too.
-            None if is_block => {
-                ui.elem(elem!(
-                    Frame,
-                    width = px(placed.w),
-                    height = px(placed.h),
-                    radius = px(3),
-                    background = background
-                ))
-                .insert(Node {
-                    position_type: PositionType::Absolute,
-                    top: px(placed.y),
-                    left: px(placed.x),
-                    width: px(placed.w),
-                    height: px(placed.h),
-                    border: UiRect::all(px(1)),
-                    border_radius: BorderRadius::all(px(3)),
-                    ..default()
-                })
-                .insert(BorderColor::all(border));
             }
             // An action leaf's own element: position, colors and
             // selection are all typed fields, and it owns its
@@ -242,8 +203,12 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     left = placed.x,
                     width = placed.w,
                     height = placed.h,
-                    fill = background,
-                    border = border,
+                    fill = action_fill.with_alpha(0.35),
+                    border = if is_selected {
+                        accent
+                    } else {
+                        Color::NONE
+                    },
                     selected = is_selected
                 ))
                 .observe(

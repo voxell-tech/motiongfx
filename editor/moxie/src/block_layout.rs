@@ -32,9 +32,6 @@ pub(crate) struct Placed {
     pub(crate) depth: usize,
     /// `Some` for a block header box; `None` for an action leaf.
     pub(crate) label: Option<String>,
-    /// `true` for the part of an `Any`'s losing branch that plays on
-    /// past the group's official end - see [`layout`].
-    pub(crate) dotted: bool,
     /// This node's position in `animation`'s tree: child index at
     /// each depth, root first. What [`crate::SelectedAction`] compares
     /// against, so a click can name exactly which node it landed on.
@@ -44,19 +41,10 @@ pub(crate) struct Placed {
 /// Every box in `animation`'s tree, depth-first - `animation` itself
 /// gets a box too (depth `0`), playing the role of the whole
 /// timeline's outer frame.
-///
-/// An `Any` ends the instant its fastest child does, but a slower
-/// sibling keeps animating past that - so its box gets split at that
-/// point: solid up to there, `dotted` beyond. Every `dotted` piece is
-/// appended last, after every normal box, so it always paints on top
-/// instead of ending up hidden under whatever the timeline places
-/// next to the `Any` block.
 pub(crate) fn layout(animation: &Block<Backend>) -> Vec<Placed> {
     let root = measure_block(animation, Duration::ZERO);
     let mut out = Vec::new();
-    let mut overlay = Vec::new();
-    flatten(&root, 0.0, 0, &mut Vec::new(), &mut out, &mut overlay);
-    out.extend(overlay);
+    flatten(&root, 0.0, 0, &mut Vec::new(), &mut out);
     out
 }
 
@@ -65,7 +53,18 @@ pub(crate) fn layout(animation: &Block<Backend>) -> Vec<Placed> {
 /// this block's content area).
 struct Measured {
     start: Duration,
+    /// This node's own duration - `node_duration`/`block_duration` -
+    /// what its *own* box is drawn to. A block's box is only ever
+    /// this wide, `Any` included: it marks the group's boundary, not
+    /// how long its content happens to keep drawing past it.
     end: Duration,
+    /// The rightmost point any of this node's own content actually
+    /// draws to - used only to detect whether a following `Chain`
+    /// sibling needs to drop to a new row, never to size a box. Equal
+    /// to `end` everywhere except an `Any`, whose losing branch keeps
+    /// animating (and drawing) past it, and any block containing one,
+    /// recursively.
+    visual_end: Duration,
     height: f32,
     kind: MeasuredKind,
 }
@@ -74,10 +73,6 @@ enum MeasuredKind {
     Action,
     Block {
         label: String,
-        /// Whether this block is an `Any` - the only combinator whose
-        /// children can individually outlast the block's own official
-        /// end, which is what [`flatten`] checks before splitting one.
-        is_any: bool,
         children: Vec<(f32, Measured)>,
     },
 }
@@ -147,12 +142,16 @@ fn measure_node(node: &Node<Backend>, start: Duration) -> Measured {
     let start = start.saturating_add(delay);
 
     match node {
-        Node::Action { action, .. } => Measured {
-            start,
-            end: start.saturating_add(action.duration),
-            height: ROW_HEIGHT,
-            kind: MeasuredKind::Action,
-        },
+        Node::Action { action, .. } => {
+            let end = start.saturating_add(action.duration);
+            Measured {
+                start,
+                end,
+                visual_end: end,
+                height: ROW_HEIGHT,
+                kind: MeasuredKind::Action,
+            }
+        }
         Node::Block { block, .. } => measure_block(block, start),
     }
 }
@@ -163,27 +162,39 @@ fn measure_block(
 ) -> Measured {
     let (children, content_height) =
         measure_children(&block.children, &block.combinator, start);
+    let visual_end = children
+        .iter()
+        .map(|(_, m)| m.visual_end)
+        .max()
+        .unwrap_or(start);
     Measured {
         start,
         end: start.saturating_add(block_duration(block)),
+        visual_end,
         height: HEADER_HEIGHT + content_height,
         kind: MeasuredKind::Block {
             label: combinator_label(&block.combinator),
-            is_any: matches!(block.combinator, Combinator::Any),
             children,
         },
     }
 }
 
-/// Measures every child, then lays them into lanes (rows): a `Chain`'s
-/// children never overlap in time by construction, so they all share
-/// one lane, side by side - every other combinator gives each child
-/// its own dedicated lane, always, rather than repacking lanes as
-/// earlier children free up. Packing would occasionally let two
-/// children share a lane (e.g. a `Flow`'s first and fifth child, once
-/// the first has finished) - correct, but it reads as one fused bar
-/// instead of two separate actions, which is worse than the extra
-/// row it would have cost to keep them apart.
+/// Measures every child, then lays them into lanes (rows).
+///
+/// `All`/`Any`/`Flow` give each child its own dedicated lane, always -
+/// packing them would occasionally let two children share a lane (a
+/// `Flow`'s first and fifth child, say, once the first has finished),
+/// which reads as one fused bar instead of two separate actions.
+///
+/// A `Chain`'s children share one row by default, since they never
+/// overlap by construction - except an `Any` child's visual extent
+/// can bleed past its official contribution to the chain (its losing
+/// branch keeps animating), reaching into where the next sibling
+/// starts. When it does, only *that* sibling drops below - directly
+/// under the one predecessor it actually overlaps, not under whatever
+/// else happens to share the row - since a chain's children are
+/// already time-ordered and only ever need to check the one right
+/// before them.
 fn measure_children(
     children: &[Node<Backend>],
     combinator: &Combinator,
@@ -222,37 +233,44 @@ fn measure_children(
         .map(|(child, start)| measure_node(child, start))
         .collect();
 
-    let lane_of: Vec<usize> = match combinator {
-        Combinator::Chain => vec![0; measured.len()],
-        Combinator::All | Combinator::Any | Combinator::Flow(_) => {
-            (0..measured.len()).collect()
+    let ys: Vec<f32> = match combinator {
+        Combinator::Chain => {
+            let mut ys = Vec::with_capacity(measured.len());
+            let mut prev: Option<(Duration, f32, f32)> = None;
+            for m in &measured {
+                let y = match prev {
+                    Some((end, y, height)) if m.start < end => {
+                        y + height + LANE_GAP
+                    }
+                    _ => 0.0,
+                };
+                ys.push(y);
+                prev = Some((m.visual_end, y, m.height));
+            }
+            ys
         }
-    };
-    let lane_count = match combinator {
-        Combinator::Chain => 1,
+        // Every other combinator's children can genuinely overlap in
+        // time, so each always gets its own dedicated row.
         Combinator::All | Combinator::Any | Combinator::Flow(_) => {
-            measured.len()
+            let mut y = 0.0;
+            measured
+                .iter()
+                .map(|m| {
+                    let this = y;
+                    y += m.height + LANE_GAP;
+                    this
+                })
+                .collect()
         }
     };
 
-    let mut lane_height = vec![0f32; lane_count];
-    for (i, m) in measured.iter().enumerate() {
-        lane_height[lane_of[i]] =
-            lane_height[lane_of[i]].max(m.height);
-    }
-    let mut lane_y = vec![0f32; lane_height.len()];
-    let mut y = 0.0;
-    for (lane, h) in lane_height.iter().enumerate() {
-        lane_y[lane] = y;
-        y += h + LANE_GAP;
-    }
-    let content_height = (y - LANE_GAP).max(0.0);
+    let content_height = measured
+        .iter()
+        .zip(&ys)
+        .map(|(m, &y)| y + m.height)
+        .fold(0.0f32, f32::max);
 
-    let placed = measured
-        .into_iter()
-        .enumerate()
-        .map(|(i, m)| (lane_y[lane_of[i]], m))
-        .collect();
+    let placed = ys.into_iter().zip(measured).collect();
     (placed, content_height)
 }
 
@@ -262,7 +280,6 @@ fn flatten(
     depth: usize,
     path: &mut Vec<usize>,
     out: &mut Vec<Placed>,
-    overlay: &mut Vec<Placed>,
 ) {
     let x = crate::px_for(measured.start);
     let w =
@@ -277,14 +294,9 @@ fn flatten(
             h: measured.height,
             depth,
             label: None,
-            dotted: false,
             path: path.clone(),
         }),
-        MeasuredKind::Block {
-            label,
-            is_any,
-            children,
-        } => {
+        MeasuredKind::Block { label, children } => {
             out.push(Placed {
                 x,
                 y,
@@ -292,104 +304,20 @@ fn flatten(
                 h: measured.height,
                 depth,
                 label: Some(label.clone()),
-                dotted: false,
                 path: path.clone(),
             });
             let content_top = y + HEADER_HEIGHT;
             for (i, (lane_y, child)) in children.iter().enumerate() {
-                let child_y = content_top + lane_y;
                 path.push(i);
-                // An `Any` can end before a slower child does; split
-                // that child's own box right there instead of hiding
-                // (or letting a later sibling collide with) the part
-                // it keeps animating through.
-                if *is_any && child.end > measured.end {
-                    split_at(
-                        child,
-                        child_y,
-                        depth + 1,
-                        measured.end,
-                        path,
-                        out,
-                        overlay,
-                    );
-                } else {
-                    flatten(
-                        child,
-                        child_y,
-                        depth + 1,
-                        path,
-                        out,
-                        overlay,
-                    );
-                }
+                flatten(
+                    child,
+                    content_top + lane_y,
+                    depth + 1,
+                    path,
+                    out,
+                );
                 path.pop();
             }
-        }
-    }
-}
-
-/// Renders `child`'s own box in two pieces at `bound` (its parent
-/// `Any`'s official end): solid up to there, appended to `out` like
-/// any other box, then `dotted` from `bound` to `child`'s own true
-/// end, appended to `overlay` instead so [`layout`] can paint it last.
-/// If `child` is itself a block, its descendants still render
-/// normally beneath it - only its own outer box gets split.
-fn split_at(
-    child: &Measured,
-    y: f32,
-    depth: usize,
-    bound: Duration,
-    path: &mut Vec<usize>,
-    out: &mut Vec<Placed>,
-    overlay: &mut Vec<Placed>,
-) {
-    let label = match &child.kind {
-        MeasuredKind::Action => None,
-        MeasuredKind::Block { label, .. } => Some(label.clone()),
-    };
-
-    let solid_x = crate::px_for(child.start);
-    let solid_w = crate::px_for(bound.saturating_sub(child.start))
-        .max(MIN_WIDTH);
-    out.push(Placed {
-        x: solid_x,
-        y,
-        w: solid_w,
-        h: child.height,
-        depth,
-        label: label.clone(),
-        dotted: false,
-        path: path.clone(),
-    });
-
-    let dotted_x = crate::px_for(bound);
-    let dotted_w =
-        crate::px_for(child.end.saturating_sub(bound)).max(MIN_WIDTH);
-    overlay.push(Placed {
-        x: dotted_x,
-        y,
-        w: dotted_w,
-        h: child.height,
-        depth,
-        label,
-        dotted: true,
-        path: path.clone(),
-    });
-
-    if let MeasuredKind::Block { children, .. } = &child.kind {
-        let content_top = y + HEADER_HEIGHT;
-        for (i, (lane_y, grandchild)) in children.iter().enumerate() {
-            path.push(i);
-            flatten(
-                grandchild,
-                content_top + lane_y,
-                depth + 1,
-                path,
-                out,
-                overlay,
-            );
-            path.pop();
         }
     }
 }
