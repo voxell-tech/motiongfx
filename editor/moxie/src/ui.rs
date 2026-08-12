@@ -260,18 +260,21 @@ fn register_windows(
                 // Save row.
                 ui.elem(elem!(Frame, direction = FlexDirection::Row))
                     .with(|ui| {
-                        ui.elem(elem!(!Button, width = px(64),
-                        height = px(24)))
-                    .observe(
-                        |mut click: On<Pointer<Click>>,
-                         mut commands: Commands| {
-                            click.propagate(false);
-                            commands.queue(SaveSettingsSync::Always);
-                        },
-                    )
-                    .with(|ui| {
-                        ui.elem(elem!(Label, text = "Save"));
-                    });
+                        ui.elem(elem!(
+                            !Button,
+                            width = px(64),
+                            height = px(24)
+                        ))
+                        .observe(
+                            |mut click: On<Pointer<Click>>,
+                             mut commands: Commands| {
+                                click.propagate(false);
+                                commands.queue(SaveSettingsSync::Always);
+                            },
+                        )
+                        .with(|ui| {
+                            ui.elem(elem!(Label, text = "Save"));
+                        });
                     });
             });
         }),

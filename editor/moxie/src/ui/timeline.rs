@@ -96,7 +96,7 @@ fn control_bar(ui: &mut BevyUi) {
 /// the playhead floating over it as a sibling - not a descendant, so
 /// it's neither scrolled nor clipped by the [`ScrollArea`].
 fn track_area(ui: &mut BevyUi) {
-    ui.elem(elem!(Frame, width = percent(100), flex_grow = 1.0))
+    ui.elem(elem!(Frame, width = percent(100), flex_grow = 1.0f32))
         .observe(on_track_press)
         .observe(on_track_drag)
         .observe(on_track_release)
@@ -181,7 +181,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     label = val!(
                         Label,
                         text = label,
-                        size = 10.0,
+                        size = 10.0f32,
                         color = Some(block_outline.with_alpha(0.8))
                     ),
                     top = placed.y,

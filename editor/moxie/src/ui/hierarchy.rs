@@ -175,7 +175,6 @@ fn build_rows(ui: &mut BevyUi, rows: &[Row]) {
             ui.elem(elem!(
                 Label,
                 text = name,
-                size = 12.0,
                 color = Some(text_color)
             ));
         });

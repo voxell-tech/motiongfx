@@ -69,7 +69,7 @@ fn setup(
                     ui.elem(elem!(
                         Label,
                         text = label,
-                        size = 20.0,
+                        size = 20.0f32,
                         color = Some(Color::srgb(0.9, 0.9, 0.92))
                     ));
                 });
