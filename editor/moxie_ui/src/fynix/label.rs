@@ -9,7 +9,7 @@ use fynix_mock::lenz::Lenz;
 #[derive(Element, OverrideDefault, Lenz)]
 pub struct Label {
     pub text: String,
-    #[default(13.0)]
+    #[default(12.0)]
     pub size: f32,
     /// `None` leaves the colour to the theme.
     pub color: Option<Color>,

@@ -8,7 +8,7 @@
 //!
 //! [`StyledElem`] is what all three ways of asking for an element have
 //! in common, so a builder takes one argument rather than three
-//! overloads. [`elem!`](crate::elem) writes the right one.
+//! overloads. [`elem!`](crate::elem!) writes the right one.
 
 use core::marker::PhantomData;
 
@@ -19,7 +19,7 @@ use crate::ui::ElementMut;
 /// A look, as a mutation of an element that already has its defaults.
 ///
 /// Nothing here names a backend: `apply` only writes fields, so one
-/// style serves every [`Host`](crate::host::Host) the element is drawn
+/// style serves every [`Host`] the element is drawn
 /// on. What it carries are the fields of the struct it is written on:
 ///
 /// ```
@@ -151,7 +151,7 @@ where
     ///
     /// A closure passed here knows what it takes, because `S` says so.
     /// Written straight into the struct it would not, which is why
-    /// [`elem!`](crate::elem) comes through this.
+    /// [`elem!`](crate::elem!) comes through this.
     pub fn new(style: S, inline: F) -> Self {
         Self { style, inline }
     }

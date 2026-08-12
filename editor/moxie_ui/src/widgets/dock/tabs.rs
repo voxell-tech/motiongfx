@@ -11,8 +11,8 @@ use fynix_mock::{elem, val};
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
 use crate::fynix::{
-    GhostButton, Icon, IconCursor, Label, LabelCursor,
-    RawButtonCursor, Tab, TabBar, TabCursor, TabRow, TintButton,
+    ButtonElemCursor, GhostButton, Icon, IconCursor, Label,
+    LabelCursor, Tab, TabBar, TabCursor, TabRow, TintButton,
 };
 use crate::icons;
 use crate::motion::MotionExt;
@@ -93,7 +93,6 @@ fn build_tab(
             label = val!(
                 Label,
                 text = label,
-                size = 12.0,
                 color = Some(lit),
                 bold = true,
                 wrap = false

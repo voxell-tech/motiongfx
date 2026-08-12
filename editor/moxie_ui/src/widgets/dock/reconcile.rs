@@ -1,7 +1,7 @@
 //! Materialize a [`DockTree`] into UI entities.
 //!
 //! Leaves become `DockArea`s (tab bar + content); splits become flex
-//! containers wrapping two panels plus a [`PanelHandle`] between them.
+//! containers wrapping two panels plus a [`SplitHandle`] between them.
 //! Drag/move/resize mutate the tree only.
 //!
 //! The watcher fires on [`topology`], a fingerprint that omits split
@@ -38,7 +38,7 @@ impl Plugin for ReconcilePlugin {
 }
 
 /// The dock, as a node in the app's UI tree. Call this from the
-/// builder handed to [`build_root`](crate::reactive::build_root).
+/// builder handed to [`watch_root`](crate::reactive::watch_root).
 pub fn dock(ui: &mut BevyUi) {
     super::add_popup::add_window_popup(ui);
     ui.elem(elem!(DockHost)).watch(

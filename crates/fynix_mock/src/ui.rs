@@ -273,7 +273,7 @@ impl<'a, H: Host> Ui<'a, H> {
     /// Run a [`StyledElem`]'s cascade, then build what it left, and
     /// everything beneath it.
     ///
-    /// What [`elem!`](crate::elem) is for: the macro says how the
+    /// What [`elem!`](crate::elem!) is for: the macro says how the
     /// element is described, and this says where it goes. The kernel
     /// keeps the element, because patching a field later means reading
     /// it back.

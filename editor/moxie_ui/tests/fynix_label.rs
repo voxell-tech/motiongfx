@@ -33,7 +33,7 @@ fn label_writes_its_fields_as_components() {
     let (mut app, root) = app_with_root();
 
     watch_root(app.world_mut(), root, |ui| {
-        ui.elem(elem!(Label, text = "Save", size = 20.0));
+        ui.elem(elem!(Label, text = "Save", size = 20.0f32));
     });
 
     app.update();

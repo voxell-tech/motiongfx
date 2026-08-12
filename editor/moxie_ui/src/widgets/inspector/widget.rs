@@ -111,7 +111,7 @@ impl Inspect for bool {
 
 /// A number input for a numeric leaf.
 ///
-/// `V` is the payload [`glass_number_field`] emits, which follows
+/// `V` is the payload `number_field` emits, which follows
 /// `format` rather than the field's own type - a `u32` is edited
 /// through an `i64` input and converted on the way in and out.
 fn number_field<T, V>(

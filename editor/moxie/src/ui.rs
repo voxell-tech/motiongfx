@@ -5,8 +5,6 @@
 mod hierarchy;
 mod timeline;
 
-pub(crate) use timeline::TimelineContent;
-
 use std::sync::Arc;
 
 use bevy::camera::Hdr;
@@ -19,7 +17,8 @@ use bevy::ui::widget::ImageNode;
 use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 
 use crate::{
-    EditorSettings, EditorState, PreviewImage, playback, view,
+    EditorSettings, EditorState, PreviewImage, SelectedAction,
+    playback, scene, view,
 };
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
@@ -42,10 +41,12 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(MoxieUiPlugin)
             .init_resource::<EditorState>()
+            .init_resource::<SelectedAction>()
             .add_systems(Startup, setup_editor_ui)
             .add_systems(
                 Update,
                 (
+                    scene::recompile_dirty_scene,
                     playback::track_first_timeline,
                     playback::play_pause_hotkey,
                     playback::stop_at_track_end,
@@ -227,14 +228,14 @@ fn register_windows(
         id: "timeline".into(),
         name: "Timeline".into(),
         icon: Some(crate::icons::TIMELINE.into()),
-        build: Arc::new(|ui: &mut BevyUi| timeline::panel(ui)),
+        build: Arc::new(timeline::panel),
     });
 
     registry.register(DockWindowDescriptor {
         id: "hierarchy".into(),
         name: "Hierarchy".into(),
         icon: Some(crate::icons::HIERARCHY.into()),
-        build: Arc::new(|ui: &mut BevyUi| hierarchy::panel(ui)),
+        build: Arc::new(hierarchy::panel),
     });
 
     // Settings: a reflect inspector over `EditorSettings` + Save.
@@ -259,18 +260,21 @@ fn register_windows(
                 // Save row.
                 ui.elem(elem!(Frame, direction = FlexDirection::Row))
                     .with(|ui| {
-                        ui.elem(elem!(!Button, width = px(64),
-                        height = px(24)))
-                    .observe(
-                        |mut click: On<Pointer<Click>>,
-                         mut commands: Commands| {
-                            click.propagate(false);
-                            commands.queue(SaveSettingsSync::Always);
-                        },
-                    )
-                    .with(|ui| {
-                        ui.elem(elem!(Label, text = "Save"));
-                    });
+                        ui.elem(elem!(
+                            !Button,
+                            width = px(64),
+                            height = px(24)
+                        ))
+                        .observe(
+                            |mut click: On<Pointer<Click>>,
+                             mut commands: Commands| {
+                                click.propagate(false);
+                                commands.queue(SaveSettingsSync::Always);
+                            },
+                        )
+                        .with(|ui| {
+                            ui.elem(elem!(Label, text = "Save"));
+                        });
                     });
             });
         }),

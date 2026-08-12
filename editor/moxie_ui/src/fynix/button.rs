@@ -22,7 +22,7 @@ const TINT: Color = crate::palette::BLUE;
 /// under it. Undressed: [`Button`] and [`GhostButton`] are the two
 /// looks the editor gives it.
 #[derive(Element, OverrideDefault, Lenz)]
-pub struct RawButton {
+pub struct ButtonElem {
     /// A node of its own, so its image and colour can be bound
     /// without touching the button.
     #[elem]
@@ -32,30 +32,32 @@ pub struct RawButton {
     #[elem]
     pub label: Option<Label>,
     /// Between the icon and the label, when both are there.
-    #[default(Val::ZERO)]
+    #[default(px(6))]
     pub column_gap: Val,
     /// What the background shows. Nothing by default, which is a
-    /// [`GhostButton`]; [`Button`] rests at [`FILL`], and interaction
+    /// [`GhostButton`]; [`Button`] rests at `FILL`, and interaction
     /// lights either of them up.
-    #[default(Color::NONE)]
+    #[default(::NONE)]
     pub fill: Color,
-    /// The hit area, which an icon button wants square and a button
-    /// with a word in it does not.
-    #[default(px(18))]
     pub width: Val,
-    #[default(px(18))]
     pub height: Val,
+    #[default(px(18))]
+    pub min_width: Val,
+    #[default(px(18))]
+    pub min_height: Val,
     /// Centred, for a button that is only as big as what it holds.
     #[default(::Center)]
     pub justify: JustifyContent,
     pub padding: UiRect,
-    #[default(Val::ZERO)]
+    #[default(::ZERO)]
     pub radius: Val,
 }
 
-impl RawButton {
+impl ButtonElem {
     fn node(&self) -> Node {
         Node {
+            min_width: self.min_width,
+            min_height: self.min_height,
             width: self.width,
             height: self.height,
             justify_content: self.justify,
@@ -81,16 +83,16 @@ pub struct Button;
 
 impl Style for Button {
     type Host = BevyHost;
-    type Element = RawButton;
+    type Element = ButtonElem;
 
-    fn apply(self, button: &mut RawButton) {
+    fn apply(self, button: &mut ButtonElem) {
         button.fill = FILL;
         button.width = px(26);
         button.height = px(26);
         button.radius = px(6);
     }
 
-    fn attach(elem: ElementMut<BevyHost, RawButton>) {
+    fn attach(elem: ElementMut<BevyHost, ButtonElem>) {
         lit(elem);
     }
 }
@@ -101,9 +103,9 @@ pub struct TintButton;
 
 impl Style for TintButton {
     type Host = BevyHost;
-    type Element = RawButton;
+    type Element = ButtonElem;
 
-    fn attach(elem: ElementMut<BevyHost, RawButton>) {
+    fn attach(elem: ElementMut<BevyHost, ButtonElem>) {
         elem.lit(|button| button.icon().color(), TINT, TINT).lit(
             |button| button.label().color(),
             TINT,
@@ -119,25 +121,25 @@ pub struct GhostButton;
 
 impl Style for GhostButton {
     type Host = BevyHost;
-    type Element = RawButton;
+    type Element = ButtonElem;
 
-    fn apply(self, button: &mut RawButton) {
+    fn apply(self, button: &mut ButtonElem) {
         button.fill = Color::NONE;
     }
 
-    fn attach(elem: ElementMut<BevyHost, RawButton>) {
+    fn attach(elem: ElementMut<BevyHost, ButtonElem>) {
         lit(elem);
     }
 }
 
 /// Every look lights up the same way.
 fn lit<'u, 'a>(
-    elem: ElementMut<'u, 'a, BevyHost, RawButton>,
-) -> ElementMut<'u, 'a, BevyHost, RawButton> {
+    elem: ElementMut<'u, 'a, BevyHost, ButtonElem>,
+) -> ElementMut<'u, 'a, BevyHost, ButtonElem> {
     elem.lit(|button| button.fill(), motion::HOVER, motion::PRESS)
 }
 
-impl ElementVisual<BevyHost> for RawButton {
+impl ElementVisual<BevyHost> for ButtonElem {
     fn build_fields(&self, world: &mut World, node: Entity) {
         let mut entity = world.entity_mut(node);
 
@@ -153,22 +155,24 @@ impl ElementVisual<BevyHost> for RawButton {
         &self,
         world: &mut World,
         node: Entity,
-        field: RawButtonField,
+        field: ButtonElemField,
     ) {
         let mut entity = world.entity_mut(node);
 
         match field {
-            RawButtonField::Fill => {
+            ButtonElemField::Fill => {
                 entity.insert(self.background());
             }
             // Every other field is one of `Node`'s, and writing it
             // whole is one insert either way.
-            RawButtonField::Width
-            | RawButtonField::Height
-            | RawButtonField::Justify
-            | RawButtonField::ColumnGap
-            | RawButtonField::Padding
-            | RawButtonField::Radius => {
+            ButtonElemField::MinWidth
+            | ButtonElemField::MinHeight
+            | ButtonElemField::Width
+            | ButtonElemField::Height
+            | ButtonElemField::Justify
+            | ButtonElemField::ColumnGap
+            | ButtonElemField::Padding
+            | ButtonElemField::Radius => {
                 entity.insert(self.node());
             }
         }

@@ -20,6 +20,8 @@ pub struct Frame {
     #[default(UiRect::all(auto()))]
     pub inset: UiRect,
     pub direction: FlexDirection,
+    pub flex_grow: f32,
+    pub flex_shrink: f32,
     pub align: AlignItems,
     pub justify: JustifyContent,
     pub padding: UiRect,
@@ -56,6 +58,8 @@ impl Frame {
             top: self.inset.top,
             bottom: self.inset.bottom,
             flex_direction: self.direction,
+            flex_grow: self.flex_grow,
+            flex_shrink: self.flex_shrink,
             align_items: self.align,
             justify_content: self.justify,
             padding: self.padding,
@@ -109,6 +113,8 @@ impl ElementVisual<BevyHost> for Frame {
             | FrameField::Height
             | FrameField::Position
             | FrameField::Inset
+            | FrameField::FlexGrow
+            | FrameField::FlexShrink
             | FrameField::Direction
             | FrameField::Align
             | FrameField::Justify

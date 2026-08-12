@@ -10,7 +10,6 @@ use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 use bevy_motiongfx::prelude::*;
 
-use crate::ui::TimelineContent;
 use crate::{EditorState, PIXELS_PER_SECOND};
 use bevy_motiongfx::prelude::TimelineId;
 
@@ -133,14 +132,16 @@ fn scrub_to(
 
 /// Begin a scrub: jump the playhead to the press position and arm
 /// [`Scrubbing`] so subsequent drags keep following the cursor.
+///
+/// `press.entity` is already exactly the entity this observer is
+/// registered on - `bevy_picking`'s propagation rewrites a `Pointer`
+/// event's own `entity` field to match whichever ancestor's observer
+/// is currently running, so there's nothing here to filter on.
 pub(crate) fn on_track_press(
     mut press: On<Pointer<Press>>,
     state: Res<EditorState>,
     ui_scale: Res<UiScale>,
-    q_track: Query<
-        (&ComputedNode, &UiGlobalTransform),
-        With<TimelineContent>,
-    >,
+    q_track: Query<(&ComputedNode, &UiGlobalTransform)>,
     mut manager: ResMut<MotionGfxManager>,
     mut q_players: Query<&mut RealtimePlayer>,
     mut commands: Commands,
@@ -166,7 +167,7 @@ pub(crate) fn on_track_drag(
     ui_scale: Res<UiScale>,
     q_track: Query<
         (&ComputedNode, &UiGlobalTransform),
-        (With<TimelineContent>, With<Scrubbing>),
+        With<Scrubbing>,
     >,
     mut manager: ResMut<MotionGfxManager>,
     mut q_players: Query<&mut RealtimePlayer>,
