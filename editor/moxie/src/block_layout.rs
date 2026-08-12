@@ -32,15 +32,27 @@ pub(crate) struct Placed {
     pub(crate) depth: usize,
     /// `Some` for a block header box; `None` for an action leaf.
     pub(crate) label: Option<String>,
+    /// `true` for the part of an `Any`'s losing branch that plays on
+    /// past the group's official end - see [`layout`].
+    pub(crate) dotted: bool,
 }
 
 /// Every box in `animation`'s tree, depth-first - `animation` itself
 /// gets a box too (depth `0`), playing the role of the whole
 /// timeline's outer frame.
+///
+/// An `Any` ends the instant its fastest child does, but a slower
+/// sibling keeps animating past that - so its box gets split at that
+/// point: solid up to there, `dotted` beyond. Every `dotted` piece is
+/// appended last, after every normal box, so it always paints on top
+/// instead of ending up hidden under whatever the timeline places
+/// next to the `Any` block.
 pub(crate) fn layout(animation: &Block<Backend>) -> Vec<Placed> {
     let root = measure_block(animation, Duration::ZERO);
     let mut out = Vec::new();
-    flatten(&root, 0.0, 0, &mut out);
+    let mut overlay = Vec::new();
+    flatten(&root, 0.0, 0, &mut out, &mut overlay);
+    out.extend(overlay);
     out
 }
 
@@ -58,6 +70,10 @@ enum MeasuredKind {
     Action,
     Block {
         label: String,
+        /// Whether this block is an `Any` - the only combinator whose
+        /// children can individually outlast the block's own official
+        /// end, which is what [`flatten`] checks before splitting one.
+        is_any: bool,
         children: Vec<(f32, Measured)>,
     },
 }
@@ -149,6 +165,7 @@ fn measure_block(
         height: HEADER_HEIGHT + content_height,
         kind: MeasuredKind::Block {
             label: combinator_label(&block.combinator),
+            is_any: matches!(block.combinator, Combinator::Any),
             children,
         },
     }
@@ -240,6 +257,7 @@ fn flatten(
     y: f32,
     depth: usize,
     out: &mut Vec<Placed>,
+    overlay: &mut Vec<Placed>,
 ) {
     let x = crate::px_for(measured.start);
     let w =
@@ -254,8 +272,13 @@ fn flatten(
             h: measured.height,
             depth,
             label: None,
+            dotted: false,
         }),
-        MeasuredKind::Block { label, children } => {
+        MeasuredKind::Block {
+            label,
+            is_any,
+            children,
+        } => {
             out.push(Placed {
                 x,
                 y,
@@ -263,11 +286,87 @@ fn flatten(
                 h: measured.height,
                 depth,
                 label: Some(label.clone()),
+                dotted: false,
             });
             let content_top = y + HEADER_HEIGHT;
             for (lane_y, child) in children {
-                flatten(child, content_top + lane_y, depth + 1, out);
+                let child_y = content_top + lane_y;
+                // An `Any` can end before a slower child does; split
+                // that child's own box right there instead of hiding
+                // (or letting a later sibling collide with) the part
+                // it keeps animating through.
+                if *is_any && child.end > measured.end {
+                    split_at(
+                        child,
+                        child_y,
+                        depth + 1,
+                        measured.end,
+                        out,
+                        overlay,
+                    );
+                } else {
+                    flatten(child, child_y, depth + 1, out, overlay);
+                }
             }
+        }
+    }
+}
+
+/// Renders `child`'s own box in two pieces at `bound` (its parent
+/// `Any`'s official end): solid up to there, appended to `out` like
+/// any other box, then `dotted` from `bound` to `child`'s own true
+/// end, appended to `overlay` instead so [`layout`] can paint it last.
+/// If `child` is itself a block, its descendants still render
+/// normally beneath it - only its own outer box gets split.
+fn split_at(
+    child: &Measured,
+    y: f32,
+    depth: usize,
+    bound: Duration,
+    out: &mut Vec<Placed>,
+    overlay: &mut Vec<Placed>,
+) {
+    let label = match &child.kind {
+        MeasuredKind::Action => None,
+        MeasuredKind::Block { label, .. } => Some(label.clone()),
+    };
+
+    let solid_x = crate::px_for(child.start);
+    let solid_w = crate::px_for(bound.saturating_sub(child.start))
+        .max(MIN_WIDTH);
+    out.push(Placed {
+        x: solid_x,
+        y,
+        w: solid_w,
+        h: child.height,
+        depth,
+        label: label.clone(),
+        dotted: false,
+    });
+
+    let dotted_x = crate::px_for(bound);
+    let dotted_w =
+        crate::px_for(child.end.saturating_sub(bound)).max(MIN_WIDTH);
+    overlay.push(Placed {
+        x: dotted_x,
+        y,
+        w: dotted_w,
+        h: child.height,
+        depth,
+        label,
+        dotted: true,
+    });
+
+    if let MeasuredKind::Block { children, .. } = &child.kind {
+        let content_top = y + HEADER_HEIGHT;
+        for (lane_y, grandchild) in children {
+            flatten(
+                grandchild,
+                content_top + lane_y,
+                depth + 1,
+                out,
+                overlay,
+            );
         }
     }
 }

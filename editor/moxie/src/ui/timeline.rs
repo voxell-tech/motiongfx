@@ -199,7 +199,11 @@ fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
 }
 
 /// One box per placement: a block's header box drawn as a hollow
-/// outline enclosing its children, an action leaf drawn filled.
+/// outline enclosing its children, an action leaf drawn filled. A
+/// `dotted` piece (an `Any`'s losing branch, past the group's official
+/// end) draws ghosted instead - faint enough to read as "still
+/// playing, but no longer part of this group's timing" - and skips its
+/// own label, since the solid piece right before it already showed one.
 fn build_block_boxes(ui: &mut BevyUi) {
     let placements = block_placements(ui.world, ui.parent());
     let theme = ui.world.resource::<EditorTheme>();
@@ -208,13 +212,14 @@ fn build_block_boxes(ui: &mut BevyUi) {
 
     for placed in placements {
         let is_block = placed.label.is_some();
+        let ghost = if placed.dotted { 0.45 } else { 1.0 };
         let (background, border) = if is_block {
             (
-                block_outline.with_alpha(0.04),
-                block_outline.with_alpha(0.4),
+                block_outline.with_alpha(0.04 * ghost),
+                block_outline.with_alpha(0.4 * ghost),
             )
         } else {
-            (action_fill.with_alpha(0.35), Color::NONE)
+            (action_fill.with_alpha(0.35 * ghost), Color::NONE)
         };
 
         ui.elem(elem!(
@@ -236,6 +241,9 @@ fn build_block_boxes(ui: &mut BevyUi) {
         })
         .insert(BorderColor::all(border))
         .with(|ui| {
+            if placed.dotted {
+                return;
+            }
             let Some(label) = placed.label.clone() else {
                 return;
             };
