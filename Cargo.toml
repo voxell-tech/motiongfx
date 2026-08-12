@@ -12,6 +12,7 @@ repository = "https://github.com/voxell-tech/motiongfx"
 [workspace.dependencies]
 # motiongfx
 motiongfx = { version = "0.3.0", path = "crates/motiongfx", default-features = false }
+motiongfx_interp = { version = "0.3.0", path = "crates/motiongfx_interp", default-features = false }
 motiongfx_scene = { version = "0.3.0", path = "crates/motiongfx_scene", default-features = false }
 bevy_motiongfx = { version = "0.3.0", path = "crates/bevy_motiongfx", default-features = false }
 peniko_motiongfx = { version = "0.3.0", path = "crates/peniko_motiongfx" }

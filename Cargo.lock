@@ -2851,6 +2851,7 @@ version = "0.3.0"
 dependencies = [
  "fynix_mock_macros",
  "hashbrown 0.17.1",
+ "motiongfx_interp",
  "typarena",
 ]
 
@@ -3686,9 +3687,16 @@ dependencies = [
  "criterion",
  "field_path",
  "hashbrown 0.17.1",
- "libm",
+ "motiongfx_interp",
  "nonempty",
  "typarena",
+]
+
+[[package]]
+name = "motiongfx_interp"
+version = "0.3.0"
+dependencies = [
+ "libm",
 ]
 
 [[package]]
@@ -3733,6 +3741,7 @@ dependencies = [
  "bevy",
  "bevy_fynix",
  "fynix_mock",
+ "motiongfx_interp",
 ]
 
 [[package]]

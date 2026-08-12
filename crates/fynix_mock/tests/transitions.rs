@@ -9,8 +9,10 @@ use fynix_mock::Fynix;
 use fynix_mock::elem;
 use fynix_mock::host::Host;
 use fynix_mock::style::Style;
-use fynix_mock::transition::{Transition, ease, lerp};
+use fynix_mock::transition::Transition;
 use fynix_mock::ui::ElementMut;
+use motiongfx_interp::ease;
+use motiongfx_interp::interpolation::Interpolation;
 
 /// Fires on the first flush and never again.
 fn once() -> impl FnMut(&World, usize) -> bool + Send + Sync + 'static
@@ -35,7 +37,8 @@ fn travelling() -> (World, usize, Fynix<Backend>, usize) {
     kernel.watch(root, once(), |ui| {
         ui.elem(elem!(Label, size = 0u32)).transition(
             |label| label.size(),
-            Transition::secs(1.0, lerp::uint).ease(ease::linear),
+            Transition::secs(1.0, <u32 as Interpolation<()>>::interp)
+                .ease(ease::linear),
         );
     });
     kernel.flush(&mut world);
@@ -143,7 +146,10 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
         fn attach(elem: ElementMut<Backend, Label>) {
             elem.transition(
                 |label| label.size(),
-                Transition::secs(1.0, lerp::uint),
+                Transition::secs(
+                    1.0,
+                    <u32 as Interpolation<()>>::interp,
+                ),
             )
             .aim_on(Interact::Enter, |label| label.size(), Some(20))
             .aim_on(

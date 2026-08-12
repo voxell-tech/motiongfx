@@ -13,9 +13,9 @@ repository.workspace = true
 [dependencies]
 field_path = { workspace = true }
 hashbrown = { workspace = true, features = ["default-hasher"] }
+motiongfx_interp = { workspace = true, default-features = false }
 nonempty = { workspace = true }
 typarena = { workspace = true }
-libm = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -29,4 +29,4 @@ workspace = true
 
 [features]
 default = ["std"]
-std = []
+std = ["motiongfx_interp/std"]
