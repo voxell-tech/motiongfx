@@ -12,8 +12,10 @@
 use std::sync::Arc;
 
 use bevy::prelude::*;
+use fynix_mock::elem;
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::reactive::{BevyUi, BevyUiExt};
+use moxie_ui::fynix::{Frame, Label};
+use moxie_ui::reactive::BevyUi;
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockTree, DockWindowDescriptor,
     WindowRegistry, dock,
@@ -55,21 +57,21 @@ fn setup(
             icon: None,
             build: Arc::new(move |ui: &mut BevyUi| {
                 let label = label.clone();
-                ui.bsn(bsn! {
-                    Node {
-                        flex_grow: 1.0,
-                        width: percent(100),
-                        align_items: AlignItems::Center,
-                        justify_content: JustifyContent::Center,
-                    }
-                    BackgroundColor({color})
-                })
+                ui.elem(elem!(
+                    Frame,
+                    width = percent(100),
+                    height = percent(100),
+                    align = AlignItems::Center,
+                    justify = JustifyContent::Center,
+                    background = color
+                ))
                 .with(move |ui| {
-                    ui.bsn(bsn! {
-                        Text({label})
-                        TextFont { font_size: FontSize::Px(20.0) }
-                        TextColor(Color::srgb(0.9, 0.9, 0.92))
-                    });
+                    ui.elem(elem!(
+                        Label,
+                        text = label,
+                        size = 20.0,
+                        color = Some(Color::srgb(0.9, 0.9, 0.92))
+                    ));
                 });
             }),
         });
@@ -101,6 +103,6 @@ fn setup(
         })
         .id();
     commands.queue(move |world: &mut World| {
-        moxie_ui::reactive::build_root(world, root, dock);
+        moxie_ui::reactive::watch_root(world, root, dock);
     });
 }

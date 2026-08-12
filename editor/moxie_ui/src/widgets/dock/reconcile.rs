@@ -13,20 +13,21 @@ use std::fmt::Write as _;
 
 use bevy::prelude::*;
 
-use super::area::{
-    ActiveDockWindow, DockArea, DockTabContent, DockWindow,
-};
+use fynix_mock::elem;
+
+use super::area::ActiveDockWindow;
+
 use super::registry::{DockWindowBuildFn, WindowRegistry};
-use super::split::{Panel, PanelGroup, PanelHandle};
 use super::tabs;
 use super::tree::{
     DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId,
     SplitAxis, TabId,
 };
-use crate::reactive::{
-    BevyNodeMutExt, BevyUi, BevyUiExt, resource_changed,
-    structure_changed,
+use crate::fynix::dock::{
+    Area, AreaCursor, DockHost, SplitGroup, SplitHandle, SplitPanel,
+    SplitPanelCursor, TabContent, TabContentCursor,
 };
+use crate::reactive::{BevyUi, resource_changed, structure_changed};
 
 pub struct ReconcilePlugin;
 
@@ -40,16 +41,10 @@ impl Plugin for ReconcilePlugin {
 /// builder handed to [`build_root`](crate::reactive::build_root).
 pub fn dock(ui: &mut BevyUi) {
     super::add_popup::add_window_popup(ui);
-    ui.bundle((
-        DockTreeHost,
-        Node {
-            width: percent(100),
-            height: percent(100),
-            flex_direction: FlexDirection::Column,
-            ..default()
-        },
-    ))
-    .watch(structure_changed::<DockTree, _>(topology), build_dock);
+    ui.elem(elem!(DockHost)).watch(
+        structure_changed::<DockTree, _>(topology),
+        build_dock,
+    );
 }
 
 /// Marker for the node the dock tree is rendered underneath.
@@ -98,14 +93,14 @@ fn write_topology(tree: &DockTree, id: NodeId, out: &mut String) {
 }
 
 fn build_dock(ui: &mut BevyUi) {
-    let Some(root) = ui.world().resource::<DockTree>().root else {
+    let Some(root) = ui.world.resource::<DockTree>().root else {
         return;
     };
     build_node(root, ui);
 }
 
 fn build_node(id: NodeId, ui: &mut BevyUi) {
-    let node = ui.world().resource::<DockTree>().get(id).cloned();
+    let node = ui.world.resource::<DockTree>().get(id).cloned();
     match node {
         Some(DockNode::Leaf(leaf)) => build_leaf(id, leaf, ui),
         Some(DockNode::Split(split)) => build_split(id, split, ui),
@@ -123,38 +118,22 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
     // the space. Derived here rather than patched afterwards: the
     // topology that decides it is the same one that triggered this
     // rebuild.
-    let a_visible = leaf_visible(ui.world(), split.a);
-    let b_visible = leaf_visible(ui.world(), split.b);
+    let a_visible = leaf_visible(ui.world, split.a);
+    let b_visible = leaf_visible(ui.world, split.b);
     let handle_visible = a_visible && b_visible;
 
-    ui.bundle((
-        NodeBinding(id),
-        PanelGroup { min_ratio: 0.05 },
-        Node {
-            width: percent(100),
-            height: percent(100),
-            flex_direction,
-            overflow: Overflow::clip(),
-            ..default()
-        },
-    ))
-    .with(move |ui| {
-        build_panel(id, split.a, true, a_visible, ui);
+    ui.elem(elem!(SplitGroup, node = id, axis = flex_direction))
+        .with(move |ui| {
+            build_panel(id, split.a, true, a_visible, ui);
 
-        ui.bundle((
-            PanelHandle,
-            NodeBinding(id),
-            Node {
-                min_width: px(3),
-                min_height: px(3),
-                display: display(handle_visible),
-                ..default()
-            },
-            BackgroundColor(Color::NONE),
-        ));
+            ui.elem(elem!(
+                SplitHandle,
+                node = id,
+                visible = handle_visible
+            ));
 
-        build_panel(id, split.b, false, b_visible, ui);
-    });
+            build_panel(id, split.b, false, b_visible, ui);
+        });
 }
 
 /// One side of a split. The ratio is a binding, not part of the
@@ -167,27 +146,15 @@ fn build_panel(
     visible: bool,
     ui: &mut BevyUi,
 ) {
-    let size = if visible { percent(100) } else { px(0) };
-    ui.node(move |world, node| {
-        let ratio = ratio_of(world, split_id, is_a);
-        world.entity_mut(node).insert((
-            Panel { ratio },
-            Node {
-                width: size,
-                height: size,
-                flex_direction: FlexDirection::Column,
-                overflow: Overflow::clip(),
-                display: display(visible),
-                ..default()
-            },
-        ));
-    })
-    .bind::<Panel>(resource_changed::<DockTree>(), move |world, _| {
-        Panel {
-            ratio: ratio_of(world, split_id, is_a),
-        }
-    })
-    .with(move |ui| build_node(child, ui));
+    let ratio = ratio_of(ui.world, split_id, is_a);
+
+    ui.elem(elem!(SplitPanel, ratio = ratio, visible = visible))
+        .bind(
+            |panel| panel.ratio(),
+            resource_changed::<DockTree>(),
+            move |world, _| ratio_of(world, split_id, is_a),
+        )
+        .with(move |ui| build_node(child, ui));
 }
 
 /// This side's share of its split.
@@ -210,25 +177,11 @@ fn leaf_visible(world: &World, id: NodeId) -> bool {
     }
 }
 
-fn display(visible: bool) -> Display {
-    if visible {
-        Display::Flex
-    } else {
-        Display::None
-    }
-}
-
 fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
-    let flex_direction = match leaf.style {
-        DockAreaStyle::TabBar | DockAreaStyle::Headless => {
-            FlexDirection::Column
-        }
-    };
-
     // Resolve tabs against the registry once, cloning out: `ui` takes
     // the world mutably from here on. Iterating `leaf.windows` (not
     // the registry) keeps two tabs of the same window kind distinct.
-    let registry = ui.world().resource::<WindowRegistry>();
+    let registry = ui.world.resource::<WindowRegistry>();
     let tabs_data = leaf
         .windows
         .iter()
@@ -254,22 +207,18 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
     let area_id = leaf.area_id.clone();
     let style = leaf.style.clone();
     let show_bar = matches!(leaf.style, DockAreaStyle::TabBar);
-    let active = active_of(ui.world(), id);
+    let active = active_of(ui.world, id);
 
     let area = ui
-        .bundle((
-            DockArea { id: area_id, style },
-            ActiveDockWindow(active),
-            NodeBinding(id),
-            Node {
-                width: percent(100),
-                height: percent(100),
-                flex_direction,
-                overflow: Overflow::clip(),
-                ..default()
-            },
+        .elem(elem!(
+            Area,
+            node = id,
+            id = area_id,
+            style = style,
+            active = ActiveDockWindow(active)
         ))
-        .bind::<ActiveDockWindow>(
+        .bind(
+            |area| area.active(),
             resource_changed::<DockTree>(),
             move |world, _| ActiveDockWindow(active_of(world, id)),
         );
@@ -299,41 +248,21 @@ fn build_content(
     build: DockWindowBuildFn,
     ui: &mut BevyUi,
 ) {
-    let descriptor_id = window_id.clone();
-    let active = active_of(ui.world(), leaf) == Some(tab);
+    let active = active_of(ui.world, leaf) == Some(tab);
 
-    ui.bundle((
-        DockWindow {
-            descriptor_id,
-            tab_id: tab,
-        },
-        DockTabContent {
-            window_id,
-            tab_id: tab,
-        },
-        content_node(display(active)),
+    ui.elem(elem!(
+        TabContent,
+        window_id = window_id,
+        tab = tab,
+        showing = active
     ))
-    // Only `display`: the content pane's own layout is its business,
-    // and replacing the whole `Node` would clobber it.
-    .bind_field::<Node, _>(
+    .bind(
+        |content| content.showing(),
         resource_changed::<DockTree>(),
-        move |world, _| display(active_of(world, leaf) == Some(tab)),
-        |node, display| node.display = display,
+        move |world, _| active_of(world, leaf) == Some(tab),
     )
-    // The window's own content, as kernel nodes.
+    // The window's own content, as elements of its own.
     .with(move |ui| build(ui));
-}
-
-fn content_node(display: Display) -> Node {
-    Node {
-        flex_grow: 1.0,
-        width: percent(100),
-        min_height: px(0),
-        flex_direction: FlexDirection::Column,
-        overflow: Overflow::clip(),
-        display,
-        ..default()
-    }
 }
 
 fn active_of(world: &World, id: NodeId) -> Option<TabId> {

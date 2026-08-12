@@ -822,6 +822,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_fynix"
+version = "0.3.0"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_picking",
+ "bevy_time",
+ "bevy_ui",
+ "fynix_mock",
+]
+
+[[package]]
 name = "bevy_gilrs"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2834,6 +2846,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "fynix_mock"
+version = "0.3.0"
+dependencies = [
+ "fynix_mock_macros",
+ "hashbrown 0.17.1",
+ "typarena",
+]
+
+[[package]]
+name = "fynix_mock_macros"
+version = "0.3.0"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "gethostname"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3689,7 +3720,9 @@ name = "moxie"
 version = "0.3.0"
 dependencies = [
  "bevy",
+ "bevy_fynix",
  "bevy_motiongfx",
+ "fynix_mock",
  "moxie_ui",
 ]
 
@@ -3698,14 +3731,8 @@ name = "moxie_ui"
 version = "0.3.0"
 dependencies = [
  "bevy",
- "moxie_ui_kernel",
-]
-
-[[package]]
-name = "moxie_ui_kernel"
-version = "0.3.0"
-dependencies = [
- "hashbrown 0.17.1",
+ "bevy_fynix",
+ "fynix_mock",
 ]
 
 [[package]]

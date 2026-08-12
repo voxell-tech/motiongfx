@@ -9,6 +9,8 @@ repository.workspace = true
 [dependencies]
 bevy_motiongfx = { workspace = true, default-features = true }
 moxie_ui = { workspace = true }
+bevy_fynix = { workspace = true }
+fynix_mock = { workspace = true }
 bevy = { workspace = true, default-features = true, features = [
     "bevy_feathers",
     "bevy_ui_widgets",

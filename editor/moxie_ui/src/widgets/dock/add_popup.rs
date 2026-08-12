@@ -9,16 +9,19 @@
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
+use bevy::ui_widgets::Activate;
 
 use super::area::DockTabAddButton;
 use super::drag::logical_rect;
 use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tree::DockTree;
-use crate::elements::Frame;
-use crate::glass::{Glass, glass_button};
+use bevy_fynix::ElementMutExt;
+use fynix_mock::{elem, val};
+
+use crate::fynix::{Frame, GhostButton, Icon, Label, Overlay};
 use crate::icons;
-use crate::reactive::{BevyUi, BevyUiExt, component_changed};
+use crate::reactive::{BevyUi, component_changed};
 use crate::theme::EditorTheme;
 
 const POPUP_WIDTH: f32 = 150.0;
@@ -44,20 +47,13 @@ struct OpenPopup {
 pub(super) fn add_window_popup(ui: &mut BevyUi) {
     // A full-window overlay, because the popup positions itself in
     // window coordinates and an absolute child positions against its
-    // parent. `IGNORE` so it doesn't swallow every click meant for
-    // the dock underneath.
-    ui.bsn(bsn! {
-        Pickable::IGNORE
-        Node {
-            position_type: PositionType::Absolute,
-            left: px(0),
-            top: px(0),
-            width: percent(100),
-            height: percent(100),
-        }
-        AddWindowPopupState
-    })
-    .watch(component_changed::<AddWindowPopupState>(), build_popup);
+    // parent. It is always there, so it catches nothing.
+    ui.elem(elem!(Overlay))
+        .insert(AddWindowPopupState::default())
+        .watch(
+            component_changed::<AddWindowPopupState>(),
+            build_popup,
+        );
 }
 
 /// Open the popup under the clicked "+" button; clicking the same
@@ -96,6 +92,34 @@ pub(super) fn on_add_click(
     });
 }
 
+/// What a row adds when it is picked, so the handler is a system
+/// rather than a closure holding the two.
+#[derive(Component)]
+struct AddsWindow {
+    area: Entity,
+    window_id: String,
+}
+
+/// Add the row's window to its area, and close the popup.
+fn on_pick(
+    pick: On<Activate>,
+    rows: Query<&AddsWindow>,
+    areas: Query<&NodeBinding>,
+    mut tree: ResMut<DockTree>,
+    mut popup: Query<&mut AddWindowPopupState>,
+) {
+    let Ok(row) = rows.get(pick.entity) else {
+        return;
+    };
+
+    if let Ok(binding) = areas.get(row.area) {
+        tree.add_tab(binding.0, row.window_id.clone());
+    }
+    if let Ok(mut state) = popup.single_mut() {
+        state.open = None;
+    }
+}
+
 /// Close on any click that isn't on the popup itself.
 fn close_popup(
     mut click: On<Pointer<Click>>,
@@ -110,113 +134,93 @@ fn close_popup(
 fn build_popup(ui: &mut BevyUi) {
     let popup_root = ui.parent();
     let Some(open) = ui
-        .world()
+        .world
         .get::<AddWindowPopupState>(popup_root)
         .and_then(|state| state.open.clone())
     else {
         return;
     };
 
-    // Catches the outside-click, but lets hover/clicks through to the
-    // UI beneath rather than freezing it.
-    ui.bsn(bsn! {
-        on(close_popup)
-        Pickable {
-            should_block_lower: false,
-            is_hoverable: true,
-        }
-        Node {
-            position_type: PositionType::Absolute,
-            left: px(0),
-            top: px(0),
-            width: percent(100),
-            height: percent(100),
-        }
-        GlobalZIndex(180)
-    });
+    // Catches the click outside, but lets hover and clicks through to
+    // the UI beneath rather than freezing it.
+    ui.elem(elem!(Overlay, catches = true, z = 180))
+        .observe(close_popup);
 
     let (left, top, area) = (open.left, open.top, open.area);
-    ui.bsn(bsn! {
-        @Frame {
-            @width: {px(POPUP_WIDTH)},
-            @direction: {FlexDirection::Column},
-            @padding: {UiRect::all(px(4))},
-            @radius: {px(6)},
-            @glass: {Some(Glass::Popup)},
-        }
-        Node {
-            position_type: PositionType::Absolute,
-            left: px(left),
-            top: px(top),
-        }
-        GlobalZIndex(181)
-    })
+
+    ui.elem(elem!(
+        Frame,
+        position = PositionType::Absolute,
+        inset = UiRect::new(px(left), auto(), px(top), auto(),),
+        width = px(POPUP_WIDTH),
+        direction = FlexDirection::Column,
+        row_gap = px(2),
+        padding = UiRect::all(px(4)),
+        radius = px(6),
+        background = Color::srgba(0.11, 0.10, 0.11, 0.98),
+        z = Some(181)
+    ))
     .with(move |ui| build_rows(ui, area));
 }
 
 /// Windows are single-instance, so only closed ones are listed.
 fn build_rows(ui: &mut BevyUi, area: Entity) {
-    let text_color =
-        ui.world().resource::<EditorTheme>().text_primary;
-    let tree = ui.world().resource::<DockTree>();
+    let text_color = ui.world.resource::<EditorTheme>().text_primary;
+    let tree = ui.world.resource::<DockTree>();
     let closed = ui
-        .world()
+        .world
         .resource::<WindowRegistry>()
         .iter()
         .filter(|d| tree.find_leaf_with_window(&d.id).is_none())
         .map(|d| (d.id.clone(), d.name.clone(), d.icon.clone()))
         .collect::<Vec<_>>();
 
+    // Every window is already open, so the popup would be a blank
+    // box: say why it is empty rather than showing nothing.
+    if closed.is_empty() {
+        let muted = ui.world.resource::<EditorTheme>().text_muted;
+
+        ui.elem(elem!(
+            Label,
+            text = "Nothing left to add",
+            size = 12.0,
+            color = Some(muted)
+        ));
+        return;
+    }
+
     for (window_id, name, icon) in closed {
-        // The click handler captures the window id + target area
-        // directly instead of going through a component (which would
-        // need `Entity`'s absent `Default` for the template system).
-        ui.bsn(bsn! {
-            glass_button()
-            on(move |mut click: On<Pointer<Click>>,
-                     q_bindings: Query<&NodeBinding>,
-                     mut tree: ResMut<DockTree>,
-                     mut q_state: Query<&mut AddWindowPopupState>| {
-                click.propagate(false);
-                if let Ok(binding) = q_bindings.get(area) {
-                    tree.add_tab(binding.0, window_id.clone());
-                }
-                if let Ok(mut state) = q_state.single_mut() {
-                    state.open = None;
-                }
-            })
-            @Frame {
-                @width: {percent(100)},
-                @justify: {JustifyContent::FlexStart},
-                @align: {AlignItems::Center},
-                @padding: {UiRect::axes(px(8), px(4))},
-                @radius: {px(4)},
-            }
-        })
+        let (image, icon_color) = match icon {
+            Some(icon) => (icon, text_color),
+            None => (
+                icons::PLACEHOLDER.to_string(),
+                text_color.with_alpha(0.0),
+            ),
+        };
+
+        ui.elem(elem!(
+            !GhostButton,
+            width = percent(100),
+            height = auto(),
+            justify = JustifyContent::FlexStart,
+            padding = UiRect::axes(px(8), px(4)),
+            radius = px(4),
+            icon = val!(
+                Icon,
+                image = image,
+                color = icon_color,
+                size = px(12)
+            ),
+        ))
+        .insert(AddsWindow { area, window_id })
+        .observe(on_pick)
         .with(move |ui| {
-            let (icon_src, icon_color) = match &icon {
-                Some(icon) => (icon.clone(), text_color),
-                None => (
-                    icons::PLACEHOLDER.to_string(),
-                    text_color.with_alpha(0.0),
-                ),
-            };
-            ui.bsn(bsn! {
-                ImageNode {
-                    image: {icon_src},
-                    color: {icon_color},
-                }
-                Node {
-                    width: px(12),
-                    height: px(12),
-                    margin: UiRect::right(px(6)),
-                }
-            });
-            ui.bsn(bsn! {
-                Text({name})
-                TextFont { font_size: FontSize::Px(12.0) }
-                TextColor({text_color})
-            });
+            ui.elem(elem!(
+                Label,
+                text = name,
+                size = 12.0,
+                color = Some(text_color)
+            ));
         });
     }
 }

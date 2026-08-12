@@ -14,12 +14,12 @@ mod tree;
 
 pub use area::{
     ActiveDockWindow, DockArea, DockTab, DockTabAddButton,
-    DockTabCloseButton, DockTabContent, DockWindow,
+    DockTabContent, DockWindow,
 };
 use bevy::prelude::*;
 pub use drag::{DockDragPlugin, DockDragState};
 pub use reconcile::{
-    DockTreeHost, NodeBinding, ReconcilePlugin, dock,
+    DockTreeHost, LeafBinding, NodeBinding, ReconcilePlugin, dock,
 };
 pub use registry::{
     DockWindowBuildFn, DockWindowDescriptor, WindowRegistry,

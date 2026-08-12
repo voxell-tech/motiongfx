@@ -6,16 +6,18 @@
 //! finds widgets by lookup, so it never grows a match over concrete
 //! types and a downstream crate can add its own.
 
-use bevy::feathers::controls::{
-    NumberFormat, NumberInputValue, UpdateNumberInput,
-};
+use bevy::feathers::controls::{NumberFormat, NumberInputValue};
 use bevy::prelude::*;
 use bevy::reflect::{FromType, GetTypeRegistration};
-use bevy::ui::Checked;
 use bevy::ui_widgets::ValueChange;
 
-use super::{Field, apply_scene_to, target_changed};
-use crate::glass::{glass_checkbox, glass_number_field};
+use super::{Field, target_changed};
+use bevy_fynix::ElementMutExt;
+use fynix_mock::elem;
+
+use crate::fynix::{
+    CheckBox, CheckBoxCursor, NumberField, NumberFieldCursor,
+};
 use crate::reactive::BevyUi;
 
 /// Builds the editing widget for one reflected value.
@@ -81,41 +83,29 @@ impl Inspect for bool {
     fn build(field: &Field, ui: &mut BevyUi) {
         let edited = field.clone();
         let read = field.clone();
-        ui.node(move |world, node| {
-            apply_scene_to(world, node, glass_checkbox());
-            let field = edited.clone();
-            world.entity_mut(node).observe(
+        let checked = read.get::<bool>(ui.world).unwrap_or_default();
+
+        ui.elem(elem!(CheckBox, checked = checked))
+            .observe(
                 move |change: On<ValueChange<bool>>,
                       mut commands: Commands| {
                     let (field, value) =
-                        (field.clone(), change.value);
+                        (edited.clone(), change.value);
+
                     commands.queue(move |world: &mut World| {
                         field.set(world, value);
                     });
-                    // The checkbox is controlled, so its own state
-                    // only moves once the write lands.
-                    if value {
-                        commands
-                            .entity(change.source)
-                            .insert(Checked);
-                    } else {
-                        commands
-                            .entity(change.source)
-                            .remove::<Checked>();
-                    }
+                },
+            )
+            // Controlled: what it shows follows the value it edits,
+            // and only moves once the write has landed.
+            .bind(
+                |box_| box_.checked(),
+                target_changed(field.target()),
+                move |world, _| {
+                    read.get::<bool>(world).unwrap_or_default()
                 },
             );
-        })
-        .bind_raw(
-            target_changed(field.target()),
-            move |world, node| {
-                if read.get::<bool>(world).unwrap_or_default() {
-                    world.entity_mut(node).insert(Checked);
-                } else {
-                    world.entity_mut(node).remove::<Checked>();
-                }
-            },
-        );
     }
 }
 
@@ -137,32 +127,31 @@ fn number_field<T, V>(
 {
     let edited = field.clone();
     let read = field.clone();
-    ui.node(move |world, node| {
-        apply_scene_to(world, node, glass_number_field(format));
-        let field = edited.clone();
-        world.entity_mut(node).observe(
-            move |change: On<ValueChange<V>>,
-                  mut commands: Commands| {
-                let (field, value) =
-                    (field.clone(), change.value.clone());
-                commands.queue(move |world: &mut World| {
-                    field.set(world, to_field(value));
-                });
-            },
-        );
-    })
-    .bind_raw(
-        target_changed(field.target()),
-        move |world, node| {
-            let Some(value) = read.get::<T>(world) else {
-                return;
-            };
-            // Pushed as an event rather than a component write: a focused
-            // input ignores it, so a live edit still wins.
-            world.trigger(UpdateNumberInput {
-                entity: node,
-                value: to_input(value),
+
+    let shown = read.get::<T>(ui.world).map(to_input);
+
+    ui.elem(elem!(
+        NumberField,
+        format = format,
+        value = shown.unwrap_or(NumberInputValue::F32(0.0))
+    ))
+    .observe(
+        move |change: On<ValueChange<V>>, mut commands: Commands| {
+            let (field, value) =
+                (edited.clone(), change.value.clone());
+
+            commands.queue(move |world: &mut World| {
+                field.set(world, to_field(value));
             });
+        },
+    )
+    .bind(
+        |input| input.value(),
+        target_changed(field.target()),
+        move |world, _| {
+            read.get::<T>(world)
+                .map(to_input)
+                .unwrap_or(NumberInputValue::F32(0.0))
         },
     );
 }

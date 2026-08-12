@@ -1,0 +1,15 @@
+[package]
+name = "fynix_mock"
+description = "Type level field paths for element trees, and the cursor that builds them."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+fynix_mock_macros = { workspace = true }
+hashbrown = { workspace = true, features = ["default-hasher"] }
+typarena = { workspace = true }
+
+[lints]
+workspace = true

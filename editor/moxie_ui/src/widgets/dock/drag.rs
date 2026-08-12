@@ -3,6 +3,9 @@
 
 use bevy::feathers::cursor::{EntityCursor, OverrideCursor};
 use bevy::prelude::*;
+
+/// What a drop target is tinted with while a drag is over it.
+const DROP_TINT: Color = Color::srgba(0.47, 0.86, 0.91, 0.18);
 use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
 
@@ -11,7 +14,6 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabRow;
 use super::tree::{DockTree, Edge as TreeEdge, TabId};
-use crate::glass::Glass;
 
 pub struct DockDragPlugin;
 
@@ -325,7 +327,7 @@ fn on_drag_move(
                             border_radius: BorderRadius::all(px(4)),
                             ..Default::default()
                         },
-                        Glass::Overlay,
+                        BackgroundColor(DROP_TINT),
                         GlobalZIndex(150),
                     ))
                     .id();
@@ -367,7 +369,7 @@ fn on_drag_move(
                                     ),
                                     ..default()
                                 },
-                                Glass::Overlay,
+                                BackgroundColor(DROP_TINT),
                                 GlobalZIndex(150),
                             ))
                             .id();
@@ -391,7 +393,7 @@ fn on_drag_move(
                                     ),
                                     ..default()
                                 },
-                                Glass::Overlay,
+                                BackgroundColor(DROP_TINT),
                                 GlobalZIndex(150),
                             ))
                             .id();

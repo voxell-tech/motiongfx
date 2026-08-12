@@ -21,13 +21,11 @@ use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 use crate::{
     EditorSettings, EditorState, PreviewImage, playback, view,
 };
+use bevy_fynix::ElementMutExt;
+use fynix_mock::elem;
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::elements::Label;
-use moxie_ui::glass::{Glass, glass_button};
-use moxie_ui::reactive::{
-    BevyNodeMutExt, BevyUi, BevyUiExt, KernelSet, value_changed,
-};
-use moxie_ui::widgets::bind_backdrop;
+use moxie_ui::fynix::{Button, Frame, FrameCursor, Label, Panel};
+use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
     DockWindowDescriptor, Edge, WindowRegistry, dock,
@@ -48,12 +46,13 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 (
+                    playback::track_first_timeline,
                     playback::play_pause_hotkey,
                     playback::stop_at_track_end,
                     view::retarget_scene_cameras,
                 )
                     .chain()
-                    .before(KernelSet),
+                    .before(FynixSet),
             )
             .add_observer(playback::on_toggle_playback);
     }
@@ -142,7 +141,7 @@ fn setup_editor_ui(
         ))
         .id();
     commands.queue(move |world: &mut World| {
-        moxie_ui::reactive::build_root(world, root, build_editor_ui);
+        moxie_ui::reactive::watch_root(world, root, build_editor_ui);
     });
 }
 
@@ -151,8 +150,6 @@ fn setup_editor_ui(
 fn build_editor_ui(ui: &mut BevyUi) {
     // Non-visual binds live at the root: they hang off a node only for
     // lifetime, and write to resources or assets.
-    crate::playback::bind_timeline_state(ui);
-    bind_backdrop(ui);
     dock(ui);
 }
 
@@ -167,33 +164,61 @@ fn register_windows(
         icon: Some(crate::icons::VIEWPORT.into()),
         build: Arc::new(move |ui: &mut BevyUi| {
             let preview = preview.clone();
-            ui.bsn(bsn! {
-                Node {
-                    width: percent(100),
-                    flex_grow: 1.0,
-                    min_height: px(0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    overflow: Overflow::clip(),
-                }
-            })
+            ui.elem(elem!(
+                Panel,
+                justify = JustifyContent::Center,
+                align = AlignItems::Center
+            ))
             .with(move |ui| {
-                ui.bundle(ImageNode::new(preview.clone()))
-                    // Letterboxed to fit the area above, which is this
-                    // node's parent.
-                    .bind_field::<Node, _>(
-                        value_changed(crate::view::preview_fit),
-                        crate::view::preview_fit,
-                        |node, size| {
-                            // `None` while the area has no size yet:
-                            // leave the node alone rather than
-                            // collapsing it to zero.
-                            if let Some((width, height)) = size {
-                                node.width = width;
-                                node.height = height;
-                            }
-                        },
-                    );
+                let fit =
+                    crate::view::preview_fit(ui.world, ui.parent());
+                let shown = fit.is_some();
+
+                // Letterboxed to fit the area above. Hidden until that
+                // area has a size: at a fresh `ComputedNode` it does
+                // not, and `Auto` would flash at the image's native
+                // size for a frame.
+                ui.elem(elem!(
+                    Frame,
+                    width = fit.map_or(Val::ZERO, |(width, _)| width),
+                    height =
+                        fit.map_or(Val::ZERO, |(_, height)| height),
+                    display = if shown {
+                        Display::Flex
+                    } else {
+                        Display::None
+                    }
+                ))
+                .insert(ImageNode::new(preview.clone()))
+                .bind(
+                    |frame| frame.width(),
+                    value_changed(crate::view::preview_fit),
+                    |world, node| {
+                        crate::view::preview_fit(world, node)
+                            .map_or(Val::ZERO, |(width, _)| width)
+                    },
+                )
+                .bind(
+                    |frame| frame.height(),
+                    value_changed(crate::view::preview_fit),
+                    |world, node| {
+                        crate::view::preview_fit(world, node)
+                            .map_or(Val::ZERO, |(_, height)| height)
+                    },
+                )
+                .bind(
+                    |frame| frame.display(),
+                    value_changed(crate::view::preview_fit),
+                    |world, node| {
+                        if crate::view::preview_fit(world, node)
+                            .is_some()
+                        {
+                            Display::Flex
+                        } else {
+                            Display::None
+                        }
+                    },
+                );
             });
         }),
     });
@@ -218,17 +243,13 @@ fn register_windows(
         name: "Settings".into(),
         icon: Some(crate::icons::SETTINGS.into()),
         build: Arc::new(|ui: &mut BevyUi| {
-            ui.bsn(bsn! {
-                Node {
-                    width: percent(100),
-                    flex_grow: 1.0,
-                    flex_direction: FlexDirection::Column,
-                    row_gap: px(8),
-                    padding: UiRect::all(px(PANEL_PADDING)),
-                    overflow: Overflow::scroll_y(),
-                }
-                template_value(Glass::Panel)
-            })
+            ui.elem(elem!(
+                Panel,
+                direction = FlexDirection::Column,
+                row_gap = px(8),
+                padding = UiRect::all(px(PANEL_PADDING)),
+                scrolls = true
+            ))
             .with(|ui| {
                 // Editable rows built by the reflect inspector.
                 inspector_fields(
@@ -236,27 +257,21 @@ fn register_windows(
                     InspectorTarget::resource::<EditorSettings>(),
                 );
                 // Save row.
-                ui.bsn(bsn! {
-                    Node { flex_direction: FlexDirection::Row }
-                    Children [(
-                        glass_button()
-                        on(|mut click: On<Pointer<Click>>,
-                            mut commands: Commands| {
+                ui.elem(elem!(Frame, direction = FlexDirection::Row))
+                    .with(|ui| {
+                        ui.elem(elem!(!Button, width = px(64),
+                        height = px(24)))
+                    .observe(
+                        |mut click: On<Pointer<Click>>,
+                         mut commands: Commands| {
                             click.propagate(false);
                             commands.queue(SaveSettingsSync::Always);
-                        })
-                        Node {
-                            width: px(64),
-                            height: px(24),
-                            align_items: AlignItems::Center,
-                            justify_content: JustifyContent::Center,
-                            border_radius: BorderRadius::all(px(6)),
-                        }
-                        Children [(
-                            @Label { @text: {"Save".to_string()} }
-                        )]
-                    )]
-                });
+                        },
+                    )
+                    .with(|ui| {
+                        ui.elem(elem!(Label, text = "Save"));
+                    });
+                    });
             });
         }),
     });

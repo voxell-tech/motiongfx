@@ -1,0 +1,19 @@
+[package]
+name = "fynix_mock_macros"
+description = "Derive macros for fynix_mock."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro-crate = "3"
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["derive", "full"] }
+
+[lints]
+workspace = true
