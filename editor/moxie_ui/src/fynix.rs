@@ -16,6 +16,7 @@ mod label;
 mod overlay;
 mod panel;
 mod playhead;
+mod scroll_area;
 mod tab;
 mod timeline_action;
 mod timeline_block;
@@ -24,8 +25,8 @@ mod timeline_track;
 // The cursor traits come too: a binding names a field by walking to
 // it, and the walk is what those provide.
 pub use button::{
-    Button, GhostButton, RawButton, RawButtonCursor, RawButtonField,
-    TintButton,
+    Button, ButtonElem, ButtonElemCursor, ButtonElemField,
+    GhostButton, TintButton,
 };
 pub use divider::{Divider, DividerCursor, DividerField};
 pub use field::{
@@ -39,6 +40,9 @@ pub use overlay::{Overlay, OverlayCursor, OverlayField};
 pub use panel::{Panel, PanelCursor, PanelField};
 pub use playhead::{
     PlayheadLine, PlayheadLineCursor, PlayheadLineField,
+};
+pub use scroll_area::{
+    ScrollArea, ScrollAreaCursor, ScrollAreaField,
 };
 pub use tab::{
     Tab, TabBar, TabBarCursor, TabBarField, TabCursor, TabField,

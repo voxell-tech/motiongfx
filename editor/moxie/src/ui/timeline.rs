@@ -6,7 +6,7 @@ use core::time::Duration;
 
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
-use bevy::ui_widgets::{Activate, ScrollArea};
+use bevy::ui_widgets::Activate;
 use bevy_motiongfx::prelude::MotionGfxManager;
 
 use super::PANEL_PADDING;
@@ -19,16 +19,14 @@ use crate::{EditorScene, EditorState, SelectedAction};
 use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
 use moxie_ui::fynix::{
-    Button, Frame, Icon, IconCursor, Label, LabelCursor, Panel,
-    PlayheadLine, PlayheadLineCursor, RawButtonCursor,
-    TimelineAction, TimelineBlock, TimelineTrack,
-    TimelineTrackCursor,
+    Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
+    LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
+    TimelineAction, TimelineBlock,
 };
 use moxie_ui::reactive::{BevyUi, resource_changed, value_changed};
 use moxie_ui::theme::EditorTheme;
 
 const CONTROL_BAR_HEIGHT: f32 = 40.0;
-const TRACK_TOP_PADDING: f32 = 12.0;
 
 /// Viewport where the timeline, track and action UI is displayed.
 #[derive(Component, Default, Clone)]
@@ -48,15 +46,9 @@ pub(crate) struct TimelineContent;
 /// time label and friends have to be `NodeMut`s to carry their own
 /// binds.
 pub(super) fn panel(ui: &mut BevyUi) {
-    ui.elem(elem!(
-        Panel,
-        direction = FlexDirection::Column,
-        padding = UiRect::bottom(px(PANEL_PADDING))
-    ))
-    .with(|ui| {
-        control_bar(ui);
-        track_area(ui);
-    });
+    ui.elem(elem!(Panel, direction = FlexDirection::Column))
+        .with(control_bar)
+        .with(track_area);
 }
 
 /// Play/pause + time readout.
@@ -107,63 +99,30 @@ fn control_bar(ui: &mut BevyUi) {
     });
 }
 
-/// The scrollable track viewport, filling the whole panel width.
+/// The scrollable track viewport, filling the whole panel width, with
+/// the playhead floating over it as a sibling - not a descendant, so
+/// it's neither scrolled nor clipped by the [`ScrollArea`].
 fn track_area(ui: &mut BevyUi) {
-    ui.elem(elem!(Frame, width = percent(100)))
-        .insert((
-            TrackViewport,
-            ScrollArea,
-            Node {
-                width: percent(100),
-                flex_grow: 1.0,
-                // `min: 0` lets the viewport shrink below its content
-                // so it clips and scrolls.
-                min_width: px(0),
-                min_height: px(0),
-                overflow: Overflow::scroll(),
-                ..default()
-            },
-        ))
+    ui.elem(elem!(Frame, width = percent(100), flex_grow = 1.0))
+        .insert(TimelineContent)
+        .observe(on_track_press)
+        .observe(on_track_drag)
+        .observe(on_track_release)
+        .observe(on_track_click_release)
+        .observe(on_track_cancel)
         .with(|ui| {
-            ui.elem(elem!(TimelineTrack, width = 1.0))
-                .insert(TimelineContent)
-                .observe(on_track_press)
-                .observe(on_track_drag)
-                .observe(on_track_release)
-                .observe(on_track_click_release)
-                .observe(on_track_cancel)
-                .bind(
-                    |track| track.width(),
-                    resource_changed::<EditorState>(),
-                    |world, node| match track_width(world, node) {
-                        Val::Px(width) => width,
-                        _ => 1.0,
-                    },
-                )
-                .with(|ui| {
-                    // The boxes get a container of their own, so the
-                    // watcher's rebuild cannot take the playhead with
-                    // it.
-                    ui.elem(elem!(Frame,))
-                        .insert(Node {
-                            position_type: PositionType::Absolute,
-                            top: px(TRACK_TOP_PADDING),
-                            left: px(0),
-                            ..default()
-                        })
-                        .watch(
-                            value_changed(block_view),
-                            build_block_boxes,
-                        );
-
-                    ui.elem(elem!(PlayheadLine)).bind(
-                        |line| line.left(),
-                        resource_changed::<MotionGfxManager>(),
-                        |world, node| {
-                            crate::px_for(current_time(world, node))
-                        },
-                    );
-                });
+            ui.elem(elem!(PlayheadLine)).bind(
+                |line| line.left(),
+                resource_changed::<MotionGfxManager>(),
+                |world, node| {
+                    crate::px_for(current_time(world, node))
+                },
+            );
+        })
+        .with(|ui| {
+            ui.elem(elem!(ScrollArea, width = percent(100)))
+                .insert(TrackViewport)
+                .watch(value_changed(block_view), build_block_boxes);
         });
 }
 
@@ -178,13 +137,6 @@ fn current_time(world: &World, _: Entity) -> Duration {
         .get_timeline(&id)
         .map(|t| t.target_time())
         .unwrap_or(Duration::ZERO)
-}
-
-/// Track node width for the current duration, floored at 1px so a
-/// zero-duration track still lays out.
-fn track_width(world: &World, _: Entity) -> Val {
-    let duration = world.resource::<EditorState>().duration;
-    px(crate::px_for(duration).max(1.0))
 }
 
 /// The editor scene's animation tree, laid out as nested boxes.

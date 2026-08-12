@@ -15,11 +15,11 @@ pub struct PlayheadLine {
 impl PlayheadLine {
     fn node(&self) -> Node {
         Node {
-            position_type: PositionType::Absolute,
             top: px(0),
             bottom: px(0),
             left: px(self.left),
             width: px(2),
+            flex_grow: 1.0,
             ..default()
         }
     }
