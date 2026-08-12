@@ -38,7 +38,7 @@ impl TimelineBlock {
             // corner.
             padding: UiRect::new(px(4), Val::ZERO, px(2), Val::ZERO),
             border: UiRect::all(px(1)),
-            border_radius: BorderRadius::all(px(3)),
+            // border_radius: BorderRadius::all(px(3)),
             ..default()
         }
     }

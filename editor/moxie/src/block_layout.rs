@@ -35,6 +35,10 @@ pub(crate) struct Placed {
     /// `true` for the part of an `Any`'s losing branch that plays on
     /// past the group's official end - see [`layout`].
     pub(crate) dotted: bool,
+    /// This node's position in `animation`'s tree: child index at
+    /// each depth, root first. What [`crate::SelectedAction`] compares
+    /// against, so a click can name exactly which node it landed on.
+    pub(crate) path: Vec<usize>,
 }
 
 /// Every box in `animation`'s tree, depth-first - `animation` itself
@@ -51,7 +55,7 @@ pub(crate) fn layout(animation: &Block<Backend>) -> Vec<Placed> {
     let root = measure_block(animation, Duration::ZERO);
     let mut out = Vec::new();
     let mut overlay = Vec::new();
-    flatten(&root, 0.0, 0, &mut out, &mut overlay);
+    flatten(&root, 0.0, 0, &mut Vec::new(), &mut out, &mut overlay);
     out.extend(overlay);
     out
 }
@@ -256,6 +260,7 @@ fn flatten(
     measured: &Measured,
     y: f32,
     depth: usize,
+    path: &mut Vec<usize>,
     out: &mut Vec<Placed>,
     overlay: &mut Vec<Placed>,
 ) {
@@ -273,6 +278,7 @@ fn flatten(
             depth,
             label: None,
             dotted: false,
+            path: path.clone(),
         }),
         MeasuredKind::Block {
             label,
@@ -287,10 +293,12 @@ fn flatten(
                 depth,
                 label: Some(label.clone()),
                 dotted: false,
+                path: path.clone(),
             });
             let content_top = y + HEADER_HEIGHT;
-            for (lane_y, child) in children {
+            for (i, (lane_y, child)) in children.iter().enumerate() {
                 let child_y = content_top + lane_y;
+                path.push(i);
                 // An `Any` can end before a slower child does; split
                 // that child's own box right there instead of hiding
                 // (or letting a later sibling collide with) the part
@@ -301,12 +309,21 @@ fn flatten(
                         child_y,
                         depth + 1,
                         measured.end,
+                        path,
                         out,
                         overlay,
                     );
                 } else {
-                    flatten(child, child_y, depth + 1, out, overlay);
+                    flatten(
+                        child,
+                        child_y,
+                        depth + 1,
+                        path,
+                        out,
+                        overlay,
+                    );
                 }
+                path.pop();
             }
         }
     }
@@ -323,6 +340,7 @@ fn split_at(
     y: f32,
     depth: usize,
     bound: Duration,
+    path: &mut Vec<usize>,
     out: &mut Vec<Placed>,
     overlay: &mut Vec<Placed>,
 ) {
@@ -342,6 +360,7 @@ fn split_at(
         depth,
         label: label.clone(),
         dotted: false,
+        path: path.clone(),
     });
 
     let dotted_x = crate::px_for(bound);
@@ -355,18 +374,22 @@ fn split_at(
         depth,
         label,
         dotted: true,
+        path: path.clone(),
     });
 
     if let MeasuredKind::Block { children, .. } = &child.kind {
         let content_top = y + HEADER_HEIGHT;
-        for (lane_y, grandchild) in children {
+        for (i, (lane_y, grandchild)) in children.iter().enumerate() {
+            path.push(i);
             flatten(
                 grandchild,
                 content_top + lane_y,
                 depth + 1,
+                path,
                 out,
                 overlay,
             );
+            path.pop();
         }
     }
 }

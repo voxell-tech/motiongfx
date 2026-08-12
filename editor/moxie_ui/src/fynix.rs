@@ -17,6 +17,7 @@ mod overlay;
 mod panel;
 mod playhead;
 mod tab;
+mod timeline_action;
 mod timeline_block;
 mod timeline_track;
 
@@ -42,6 +43,9 @@ pub use playhead::{
 pub use tab::{
     Tab, TabBar, TabBarCursor, TabBarField, TabCursor, TabField,
     TabRow, TabRowCursor, TabRowField,
+};
+pub use timeline_action::{
+    TimelineAction, TimelineActionCursor, TimelineActionField,
 };
 pub use timeline_block::{
     TimelineBlock, TimelineBlockCursor, TimelineBlockField,

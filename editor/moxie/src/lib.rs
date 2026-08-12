@@ -69,6 +69,11 @@ pub(crate) struct EditorState {
     pub(crate) is_playing: bool,
 }
 
+/// The path (root-to-node child indices) of the action currently
+/// selected in the timeline panel, if any. `None` selects nothing.
+#[derive(Resource, Default, Clone, PartialEq)]
+pub(crate) struct SelectedAction(pub(crate) Option<Vec<usize>>);
+
 #[derive(Debug, Resource, SettingsGroup, Reflect)]
 #[reflect(Resource, SettingsGroup, Default)]
 pub struct EditorSettings {

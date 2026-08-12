@@ -19,7 +19,8 @@ use bevy::ui::widget::ImageNode;
 use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 
 use crate::{
-    EditorSettings, EditorState, PreviewImage, playback, scene, view,
+    EditorSettings, EditorState, PreviewImage, SelectedAction,
+    playback, scene, view,
 };
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
@@ -42,6 +43,7 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(MoxieUiPlugin)
             .init_resource::<EditorState>()
+            .init_resource::<SelectedAction>()
             .add_systems(Startup, setup_editor_ui)
             .add_systems(
                 Update,

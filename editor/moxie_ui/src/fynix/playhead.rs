@@ -31,6 +31,7 @@ impl ElementVisual<BevyHost> for PlayheadLine {
             self.node(),
             ZIndex(10),
             BackgroundColor(PLAYHEAD_COLOR),
+            Pickable::IGNORE,
         ));
     }
 

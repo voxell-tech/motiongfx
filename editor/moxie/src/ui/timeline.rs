@@ -6,7 +6,7 @@ use core::time::Duration;
 
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
-use bevy::ui_widgets::ScrollArea;
+use bevy::ui_widgets::{Activate, ScrollArea};
 use bevy_motiongfx::prelude::MotionGfxManager;
 
 use super::PANEL_PADDING;
@@ -15,13 +15,14 @@ use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_click_release,
     on_track_drag, on_track_press, on_track_release,
 };
-use crate::{EditorScene, EditorState};
+use crate::{EditorScene, EditorState, SelectedAction};
 use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
 use moxie_ui::fynix::{
     Button, Frame, Icon, IconCursor, Label, LabelCursor, Panel,
-    PlayheadLine, PlayheadLineCursor, RawButtonCursor, TimelineBlock,
-    TimelineTrack, TimelineTrackCursor,
+    PlayheadLine, PlayheadLineCursor, RawButtonCursor,
+    TimelineAction, TimelineBlock, TimelineTrack,
+    TimelineTrackCursor,
 };
 use moxie_ui::reactive::{BevyUi, resource_changed, value_changed};
 use moxie_ui::theme::EditorTheme;
@@ -151,7 +152,7 @@ fn track_area(ui: &mut BevyUi) {
                             ..default()
                         })
                         .watch(
-                            value_changed(block_placements),
+                            value_changed(block_view),
                             build_block_boxes,
                         );
 
@@ -186,9 +187,7 @@ fn track_width(world: &World, _: Entity) -> Val {
     px(crate::px_for(duration).max(1.0))
 }
 
-/// The editor scene's animation tree, laid out as nested boxes. The
-/// watcher's signal: a box only needs rebuilding when a node is added,
-/// removed, re-timed or re-nested.
+/// The editor scene's animation tree, laid out as nested boxes.
 fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
     world
         .get_resource::<EditorScene>()
@@ -198,6 +197,19 @@ fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
         .unwrap_or_default()
 }
 
+/// The boxes plus which one (if any) is selected - the watcher's
+/// signal, so a box only needs rebuilding when a node is added,
+/// removed, re-timed, re-nested, or selection moves onto or off it.
+fn block_view(
+    world: &World,
+    node: Entity,
+) -> (Vec<Placed>, Option<Vec<usize>>) {
+    let selected = world
+        .get_resource::<SelectedAction>()
+        .and_then(|s| s.0.clone());
+    (block_placements(world, node), selected)
+}
+
 /// One box per placement: a block's header - a [`TimelineBlock`],
 /// which owns its own label - or, for anything without one (an action
 /// leaf, or a `dotted` overflow piece that skips its own label since
@@ -205,14 +217,21 @@ fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
 /// filled [`Frame`]. A `dotted` piece (an `Any`'s losing branch, past
 /// the group's official end) draws ghosted - faint enough to read as
 /// "still playing, but no longer part of this group's timing".
+///
+/// An action leaf (dotted tail included, since it's the same action
+/// split across two boxes) lights up under the cursor and outlines in
+/// the theme's accent when [`SelectedAction`] names its path - clicking
+/// it writes that path in.
 fn build_block_boxes(ui: &mut BevyUi) {
-    let placements = block_placements(ui.world, ui.parent());
+    let (placements, selected) = block_view(ui.world, ui.parent());
     let theme = ui.world.resource::<EditorTheme>();
     let action_fill = theme.palette.blue;
     let block_outline = theme.text_primary;
+    let accent = theme.accent;
 
     for placed in placements {
         let is_block = placed.label.is_some();
+        let is_selected = selected.as_ref() == Some(&placed.path);
         let ghost = if placed.dotted { 0.45 } else { 1.0 };
         let (background, border) = if is_block {
             (
@@ -220,7 +239,10 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 block_outline.with_alpha(0.4 * ghost),
             )
         } else {
-            (action_fill.with_alpha(0.35 * ghost), Color::NONE)
+            (
+                action_fill.with_alpha(0.35 * ghost),
+                if is_selected { accent } else { Color::NONE },
+            )
         };
 
         match placed.label.filter(|_| !placed.dotted) {
@@ -241,7 +263,11 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     border = border
                 ));
             }
-            None => {
+            // A dotted block-header piece skipped its label above
+            // (it's a `TimelineBlock`'s overflow tail, not an
+            // action's), so it stays a plain, non-interactive `Frame`
+            // too.
+            None if is_block => {
                 ui.elem(elem!(
                     Frame,
                     width = px(placed.w),
@@ -260,6 +286,28 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     ..default()
                 })
                 .insert(BorderColor::all(border));
+            }
+            // An action leaf's own element: position, colors and
+            // selection are all typed fields, and it owns its
+            // pointer cursor and hover/press tint itself.
+            None => {
+                let path = placed.path.clone();
+                ui.elem(elem!(
+                    TimelineAction,
+                    top = placed.y,
+                    left = placed.x,
+                    width = placed.w,
+                    height = placed.h,
+                    fill = background,
+                    border = border,
+                    selected = is_selected
+                ))
+                .observe(
+                    move |_: On<Activate>,
+                          mut selected: ResMut<SelectedAction>| {
+                        selected.0 = Some(path.clone());
+                    },
+                );
             }
         }
     }
