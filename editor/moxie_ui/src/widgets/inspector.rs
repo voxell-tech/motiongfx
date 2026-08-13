@@ -1,32 +1,30 @@
 //! Reflection-driven inspector.
 //!
 //! [`inspector_fields`] walks any reflected value in the world and
-//! renders its leaves as editable rows. Which widget a leaf gets is a
-//! type-registry lookup, not a match on concrete types, so a new
-//! editable type is one [`Inspect`] impl away - see [`widget`].
+//! renders it as a collapsible hierarchy of editable rows - see
+//! [`tree`]. Which widget a leaf gets is a type-registry lookup, not
+//! a match on concrete types, so a new editable type is one
+//! [`Inspect`] impl away.
 //!
 //! An [`InspectorTarget`] says where the value lives. Bevy stores a
 //! resource as a component on an entity of its own, so a resource and
 //! a component are the same lookup once the entity is resolved, and
 //! the inspector never needs to know which it was handed.
 
-pub mod widget;
+mod primitive;
+mod tree;
+mod vector;
 
 use std::any::TypeId;
 use std::sync::Arc;
 
 use bevy::ecs::change_detection::{ComponentTicks, Tick};
 use bevy::ecs::reflect::ReflectComponent;
-use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::prelude::*;
-use bevy::reflect::{GetPath, ReflectRef, TypeRegistry};
+use bevy::reflect::{FromType, GetPath, GetTypeRegistration};
 
-use bevy_fynix::ElementMutExt;
-use fynix_mock::elem;
-
-use crate::fynix::{Frame, Label};
 use crate::reactive::BevyUi;
-pub use widget::{Inspect, InspectAppExt, ReflectInspect};
+pub use tree::inspector_fields;
 
 /// Where an inspector reads and writes the value it edits.
 ///
@@ -219,160 +217,68 @@ impl Field {
     }
 }
 
-/// A leaf found by the walk, and the type whose widget draws it.
-#[derive(Clone, PartialEq)]
-struct Leaf {
-    path: String,
-    type_id: TypeId,
-}
-
-/// Flattens `value` into the leaves that have a widget registered.
+/// Builds the editing widget for one reflected value.
 ///
-/// A type with a [`ReflectInspect`] is a leaf even when it is a
-/// struct: registering a widget is how a type says it presents itself,
-/// so the walk stops rather than exposing its innards.
-fn collect_leaves(
-    registry: &TypeRegistry,
-    value: &dyn PartialReflect,
-    prefix: &str,
-    out: &mut Vec<Leaf>,
-) {
-    if let Some(type_id) =
-        value.get_represented_type_info().map(|i| i.type_id())
-        && registry.get_type_data::<ReflectInspect>(type_id).is_some()
-    {
-        out.push(Leaf {
-            path: prefix.to_string(),
-            type_id,
-        });
-        return;
-    }
-
-    match value.reflect_ref() {
-        ReflectRef::Struct(value) => {
-            for i in 0..value.field_len() {
-                let (Some(name), Some(field)) =
-                    (value.name_at(i), value.field_at(i))
-                else {
-                    continue;
-                };
-                collect_leaves(
-                    registry,
-                    field,
-                    &join(prefix, name),
-                    out,
-                );
-            }
-        }
-        ReflectRef::TupleStruct(value) => {
-            for i in 0..value.field_len() {
-                let Some(field) = value.field(i) else {
-                    continue;
-                };
-                collect_leaves(
-                    registry,
-                    field,
-                    &join(prefix, &i.to_string()),
-                    out,
-                );
-            }
-        }
-        _ => {}
-    }
+/// The value itself is not passed in. A widget is built once and then
+/// binds to `field`, re-reading through it whenever the target
+/// changes, which is what keeps a focused input alive across edits.
+pub trait Inspect: Reflect + TypePath + GetTypeRegistration {
+    fn build(field: &Field, ui: &mut BevyUi);
 }
 
-fn join(prefix: &str, name: &str) -> String {
-    if prefix.is_empty() {
-        name.to_string()
-    } else {
-        format!("{prefix}.{name}")
-    }
-}
-
-/// Every leaf of `target`, in walk order.
-fn leaves(world: &World, target: InspectorTarget) -> Vec<Leaf> {
-    let mut out = Vec::new();
-    target.read(world, |value| {
-        // Taken inside the read, where `InspectorTarget` has already
-        // released its own guard.
-        let registry = world.resource::<AppTypeRegistry>().read();
-        collect_leaves(
-            &registry,
-            value.as_partial_reflect(),
-            "",
-            &mut out,
-        );
-    });
-    out
-}
-
-/// Fires when the *shape* of `target` changes, meaning its set of
-/// leaves, and not merely their values.
+/// Type data pointing at a type's [`Inspect::build`].
 ///
-/// Values ride on bindings rather than rebuilds, which is what lets a
-/// number input keep focus while the value changes underneath it: a
-/// rebuild would despawn the widget mid-edit. The tick is checked
-/// first so the reflection walk only runs when something actually
-/// touched the target.
-fn shape_changed(
-    target: InspectorTarget,
-) -> impl FnMut(&World, Entity) -> bool {
-    let mut seen_tick: Option<Tick> = None;
-    let mut seen_shape: Option<Vec<Leaf>> = None;
-    move |world, _| {
-        let tick = target.changed_tick(world);
-        if seen_shape.is_some() && tick == seen_tick {
-            return false;
-        }
-        seen_tick = tick;
+/// The function needs no downcast, unlike a drawer that takes the
+/// value: `build` is resolved from the type it was registered for, and
+/// the widget reads its own value back through [`Field`].
+#[derive(Clone)]
+pub struct ReflectInspect {
+    build: fn(&Field, &mut BevyUi),
+}
 
-        let current = leaves(world, target);
-        let fired = seen_shape.as_ref() != Some(&current);
-        seen_shape = Some(current);
-        fired
+impl ReflectInspect {
+    pub fn build(&self, field: &Field, ui: &mut BevyUi) {
+        (self.build)(field, ui)
     }
 }
 
-/// Editable rows for everything reflectable under `target`, as kernel
-/// nodes.
-pub fn inspector_fields(ui: &mut BevyUi, target: InspectorTarget) {
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Column,
-        row_gap = px(4)
-    ))
-    .insert(TabGroup::new(0))
-    .watch(shape_changed(target), move |ui| {
-        build_fields(ui, target);
-    });
+impl<T: Inspect> FromType<T> for ReflectInspect {
+    fn from_type() -> Self {
+        Self { build: T::build }
+    }
 }
 
-fn build_fields(ui: &mut BevyUi, target: InspectorTarget) {
-    for leaf in leaves(ui.world, target) {
-        let drawer = {
-            let registry =
-                ui.world.resource::<AppTypeRegistry>().read();
-            registry
-                .get_type_data::<ReflectInspect>(leaf.type_id)
-                .cloned()
-        };
-        let Some(drawer) = drawer else { continue };
+/// Registering inspector widgets on the app.
+pub trait InspectAppExt {
+    /// Makes `T` editable wherever the inspector meets it.
+    fn register_inspect<T: Inspect>(&mut self) -> &mut Self;
 
-        let field = Field::new(target, leaf.path.clone());
-        let label = leaf.path;
-        ui.elem(elem!(
-            Frame,
-            width = percent(100),
-            direction = FlexDirection::Row,
-            justify = JustifyContent::SpaceBetween,
-            align = AlignItems::Center,
-            column_gap = px(8),
-            padding = UiRect::vertical(px(2))
-        ))
-        .with(move |ui| {
-            ui.elem(elem!(Label, text = label));
-            drawer.build(&field, ui);
-        });
+    /// Registers the primitives the inspector can edit out of the box.
+    fn register_default_inspects(&mut self) -> &mut Self;
+}
+
+impl InspectAppExt for App {
+    fn register_inspect<T: Inspect>(&mut self) -> &mut Self {
+        self.register_type::<T>()
+            .register_type_data::<T, ReflectInspect>()
+    }
+
+    fn register_default_inspects(&mut self) -> &mut Self {
+        self.register_inspect::<bool>()
+            .register_inspect::<f32>()
+            .register_inspect::<f64>()
+            .register_inspect::<i32>()
+            .register_inspect::<i64>()
+            .register_inspect::<u32>()
+            .register_inspect::<u64>()
+            .register_inspect::<Vec2>()
+            .register_inspect::<Vec3>()
+            .register_inspect::<Vec4>()
+            .register_inspect::<IVec2>()
+            .register_inspect::<IVec3>()
+            .register_inspect::<IVec4>()
+            .register_inspect::<UVec2>()
+            .register_inspect::<UVec3>()
+            .register_inspect::<UVec4>()
     }
 }
