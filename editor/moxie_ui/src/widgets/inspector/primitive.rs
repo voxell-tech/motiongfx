@@ -1,17 +1,10 @@
-//! How a reflected type presents itself for editing.
-//!
-//! A type becomes editable by implementing [`Inspect`] and registering
-//! it, which stores a [`ReflectInspect`] against the type in bevy's
-//! [`TypeRegistry`](bevy::reflect::TypeRegistry). The inspector then
-//! finds widgets by lookup, so it never grows a match over concrete
-//! types and a downstream crate can add its own.
+//! [`Inspect`] impls for the primitive types the inspector edits out
+//! of the box.
 
 use bevy::feathers::controls::{NumberFormat, NumberInputValue};
 use bevy::prelude::*;
-use bevy::reflect::{FromType, GetTypeRegistration};
 use bevy::ui_widgets::ValueChange;
 
-use super::{Field, target_changed};
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
 
@@ -20,62 +13,7 @@ use crate::fynix::{
 };
 use crate::reactive::BevyUi;
 
-/// Builds the editing widget for one reflected value.
-///
-/// The value itself is not passed in. A widget is built once and then
-/// binds to `field`, re-reading through it whenever the target
-/// changes, which is what keeps a focused input alive across edits.
-pub trait Inspect: Reflect + TypePath + GetTypeRegistration {
-    fn build(field: &Field, ui: &mut BevyUi);
-}
-
-/// Type data pointing at a type's [`Inspect::build`].
-///
-/// The function needs no downcast, unlike a drawer that takes the
-/// value: `build` is resolved from the type it was registered for, and
-/// the widget reads its own value back through [`Field`].
-#[derive(Clone)]
-pub struct ReflectInspect {
-    build: fn(&Field, &mut BevyUi),
-}
-
-impl ReflectInspect {
-    pub fn build(&self, field: &Field, ui: &mut BevyUi) {
-        (self.build)(field, ui)
-    }
-}
-
-impl<T: Inspect> FromType<T> for ReflectInspect {
-    fn from_type() -> Self {
-        Self { build: T::build }
-    }
-}
-
-/// Registering inspector widgets on the app.
-pub trait InspectAppExt {
-    /// Makes `T` editable wherever the inspector meets it.
-    fn register_inspect<T: Inspect>(&mut self) -> &mut Self;
-
-    /// Registers the primitives the inspector can edit out of the box.
-    fn register_default_inspects(&mut self) -> &mut Self;
-}
-
-impl InspectAppExt for App {
-    fn register_inspect<T: Inspect>(&mut self) -> &mut Self {
-        self.register_type::<T>()
-            .register_type_data::<T, ReflectInspect>()
-    }
-
-    fn register_default_inspects(&mut self) -> &mut Self {
-        self.register_inspect::<bool>()
-            .register_inspect::<f32>()
-            .register_inspect::<f64>()
-            .register_inspect::<i32>()
-            .register_inspect::<i64>()
-            .register_inspect::<u32>()
-            .register_inspect::<u64>()
-    }
-}
+use super::{Field, Inspect, target_changed};
 
 /// A checkbox. `Checked` is a marker, inserted or removed rather than
 /// written, so this binds raw instead of writing a component.
@@ -100,7 +38,7 @@ impl Inspect for bool {
             // Controlled: what it shows follows the value it edits,
             // and only moves once the write has landed.
             .bind(
-                |box_| box_.checked(),
+                |b| b.checked(),
                 target_changed(field.target()),
                 move |world, _| {
                     read.get::<bool>(world).unwrap_or_default()
@@ -114,10 +52,13 @@ impl Inspect for bool {
 /// `V` is the payload `number_field` emits, which follows
 /// `format` rather than the field's own type - a `u32` is edited
 /// through an `i64` input and converted on the way in and out.
-fn number_field<T, V>(
+/// `width` is exposed rather than left at the widget's own default so
+/// a vector's per-axis fields can sit narrower than a lone scalar.
+pub(super) fn number_field<T, V>(
     field: &Field,
     ui: &mut BevyUi,
     format: NumberFormat,
+    width: Val,
     to_field: fn(V) -> T,
     to_input: fn(T) -> NumberInputValue,
 ) where
@@ -133,6 +74,7 @@ fn number_field<T, V>(
     ui.elem(elem!(
         NumberField,
         format = format,
+        width = width,
         value = shown.unwrap_or(NumberInputValue::F32(0.0))
     ))
     .observe(
@@ -170,6 +112,7 @@ macro_rules! number_widget {
                     field,
                     ui,
                     NumberFormat::$format,
+                    px(110),
                     $to_field,
                     |value| NumberInputValue::$value($to_input(value)),
                 );

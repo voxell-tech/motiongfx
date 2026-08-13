@@ -15,6 +15,15 @@ pub struct Icon {
     pub color: Color,
     #[default(px(11))]
     pub size: Val,
+    /// Clockwise, in degrees - how a chevron reused for more than one
+    /// direction gets there without a second asset.
+    pub rotation: f32,
+}
+
+impl Icon {
+    fn transform(&self) -> UiTransform {
+        UiTransform::from_rotation(Rot2::degrees(self.rotation))
+    }
 }
 
 impl ElementVisual<BevyHost> for Icon {
@@ -32,6 +41,7 @@ impl ElementVisual<BevyHost> for Icon {
                 height: self.size,
                 ..default()
             },
+            self.transform(),
         ));
     }
 
@@ -64,6 +74,9 @@ impl ElementVisual<BevyHost> for Icon {
                     layout.width = self.size;
                     layout.height = self.size;
                 }
+            }
+            IconField::Rotation => {
+                world.entity_mut(node).insert(self.transform());
             }
         }
     }
