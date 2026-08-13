@@ -1,10 +1,10 @@
 //! Reflection-driven inspector.
 //!
 //! [`inspector_fields`] walks any reflected value in the world and
-//! renders it as a collapsible hierarchy of editable rows - see
-//! [`tree`]. Which widget a leaf gets is a type-registry lookup, not
-//! a match on concrete types, so a new editable type is one
-//! [`Inspect`] impl away.
+//! renders it as a collapsible hierarchy of editable rows. Which
+//! widget a leaf gets is a type-registry lookup, not a match on
+//! concrete types, so a new editable type is one [`Inspect`] impl
+//! away.
 //!
 //! An [`InspectorTarget`] says where the value lives. Bevy stores a
 //! resource as a component on an entity of its own, so a resource and
