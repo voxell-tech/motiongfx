@@ -1,5 +1,5 @@
-//! Walks a target's reflected value into a collapsible hierarchy and
-//! renders it.
+//! Walks a component's reflected value into a collapsible hierarchy
+//! and renders it.
 //!
 //! A struct with no [`ReflectInspect`] of its own is not a leaf: its
 //! fields become a group, shown under a header that folds them away.
@@ -7,7 +7,6 @@
 
 use std::any::TypeId;
 use std::collections::HashSet;
-use std::sync::Arc;
 
 use bevy::ecs::change_detection::Tick;
 use bevy::input_focus::tab_navigation::TabGroup;
@@ -18,7 +17,7 @@ use bevy::ui_widgets::Activate;
 use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
 
-use super::{Field, InspectorTarget, ReflectInspect};
+use super::{Field, ReflectInspect};
 use crate::fynix::{
     ButtonElemCursor, Frame, FrameCursor, Icon, IconCursor, Label,
     TintButton,
@@ -144,17 +143,17 @@ fn leaf_name(path: &str) -> &str {
     path.rsplit('.').next().unwrap_or(path)
 }
 
-/// `target`'s entries, in walk order.
+/// The entries under `field`, in walk order.
 ///
 /// Unlike a nested field, the root itself is never wrapped in a
 /// group: if it is a leaf type it is the one row shown, and otherwise
 /// its fields are listed directly rather than folded under a header
 /// for a group that was never named.
-fn entries(world: &World, target: InspectorTarget) -> Vec<Entry> {
+fn entries(world: &World, field: &Field) -> Vec<Entry> {
     let mut out = Vec::new();
-    target.read(world, |value| {
-        // Taken inside the read, where `InspectorTarget` has already
-        // released its own guard.
+    field.read(world, |value| {
+        // Taken inside the read, where `Field` has already released
+        // its own guard.
         let registry = world.resource::<AppTypeRegistry>().read();
         let value = value.as_partial_reflect();
 
@@ -175,83 +174,72 @@ fn entries(world: &World, target: InspectorTarget) -> Vec<Entry> {
     out
 }
 
-/// Fires when the *shape* of `target` changes, meaning its set of
+/// Fires when the *shape* under `field` changes, meaning its set of
 /// entries, and not merely their values.
 ///
 /// Values ride on bindings rather than rebuilds, which is what lets a
 /// number input keep focus while the value changes underneath it: a
 /// rebuild would despawn the widget mid-edit. The tick is checked
 /// first so the reflection walk only runs when something actually
-/// touched the target.
-fn shape_changed(
-    target: InspectorTarget,
-) -> impl FnMut(&World, Entity) -> bool {
+/// touched the component.
+fn shape_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
     let mut seen_tick: Option<Tick> = None;
     let mut seen_shape: Option<Vec<Entry>> = None;
     move |world, _| {
-        let tick = target.changed_tick(world);
+        let tick = field.changed_tick(world);
         if seen_shape.is_some() && tick == seen_tick {
             return false;
         }
         seen_tick = tick;
 
-        let current = entries(world, target);
+        let current = entries(world, &field);
         let fired = seen_shape.as_ref() != Some(&current);
         seen_shape = Some(current);
         fired
     }
 }
 
-/// Which groups are folded shut, keyed by the target they belong to
-/// so two inspectors never share state, and by the path to the
-/// group's own field within it.
+/// Which sections are folded shut, keyed by the very field each one
+/// heads - so two inspectors never share state, and a component's own
+/// section folds apart from every group nested inside it.
 ///
 /// This is UI state, not part of the reflected value, so it lives
-/// beside the tree rather than on it: folding a group must not read
-/// as the target's shape changing and trigger [`shape_changed`].
+/// beside the tree rather than on it: folding a section must not read
+/// as the component's shape changing and trigger [`shape_changed`].
 #[derive(Resource, Default)]
-struct FoldedGroups(HashSet<(InspectorTarget, Arc<str>)>);
+struct FoldedGroups(HashSet<Field>);
 
-fn is_folded(
-    world: &World,
-    target: InspectorTarget,
-    path: &str,
-) -> bool {
-    world.get_resource::<FoldedGroups>().is_some_and(|folded| {
-        folded.0.contains(&(target, path.into()))
-    })
+fn is_folded(world: &World, field: &Field) -> bool {
+    world
+        .get_resource::<FoldedGroups>()
+        .is_some_and(|folded| folded.0.contains(field))
 }
 
-fn toggle_folded(
-    world: &mut World,
-    target: InspectorTarget,
-    path: Arc<str>,
-) {
+fn toggle_folded(world: &mut World, field: Field) {
     let mut folded =
         world.get_resource_or_insert_with(FoldedGroups::default);
-    if !folded.0.remove(&(target, path.clone())) {
-        folded.0.insert((target, path));
+    if !folded.0.remove(&field) {
+        folded.0.insert(field);
     }
 }
 
-/// Fires when `path`'s folded state under `target` flips, and on the
-/// first poll so a binding starts out in sync.
-fn fold_changed(
-    target: InspectorTarget,
-    path: Arc<str>,
-) -> impl FnMut(&World, Entity) -> bool {
+/// Fires when `field`'s folded state flips, and on the first poll so
+/// a binding starts out in sync.
+fn fold_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
     let mut seen: Option<bool> = None;
     move |world, _| {
-        let current = is_folded(world, target, &path);
+        let current = is_folded(world, &field);
         let fired = seen != Some(current);
         seen = Some(current);
         fired
     }
 }
 
-/// Editable rows for everything reflectable under `target`, as kernel
-/// nodes.
-pub fn inspector_fields(ui: &mut BevyUi, target: InspectorTarget) {
+/// Editable rows for everything reflectable under `root`, as kernel
+/// nodes. `root` is a whole component, at the empty path.
+pub fn inspector_fields(ui: &mut BevyUi, root: Field) {
+    let walked = root.clone();
+
     ui.elem(elem!(
         Frame,
         width = percent(100),
@@ -259,33 +247,29 @@ pub fn inspector_fields(ui: &mut BevyUi, target: InspectorTarget) {
         row_gap = px(4)
     ))
     .insert(TabGroup::new(0))
-    .watch(shape_changed(target), move |ui| {
-        build_entries(ui, target, entries(ui.world, target));
+    .watch(shape_changed(root), move |ui| {
+        build_entries(ui, &walked, entries(ui.world, &walked));
     });
 }
 
-fn build_entries(
-    ui: &mut BevyUi,
-    target: InspectorTarget,
-    entries: Vec<Entry>,
-) {
+fn build_entries(ui: &mut BevyUi, root: &Field, entries: Vec<Entry>) {
     for entry in entries {
         match entry {
             Entry::Leaf { path, type_id } => {
-                build_leaf(ui, target, path, type_id)
+                build_leaf(ui, root, path, type_id)
             }
             Entry::Group {
                 path,
                 name,
                 children,
-            } => build_group(ui, target, path, name, children),
+            } => build_group(ui, root, path, name, children),
         }
     }
 }
 
 fn build_leaf(
     ui: &mut BevyUi,
-    target: InspectorTarget,
+    root: &Field,
     path: String,
     type_id: TypeId,
 ) {
@@ -299,7 +283,7 @@ fn build_leaf(
     // inspectors read: the field name is a caption, not the content.
     let muted = ui.world.resource::<EditorTheme>().text_muted;
     let label = leaf_name(&path).to_string();
-    let field = Field::new(target, path);
+    let field = root.child(&path);
     ui.elem(elem!(
         Frame,
         width = percent(100),
@@ -317,12 +301,31 @@ fn build_leaf(
 
 fn build_group(
     ui: &mut BevyUi,
-    target: InspectorTarget,
+    root: &Field,
     path: String,
     name: String,
     children: Vec<Entry>,
 ) {
-    let path: Arc<str> = path.into();
+    let group = root.child(&path);
+    let inner = root.clone();
+
+    section(ui, group, name, move |ui| {
+        build_entries(ui, &inner, children);
+    });
+}
+
+/// A collapsible section: a header that folds it, and a body indented
+/// under a guide rail.
+///
+/// `field` is both what the fold is remembered against and what the
+/// section heads, so a whole component - the empty path, which the
+/// walk never hands a group - folds apart from every group inside it.
+pub fn section(
+    ui: &mut BevyUi,
+    field: Field,
+    name: String,
+    body: impl FnOnce(&mut BevyUi),
+) {
     let theme = ui.world.resource::<EditorTheme>().clone();
 
     ui.elem(elem!(
@@ -332,8 +335,8 @@ fn build_group(
         row_gap = px(2)
     ))
     .with(move |ui| {
-        let click_path = path.clone();
-        let glyph_path = path.clone();
+        let clicked = field.clone();
+        let glyph = field.clone();
         ui.elem(elem!(
             !TintButton,
             width = percent(100),
@@ -355,16 +358,16 @@ fn build_group(
             )
         ))
         .observe(move |_: On<Activate>, mut commands: Commands| {
-            let path = click_path.clone();
+            let field = clicked.clone();
             commands.queue(move |world: &mut World| {
-                toggle_folded(world, target, path);
+                toggle_folded(world, field);
             });
         })
         .bind(
             |button| button.icon().rotation(),
-            fold_changed(target, glyph_path.clone()),
+            fold_changed(glyph.clone()),
             move |world, _| {
-                if is_folded(world, target, &glyph_path) {
+                if is_folded(world, &glyph) {
                     CHEVRON_FOLDED
                 } else {
                     CHEVRON_OPEN
@@ -372,7 +375,7 @@ fn build_group(
             },
         );
 
-        let body_path = path.clone();
+        let body_field = field;
         ui.elem(elem!(
             Frame,
             width = percent(100),
@@ -381,9 +384,9 @@ fn build_group(
         ))
         .bind(
             |frame| frame.display(),
-            fold_changed(target, body_path.clone()),
+            fold_changed(body_field.clone()),
             move |world, _| {
-                if is_folded(world, target, &body_path) {
+                if is_folded(world, &body_field) {
                     Display::None
                 } else {
                     Display::Flex
@@ -391,8 +394,8 @@ fn build_group(
             },
         )
         .with(move |ui| {
-            // A guide rail beside the group's own fields, the way a
-            // tree view marks how deep a nested row sits - stretched
+            // A guide rail beside the section's own rows, the way a
+            // tree view marks how deep a nested one sits - stretched
             // to the block's height rather than sized by hand.
             ui.elem(elem!(
                 Frame,
@@ -411,9 +414,7 @@ fn build_group(
                     Val::ZERO
                 )
             ))
-            .with(move |ui| {
-                build_entries(ui, target, children);
-            });
+            .with(body);
         });
     });
 }

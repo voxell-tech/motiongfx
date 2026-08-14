@@ -3,4 +3,3 @@
 //! [`Scene`](bevy::prelude::Scene).
 
 pub mod dock;
-pub mod inspector;

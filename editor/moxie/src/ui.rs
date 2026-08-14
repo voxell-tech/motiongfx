@@ -23,14 +23,13 @@ use crate::{
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::fynix::{Button, Frame, FrameCursor, Label, Panel};
+use moxie_ui::fynix::{
+    Button, Frame, FrameCursor, Label, Panel, ResourceInspector,
+};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
     DockWindowDescriptor, Edge, WindowRegistry, dock,
-};
-use moxie_ui::widgets::inspector::{
-    InspectorTarget, inspector_fields,
 };
 
 /// Wires feathers theming, the editor UI tree, and the per-frame
@@ -253,10 +252,7 @@ fn register_windows(
             ))
             .with(|ui| {
                 // Editable rows built by the reflect inspector.
-                inspector_fields(
-                    ui,
-                    InspectorTarget::resource::<EditorSettings>(),
-                );
+                ui.compose(ResourceInspector::of::<EditorSettings>());
                 // Save row.
                 ui.elem(elem!(Frame, direction = FlexDirection::Row))
                     .with(|ui| {

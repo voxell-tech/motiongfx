@@ -16,6 +16,7 @@ use core::marker::PhantomData;
 use hashbrown::{HashMap, HashSet};
 use typarena::type_table::TypeTable;
 
+use crate::composer::Composer;
 use crate::element::Element;
 use crate::host::Host;
 use crate::lenz::{Accessor, Cursor, FieldId, FieldPath, Identity};
@@ -309,7 +310,66 @@ impl<'a, H: Host> Ui<'a, H> {
             element: PhantomData,
         }
     }
+
+    /// Run a [`Composer`], and take back the root of what it built.
+    ///
+    /// Unlike [`elem`](Self::elem), what goes in is never stored: the
+    /// composer is consumed here, and only what it built outlives the
+    /// call. What comes back is the same [`ElementMut`] an element
+    /// would give, so a binding or an observer reads the same either
+    /// way.
+    pub fn compose<C>(
+        &mut self,
+        composer: C,
+    ) -> ElementMut<'_, 'a, H, C::Element>
+    where
+        C: Composer<H>,
+        C::Element: Element<H> + Send + Sync,
+    {
+        let node = composer.compose(self).node();
+
+        ElementMut {
+            ui: self,
+            node,
+            element: PhantomData,
+        }
+    }
 }
+
+/// A typed, [`Copy`] handle to a node: what names an element once
+/// there is no borrow of the [`Ui`] left to name it through.
+///
+/// The tag is what a later walk is checked against, the same way
+/// [`ElementMut`] does it while the borrow lasts. `fn() -> E` keeps
+/// the handle neutral on variance and auto traits while owning no
+/// `E`.
+pub struct ElementHandle<H: Host, E> {
+    node: H::Node,
+    element: PhantomData<fn() -> E>,
+}
+
+impl<H: Host, E> ElementHandle<H, E> {
+    /// Tags `node` with the element it was built from.
+    pub fn new(node: H::Node) -> Self {
+        Self {
+            node,
+            element: PhantomData,
+        }
+    }
+
+    /// The node itself, with the tag dropped.
+    pub fn node(self) -> H::Node {
+        self.node
+    }
+}
+
+impl<H: Host, E> Clone for ElementHandle<H, E> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<H: Host, E> Copy for ElementHandle<H, E> {}
 
 /// A freshly built element, for chaining children and bindings.
 ///
@@ -326,6 +386,12 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     /// against this one.
     pub fn id(&self) -> H::Node {
         self.node
+    }
+
+    /// This element as a handle, which owns no borrow: what a
+    /// [`Composer`] hands back once it is done building.
+    pub fn handle(&self) -> ElementHandle<H, E> {
+        ElementHandle::new(self.node)
     }
 
     /// Rebuild this element's children whenever `changed` fires. First

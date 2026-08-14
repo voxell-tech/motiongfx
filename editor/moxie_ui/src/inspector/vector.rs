@@ -35,18 +35,6 @@ fn axis_color(theme: &EditorTheme, name: &str) -> Color {
     }
 }
 
-/// `field`'s child for one axis. `field` itself may be the root value
-/// (an empty path), which is the one case `join` would get wrong by
-/// leading with a stray dot.
-fn axis_field(field: &Field, name: &str) -> Field {
-    let path = if field.path().is_empty() {
-        name.to_string()
-    } else {
-        format!("{}.{name}", field.path())
-    };
-    Field::new(field.target(), path)
-}
-
 /// A vector's axes as one row of tight number inputs, each labelled
 /// by a single tinted letter rather than the full field name the
 /// generic struct walk would have given it.
@@ -85,7 +73,7 @@ fn axes<T, V>(
                 bold = true
             ));
             number_field::<T, V>(
-                &axis_field(&field, name),
+                &field.child(name),
                 ui,
                 format,
                 AXIS_WIDTH,

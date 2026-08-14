@@ -8,6 +8,7 @@
 
 pub mod fynix;
 pub mod icons;
+pub mod inspector;
 pub mod motion;
 pub mod palette;
 pub mod reactive;
@@ -19,10 +20,10 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
 
+use inspector::InspectAppExt;
 use reactive::FynixPlugin;
 use theme::EditorTheme;
 use widgets::dock::DockPlugin;
-use widgets::inspector::InspectAppExt;
 
 /// Everything a consumer needs to render a moxie UI: feathers theming,
 /// the dock engine, the

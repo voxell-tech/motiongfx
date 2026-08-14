@@ -14,6 +14,7 @@ use crate::host::Host;
 use crate::lenz::{Cursor, FieldPath, Identity};
 use crate::ui::{BuildFn, ChangedFn, Records, Ui, Watcher};
 
+pub mod composer;
 mod elem;
 pub mod element;
 pub mod host;
