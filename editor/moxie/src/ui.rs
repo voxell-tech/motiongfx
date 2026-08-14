@@ -5,8 +5,6 @@
 mod hierarchy;
 mod timeline;
 
-use std::sync::Arc;
-
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
 use bevy::picking::events::{Click, Pointer};
@@ -104,7 +102,7 @@ fn setup_editor_ui(
         commands.entity(ui_camera).insert(Hdr);
     }
 
-    register_windows(&mut registry, preview);
+    register_windows(&mut registry);
 
     // Layout: viewport (+ settings tab) on top, timeline below.
     // Leaves are not persistent: emptied areas collapse
@@ -154,16 +152,14 @@ fn build_editor_ui(ui: &mut BevyUi) {
 }
 
 /// Register the editor's dockable windows.
-fn register_windows(
-    registry: &mut WindowRegistry,
-    preview: Handle<Image>,
-) {
+fn register_windows(registry: &mut WindowRegistry) {
     registry.register(DockWindowDescriptor {
         id: "viewport".into(),
         name: "Viewport".into(),
         icon: Some(crate::icons::VIEWPORT.into()),
-        build: Arc::new(move |ui: &mut BevyUi| {
-            let preview = preview.clone();
+        build: |ui: &mut BevyUi| {
+            let preview =
+                ui.world.resource::<PreviewImage>().0.clone();
             ui.elem(elem!(
                 Panel,
                 justify = JustifyContent::Center,
@@ -220,21 +216,23 @@ fn register_windows(
                     },
                 );
             });
-        }),
+        },
     });
 
     registry.register(DockWindowDescriptor {
         id: "timeline".into(),
         name: "Timeline".into(),
         icon: Some(crate::icons::TIMELINE.into()),
-        build: Arc::new(timeline::panel),
+        build: |ui: &mut BevyUi| {
+            ui.compose(timeline::TimelinePanel);
+        },
     });
 
     registry.register(DockWindowDescriptor {
         id: "hierarchy".into(),
         name: "Hierarchy".into(),
         icon: Some(crate::icons::HIERARCHY.into()),
-        build: Arc::new(hierarchy::panel),
+        build: hierarchy::panel,
     });
 
     // Settings: a reflect inspector over `EditorSettings` + Save.
@@ -242,7 +240,7 @@ fn register_windows(
         id: "settings".into(),
         name: "Settings".into(),
         icon: Some(crate::icons::SETTINGS.into()),
-        build: Arc::new(|ui: &mut BevyUi| {
+        build: |ui: &mut BevyUi| {
             ui.elem(elem!(
                 Panel,
                 direction = FlexDirection::Column,
@@ -271,6 +269,6 @@ fn register_windows(
                         );
                     });
             });
-        }),
+        },
     });
 }
