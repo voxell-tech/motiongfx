@@ -9,16 +9,14 @@
 //! - dragging the divider between two areas to resize them,
 //! - pressing Escape mid-drag to cancel.
 
-use std::sync::Arc;
-
 use bevy::prelude::*;
 use fynix_mock::elem;
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::fynix::{Frame, Label};
+use moxie_ui::elements::{Frame, Label};
 use moxie_ui::reactive::BevyUi;
 use moxie_ui::widgets::dock::{
-    DockAreaStyle, DockLeaf, DockTree, DockWindowDescriptor,
-    WindowRegistry, dock,
+    DockAreaStyle, DockLeaf, DockTree, DockWindowBuildFn,
+    DockWindowDescriptor, WindowRegistry, dock,
 };
 
 fn main() {
@@ -45,35 +43,21 @@ fn setup(
 
     // Register three trivial window kinds. Each just fills its content
     // area with a colored label.
-    for (id, name, color) in [
-        ("panel_a", "Panel A", Color::srgb(0.20, 0.28, 0.40)),
-        ("panel_b", "Panel B", Color::srgb(0.28, 0.20, 0.34)),
-        ("panel_c", "Panel C", Color::srgb(0.20, 0.34, 0.26)),
+    //
+    // A builder is a bare `fn`, so what a panel shows cannot be
+    // captured when it is registered - hence one function per kind
+    // rather than a loop over closures. Anything a real panel varies
+    // on, it reads from the world.
+    for (id, name, build) in [
+        ("panel_a", "Panel A", panel_a as DockWindowBuildFn),
+        ("panel_b", "Panel B", panel_b),
+        ("panel_c", "Panel C", panel_c),
     ] {
-        let label = name.to_string();
         registry.register(DockWindowDescriptor {
             id: id.to_string(),
             name: name.to_string(),
             icon: None,
-            build: Arc::new(move |ui: &mut BevyUi| {
-                let label = label.clone();
-                ui.elem(elem!(
-                    Frame,
-                    width = percent(100),
-                    height = percent(100),
-                    align = AlignItems::Center,
-                    justify = JustifyContent::Center,
-                    background = color
-                ))
-                .with(move |ui| {
-                    ui.elem(elem!(
-                        Label,
-                        text = label,
-                        size = 20.0f32,
-                        color = Some(Color::srgb(0.9, 0.9, 0.92))
-                    ));
-                });
-            }),
+            build,
         });
     }
 
@@ -104,5 +88,39 @@ fn setup(
         .id();
     commands.queue(move |world: &mut World| {
         moxie_ui::reactive::watch_root(world, root, dock);
+    });
+}
+
+fn panel_a(ui: &mut BevyUi) {
+    filled(ui, "Panel A", Color::srgb(0.20, 0.28, 0.40));
+}
+
+fn panel_b(ui: &mut BevyUi) {
+    filled(ui, "Panel B", Color::srgb(0.28, 0.20, 0.34));
+}
+
+fn panel_c(ui: &mut BevyUi) {
+    filled(ui, "Panel C", Color::srgb(0.20, 0.34, 0.26));
+}
+
+/// A panel's whole content: its name, centred on its own colour.
+fn filled(ui: &mut BevyUi, label: &str, color: Color) {
+    let label = label.to_string();
+
+    ui.elem(elem!(
+        Frame,
+        width = percent(100),
+        height = percent(100),
+        align = AlignItems::Center,
+        justify = JustifyContent::Center,
+        background = color
+    ))
+    .with(move |ui| {
+        ui.elem(elem!(
+            Label,
+            text = label,
+            size = 20.0f32,
+            color = Some(Color::srgb(0.9, 0.9, 0.92))
+        ));
     });
 }

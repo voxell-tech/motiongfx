@@ -10,7 +10,7 @@ use fynix_mock::{elem, val};
 
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
-use crate::fynix::{
+use crate::elements::{
     ButtonElemCursor, GhostButton, Icon, IconCursor, Label,
     LabelCursor, Tab, TabBar, TabCursor, TabRow, TintButton,
 };

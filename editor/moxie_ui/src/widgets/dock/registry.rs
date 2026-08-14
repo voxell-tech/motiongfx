@@ -1,8 +1,6 @@
 //! Registry of the window kinds that can be docked: what to call them
 //! and how to build their content when a tab is materialized.
 
-use std::sync::Arc;
-
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
@@ -12,11 +10,13 @@ use crate::reactive::BevyUi;
 /// its own `ui.watch` / `ui.bind` instead of reaching for the kernel
 /// from outside.
 ///
-/// `Arc`, not `Box`: the builder has to be cloned out of the registry
-/// before it can run, because `Ui` holds the world mutably and the
-/// registry borrow cannot survive the first spawn.
-pub type DockWindowBuildFn =
-    Arc<dyn for<'a> Fn(&mut BevyUi<'a>) + Send + Sync + 'static>;
+/// A bare function pointer rather than a boxed closure: it has to
+/// leave the registry before it can run, because `Ui` holds the world
+/// mutably and the registry borrow cannot survive the first spawn.
+/// Being [`Copy`], it simply comes out - no allocation, and nothing
+/// to clone. What a panel needs, it reads from the world, which is
+/// where a UI built against an ECS should be reading it anyway.
+pub type DockWindowBuildFn = for<'a> fn(&mut BevyUi<'a>);
 
 pub struct DockWindowDescriptor {
     pub id: String,
@@ -79,7 +79,7 @@ mod tests {
             id: id.to_string(),
             name: name.to_string(),
             icon: None,
-            build: Arc::new(|_| {}),
+            build: |_| {},
         }
     }
 

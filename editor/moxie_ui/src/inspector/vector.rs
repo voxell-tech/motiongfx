@@ -15,7 +15,7 @@ use fynix_mock::elem;
 
 use super::primitive::number_field;
 use super::{Field, Inspect};
-use crate::fynix::{Frame, Label};
+use crate::elements::{Frame, Label};
 use crate::palette;
 use crate::reactive::BevyUi;
 use crate::theme::EditorTheme;
@@ -33,18 +33,6 @@ fn axis_color(theme: &EditorTheme, name: &str) -> Color {
         "z" => palette::BLUE,
         _ => theme.text_muted,
     }
-}
-
-/// `field`'s child for one axis. `field` itself may be the root value
-/// (an empty path), which is the one case `join` would get wrong by
-/// leading with a stray dot.
-fn axis_field(field: &Field, name: &str) -> Field {
-    let path = if field.path().is_empty() {
-        name.to_string()
-    } else {
-        format!("{}.{name}", field.path())
-    };
-    Field::new(field.target(), path)
 }
 
 /// A vector's axes as one row of tight number inputs, each labelled
@@ -85,7 +73,7 @@ fn axes<T, V>(
                 bold = true
             ));
             number_field::<T, V>(
-                &axis_field(&field, name),
+                &field.child(name),
                 ui,
                 format,
                 AXIS_WIDTH,

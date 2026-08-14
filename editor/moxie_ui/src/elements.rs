@@ -12,6 +12,7 @@ mod divider;
 mod field;
 mod frame;
 mod icon;
+mod inspector;
 mod label;
 mod overlay;
 mod panel;
@@ -35,6 +36,12 @@ pub use field::{
 };
 pub use frame::{Frame, FrameCursor, FrameField};
 pub use icon::{Icon, IconCursor, IconField};
+// Composers rather than elements, so no cursor or field type: what
+// they are handed picks a subtree rather than naming a value, and
+// nothing about them is stored to be patched later.
+pub use inspector::{
+    ComponentInspector, EntityInspector, ResourceInspector,
+};
 pub use label::{Label, LabelCursor, LabelField};
 pub use overlay::{Overlay, OverlayCursor, OverlayField};
 pub use panel::{Panel, PanelCursor, PanelField};

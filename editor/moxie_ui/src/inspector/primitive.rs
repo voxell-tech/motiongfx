@@ -8,12 +8,12 @@ use bevy::ui_widgets::ValueChange;
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
 
-use crate::fynix::{
+use crate::elements::{
     CheckBox, CheckBoxCursor, NumberField, NumberFieldCursor,
 };
 use crate::reactive::BevyUi;
 
-use super::{Field, Inspect, target_changed};
+use super::{Field, Inspect};
 
 /// A checkbox. `Checked` is a marker, inserted or removed rather than
 /// written, so this binds raw instead of writing a component.
@@ -39,7 +39,7 @@ impl Inspect for bool {
             // and only moves once the write has landed.
             .bind(
                 |b| b.checked(),
-                target_changed(field.target()),
+                field.clone().changed(),
                 move |world, _| {
                     read.get::<bool>(world).unwrap_or_default()
                 },
@@ -89,7 +89,7 @@ pub(super) fn number_field<T, V>(
     )
     .bind(
         |input| input.value(),
-        target_changed(field.target()),
+        field.clone().changed(),
         move |world, _| {
             read.get::<T>(world)
                 .map(to_input)

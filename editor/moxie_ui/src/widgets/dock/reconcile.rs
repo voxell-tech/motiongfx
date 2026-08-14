@@ -23,7 +23,7 @@ use super::tree::{
     DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId,
     SplitAxis, TabId,
 };
-use crate::fynix::dock::{
+use crate::elements::dock::{
     Area, AreaCursor, DockHost, SplitGroup, SplitHandle, SplitPanel,
     SplitPanelCursor, TabContent, TabContentCursor,
 };
@@ -192,7 +192,7 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
                 desc.id.clone(),
                 desc.name.clone(),
                 desc.icon.clone(),
-                desc.build.clone(),
+                desc.build,
             ))
         })
         .collect::<Vec<_>>();
@@ -262,7 +262,7 @@ fn build_content(
         move |world, _| active_of(world, leaf) == Some(tab),
     )
     // The window's own content, as elements of its own.
-    .with(move |ui| build(ui));
+    .with(build);
 }
 
 fn active_of(world: &World, id: NodeId) -> Option<TabId> {

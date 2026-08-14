@@ -19,7 +19,7 @@ use super::tree::DockTree;
 use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
 
-use crate::fynix::{Frame, GhostButton, Icon, Label, Overlay};
+use crate::elements::{Frame, GhostButton, Icon, Label, Overlay};
 use crate::icons;
 use crate::reactive::{BevyUi, component_changed};
 use crate::theme::EditorTheme;

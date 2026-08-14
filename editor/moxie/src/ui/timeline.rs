@@ -17,13 +17,17 @@ use crate::playback::{
 };
 use crate::{EditorScene, EditorState, SelectedAction};
 use bevy_fynix::ElementMutExt;
+use fynix_mock::composer::Composer;
+use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
-use moxie_ui::fynix::{
+use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
     LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
     TimelineAction, TimelineBlock,
 };
-use moxie_ui::reactive::{BevyUi, resource_changed, value_changed};
+use moxie_ui::reactive::{
+    BevyHost, BevyUi, resource_changed, value_changed,
+};
 use moxie_ui::theme::EditorTheme;
 
 const CONTROL_BAR_HEIGHT: f32 = 40.0;
@@ -35,68 +39,105 @@ struct TrackViewport;
 /// The timeline panel, as kernel nodes.
 ///
 /// Each reactive field binds at the node that owns it, which is why
-/// this is a builder rather than a `bsn!` tree: the play/pause icon,
+/// this is a composer rather than a `bsn!` tree: the play/pause icon,
 /// time label and friends have to be `NodeMut`s to carry their own
 /// binds.
-pub(super) fn panel(ui: &mut BevyUi) {
-    ui.elem(elem!(Panel, direction = FlexDirection::Column))
-        .with(control_bar)
-        .with(track_area);
+pub(super) struct TimelinePanel;
+
+impl Composer<BevyHost> for TimelinePanel {
+    type Element = Panel;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Panel> {
+        ui.elem(elem!(Panel, direction = FlexDirection::Column))
+            .with(|ui| {
+                ui.compose(ControlBar);
+                ui.compose(TrackArea);
+            })
+            .handle()
+    }
 }
 
 /// Play/pause + time readout.
-fn control_bar(ui: &mut BevyUi) {
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        height = px(CONTROL_BAR_HEIGHT),
-        align = AlignItems::Center,
-        column_gap = px(12),
-        padding = UiRect::horizontal(px(PANEL_PADDING))
-    ))
-    .with(|ui| {
-        ui.elem(elem!(
-            !Button,
-            icon =
-                val!(Icon, image = crate::icons::PLAY, size = px(14))
-        ))
-        .observe(
-            |mut click: On<Pointer<Click>>,
-             mut commands: Commands| {
-                click.propagate(false);
-                commands.trigger(TogglePlayback);
-            },
-        )
-        .bind(
-            |button| button.icon().image(),
-            resource_changed::<EditorState>(),
-            |world, _| {
-                if world.resource::<EditorState>().is_playing {
-                    crate::icons::PAUSE.to_string()
-                } else {
-                    crate::icons::PLAY.to_string()
-                }
-            },
-        );
+struct ControlBar;
 
-        ui.elem(elem!(Label, text = "0.00s")).bind(
-            |label| label.text(),
-            resource_changed::<MotionGfxManager>(),
-            |world, entity| {
-                format!(
-                    "{:.2}s",
-                    current_time(world, entity).as_secs_f32()
+impl Composer<BevyHost> for ControlBar {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            height = px(CONTROL_BAR_HEIGHT),
+            align = AlignItems::Center,
+            column_gap = px(12),
+            padding = UiRect::horizontal(px(PANEL_PADDING))
+        ))
+        .with(|ui| {
+            ui.elem(elem!(
+                !Button,
+                icon = val!(
+                    Icon,
+                    image = crate::icons::PLAY,
+                    size = px(14)
                 )
-            },
-        );
-    });
+            ))
+            .observe(
+                |mut click: On<Pointer<Click>>,
+                 mut commands: Commands| {
+                    click.propagate(false);
+                    commands.trigger(TogglePlayback);
+                },
+            )
+            .bind(
+                |button| button.icon().image(),
+                resource_changed::<EditorState>(),
+                |world, _| {
+                    if world.resource::<EditorState>().is_playing {
+                        crate::icons::PAUSE.to_string()
+                    } else {
+                        crate::icons::PLAY.to_string()
+                    }
+                },
+            );
+
+            ui.elem(elem!(Label, text = "0.00s")).bind(
+                |label| label.text(),
+                resource_changed::<MotionGfxManager>(),
+                |world, entity| {
+                    format!(
+                        "{:.2}s",
+                        current_time(world, entity).as_secs_f32()
+                    )
+                },
+            );
+        })
+        .handle()
+    }
 }
 
 /// The scrollable track viewport, filling the whole panel width, with
 /// the playhead floating over it as a sibling - not a descendant, so
 /// it's neither scrolled nor clipped by the [`ScrollArea`].
-fn track_area(ui: &mut BevyUi) {
-    ui.elem(elem!(Frame, width = percent(100), flex_grow = 1.0f32))
+struct TrackArea;
+
+impl Composer<BevyHost> for TrackArea {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            flex_grow = 1.0f32
+        ))
         .observe(on_track_press)
         .observe(on_track_drag)
         .observe(on_track_release)
@@ -115,7 +156,9 @@ fn track_area(ui: &mut BevyUi) {
             ui.elem(elem!(ScrollArea, width = percent(100)))
                 .insert(TrackViewport)
                 .watch(value_changed(block_view), build_block_boxes);
-        });
+        })
+        .handle()
+    }
 }
 
 /// `timeline.target_time()`, or zero if no timeline is focused yet.
