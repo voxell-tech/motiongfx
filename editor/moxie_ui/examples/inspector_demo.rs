@@ -16,7 +16,7 @@
 use bevy::prelude::*;
 use fynix_mock::elem;
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::fynix::{
+use moxie_ui::elements::{
     ComponentInspector, EntityInspector, Frame, Label,
     ResourceInspector,
 };

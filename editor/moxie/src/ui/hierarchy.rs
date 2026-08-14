@@ -10,7 +10,7 @@ use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
-use moxie_ui::fynix::{Frame, Label};
+use moxie_ui::elements::{Frame, Label};
 use moxie_ui::reactive::BevyUi;
 use moxie_ui::theme::EditorTheme;
 

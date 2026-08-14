@@ -18,7 +18,7 @@ use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
 
 use super::{Field, ReflectInspect};
-use crate::fynix::{
+use crate::elements::{
     ButtonElemCursor, Frame, FrameCursor, Icon, IconCursor, Label,
     TintButton,
 };

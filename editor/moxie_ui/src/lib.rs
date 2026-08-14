@@ -6,7 +6,7 @@
     reason = "Inherent to Bevy ECS: systems take many params and query tuples."
 )]
 
-pub mod fynix;
+pub mod elements;
 pub mod icons;
 pub mod inspector;
 pub mod motion;

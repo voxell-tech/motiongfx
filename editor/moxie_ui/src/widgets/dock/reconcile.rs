@@ -23,7 +23,7 @@ use super::tree::{
     DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId,
     SplitAxis, TabId,
 };
-use crate::fynix::dock::{
+use crate::elements::dock::{
     Area, AreaCursor, DockHost, SplitGroup, SplitHandle, SplitPanel,
     SplitPanelCursor, TabContent, TabContentCursor,
 };

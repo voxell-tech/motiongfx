@@ -14,7 +14,7 @@ use std::sync::Arc;
 use bevy::prelude::*;
 use fynix_mock::elem;
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::fynix::{Frame, Label};
+use moxie_ui::elements::{Frame, Label};
 use moxie_ui::reactive::BevyUi;
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockTree, DockWindowDescriptor,

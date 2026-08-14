@@ -21,9 +21,9 @@ use crate::{
     playback, scene, view,
 };
 use bevy_fynix::ElementMutExt;
-use fynix_mock::elem;
+use fynix_mock::{elem, val};
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::fynix::{
+use moxie_ui::elements::{
     Button, Frame, FrameCursor, Label, Panel, ResourceInspector,
 };
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
@@ -258,6 +258,7 @@ fn register_windows(
                     .with(|ui| {
                         ui.elem(elem!(
                             !Button,
+                            label = val!(Label, text = "Save"),
                             width = px(64),
                             height = px(24)
                         ))
@@ -267,10 +268,7 @@ fn register_windows(
                                 click.propagate(false);
                                 commands.queue(SaveSettingsSync::Always);
                             },
-                        )
-                        .with(|ui| {
-                            ui.elem(elem!(Label, text = "Save"));
-                        });
+                        );
                     });
             });
         }),

@@ -15,7 +15,7 @@ use fynix_mock::elem;
 
 use super::primitive::number_field;
 use super::{Field, Inspect};
-use crate::fynix::{Frame, Label};
+use crate::elements::{Frame, Label};
 use crate::palette;
 use crate::reactive::BevyUi;
 use crate::theme::EditorTheme;

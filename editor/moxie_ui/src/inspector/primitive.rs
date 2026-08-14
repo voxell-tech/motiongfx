@@ -8,7 +8,7 @@ use bevy::ui_widgets::ValueChange;
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
 
-use crate::fynix::{
+use crate::elements::{
     CheckBox, CheckBoxCursor, NumberField, NumberFieldCursor,
 };
 use crate::reactive::BevyUi;

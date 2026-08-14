@@ -25,46 +25,6 @@ use super::Frame;
 use crate::inspector::{Field, inspector_fields, section};
 use crate::reactive::{BevyHost, BevyUi};
 
-/// The column an inspector fills, and the watcher that fills it.
-///
-/// `gap` is what separates its rows: wider between whole components
-/// than between the fields of one.
-fn column(
-    ui: &mut BevyUi,
-    gap: Val,
-    changed: impl ChangedFn<BevyHost>,
-    build: impl BuildFn<BevyHost>,
-) -> ElementHandle<BevyHost, Frame> {
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Column,
-        row_gap = gap
-    ))
-    .watch(changed, build)
-    .handle()
-}
-
-/// Fires when whether `field`'s component is there at all flips, and
-/// on the first poll so the subtree starts out in step with the
-/// world.
-///
-/// Presence only. What the component *holds* is
-/// [`inspector_fields`]' own business, and it keeps a watcher for
-/// that - rebuilding here on every shape change as well would only
-/// throw that work away.
-fn presence_changed(
-    field: Field,
-) -> impl FnMut(&World, Entity) -> bool {
-    let mut seen: Option<bool> = None;
-    move |world, _| {
-        let present = field.exists(world);
-        let fired = seen != Some(present);
-        seen = Some(present);
-        fired
-    }
-}
-
 /// One component of one entity.
 pub struct ComponentInspector {
     pub entity: Entity,
@@ -138,35 +98,6 @@ impl Composer<BevyHost> for ResourceInspector {
     }
 }
 
-/// The entity bevy is currently keeping `resource` on.
-fn resource_entity(
-    world: &World,
-    resource: TypeId,
-) -> Option<Entity> {
-    let id = world.components().get_id(resource)?;
-    world.resource_entities().get(id)
-}
-
-/// Fires when the entity holding `resource` changes, and on the first
-/// poll.
-///
-/// It only moves when the resource is removed and re-inserted -
-/// `insert_resource` reuses the entity while one is mapped and spawns
-/// a fresh one otherwise - and that is a different value, which wants
-/// the subtree rebuilt around it rather than the old bindings quietly
-/// re-pointed.
-fn entity_changed(
-    resource: TypeId,
-) -> impl FnMut(&World, Entity) -> bool {
-    let mut seen: Option<Option<Entity>> = None;
-    move |world, _| {
-        let current = resource_entity(world, resource);
-        let fired = seen != Some(current);
-        seen = Some(current);
-        fired
-    }
-}
-
 /// Every component of one entity the inspector can read, each under
 /// a collapsible header of its own.
 pub struct EntityInspector {
@@ -198,6 +129,35 @@ impl Composer<BevyHost> for EntityInspector {
                 });
             }
         })
+    }
+}
+
+/// The entity bevy is currently keeping `resource` on.
+fn resource_entity(
+    world: &World,
+    resource: TypeId,
+) -> Option<Entity> {
+    let id = world.components().get_id(resource)?;
+    world.resource_entities().get(id)
+}
+
+/// Fires when the entity holding `resource` changes, and on the first
+/// poll.
+///
+/// It only moves when the resource is removed and re-inserted -
+/// `insert_resource` reuses the entity while one is mapped and spawns
+/// a fresh one otherwise - and that is a different value, which wants
+/// the subtree rebuilt around it rather than the old bindings quietly
+/// re-pointed.
+fn entity_changed(
+    resource: TypeId,
+) -> impl FnMut(&World, Entity) -> bool {
+    let mut seen: Option<Option<Entity>> = None;
+    move |world, _| {
+        let current = resource_entity(world, resource);
+        let fired = seen != Some(current);
+        seen = Some(current);
+        fired
     }
 }
 
@@ -258,4 +218,44 @@ fn inspectable(
 
     out.sort_by_key(|(_, name)| *name);
     out
+}
+
+/// The column an inspector fills, and the watcher that fills it.
+///
+/// `gap` is what separates its rows: wider between whole components
+/// than between the fields of one.
+fn column(
+    ui: &mut BevyUi,
+    gap: Val,
+    changed: impl ChangedFn<BevyHost>,
+    build: impl BuildFn<BevyHost>,
+) -> ElementHandle<BevyHost, Frame> {
+    ui.elem(elem!(
+        Frame,
+        width = percent(100),
+        direction = FlexDirection::Column,
+        row_gap = gap
+    ))
+    .watch(changed, build)
+    .handle()
+}
+
+/// Fires when whether `field`'s component is there at all flips, and
+/// on the first poll so the subtree starts out in step with the
+/// world.
+///
+/// Presence only. What the component *holds* is
+/// [`inspector_fields`]' own business, and it keeps a watcher for
+/// that - rebuilding here on every shape change as well would only
+/// throw that work away.
+fn presence_changed(
+    field: Field,
+) -> impl FnMut(&World, Entity) -> bool {
+    let mut seen: Option<bool> = None;
+    move |world, _| {
+        let present = field.exists(world);
+        let fired = seen != Some(present);
+        seen = Some(present);
+        fired
+    }
 }

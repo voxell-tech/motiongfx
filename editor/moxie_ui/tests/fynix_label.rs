@@ -7,7 +7,7 @@ use bevy::prelude::{
 };
 use bevy_fynix::{FynixPlugin, watch_root};
 use fynix_mock::elem;
-use moxie_ui::fynix::{Label, LabelCursor};
+use moxie_ui::elements::{Label, LabelCursor};
 
 /// What the label reads, so a binding has something to fire on.
 #[derive(Resource, Default)]

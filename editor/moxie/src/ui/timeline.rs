@@ -18,7 +18,7 @@ use crate::playback::{
 use crate::{EditorScene, EditorState, SelectedAction};
 use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
-use moxie_ui::fynix::{
+use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
     LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
     TimelineAction, TimelineBlock,
