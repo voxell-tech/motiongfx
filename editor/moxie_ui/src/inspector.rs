@@ -129,7 +129,11 @@ pub fn inspect_value(ui: &mut BevyUi, source: &dyn Source) {
     if let Some(drawer) = drawer {
         drawer.build(source, ui);
     } else if let Some(variants) = enums::variants(&*value) {
-        let pick = enums::all_unit(&*value);
+        let pick = {
+            let registry =
+                ui.world.resource::<AppTypeRegistry>().read();
+            enums::constructible(&*value, &registry)
+        };
         ui.compose(enums::VariantPicker {
             source,
             variants,

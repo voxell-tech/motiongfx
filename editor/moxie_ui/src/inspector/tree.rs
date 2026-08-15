@@ -68,14 +68,12 @@ fn push_entry(
     }
 
     if let Some(variants) = enums::variants(value) {
-        let pick = enums::all_unit(value);
+        let pick = enums::constructible(value, registry);
         out.push(Entry::Variant {
             path: path.to_string(),
             name: name.to_string(),
             variants,
             pick,
-            // A unit variant has no fields, so this is empty for
-            // every enum that can be freely picked.
             children: collect_entries(registry, value, path),
         });
         return;
