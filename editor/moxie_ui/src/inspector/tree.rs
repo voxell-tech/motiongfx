@@ -15,15 +15,17 @@ use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
 use bevy::ui_widgets::Activate;
 
 use bevy_fynix::ElementMutExt;
+use fynix_mock::composer::Composer;
+use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
 
-use super::{Field, ReflectInspect};
+use super::{Field, ReflectInspect, enums};
 use crate::elements::{
     ButtonElemCursor, Frame, FrameCursor, Icon, IconCursor, Label,
     TintButton,
 };
 use crate::icons;
-use crate::reactive::BevyUi;
+use crate::reactive::{BevyHost, BevyUi};
 use crate::theme::EditorTheme;
 
 /// The fold chevron's own rotation, clockwise from the asset's
@@ -32,17 +34,25 @@ use crate::theme::EditorTheme;
 const CHEVRON_FOLDED: f32 = 90.0;
 const CHEVRON_OPEN: f32 = 180.0;
 
-/// One row the walk found: a leaf with a widget, or a struct grouped
-/// under a collapsible header because it has none of its own.
+/// One row the walk found.
 #[derive(Clone, PartialEq)]
 enum Entry {
-    Leaf {
-        path: String,
-        type_id: TypeId,
-    },
+    /// A registered widget draws it.
+    Leaf { path: String, type_id: TypeId },
+    /// A struct, its fields under a folding header.
     Group {
         path: String,
         name: String,
+        children: Vec<Entry>,
+    },
+    /// An enum: a variant picker, and the active variant's fields
+    /// when it has any.
+    Variant {
+        path: String,
+        name: String,
+        variants: Vec<String>,
+        /// Only unit variants can be picked; see [`enums`].
+        pick: bool,
         children: Vec<Entry>,
     },
 }
@@ -64,6 +74,20 @@ fn push_entry(
         out.push(Entry::Leaf {
             path: path.to_string(),
             type_id,
+        });
+        return;
+    }
+
+    if let Some(variants) = enums::variants(value) {
+        let pick = enums::all_unit(value);
+        out.push(Entry::Variant {
+            path: path.to_string(),
+            name: name.to_string(),
+            variants,
+            pick,
+            // A unit variant has no fields, so this is empty for
+            // every enum that can be freely picked.
+            children: collect_entries(registry, value, path),
         });
         return;
     }
@@ -120,6 +144,27 @@ fn collect_entries(
                     field,
                     &join(prefix, &index),
                     &index,
+                    &mut out,
+                );
+            }
+        }
+        // Whatever the active variant carries, named the way a path
+        // reaches it - by field for a struct variant, by index for a
+        // tuple one.
+        ReflectRef::Enum(value) => {
+            for i in 0..value.field_len() {
+                let Some(field) = value.field_at(i) else {
+                    continue;
+                };
+                let name = value
+                    .name_at(i)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| i.to_string());
+                push_entry(
+                    registry,
+                    field,
+                    &join(prefix, &name),
+                    &name,
                     &mut out,
                 );
             }
@@ -235,21 +280,33 @@ fn fold_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
     }
 }
 
-/// Editable rows for everything reflectable under `root`, as kernel
-/// nodes. `root` is a whole component, at the empty path.
-pub fn inspector_fields(ui: &mut BevyUi, root: Field) {
-    let walked = root.clone();
+/// Editable rows for everything reflectable under `root`, which is a
+/// whole component at the empty path.
+pub struct InspectorFields {
+    pub root: Field,
+}
 
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Column,
-        row_gap = px(4)
-    ))
-    .insert(TabGroup::new(0))
-    .watch(shape_changed(root), move |ui| {
-        build_entries(ui, &walked, entries(ui.world, &walked));
-    });
+impl Composer<BevyHost> for InspectorFields {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        let walked = self.root.clone();
+
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            direction = FlexDirection::Column,
+            row_gap = px(4)
+        ))
+        .insert(TabGroup::new(0))
+        .watch(shape_changed(self.root), move |ui| {
+            build_entries(ui, &walked, entries(ui.world, &walked));
+        })
+        .handle()
+    }
 }
 
 fn build_entries(ui: &mut BevyUi, root: &Field, entries: Vec<Entry>) {
@@ -263,6 +320,15 @@ fn build_entries(ui: &mut BevyUi, root: &Field, entries: Vec<Entry>) {
                 name,
                 children,
             } => build_group(ui, root, path, name, children),
+            Entry::Variant {
+                path,
+                name,
+                variants,
+                pick,
+                children,
+            } => build_variant(
+                ui, root, path, name, variants, pick, children,
+            ),
         }
     }
 }
@@ -299,6 +365,57 @@ fn build_leaf(
     });
 }
 
+/// A variant picker, and - for an enum carrying data - the active
+/// variant's own fields folded underneath it.
+fn build_variant(
+    ui: &mut BevyUi,
+    root: &Field,
+    path: String,
+    name: String,
+    variants: Vec<String>,
+    pick: bool,
+    children: Vec<Entry>,
+) {
+    let field = root.child(&path);
+    let muted = ui.world.resource::<EditorTheme>().text_muted;
+
+    if children.is_empty() {
+        let label = leaf_name(&path).to_string();
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            direction = FlexDirection::Row,
+            justify = JustifyContent::SpaceBetween,
+            align = AlignItems::Center,
+            column_gap = px(8),
+            padding = UiRect::vertical(px(3))
+        ))
+        .with(move |ui| {
+            ui.elem(elem!(Label, text = label, color = Some(muted)));
+            ui.compose(enums::VariantPicker {
+                source: &field,
+                variants,
+                pick,
+            });
+        });
+        return;
+    }
+
+    let inner = root.clone();
+    ui.compose(Section {
+        field: field.clone(),
+        name,
+        body: move |ui: &mut BevyUi| {
+            ui.compose(enums::VariantPicker {
+                source: &field,
+                variants,
+                pick,
+            });
+            build_entries(ui, &inner, children);
+        },
+    });
+}
+
 fn build_group(
     ui: &mut BevyUi,
     root: &Field,
@@ -309,8 +426,12 @@ fn build_group(
     let group = root.child(&path);
     let inner = root.clone();
 
-    section(ui, group, name, move |ui| {
-        build_entries(ui, &inner, children);
+    ui.compose(Section {
+        field: group,
+        name,
+        body: move |ui: &mut BevyUi| {
+            build_entries(ui, &inner, children);
+        },
     });
 }
 
@@ -320,101 +441,113 @@ fn build_group(
 /// `field` is both what the fold is remembered against and what the
 /// section heads, so a whole component - the empty path, which the
 /// walk never hands a group - folds apart from every group inside it.
-pub fn section(
-    ui: &mut BevyUi,
-    field: Field,
-    name: String,
-    body: impl FnOnce(&mut BevyUi),
-) {
-    let theme = ui.world.resource::<EditorTheme>().clone();
+pub struct Section<F> {
+    pub field: Field,
+    pub name: String,
+    pub body: F,
+}
 
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Column,
-        row_gap = px(2)
-    ))
-    .with(move |ui| {
-        let clicked = field.clone();
-        let glyph = field.clone();
-        ui.elem(elem!(
-            !TintButton,
-            width = percent(100),
-            height = auto(),
-            justify = JustifyContent::FlexStart,
-            padding = UiRect::axes(px(4), px(3)),
-            radius = px(4),
-            icon = val!(
-                Icon,
-                image = icons::CHEVRON,
-                color = theme.text_muted,
-                rotation = CHEVRON_OPEN
-            ),
-            label = val!(
-                Label,
-                text = name,
-                color = Some(theme.text_primary),
-                bold = true
-            )
-        ))
-        .observe(move |_: On<Activate>, mut commands: Commands| {
-            let field = clicked.clone();
-            commands.queue(move |world: &mut World| {
-                toggle_folded(world, field);
-            });
-        })
-        .bind(
-            |button| button.icon().rotation(),
-            fold_changed(glyph.clone()),
-            move |world, _| {
-                if is_folded(world, &glyph) {
-                    CHEVRON_FOLDED
-                } else {
-                    CHEVRON_OPEN
-                }
-            },
-        );
+impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
+    type Element = Frame;
 
-        let body_field = field;
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        let Self { field, name, body } = self;
+        let theme = ui.world.resource::<EditorTheme>().clone();
+
         ui.elem(elem!(
             Frame,
             width = percent(100),
-            direction = FlexDirection::Row,
-            align = AlignItems::Stretch
+            direction = FlexDirection::Column,
+            row_gap = px(2)
         ))
-        .bind(
-            |frame| frame.display(),
-            fold_changed(body_field.clone()),
-            move |world, _| {
-                if is_folded(world, &body_field) {
-                    Display::None
-                } else {
-                    Display::Flex
-                }
-            },
-        )
         .with(move |ui| {
-            // A guide rail beside the section's own rows, the way a
-            // tree view marks how deep a nested one sits - stretched
-            // to the block's height rather than sized by hand.
+            let clicked = field.clone();
+            let glyph = field.clone();
             ui.elem(elem!(
-                Frame,
-                width = px(1),
-                background = theme.palette.base[2]
-            ));
-            ui.elem(elem!(
-                Frame,
-                direction = FlexDirection::Column,
-                flex_grow = 1.0f32,
-                row_gap = px(4),
-                padding = UiRect::new(
-                    px(9),
-                    Val::ZERO,
-                    Val::ZERO,
-                    Val::ZERO
+                !TintButton,
+                width = percent(100),
+                height = auto(),
+                justify = JustifyContent::FlexStart,
+                padding = UiRect::axes(px(4), px(3)),
+                radius = px(4),
+                icon = val!(
+                    Icon,
+                    image = icons::CHEVRON,
+                    color = theme.text_muted,
+                    rotation = CHEVRON_OPEN
+                ),
+                label = val!(
+                    Label,
+                    text = name,
+                    color = Some(theme.text_primary),
+                    bold = true
                 )
             ))
-            .with(body);
-        });
-    });
+            .observe(
+                move |_: On<Activate>, mut commands: Commands| {
+                    let field = clicked.clone();
+                    commands.queue(move |world: &mut World| {
+                        toggle_folded(world, field);
+                    });
+                },
+            )
+            .bind(
+                |button| button.icon().rotation(),
+                fold_changed(glyph.clone()),
+                move |world, _| {
+                    if is_folded(world, &glyph) {
+                        CHEVRON_FOLDED
+                    } else {
+                        CHEVRON_OPEN
+                    }
+                },
+            );
+
+            let body_field = field;
+            ui.elem(elem!(
+                Frame,
+                width = percent(100),
+                direction = FlexDirection::Row,
+                align = AlignItems::Stretch
+            ))
+            .bind(
+                |frame| frame.display(),
+                fold_changed(body_field.clone()),
+                move |world, _| {
+                    if is_folded(world, &body_field) {
+                        Display::None
+                    } else {
+                        Display::Flex
+                    }
+                },
+            )
+            .with(move |ui| {
+                // A guide rail beside the section's own rows, the way a
+                // tree view marks how deep a nested one sits - stretched
+                // to the block's height rather than sized by hand.
+                ui.elem(elem!(
+                    Frame,
+                    width = px(1),
+                    background = theme.palette.base[2]
+                ));
+                ui.elem(elem!(
+                    Frame,
+                    direction = FlexDirection::Column,
+                    flex_grow = 1.0f32,
+                    row_gap = px(4),
+                    padding = UiRect::new(
+                        px(9),
+                        Val::ZERO,
+                        Val::ZERO,
+                        Val::ZERO
+                    )
+                ))
+                .with(body);
+            });
+        })
+        .handle()
+    }
 }

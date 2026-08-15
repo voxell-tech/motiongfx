@@ -6,22 +6,38 @@
 //! any engine's inspector shows a vector. This puts the axes on one
 //! row instead, each behind a small tinted letter the way Unity,
 //! Unreal, and Godot all label them.
+//!
+//! Each input edits the whole vector: it reads one out, replaces a
+//! component, and writes it back. So the widget needs no way to
+//! address an axis on its own, and serves any [`Source`] - a
+//! component's field or a value the editor keeps elsewhere.
 
 use bevy::feathers::controls::{NumberFormat, NumberInputValue};
 use bevy::prelude::*;
 use bevy::ui_widgets::ValueChange;
 
+use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
 
-use super::primitive::number_field;
-use super::{Field, Inspect};
-use crate::elements::{Frame, Label};
+use super::{Inspect, Source, SourceExt, when_changed};
+use crate::elements::{Frame, Label, NumberField, NumberFieldCursor};
 use crate::palette;
 use crate::reactive::BevyUi;
 use crate::theme::EditorTheme;
 
 /// Narrower than a lone scalar's, so up to four still sit on one row.
 const AXIS_WIDTH: Val = Val::Px(52.0);
+
+/// A vector, by the axes an inspector edits it through.
+trait Axes: FromReflect + Send + Sync + 'static {
+    /// What one axis holds.
+    type Axis;
+    /// One per axis, in order.
+    const NAMES: &'static [&'static str];
+
+    fn axis(&self, index: usize) -> Self::Axis;
+    fn set_axis(&mut self, index: usize, value: Self::Axis);
+}
 
 /// Which colour an axis takes on, matching the gizmo it moves: none
 /// of the engines above agree on much else, but they all tint X red,
@@ -39,24 +55,22 @@ fn axis_color(theme: &EditorTheme, name: &str) -> Color {
 /// by a single tinted letter rather than the full field name the
 /// generic struct walk would have given it.
 ///
-/// `T`/`V`/`format` follow [`number_field`]'s own split between a
-/// component's reflected type and the payload its input format
-/// emits - a `UVec3` axis rides an `i64` input the same way a lone
-/// `u32` does.
+/// `V` is the payload the input emits, which follows `format` rather
+/// than the axis's own type - an unsigned axis rides an `i64` input
+/// and is clamped on the way back.
 fn axes<T, V>(
-    field: &Field,
+    source: &dyn Source,
     ui: &mut BevyUi,
-    names: &'static [&'static str],
     format: NumberFormat,
-    to_field: fn(V) -> T,
-    to_input: fn(T) -> NumberInputValue,
+    to_axis: fn(V) -> T::Axis,
+    to_input: fn(T::Axis) -> NumberInputValue,
 ) where
-    T: FromReflect + PartialReflect,
+    T: Axes,
     V: Clone + Send + Sync + 'static,
     ValueChange<V>: EntityEvent,
 {
     let theme = ui.world.resource::<EditorTheme>().clone();
-    let field = field.clone();
+    let source = source.boxed();
 
     ui.elem(elem!(
         Frame,
@@ -65,47 +79,114 @@ fn axes<T, V>(
         column_gap = px(6)
     ))
     .with(move |ui| {
-        for name in names {
+        for (index, name) in T::NAMES.iter().enumerate() {
             ui.elem(elem!(
                 Label,
                 text = name.to_uppercase(),
                 color = Some(axis_color(&theme, name)),
                 bold = true
             ));
-            number_field::<T, V>(
-                &field.child(name),
-                ui,
-                format,
-                AXIS_WIDTH,
-                to_field,
-                to_input,
+            axis::<T, V>(
+                &*source, ui, index, format, to_axis, to_input,
             );
         }
     });
 }
 
-/// Implements [`Inspect`] for one vector family's 2/3/4-component
-/// types, given the component type they share and the conversions to
-/// and from the input format that edits it - see [`number_field`].
-macro_rules! vector_family {
+/// One axis, as a number input over the whole vector.
+fn axis<T, V>(
+    source: &dyn Source,
+    ui: &mut BevyUi,
+    index: usize,
+    format: NumberFormat,
+    to_axis: fn(V) -> T::Axis,
+    to_input: fn(T::Axis) -> NumberInputValue,
+) where
+    T: Axes,
+    V: Clone + Send + Sync + 'static,
+    ValueChange<V>: EntityEvent,
+{
+    let edited = source.boxed();
+    let read = source.boxed();
+    let initial = shown::<T>(source, ui.world, index, to_input);
+
+    ui.elem(elem!(
+        NumberField,
+        format = format,
+        width = AXIS_WIDTH,
+        value = initial
+    ))
+    .observe(
+        move |change: On<ValueChange<V>>, mut commands: Commands| {
+            let (source, value) =
+                (edited.boxed(), change.value.clone());
+
+            commands.queue(move |world: &mut World| {
+                // Read, replace, write back: the source addresses the
+                // vector, never one axis of it.
+                let Some(mut vector) = source.read::<T>(world) else {
+                    return;
+                };
+                vector.set_axis(index, to_axis(value));
+                source.write(world, vector);
+            });
+        },
+    )
+    .bind(
+        |input| input.value(),
+        when_changed(source),
+        move |world, _| shown::<T>(&*read, world, index, to_input),
+    );
+}
+
+/// What the input for `index` should be showing.
+fn shown<T: Axes>(
+    source: &dyn Source,
+    world: &World,
+    index: usize,
+    to_input: fn(T::Axis) -> NumberInputValue,
+) -> NumberInputValue {
+    source
+        .read::<T>(world)
+        .map(|vector| to_input(vector.axis(index)))
+        .unwrap_or(NumberInputValue::F32(0.0))
+}
+
+/// One vector type, by the axes it is edited through and the
+/// conversions to and from the input format that edits them.
+macro_rules! vector {
     (
-        $comp:ty => $format:ident, $value:ident, $payload:ty,
-        $to_field:expr, $to_input:expr;
-        $vec2:ty, $vec3:ty, $vec4:ty
+        $ty:ty,
+        axes = [$($name:literal),*],
+        axis = $axis:ty,
+        format = $format:ident,
+        value = $value:ident,
+        payload = $payload:ty,
+        $to_axis:expr,
+        $to_input:expr
     ) => {
-        vector_family!(@impl $vec2, &["x", "y"], $comp, $format, $value, $payload, $to_field, $to_input);
-        vector_family!(@impl $vec3, &["x", "y", "z"], $comp, $format, $value, $payload, $to_field, $to_input);
-        vector_family!(@impl $vec4, &["x", "y", "z", "w"], $comp, $format, $value, $payload, $to_field, $to_input);
-    };
-    (@impl $ty:ty, $names:expr, $comp:ty, $format:ident, $value:ident, $payload:ty, $to_field:expr, $to_input:expr) => {
+        impl Axes for $ty {
+            type Axis = $axis;
+            const NAMES: &'static [&'static str] = &[$($name),*];
+
+            fn axis(&self, index: usize) -> $axis {
+                self.to_array()[index]
+            }
+
+            fn set_axis(&mut self, index: usize, value: $axis) {
+                let mut axes = self.to_array();
+                axes[index] = value;
+                *self = <$ty>::from_array(axes);
+            }
+        }
+
         impl Inspect for $ty {
-            fn build(field: &Field, ui: &mut BevyUi) {
-                axes::<$comp, $payload>(
-                    field,
+            fn build(source: &dyn Source, ui: &mut BevyUi) {
+                axes::<$ty, $payload>(
+                    source,
                     ui,
-                    $names,
                     NumberFormat::$format,
-                    $to_field,
+                    $to_axis,
                     |value| NumberInputValue::$value($to_input(value)),
                 );
             }
@@ -113,19 +194,90 @@ macro_rules! vector_family {
     };
 }
 
-vector_family! {
-    f32 => F32, F32, f32, |value| value, |value| value;
-    Vec2, Vec3, Vec4
+/// A family's 2/3/4-component types, which differ only in how many
+/// axes they carry.
+macro_rules! vector_family {
+    (
+        axis = $axis:ty,
+        format = $format:ident,
+        value = $value:ident,
+        payload = $payload:ty,
+        $to_axis:expr,
+        $to_input:expr,
+        [$vec2:ty, $vec3:ty, $vec4:ty]
+    ) => {
+        vector!(
+            $vec2,
+            axes = ["x", "y"],
+            axis = $axis,
+            format = $format,
+            value = $value,
+            payload = $payload,
+            $to_axis,
+            $to_input
+        );
+        vector!(
+            $vec3,
+            axes = ["x", "y", "z"],
+            axis = $axis,
+            format = $format,
+            value = $value,
+            payload = $payload,
+            $to_axis,
+            $to_input
+        );
+        vector!(
+            $vec4,
+            axes = ["x", "y", "z", "w"],
+            axis = $axis,
+            format = $format,
+            value = $value,
+            payload = $payload,
+            $to_axis,
+            $to_input
+        );
+    };
 }
-vector_family! {
-    i32 => I32, I32, i32, |value| value, |value| value;
-    IVec2, IVec3, IVec4
-}
+
+vector_family!(
+    axis = f32,
+    format = F32,
+    value = F32,
+    payload = f32,
+    |value| value,
+    |value| value,
+    [Vec2, Vec3, Vec4]
+);
+vector_family!(
+    axis = i32,
+    format = I32,
+    value = I32,
+    payload = i32,
+    |value| value,
+    |value| value,
+    [IVec2, IVec3, IVec4]
+);
 // There is no unsigned input format, so these ride an `i64` and clamp
 // on the way back - `as` alone would wrap or truncate.
-vector_family! {
-    u32 => I64, I64, i64,
+vector_family!(
+    axis = u32,
+    format = I64,
+    value = I64,
+    payload = i64,
     |value: i64| value.clamp(0, u32::MAX as i64) as u32,
-    |value| value as i64;
-    UVec2, UVec3, UVec4
-}
+    |value| value as i64,
+    [UVec2, UVec3, UVec4]
+);
+
+// A rotation is four axes like any other, and one tinted row reads
+// far better than the folded group of floats the walk would give it.
+vector!(
+    Quat,
+    axes = ["x", "y", "z", "w"],
+    axis = f32,
+    format = F32,
+    value = F32,
+    payload = f32,
+    |value| value,
+    |value| value
+);

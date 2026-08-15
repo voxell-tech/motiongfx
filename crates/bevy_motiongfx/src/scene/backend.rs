@@ -5,7 +5,7 @@
 use alloc::boxed::Box;
 
 use bevy_asset::uuid::Uuid;
-use bevy_reflect::TypePath;
+use bevy_reflect::{Reflect, TypePath};
 use bevy_transform::components::Transform;
 use motiongfx::prelude::*;
 use motiongfx_scene::prelude::*;
@@ -49,23 +49,50 @@ impl SceneBackend for Backend {
 pub type BackendRegistry = SceneRegistry<Backend>;
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    Reflect,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
+#[reflect(Debug, PartialEq, Hash)]
 pub enum AnimOp {
     /// Sets the field directly to the action's value.
     To,
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    Reflect,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
+#[reflect(Debug, PartialEq, Hash)]
 pub enum AnimInterp {
     Linear,
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    Reflect,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
+#[reflect(Debug, PartialEq, Hash)]
 pub enum AnimEase {
     Linear,
     CubicEaseInOut,

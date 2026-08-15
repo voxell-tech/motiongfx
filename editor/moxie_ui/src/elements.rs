@@ -9,6 +9,7 @@ pub mod dock;
 
 mod button;
 mod divider;
+mod dropdown;
 mod field;
 mod frame;
 mod icon;
@@ -30,6 +31,11 @@ pub use button::{
     GhostButton, TintButton,
 };
 pub use divider::{Divider, DividerCursor, DividerField};
+pub use dropdown::{
+    Dropdown, DropdownCursor, DropdownField, DropdownItem,
+    DropdownItemCursor, DropdownItemField, DropdownList,
+    DropdownListCursor, DropdownListField, DropdownMenu,
+};
 pub use field::{
     CheckBox, CheckBoxCursor, CheckBoxField, NumberField,
     NumberFieldCursor, NumberFieldField,

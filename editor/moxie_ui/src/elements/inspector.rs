@@ -22,7 +22,7 @@ use fynix_mock::elem;
 use fynix_mock::ui::{BuildFn, ChangedFn, ElementHandle};
 
 use super::Frame;
-use crate::inspector::{Field, inspector_fields, section};
+use crate::inspector::{Field, InspectorFields, Section};
 use crate::reactive::{BevyHost, BevyUi};
 
 /// One component of one entity.
@@ -54,7 +54,9 @@ impl Composer<BevyHost> for ComponentInspector {
 
         column(ui, px(4), presence_changed(field), move |ui| {
             if built.exists(ui.world) {
-                inspector_fields(ui, built.clone());
+                ui.compose(InspectorFields {
+                    root: built.clone(),
+                });
             }
         })
     }
@@ -93,7 +95,9 @@ impl Composer<BevyHost> for ResourceInspector {
             else {
                 return;
             };
-            inspector_fields(ui, Field::new(entity, resource));
+            ui.compose(InspectorFields {
+                root: Field::new(entity, resource),
+            });
         })
     }
 }
@@ -121,11 +125,15 @@ impl Composer<BevyHost> for EntityInspector {
                 // collide.
                 let field = Field::new(entity, component);
 
-                section(ui, field, name.to_string(), move |ui| {
-                    ui.compose(ComponentInspector {
-                        entity,
-                        component,
-                    });
+                ui.compose(Section {
+                    field,
+                    name: name.to_string(),
+                    body: move |ui: &mut BevyUi| {
+                        ui.compose(ComponentInspector {
+                            entity,
+                            component,
+                        });
+                    },
                 });
             }
         })
@@ -245,7 +253,7 @@ fn column(
 /// world.
 ///
 /// Presence only. What the component *holds* is
-/// [`inspector_fields`]' own business, and it keeps a watcher for
+/// [`InspectorFields`]' own business, and it keeps a watcher for
 /// that - rebuilding here on every shape change as well would only
 /// throw that work away.
 fn presence_changed(

@@ -7,6 +7,7 @@
 //! timeline panel at the bottom of the window: use the play/pause
 //! button to control playback and drag on the timeline to scrub.
 
+use bevy::asset::uuid::Uuid;
 use bevy::color::palettes;
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
@@ -23,7 +24,10 @@ use moxie::MoxiePlugin;
 use motiongfx_scene::block::{
     ActionCmd, Block, Combinator, Node as AnimNode,
 };
-use motiongfx_scene::scene::{Scene as AnimScene, Stage};
+use motiongfx_scene::refs::FieldRef;
+use motiongfx_scene::scene::{
+    FieldSeed, Scene as AnimScene, Stage, Subject,
+};
 use motiongfx_scene::value::ValueColumn;
 
 const CUBE_COUNT: usize = 6;
@@ -49,6 +53,22 @@ fn main() {
 struct Cube {
     subject: SceneUid,
     x: f32,
+}
+
+/// The initial value of one animated field, pooled alongside the
+/// action targets.
+fn seed<T>(
+    values: &mut ValuePool,
+    field: FieldRef,
+    value: T,
+) -> FieldSeed<Backend>
+where
+    ValuePool: ValueColumn<Uuid, T>,
+{
+    FieldSeed {
+        field,
+        value: values.insert(value),
+    }
 }
 
 /// Sets `subject`'s scale to `target`, eased.
@@ -264,12 +284,38 @@ fn spawn_timeline(
         AnimNode::block(finale),
     ]);
 
+    // Every field the animation touches, at what the cubes spawn
+    // holding. Not redundant with that spawn: baking reads off the
+    // world, and an edit recompiles with the cubes wherever the last
+    // run left them.
+    let stage = Stage {
+        subjects: cubes
+            .iter()
+            .map(|cube| Subject {
+                id: cube.subject,
+                fields: vec![
+                    seed(
+                        &mut values,
+                        field_ref(path!(<Transform>::translation)),
+                        Vec3::new(cube.x, 0.0, 0.0),
+                    ),
+                    seed(
+                        &mut values,
+                        field_ref(path!(<Transform>::rotation)),
+                        Quat::IDENTITY,
+                    ),
+                    seed(
+                        &mut values,
+                        field_ref(path!(<Transform>::scale)),
+                        Vec3::ZERO,
+                    ),
+                ],
+            })
+            .collect(),
+    };
+
     let scene = AnimScene {
-        // Cubes already spawn with the right initial `Transform`
-        // (scale zero), so there's nothing to seed here.
-        stage: Stage {
-            subjects: Vec::new(),
-        },
+        stage,
         animation,
         values,
     };

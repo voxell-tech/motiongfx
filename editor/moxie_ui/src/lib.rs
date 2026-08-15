@@ -20,7 +20,7 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
 
-use inspector::InspectAppExt;
+use inspector::InspectPlugin;
 use reactive::FynixPlugin;
 use theme::EditorTheme;
 use widgets::dock::DockPlugin;
@@ -37,11 +37,15 @@ pub struct MoxieUiPlugin;
 
 impl Plugin for MoxieUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((FeathersPlugins, DockPlugin, FynixPlugin))
-            // The colours every widget reads.
-            .init_resource::<EditorTheme>()
-            .register_default_inspects()
-            // Seed the feathers palette (its default theme is empty).
-            .insert_resource(UiTheme(create_dark_theme()));
+        app.add_plugins((
+            FeathersPlugins,
+            DockPlugin,
+            FynixPlugin,
+            InspectPlugin,
+        ))
+        // The colours every widget reads.
+        .init_resource::<EditorTheme>()
+        // Seed the feathers palette (its default theme is empty).
+        .insert_resource(UiTheme(create_dark_theme()));
     }
 }

@@ -10,12 +10,10 @@ use crate::reactive::BevyUi;
 /// its own `ui.watch` / `ui.bind` instead of reaching for the kernel
 /// from outside.
 ///
-/// A bare function pointer rather than a boxed closure: it has to
-/// leave the registry before it can run, because `Ui` holds the world
-/// mutably and the registry borrow cannot survive the first spawn.
-/// Being [`Copy`], it simply comes out - no allocation, and nothing
-/// to clone. What a panel needs, it reads from the world, which is
-/// where a UI built against an ECS should be reading it anyway.
+/// A bare function pointer, not a boxed closure: it has to leave the
+/// registry before it can run, since `Ui` holds the world mutably.
+/// Being [`Copy`] it simply comes out. What a panel needs, it reads
+/// from the world.
 pub type DockWindowBuildFn = for<'a> fn(&mut BevyUi<'a>);
 
 pub struct DockWindowDescriptor {
