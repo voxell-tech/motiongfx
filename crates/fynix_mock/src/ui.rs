@@ -313,11 +313,9 @@ impl<'a, H: Host> Ui<'a, H> {
 
     /// Run a [`Composer`], and take back the root of what it built.
     ///
-    /// Unlike [`elem`](Self::elem), what goes in is never stored: the
-    /// composer is consumed here, and only what it built outlives the
-    /// call. What comes back is the same [`ElementMut`] an element
-    /// would give, so a binding or an observer reads the same either
-    /// way.
+    /// Unlike [`elem`](Self::elem), what goes in is never stored -
+    /// only what it built outlives the call. What comes back is the
+    /// same [`ElementMut`] an element would give.
     pub fn compose<C>(
         &mut self,
         composer: C,
@@ -339,8 +337,7 @@ impl<'a, H: Host> Ui<'a, H> {
 /// A typed, [`Copy`] handle to a node: what names an element once
 /// there is no borrow of the [`Ui`] left to name it through.
 ///
-/// The tag is what a later walk is checked against, the same way
-/// [`ElementMut`] does it while the borrow lasts. `fn() -> E` keeps
+/// The tag is what a later walk is checked against. `fn() -> E` keeps
 /// the handle neutral on variance and auto traits while owning no
 /// `E`.
 pub struct ElementHandle<H: Host, E> {
@@ -388,8 +385,8 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         self.node
     }
 
-    /// This element as a handle, which owns no borrow: what a
-    /// [`Composer`] hands back once it is done building.
+    /// This element as a handle, owning no borrow - what a
+    /// [`Composer`] hands back.
     pub fn handle(&self) -> ElementHandle<H, E> {
         ElementHandle::new(self.node)
     }
