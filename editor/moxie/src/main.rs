@@ -159,6 +159,7 @@ fn spawn_timeline(
             let uid = EntityUid::new();
             commands.spawn((
                 uid,
+                Name::new(format!("Cube {i}")),
                 Mesh3d(mesh.clone()),
                 MeshMaterial3d(material),
                 Transform::from_xyz(x * 1.5, 0.0, 0.0)

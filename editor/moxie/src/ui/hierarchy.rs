@@ -1,13 +1,14 @@
-//! Scene hierarchy browser: an indented list of the scene's entities.
+//! Scene hierarchy browser: an indented list of the scene's subjects.
 //!
-//! Only *scene* entities are listed (anything with a [`Transform`] that
-//! isn't editor UI), so the panel shows the composition's objects, not
-//! the editor chrome.
+//! What counts as one is an [`EntityUid`], which is the id a scene
+//! refers to its subjects by - so the panel lists exactly what the
+//! animation can address, and nothing the editor spawned for itself.
 
 use std::sync::{Arc, Mutex};
 
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
+use bevy_motiongfx::scene::id::EntityUid;
 use fynix_mock::composer::Composer;
 use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
@@ -15,7 +16,7 @@ use moxie_ui::elements::{Frame, Label, Panel};
 use moxie_ui::reactive::{BevyHost, BevyUi};
 use moxie_ui::theme::EditorTheme;
 
-use super::{PANEL_PADDING, TrackViewportCamera};
+use super::PANEL_PADDING;
 
 /// Indent per hierarchy level.
 const INDENT: f32 = 12.0;
@@ -27,15 +28,14 @@ struct Row {
     name: String,
 }
 
-/// Scene entities: transform-bearing and not editor UI.
-type SceneEntity =
-    (With<Transform>, Without<Node>, Without<TrackViewportCamera>);
+/// A scene subject is whatever carries the id one is named by.
+type SceneEntity = With<EntityUid>;
 
 /// The queries the predicate drives.
 struct HierarchyQueries {
     scene:
         QueryState<(Entity, Option<&'static Children>), SceneEntity>,
-    names: QueryState<&'static Name>,
+    names: QueryState<(Option<&'static Name>, &'static EntityUid)>,
     parents: QueryState<&'static ChildOf>,
 }
 
@@ -54,6 +54,23 @@ impl HierarchyQueries {
         self.scene.update_archetypes(world);
         self.names.update_archetypes(world);
         self.parents.update_archetypes(world);
+    }
+
+    /// What the row calls it: its [`Name`] if it was given one, and
+    /// otherwise the head of its id - a whole uuid is unreadable at
+    /// a glance, and its first characters are enough to tell two
+    /// unnamed subjects apart.
+    fn name_of(&self, world: &World, entity: Entity) -> String {
+        /// As many characters of an id as a row shows.
+        const HEAD: usize = 8;
+
+        match self.names.get_manual(world, entity) {
+            Ok((Some(name), _)) => name.as_str().to_string(),
+            Ok((None, uid)) => {
+                uid.to_string().chars().take(HEAD).collect()
+            }
+            Err(_) => "?".to_string(),
+        }
     }
 
     fn is_scene(&self, world: &World, entity: Entity) -> bool {
@@ -148,11 +165,7 @@ fn push_subtree(
     else {
         return;
     };
-    let name = queries
-        .names
-        .get_manual(world, entity)
-        .map(|name| name.as_str().to_string())
-        .unwrap_or_else(|_| format!("Entity {}", entity.index()));
+    let name = queries.name_of(world, entity);
     out.push(Row { depth, name });
 
     let children = children
