@@ -1,6 +1,6 @@
 //! Reflection-driven inspector.
 //!
-//! [`inspector_fields`] walks any reflected value in the world and
+//! [`InspectorFields`] walks any reflected value in the world and
 //! renders it as a collapsible hierarchy of editable rows. Which
 //! widget a leaf gets is a type-registry lookup, not a match on
 //! concrete types, so a new editable type is one [`Inspect`] impl
@@ -22,7 +22,7 @@ use bevy::reflect::{FromType, GetTypeRegistration, PartialReflect};
 
 use crate::reactive::BevyUi;
 pub use field::Field;
-pub use tree::{inspector_fields, section};
+pub use tree::{InspectorFields, Section};
 
 /// The widgets the inspector can edit out of the box.
 ///
@@ -130,7 +130,11 @@ pub fn inspect_value(ui: &mut BevyUi, source: &dyn Source) {
         drawer.build(source, ui);
     } else if let Some(variants) = enums::variants(&*value) {
         let pick = enums::all_unit(&*value);
-        enums::picker(ui, source, variants, pick);
+        ui.compose(enums::VariantPicker {
+            source,
+            variants,
+            pick,
+        });
     }
 }
 

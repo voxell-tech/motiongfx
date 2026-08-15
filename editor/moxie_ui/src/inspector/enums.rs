@@ -19,16 +19,18 @@ use bevy::reflect::{PartialReflect, ReflectRef, TypeInfo};
 use bevy::ui_widgets::Activate;
 
 use bevy_fynix::ElementMutExt;
+use fynix_mock::composer::Composer;
+use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
 
 use super::{Source, when_changed};
 use crate::elements::{
     Dropdown, DropdownCursor, DropdownItem, DropdownItemCursor,
-    DropdownList, DropdownMenu, Icon, Label, LabelCursor,
+    DropdownList, DropdownMenu, Frame, Icon, Label, LabelCursor,
 };
 use crate::icons;
 use crate::motion::{HOVER, MotionExt};
-use crate::reactive::BevyUi;
+use crate::reactive::{BevyHost, BevyUi};
 use crate::theme::EditorTheme;
 
 /// What [`Label`] defaults to, which is what the rows are drawn at.
@@ -78,44 +80,72 @@ fn active(source: &dyn Source, world: &World) -> Option<String> {
 /// The variant, as a dropdown over the rest.
 ///
 /// `pick` is false for an enum carrying data, which then only names
-/// where it stands - moving it would mean inventing that data.
-pub(super) fn picker(
+/// where it stands - moving it would mean inventing that data. The
+/// two look nothing alike, so they share a [`Frame`] and this comes
+/// back the same either way.
+pub(super) struct VariantPicker<'a> {
+    pub source: &'a dyn Source,
+    pub variants: Vec<String>,
+    pub pick: bool,
+}
+
+impl Composer<BevyHost> for VariantPicker<'_> {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        let Self {
+            source,
+            variants,
+            pick,
+        } = self;
+
+        let theme = ui.world.resource::<EditorTheme>().clone();
+        let current = active(source, ui.world)
+            .unwrap_or_else(|| "-".to_string());
+        let source = source.boxed();
+        // Sized to the longest variant, not the one showing, so
+        // picking another does not resize the row.
+        let width = Dropdown::width_for(&variants, LABEL_SIZE);
+
+        ui.elem(elem!(Frame, align = AlignItems::Center))
+            .with(move |ui| {
+                if !pick {
+                    name(ui, &*source, &theme, current);
+                    return;
+                }
+
+                ui.elem(elem!(DropdownMenu)).with(move |ui| {
+                    control(ui, &*source, &theme, current, width);
+                    list(ui, &*source, &theme, variants, width);
+                });
+            })
+            .handle()
+    }
+}
+
+/// Just the active variant, for an enum that cannot be moved.
+fn name(
     ui: &mut BevyUi,
     source: &dyn Source,
-    variants: Vec<String>,
-    pick: bool,
+    theme: &EditorTheme,
+    current: String,
 ) {
-    let theme = ui.world.resource::<EditorTheme>().clone();
-    let current =
-        active(source, ui.world).unwrap_or_else(|| "-".to_string());
+    let shown = source.boxed();
 
-    if !pick {
-        let shown = source.boxed();
-        ui.elem(elem!(
-            Label,
-            text = current,
-            wrap = false,
-            color = Some(theme.text_primary)
-        ))
-        .bind(
-            |label| label.text(),
-            when_changed(source),
-            move |world, _| {
-                active(&*shown, world).unwrap_or_default()
-            },
-        );
-        return;
-    }
-
-    let source = source.boxed();
-    // Sized to the longest variant, not the one showing, so picking
-    // another does not resize the row.
-    let width = Dropdown::width_for(&variants, LABEL_SIZE);
-
-    ui.elem(elem!(DropdownMenu)).with(move |ui| {
-        control(ui, &*source, &theme, current, width);
-        list(ui, &*source, &theme, variants, width);
-    });
+    ui.elem(elem!(
+        Label,
+        text = current,
+        wrap = false,
+        color = Some(theme.text_primary)
+    ))
+    .bind(
+        |label| label.text(),
+        when_changed(source),
+        move |world, _| active(&*shown, world).unwrap_or_default(),
+    );
 }
 
 /// The shut control, showing whichever variant is active.
