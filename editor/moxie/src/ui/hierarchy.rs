@@ -12,18 +12,14 @@ use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy_motiongfx::scene::id::EntityUid;
 use fynix_mock::composer::Composer;
-use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
-use moxie_ui::elements::{Frame, Label, LabelCursor, Panel};
-use moxie_ui::reactive::{
-    BevyHost, BevyUi, component_changed_on, value_changed,
-};
+use fynix_mock::{elem, val};
+use moxie_ui::elements::{Frame, Label, Panel, TintButton};
+use moxie_ui::fold::{Foldable, Toggle};
+use moxie_ui::reactive::{BevyHost, BevyUi, component_changed_on};
 use moxie_ui::theme::EditorTheme;
 
 use super::PANEL_PADDING;
-
-/// How far a subject sets its children in from itself.
-const INDENT: f32 = 12.0;
 
 /// Between one row and the next, at any depth.
 const ROW_GAP: f32 = 2.0;
@@ -99,68 +95,46 @@ impl Composer<BevyHost> for Subtree {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
         let entity = self.entity;
-
-        ui.elem(elem!(
-            Frame,
-            width = percent(100),
-            direction = FlexDirection::Column,
-            row_gap = px(ROW_GAP)
-        ))
-        .with(move |ui| {
-            ui.compose(Subject { entity });
-
-            // Indented, watching only whose children they are.
-            ui.elem(elem!(
-                Frame,
-                width = percent(100),
-                direction = FlexDirection::Column,
-                row_gap = px(ROW_GAP),
-                padding = UiRect::new(
-                    px(INDENT),
-                    Val::ZERO,
-                    Val::ZERO,
-                    Val::ZERO
-                )
-            ))
-            .watch(
-                component_changed_on::<Children>(entity),
-                move |ui| {
-                    for child in children_of(ui.world, entity) {
-                        ui.compose(Subtree { entity: child });
-                    }
-                },
-            );
-        })
-        .handle()
-    }
-}
-
-/// One subject's own row.
-struct Subject {
-    entity: Entity,
-}
-
-impl Composer<BevyHost> for Subject {
-    type Element = Label;
-
-    fn compose(
-        self,
-        ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Label> {
-        let entity = self.entity;
-        let color = ui.world.resource::<EditorTheme>().text_primary;
+        let primary = ui.world.resource::<EditorTheme>().text_primary;
         let name = name_of(ui.world, entity);
 
-        // Bound, not rebuilt: a rename changes no shape.
-        ui.elem(elem!(Label, text = name, color = Some(color)))
-            .bind(
-                |label| label.text(),
-                value_changed(move |world: &World, _| {
-                    name_of(world, entity)
-                }),
-                move |world, _| name_of(world, entity),
-            )
-            .handle()
+        ui.compose(Foldable {
+            header: elem!(
+                !TintButton,
+                width = percent(100),
+                height = px(18),
+                justify = JustifyContent::FlexStart,
+                padding = UiRect::axes(px(4), Val::ZERO),
+                radius = px(3),
+                label = val!(
+                    Label,
+                    text = name,
+                    wrap = false,
+                    color = Some(primary)
+                )
+            ),
+            // The row is the subject's, to select; only the chevron
+            // beside it folds.
+            toggle: Toggle::Chevron,
+            enabled: has_children(ui.world, entity),
+            body: move |ui: &mut BevyUi| {
+                ui.elem(elem!(
+                    Frame,
+                    width = percent(100),
+                    direction = FlexDirection::Column,
+                    row_gap = px(ROW_GAP)
+                ))
+                .watch(
+                    component_changed_on::<Children>(entity),
+                    move |ui| {
+                        for child in children_of(ui.world, entity) {
+                            ui.compose(Subtree { entity: child });
+                        }
+                    },
+                );
+            },
+        })
+        .handle()
     }
 }
 
@@ -195,6 +169,14 @@ fn children_of(world: &World, entity: Entity) -> Vec<Entity> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// Whether `entity` has any subject under it, without collecting
+/// them - a row only needs to know that there is something to fold.
+fn has_children(world: &World, entity: Entity) -> bool {
+    world.get::<Children>(entity).is_some_and(|children| {
+        children.iter().any(|child| is_subject(world, child))
+    })
 }
 
 fn is_subject(world: &World, entity: Entity) -> bool {

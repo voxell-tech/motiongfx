@@ -6,33 +6,22 @@
 //! Only a registered type stops the walk and becomes an editable row.
 
 use std::any::TypeId;
-use std::collections::HashSet;
 
 use bevy::ecs::change_detection::Tick;
 use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::prelude::*;
 use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
-use bevy::ui_widgets::Activate;
-
 use bevy_fynix::ElementMutExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
 
 use super::{Field, ReflectInspect, enums};
-use crate::elements::{
-    ButtonElemCursor, Frame, FrameCursor, Icon, IconCursor, Label,
-    TintButton,
-};
+use crate::elements::{Frame, Icon, Label, TintButton};
+use crate::fold::{CHEVRON_OPEN, Foldable, Toggle};
 use crate::icons;
 use crate::reactive::{BevyHost, BevyUi};
 use crate::theme::EditorTheme;
-
-/// The fold chevron's own rotation, clockwise from the asset's
-/// resting up-pointing orientation: right when a group is folded
-/// shut, down when its children show.
-const CHEVRON_FOLDED: f32 = 90.0;
-const CHEVRON_OPEN: f32 = 180.0;
 
 /// One row the walk found.
 #[derive(Clone, PartialEq)]
@@ -244,42 +233,6 @@ fn shape_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
     }
 }
 
-/// Which sections are folded shut, keyed by the very field each one
-/// heads - so two inspectors never share state, and a component's own
-/// section folds apart from every group nested inside it.
-///
-/// This is UI state, not part of the reflected value, so it lives
-/// beside the tree rather than on it: folding a section must not read
-/// as the component's shape changing and trigger [`shape_changed`].
-#[derive(Resource, Default)]
-struct FoldedGroups(HashSet<Field>);
-
-fn is_folded(world: &World, field: &Field) -> bool {
-    world
-        .get_resource::<FoldedGroups>()
-        .is_some_and(|folded| folded.0.contains(field))
-}
-
-fn toggle_folded(world: &mut World, field: Field) {
-    let mut folded =
-        world.get_resource_or_insert_with(FoldedGroups::default);
-    if !folded.0.remove(&field) {
-        folded.0.insert(field);
-    }
-}
-
-/// Fires when `field`'s folded state flips, and on the first poll so
-/// a binding starts out in sync.
-fn fold_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
-    let mut seen: Option<bool> = None;
-    move |world, _| {
-        let current = is_folded(world, &field);
-        let fired = seen != Some(current);
-        seen = Some(current);
-        fired
-    }
-}
-
 /// Editable rows for everything reflectable under `root`, which is a
 /// whole component at the empty path.
 pub struct InspectorFields {
@@ -315,11 +268,9 @@ fn build_entries(ui: &mut BevyUi, root: &Field, entries: Vec<Entry>) {
             Entry::Leaf { path, type_id } => {
                 build_leaf(ui, root, path, type_id)
             }
-            Entry::Group {
-                path,
-                name,
-                children,
-            } => build_group(ui, root, path, name, children),
+            Entry::Group { name, children, .. } => {
+                build_group(ui, root, name, children)
+            }
             Entry::Variant {
                 path,
                 name,
@@ -403,7 +354,6 @@ fn build_variant(
 
     let inner = root.clone();
     ui.compose(Section {
-        field: field.clone(),
         name,
         body: move |ui: &mut BevyUi| {
             ui.compose(enums::VariantPicker {
@@ -419,15 +369,12 @@ fn build_variant(
 fn build_group(
     ui: &mut BevyUi,
     root: &Field,
-    path: String,
     name: String,
     children: Vec<Entry>,
 ) {
-    let group = root.child(&path);
     let inner = root.clone();
 
     ui.compose(Section {
-        field: group,
         name,
         body: move |ui: &mut BevyUi| {
             build_entries(ui, &inner, children);
@@ -437,12 +384,7 @@ fn build_group(
 
 /// A collapsible section: a header that folds it, and a body indented
 /// under a guide rail.
-///
-/// `field` is both what the fold is remembered against and what the
-/// section heads, so a whole component - the empty path, which the
-/// walk never hands a group - folds apart from every group inside it.
 pub struct Section<F> {
-    pub field: Field,
     pub name: String,
     pub body: F,
 }
@@ -454,19 +396,11 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
-        let Self { field, name, body } = self;
+        let Self { name, body } = self;
         let theme = ui.world.resource::<EditorTheme>().clone();
 
-        ui.elem(elem!(
-            Frame,
-            width = percent(100),
-            direction = FlexDirection::Column,
-            row_gap = px(2)
-        ))
-        .with(move |ui| {
-            let clicked = field.clone();
-            let glyph = field.clone();
-            ui.elem(elem!(
+        ui.compose(Foldable {
+            header: elem!(
                 !TintButton,
                 width = percent(100),
                 height = auto(),
@@ -485,68 +419,11 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
                     color = Some(theme.text_primary),
                     bold = true
                 )
-            ))
-            .observe(
-                move |_: On<Activate>, mut commands: Commands| {
-                    let field = clicked.clone();
-                    commands.queue(move |world: &mut World| {
-                        toggle_folded(world, field);
-                    });
-                },
-            )
-            .bind(
-                |button| button.icon().rotation(),
-                fold_changed(glyph.clone()),
-                move |world, _| {
-                    if is_folded(world, &glyph) {
-                        CHEVRON_FOLDED
-                    } else {
-                        CHEVRON_OPEN
-                    }
-                },
-            );
-
-            let body_field = field;
-            ui.elem(elem!(
-                Frame,
-                width = percent(100),
-                direction = FlexDirection::Row,
-                align = AlignItems::Stretch
-            ))
-            .bind(
-                |frame| frame.display(),
-                fold_changed(body_field.clone()),
-                move |world, _| {
-                    if is_folded(world, &body_field) {
-                        Display::None
-                    } else {
-                        Display::Flex
-                    }
-                },
-            )
-            .with(move |ui| {
-                // A guide rail beside the section's own rows, the way a
-                // tree view marks how deep a nested one sits - stretched
-                // to the block's height rather than sized by hand.
-                ui.elem(elem!(
-                    Frame,
-                    width = px(1),
-                    background = theme.palette.base[2]
-                ));
-                ui.elem(elem!(
-                    Frame,
-                    direction = FlexDirection::Column,
-                    flex_grow = 1.0f32,
-                    row_gap = px(4),
-                    padding = UiRect::new(
-                        px(9),
-                        Val::ZERO,
-                        Val::ZERO,
-                        Val::ZERO
-                    )
-                ))
-                .with(body);
-            });
+            ),
+            // Nothing else to mean: the whole header folds it.
+            toggle: Toggle::Header,
+            enabled: true,
+            body,
         })
         .handle()
     }
