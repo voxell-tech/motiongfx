@@ -12,9 +12,9 @@ use bevy_motiongfx::scene::backend::{
 /// The project: a scene plus the registry that resolves its names,
 /// and whether it's changed since the last compile.
 ///
-/// Nothing edits the animation tree yet (that's the inspector, still
-/// to come) - for now this only holds what `recompile_dirty_scene`
-/// compiles and the timeline panel's row layout reads.
+/// The action panel edits the tree, the timeline panel's row layout
+/// reads it, and `recompile_dirty_scene` turns it back into a
+/// timeline whenever it has changed.
 ///
 /// Public (unlike most of this crate's state) because the example
 /// binaries build it directly, in place of `motiongfx`'s imperative
@@ -39,6 +39,13 @@ impl EditorScene {
 
     pub(crate) fn scene(&self) -> &MotionGfxScene {
         &self.scene
+    }
+
+    /// The scene, to change. Taking the borrow marks it dirty, so
+    /// there is no way to edit it and forget to say so.
+    pub(crate) fn edit(&mut self) -> &mut MotionGfxScene {
+        self.dirty = true;
+        &mut self.scene
     }
 }
 
@@ -75,6 +82,7 @@ pub(crate) fn recompile_dirty_scene(world: &mut World) {
                         .scene
                         .compile(&editor_scene.registry, &mut manager)
                         .expect("editor scene should compile");
+
                     editor_scene
                         .scene
                         .stage(&editor_scene.registry, world)

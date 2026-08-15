@@ -41,13 +41,10 @@ fn setup(
 ) {
     commands.spawn(Camera2d);
 
-    // Register three trivial window kinds. Each just fills its content
-    // area with a colored label.
-    //
-    // A builder is a bare `fn`, so what a panel shows cannot be
-    // captured when it is registered - hence one function per kind
-    // rather than a loop over closures. Anything a real panel varies
-    // on, it reads from the world.
+    // Register three trivial window kinds, each filling its content
+    // area with a colored label. A builder is a bare `fn`, so what a
+    // panel shows cannot be captured at registration - hence one
+    // function per kind.
     for (id, name, build) in [
         ("panel_a", "Panel A", panel_a as DockWindowBuildFn),
         ("panel_b", "Panel B", panel_b),

@@ -13,25 +13,25 @@ use crate::elements::{
 };
 use crate::reactive::BevyUi;
 
-use super::{Field, Inspect};
+use super::{Inspect, Source, SourceExt, when_changed};
 
 /// A checkbox. `Checked` is a marker, inserted or removed rather than
 /// written, so this binds raw instead of writing a component.
 impl Inspect for bool {
-    fn build(field: &Field, ui: &mut BevyUi) {
-        let edited = field.clone();
-        let read = field.clone();
-        let checked = read.get::<bool>(ui.world).unwrap_or_default();
+    fn build(source: &dyn Source, ui: &mut BevyUi) {
+        let edited = source.boxed();
+        let read = source.boxed();
+        let checked = read.read::<bool>(ui.world).unwrap_or_default();
 
         ui.elem(elem!(CheckBox, checked = checked))
             .observe(
                 move |change: On<ValueChange<bool>>,
                       mut commands: Commands| {
-                    let (field, value) =
-                        (edited.clone(), change.value);
+                    let (source, value) =
+                        (edited.boxed(), change.value);
 
                     commands.queue(move |world: &mut World| {
-                        field.set(world, value);
+                        source.write(world, value);
                     });
                 },
             )
@@ -39,9 +39,9 @@ impl Inspect for bool {
             // and only moves once the write has landed.
             .bind(
                 |b| b.checked(),
-                field.clone().changed(),
+                when_changed(source),
                 move |world, _| {
-                    read.get::<bool>(world).unwrap_or_default()
+                    read.read::<bool>(world).unwrap_or_default()
                 },
             );
     }
@@ -55,21 +55,21 @@ impl Inspect for bool {
 /// `width` is exposed rather than left at the widget's own default so
 /// a vector's per-axis fields can sit narrower than a lone scalar.
 pub(super) fn number_field<T, V>(
-    field: &Field,
+    source: &dyn Source,
     ui: &mut BevyUi,
     format: NumberFormat,
     width: Val,
-    to_field: fn(V) -> T,
+    to_value: fn(V) -> T,
     to_input: fn(T) -> NumberInputValue,
 ) where
-    T: FromReflect + PartialReflect,
+    T: FromReflect,
     V: Clone + Send + Sync + 'static,
     ValueChange<V>: EntityEvent,
 {
-    let edited = field.clone();
-    let read = field.clone();
+    let edited = source.boxed();
+    let read = source.boxed();
 
-    let shown = read.get::<T>(ui.world).map(to_input);
+    let shown = read.read::<T>(ui.world).map(to_input);
 
     ui.elem(elem!(
         NumberField,
@@ -79,19 +79,19 @@ pub(super) fn number_field<T, V>(
     ))
     .observe(
         move |change: On<ValueChange<V>>, mut commands: Commands| {
-            let (field, value) =
-                (edited.clone(), change.value.clone());
+            let (source, value) =
+                (edited.boxed(), change.value.clone());
 
             commands.queue(move |world: &mut World| {
-                field.set(world, to_field(value));
+                source.write(world, to_value(value));
             });
         },
     )
     .bind(
         |input| input.value(),
-        field.clone().changed(),
+        when_changed(source),
         move |world, _| {
-            read.get::<T>(world)
+            read.read::<T>(world)
                 .map(to_input)
                 .unwrap_or(NumberInputValue::F32(0.0))
         },
@@ -107,9 +107,9 @@ macro_rules! number_widget {
         $to_field:expr, $to_input:expr;
     )*) => {$(
         impl Inspect for $ty {
-            fn build(field: &Field, ui: &mut BevyUi) {
+            fn build(source: &dyn Source, ui: &mut BevyUi) {
                 number_field::<$ty, $payload>(
-                    field,
+                    source,
                     ui,
                     NumberFormat::$format,
                     px(110),

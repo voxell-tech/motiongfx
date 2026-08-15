@@ -3,7 +3,9 @@ use std::any::TypeId;
 use bevy::ecs::change_detection::{ComponentTicks, Tick};
 use bevy::ecs::reflect::ReflectComponent;
 use bevy::prelude::*;
-use bevy::reflect::GetPath;
+use bevy::reflect::{GetPath, PartialReflect};
+
+use super::Source;
 
 /// Where an inspector reads and writes: one component of one entity,
 /// and the reflect path reaching a leaf inside it. The empty path is
@@ -18,9 +20,9 @@ use bevy::reflect::GetPath;
 /// that has been replaced wants the subtree rebuilt, not its bindings
 /// quietly re-pointed at a new instance.
 ///
-/// This is what an [`Inspect`](super::Inspect) widget binds to. It deliberately
-/// carries no value - a widget re-reads through the path whenever the
-/// component changes, so nothing goes stale behind a snapshot.
+/// One [`Source`] a widget can be handed. It deliberately carries no
+/// value - a widget re-reads through the path whenever the component
+/// changes, so nothing goes stale behind a snapshot.
 ///
 /// Holds a [`TypeId`] rather than a `ComponentId` so a field can be
 /// named before the world has registered the type.
@@ -129,40 +131,6 @@ impl Field {
         component.contains(entity)
     }
 
-    /// The leaf's current value, cloned out of the component.
-    pub fn get<T: FromReflect>(&self, world: &World) -> Option<T> {
-        self.read(world, |value| {
-            T::from_reflect(self.resolve(value)?)
-        })
-        .flatten()
-    }
-
-    /// Overwrites the leaf, leaving the component untouched if the
-    /// path no longer resolves or the types disagree.
-    pub fn set<T: PartialReflect>(
-        &self,
-        world: &mut World,
-        value: T,
-    ) {
-        self.write(world, |component| {
-            let path = &*self.path;
-            let leaf = if path.is_empty() {
-                Ok(component.as_partial_reflect_mut())
-            } else {
-                component.reflect_path_mut(path)
-            };
-            match leaf {
-                Ok(leaf) => {
-                    if let Err(err) = leaf.try_apply(value.as_partial_reflect())
-                    {
-                        warn!("inspector could not write {path}: {err:?}");
-                    }
-                }
-                Err(err) => warn!("inspector lost the path {path}: {err:?}"),
-            }
-        });
-    }
-
     /// The leaf inside an already-read component. An empty path is
     /// the component itself, which `reflect_path` does not accept.
     fn resolve<'a>(
@@ -187,20 +155,58 @@ impl Field {
             .get_change_ticks_by_id(id)?;
         Some(changed)
     }
+}
 
-    /// Fires when the component this field sits in changed since the
-    /// last poll, and on the first poll so a binding starts out in
-    /// sync with the world.
-    pub fn changed(self) -> impl FnMut(&World, Entity) -> bool {
-        let field = self;
+/// The leaf, read and written through reflection.
+///
+/// Change detection rides the component's tick rather than the value,
+/// so polling costs a lookup instead of a reflect read every frame.
+impl Source for Field {
+    fn get(&self, world: &World) -> Option<Box<dyn PartialReflect>> {
+        self.read(world, |value| {
+            Some(self.resolve(value)?.to_dynamic())
+        })
+        .flatten()
+    }
+
+    fn set(&self, world: &mut World, value: &dyn PartialReflect) {
+        self.write(world, |component| {
+            let path = &*self.path;
+            let leaf = if path.is_empty() {
+                Ok(component.as_partial_reflect_mut())
+            } else {
+                component.reflect_path_mut(path)
+            };
+            match leaf {
+                Ok(leaf) => {
+                    if let Err(err) = leaf.try_apply(value) {
+                        warn!("inspector could not write {path}: {err:?}");
+                    }
+                }
+                Err(err) => {
+                    warn!("inspector lost the path {path}: {err:?}")
+                }
+            }
+        });
+    }
+
+    fn changed(
+        &self,
+    ) -> Box<dyn FnMut(&World) -> bool + Send + Sync> {
+        let field = self.clone();
         let mut seen: Option<Tick> = None;
         let mut polled = false;
-        move |world, _| {
+
+        Box::new(move |world| {
             let current = field.changed_tick(world);
             let fired = !polled || seen != current;
             seen = current;
             polled = true;
             fired
-        }
+        })
+    }
+
+    fn boxed(&self) -> Box<dyn Source> {
+        Box::new(self.clone())
     }
 }

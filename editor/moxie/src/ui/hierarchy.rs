@@ -8,10 +8,11 @@ use std::sync::{Arc, Mutex};
 
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
-use bevy_fynix::ElementMutExt;
+use fynix_mock::composer::Composer;
 use fynix_mock::elem;
-use moxie_ui::elements::{Frame, Label};
-use moxie_ui::reactive::BevyUi;
+use fynix_mock::ui::ElementHandle;
+use moxie_ui::elements::{Frame, Label, Panel};
+use moxie_ui::reactive::{BevyHost, BevyUi};
 use moxie_ui::theme::EditorTheme;
 
 use super::{PANEL_PADDING, TrackViewportCamera};
@@ -61,48 +62,51 @@ impl HierarchyQueries {
 }
 
 /// The hierarchy panel, as kernel nodes.
-pub(super) fn panel(ui: &mut BevyUi) {
-    let rows: Arc<Mutex<Vec<Row>>> = Arc::default();
-    let seen = rows.clone();
-    let mut queries: Option<HierarchyQueries> = None;
+pub(super) struct HierarchyPanel;
 
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Column,
-        row_gap = px(2),
-        padding = UiRect::all(px(PANEL_PADDING))
-    ))
-    .insert(Node {
-        width: percent(100),
-        flex_grow: 1.0,
-        min_height: px(0),
-        flex_direction: FlexDirection::Column,
-        row_gap: px(2),
-        padding: UiRect::all(px(PANEL_PADDING)),
-        overflow: Overflow::scroll_y(),
-        ..default()
-    })
-    .watch(
-        move |world, _| {
-            let queries = match &mut queries {
-                Some(queries) => queries,
-                slot => match HierarchyQueries::try_new(world) {
-                    Some(queries) => slot.insert(queries),
-                    None => return false,
-                },
-            };
-            let current = collect_rows(world, queries);
-            let mut seen = seen.lock().unwrap();
-            let changed = *seen != current;
-            *seen = current;
-            changed
-        },
-        move |ui| {
-            let rows = rows.lock().unwrap();
-            build_rows(ui, &rows);
-        },
-    );
+impl Composer<BevyHost> for HierarchyPanel {
+    type Element = Panel;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Panel> {
+        // The rows the predicate found, handed to the build that
+        // follows it: collecting them twice would walk the whole
+        // scene twice per change.
+        let rows: Arc<Mutex<Vec<Row>>> = Arc::default();
+        let seen = rows.clone();
+        let mut queries: Option<HierarchyQueries> = None;
+
+        ui.elem(elem!(
+            Panel,
+            direction = FlexDirection::Column,
+            row_gap = px(2),
+            padding = UiRect::all(px(PANEL_PADDING)),
+            scrolls = true
+        ))
+        .watch(
+            move |world, _| {
+                let queries = match &mut queries {
+                    Some(queries) => queries,
+                    slot => match HierarchyQueries::try_new(world) {
+                        Some(queries) => slot.insert(queries),
+                        None => return false,
+                    },
+                };
+                let current = collect_rows(world, queries);
+                let mut seen = seen.lock().unwrap();
+                let changed = *seen != current;
+                *seen = current;
+                changed
+            },
+            move |ui| {
+                let rows = rows.lock().unwrap();
+                build_rows(ui, &rows);
+            },
+        )
+        .handle()
+    }
 }
 
 /// Roots first (a scene entity whose parent isn't itself a scene

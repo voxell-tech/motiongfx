@@ -17,7 +17,7 @@ use bevy::ui_widgets::Activate;
 use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
 
-use super::{Field, ReflectInspect};
+use super::{Field, ReflectInspect, enums};
 use crate::elements::{
     ButtonElemCursor, Frame, FrameCursor, Icon, IconCursor, Label,
     TintButton,
@@ -32,17 +32,25 @@ use crate::theme::EditorTheme;
 const CHEVRON_FOLDED: f32 = 90.0;
 const CHEVRON_OPEN: f32 = 180.0;
 
-/// One row the walk found: a leaf with a widget, or a struct grouped
-/// under a collapsible header because it has none of its own.
+/// One row the walk found.
 #[derive(Clone, PartialEq)]
 enum Entry {
-    Leaf {
-        path: String,
-        type_id: TypeId,
-    },
+    /// A registered widget draws it.
+    Leaf { path: String, type_id: TypeId },
+    /// A struct, its fields under a folding header.
     Group {
         path: String,
         name: String,
+        children: Vec<Entry>,
+    },
+    /// An enum: a variant picker, and the active variant's fields
+    /// when it has any.
+    Variant {
+        path: String,
+        name: String,
+        variants: Vec<String>,
+        /// Only unit variants can be picked; see [`enums`].
+        pick: bool,
         children: Vec<Entry>,
     },
 }
@@ -64,6 +72,20 @@ fn push_entry(
         out.push(Entry::Leaf {
             path: path.to_string(),
             type_id,
+        });
+        return;
+    }
+
+    if let Some(variants) = enums::variants(value) {
+        let pick = enums::all_unit(value);
+        out.push(Entry::Variant {
+            path: path.to_string(),
+            name: name.to_string(),
+            variants,
+            pick,
+            // A unit variant has no fields, so this is empty for
+            // every enum that can be freely picked.
+            children: collect_entries(registry, value, path),
         });
         return;
     }
@@ -120,6 +142,27 @@ fn collect_entries(
                     field,
                     &join(prefix, &index),
                     &index,
+                    &mut out,
+                );
+            }
+        }
+        // Whatever the active variant carries, named the way a path
+        // reaches it - by field for a struct variant, by index for a
+        // tuple one.
+        ReflectRef::Enum(value) => {
+            for i in 0..value.field_len() {
+                let Some(field) = value.field_at(i) else {
+                    continue;
+                };
+                let name = value
+                    .name_at(i)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| i.to_string());
+                push_entry(
+                    registry,
+                    field,
+                    &join(prefix, &name),
+                    &name,
                     &mut out,
                 );
             }
@@ -263,6 +306,15 @@ fn build_entries(ui: &mut BevyUi, root: &Field, entries: Vec<Entry>) {
                 name,
                 children,
             } => build_group(ui, root, path, name, children),
+            Entry::Variant {
+                path,
+                name,
+                variants,
+                pick,
+                children,
+            } => build_variant(
+                ui, root, path, name, variants, pick, children,
+            ),
         }
     }
 }
@@ -296,6 +348,45 @@ fn build_leaf(
     .with(move |ui| {
         ui.elem(elem!(Label, text = label, color = Some(muted)));
         drawer.build(&field, ui);
+    });
+}
+
+/// A variant picker, and - for an enum carrying data - the active
+/// variant's own fields folded underneath it.
+fn build_variant(
+    ui: &mut BevyUi,
+    root: &Field,
+    path: String,
+    name: String,
+    variants: Vec<String>,
+    pick: bool,
+    children: Vec<Entry>,
+) {
+    let field = root.child(&path);
+    let muted = ui.world.resource::<EditorTheme>().text_muted;
+
+    if children.is_empty() {
+        let label = leaf_name(&path).to_string();
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            direction = FlexDirection::Row,
+            justify = JustifyContent::SpaceBetween,
+            align = AlignItems::Center,
+            column_gap = px(8),
+            padding = UiRect::vertical(px(3))
+        ))
+        .with(move |ui| {
+            ui.elem(elem!(Label, text = label, color = Some(muted)));
+            enums::picker(ui, &field, variants, pick);
+        });
+        return;
+    }
+
+    let inner = root.clone();
+    section(ui, field.clone(), name, move |ui| {
+        enums::picker(ui, &field, variants, pick);
+        build_entries(ui, &inner, children);
     });
 }
 

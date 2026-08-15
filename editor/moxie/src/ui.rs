@@ -1,16 +1,16 @@
 //! The editor's dockable windows (viewport, timeline, hierarchy,
-//! settings) and the startup system that spawns them against a
-//! dedicated UI camera.
+//! action, settings) and the startup system that spawns them against
+//! a dedicated UI camera.
 
+mod action;
 mod hierarchy;
+mod settings;
 mod timeline;
 
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
-use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
-use bevy::settings::SaveSettingsSync;
 use bevy::ui::widget::ImageNode;
 use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 
@@ -19,11 +19,9 @@ use crate::{
     playback, scene, view,
 };
 use bevy_fynix::ElementMutExt;
-use fynix_mock::{elem, val};
+use fynix_mock::elem;
 use moxie_ui::MoxieUiPlugin;
-use moxie_ui::elements::{
-    Button, Frame, FrameCursor, Label, Panel, ResourceInspector,
-};
+use moxie_ui::elements::{Frame, FrameCursor, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
@@ -104,7 +102,7 @@ fn setup_editor_ui(
 
     register_windows(&mut registry);
 
-    // Layout: viewport (+ settings tab) on top, timeline below.
+    // Layout: viewport (+ its sibling tabs) on top, timeline below.
     // Leaves are not persistent: emptied areas collapse
     // automatically.
     let viewport = tree.set_root_leaf(
@@ -112,6 +110,7 @@ fn setup_editor_ui(
             .with_windows(vec![
                 "viewport".into(),
                 "hierarchy".into(),
+                "action".into(),
                 "settings".into(),
             ]),
     );
@@ -232,7 +231,18 @@ fn register_windows(registry: &mut WindowRegistry) {
         id: "hierarchy".into(),
         name: "Hierarchy".into(),
         icon: Some(crate::icons::HIERARCHY.into()),
-        build: hierarchy::panel,
+        build: |ui: &mut BevyUi| {
+            ui.compose(hierarchy::HierarchyPanel);
+        },
+    });
+
+    registry.register(DockWindowDescriptor {
+        id: "action".into(),
+        name: "Action".into(),
+        icon: Some(crate::icons::ACTION.into()),
+        build: |ui: &mut BevyUi| {
+            ui.compose(action::ActionPanel);
+        },
     });
 
     // Settings: a reflect inspector over `EditorSettings` + Save.
@@ -241,34 +251,7 @@ fn register_windows(registry: &mut WindowRegistry) {
         name: "Settings".into(),
         icon: Some(crate::icons::SETTINGS.into()),
         build: |ui: &mut BevyUi| {
-            ui.elem(elem!(
-                Panel,
-                direction = FlexDirection::Column,
-                row_gap = px(8),
-                padding = UiRect::all(px(PANEL_PADDING)),
-                scrolls = true
-            ))
-            .with(|ui| {
-                // Editable rows built by the reflect inspector.
-                ui.compose(ResourceInspector::of::<EditorSettings>());
-                // Save row.
-                ui.elem(elem!(Frame, direction = FlexDirection::Row))
-                    .with(|ui| {
-                        ui.elem(elem!(
-                            !Button,
-                            label = val!(Label, text = "Save"),
-                            width = px(64),
-                            height = px(24)
-                        ))
-                        .observe(
-                            |mut click: On<Pointer<Click>>,
-                             mut commands: Commands| {
-                                click.propagate(false);
-                                commands.queue(SaveSettingsSync::Always);
-                            },
-                        );
-                    });
-            });
+            ui.compose(settings::SettingsPanel);
         },
     });
 }
