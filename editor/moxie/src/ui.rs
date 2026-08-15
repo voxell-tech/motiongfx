@@ -20,13 +20,13 @@ use crate::{
 };
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
-use moxie_ui::MoxieUiPlugin;
 use moxie_ui::elements::{Frame, FrameCursor, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
     DockWindowDescriptor, Edge, WindowRegistry, dock,
 };
+use moxie_ui::{MoxieUiPlugin, palette};
 
 /// Wires feathers theming, the editor UI tree, and the per-frame
 /// timeline/playback/preview systems.
@@ -89,7 +89,7 @@ fn setup_editor_ui(
             Camera2d
             Camera {
                 order: 10,
-                clear_color: Color::BLACK,
+                clear_color: { palette::BASE[0] },
             }
             TrackViewportCamera
         ])
