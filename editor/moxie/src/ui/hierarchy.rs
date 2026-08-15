@@ -4,8 +4,6 @@
 //! refers to its subjects by - so the panel lists exactly what the
 //! animation can address, and nothing the editor spawned for itself.
 
-use std::sync::{Arc, Mutex};
-
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy_motiongfx::scene::id::EntityUid;
@@ -22,10 +20,38 @@ use super::PANEL_PADDING;
 const INDENT: f32 = 12.0;
 
 /// One row: an entity's depth and display name.
+///
+/// Doubles as what builds it. The two would hold the same two fields
+/// either way, and comparing rows is how the panel decides to rebuild
+/// them at all.
 #[derive(Clone, PartialEq)]
 struct Row {
     depth: usize,
     name: String,
+}
+
+impl Composer<BevyHost> for Row {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        let color = ui.world.resource::<EditorTheme>().text_primary;
+        let indent = self.depth as f32 * INDENT;
+        let name = self.name;
+
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            align = AlignItems::Center,
+            padding = UiRect::left(px(indent))
+        ))
+        .with(move |ui| {
+            ui.elem(elem!(Label, text = name, color = Some(color)));
+        })
+        .handle()
+    }
 }
 
 /// A scene subject is whatever carries the id one is named by.
@@ -88,12 +114,12 @@ impl Composer<BevyHost> for HierarchyPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Panel> {
-        // The rows the predicate found, handed to the build that
-        // follows it: collecting them twice would walk the whole
-        // scene twice per change.
-        let rows: Arc<Mutex<Vec<Row>>> = Arc::default();
-        let seen = rows.clone();
+        // The predicate keeps its queries between polls, because it
+        // runs every flush and building a `QueryState` each time
+        // would not be cheap. The build has no such problem: it only
+        // runs when something actually moved.
         let mut queries: Option<HierarchyQueries> = None;
+        let mut seen: Option<Vec<Row>> = None;
 
         ui.elem(elem!(
             Panel,
@@ -112,15 +138,11 @@ impl Composer<BevyHost> for HierarchyPanel {
                     },
                 };
                 let current = collect_rows(world, queries);
-                let mut seen = seen.lock().unwrap();
-                let changed = *seen != current;
-                *seen = current;
+                let changed = seen.as_ref() != Some(&current);
+                seen = Some(current);
                 changed
             },
-            move |ui| {
-                let rows = rows.lock().unwrap();
-                build_rows(ui, &rows);
-            },
+            build_rows,
         )
         .handle()
     }
@@ -176,24 +198,19 @@ fn push_subtree(
     }
 }
 
-fn build_rows(ui: &mut BevyUi, rows: &[Row]) {
-    let text_color = ui.world.resource::<EditorTheme>().text_primary;
+/// Walks the scene again rather than being handed what the predicate
+/// found. That costs one more walk, but only when something actually
+/// moved - and it keeps the two halves from having to share state.
+fn build_rows(ui: &mut BevyUi) {
+    let rows = {
+        let Some(mut queries) = HierarchyQueries::try_new(ui.world)
+        else {
+            return;
+        };
+        collect_rows(ui.world, &mut queries)
+    };
 
     for row in rows {
-        let indent = row.depth as f32 * INDENT;
-        let name = row.name.clone();
-        ui.elem(elem!(
-            Frame,
-            width = percent(100),
-            align = AlignItems::Center,
-            padding = UiRect::left(px(indent))
-        ))
-        .with(move |ui| {
-            ui.elem(elem!(
-                Label,
-                text = name,
-                color = Some(text_color)
-            ));
-        });
+        ui.compose(row);
     }
 }
