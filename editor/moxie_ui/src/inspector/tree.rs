@@ -13,11 +13,11 @@ use bevy::prelude::*;
 use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
 use bevy_fynix::ElementMutExt;
 use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
+use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
 
 use super::{Field, ReflectInspect, enums};
-use crate::elements::{Frame, Icon, Label, TintButton};
+use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
 use crate::fold::{CHEVRON_OPEN, Foldable, Toggle};
 use crate::icons;
 use crate::reactive::{BevyHost, BevyUi};
@@ -423,6 +423,12 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
             // Nothing else to mean: the whole header folds it.
             toggle: Toggle::Header,
             enabled: true,
+            on_header: |_: ElementMut<
+                '_,
+                '_,
+                BevyHost,
+                ButtonElem,
+            >| {},
             body,
         })
         .handle()

@@ -10,16 +10,21 @@
 
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
+use bevy::ui_widgets::Activate;
+use bevy_fynix::ElementMutExt;
 use bevy_motiongfx::scene::id::EntityUid;
 use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
+use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
-use moxie_ui::elements::{Frame, Label, Panel, TintButton};
+use moxie_ui::elements::{
+    ButtonElem, ButtonElemCursor, Frame, Label, Panel, TintButton,
+};
 use moxie_ui::fold::{Foldable, Toggle};
 use moxie_ui::reactive::{BevyHost, BevyUi, component_changed_on};
 use moxie_ui::theme::EditorTheme;
 
 use super::PANEL_PADDING;
+use crate::SelectedEntity;
 
 /// Between one row and the next, at any depth.
 const ROW_GAP: f32 = 2.0;
@@ -95,7 +100,7 @@ impl Composer<BevyHost> for Subtree {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
         let entity = self.entity;
-        let primary = ui.world.resource::<EditorTheme>().text_primary;
+        let theme = ui.world.resource::<EditorTheme>().clone();
         let name = name_of(ui.world, entity);
 
         ui.compose(Foldable {
@@ -110,13 +115,42 @@ impl Composer<BevyHost> for Subtree {
                     Label,
                     text = name,
                     wrap = false,
-                    color = Some(primary)
+                    color = Some(theme.text_primary)
                 )
             ),
             // The row is the subject's, to select; only the chevron
             // beside it folds.
             toggle: Toggle::Chevron,
             enabled: has_children(ui.world, entity),
+            on_header: move |header: ElementMut<
+                '_,
+                '_,
+                BevyHost,
+                ButtonElem,
+            >| {
+                header
+                    .observe(
+                        move |_: On<Activate>,
+                              mut selected: ResMut<
+                            SelectedEntity,
+                        >| {
+                            selected.0 = Some(entity);
+                        },
+                    )
+                    .bind(
+                        |button| button.fill(),
+                        selection_changed(entity),
+                        move |world, _| {
+                            if world.resource::<SelectedEntity>().0
+                                == Some(entity)
+                            {
+                                theme.accent.with_alpha(0.18)
+                            } else {
+                                Color::NONE
+                            }
+                        },
+                    );
+            },
             body: move |ui: &mut BevyUi| {
                 ui.elem(elem!(
                     Frame,
@@ -177,6 +211,20 @@ fn has_children(world: &World, entity: Entity) -> bool {
     world.get::<Children>(entity).is_some_and(|children| {
         children.iter().any(|child| is_subject(world, child))
     })
+}
+
+/// Fires when `entity` gains or loses the hierarchy's selection.
+fn selection_changed(
+    entity: Entity,
+) -> impl FnMut(&World, Entity) -> bool {
+    let mut seen: Option<bool> = None;
+    move |world, _| {
+        let current =
+            world.resource::<SelectedEntity>().0 == Some(entity);
+        let fired = seen != Some(current);
+        seen = Some(current);
+        fired
+    }
 }
 
 fn is_subject(world: &World, entity: Entity) -> bool {

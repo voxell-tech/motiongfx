@@ -70,7 +70,11 @@ pub enum Toggle {
 /// All this owns is the mechanism: the click that toggles, the
 /// chevron that turns, the body that goes, and the rail marking how
 /// deep that body sits.
-pub struct Foldable<S, B> {
+pub struct Foldable<
+    S,
+    B,
+    H = for<'u, 'a> fn(ElementMut<'u, 'a, BevyHost, ButtonElem>),
+> {
     /// Anything built on a [`ButtonElem`]. Under [`Toggle::Header`]
     /// its icon slot is the chevron, so it has to carry one.
     pub header: S,
@@ -79,13 +83,18 @@ pub struct Foldable<S, B> {
     /// it neither turns nor toggles, and its chevron is left out
     /// rather than dimmed, since a hover would light it up again.
     pub enabled: bool,
+    /// Run on the header once it's built, after folding is wired to
+    /// it under [`Toggle::Header`] - so a header that also means
+    /// something of its own, like selecting a row, can still say so.
+    pub on_header: H,
     pub body: B,
 }
 
-impl<S, B> Composer<BevyHost> for Foldable<S, B>
+impl<S, B, H> Composer<BevyHost> for Foldable<S, B, H>
 where
     S: StyledElem<Host = BevyHost, Element = ButtonElem>,
     B: FnOnce(&mut BevyUi),
+    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, BevyHost, ButtonElem>),
 {
     type Element = Frame;
 
@@ -97,6 +106,7 @@ where
             header,
             toggle,
             enabled,
+            on_header,
             body,
         } = self;
         let theme = ui.world.resource::<EditorTheme>().clone();
@@ -121,32 +131,31 @@ where
             ))
             .with(move |ui| {
                 if chevron {
-                    folds(
-                        ui.elem(elem!(
-                            !GhostButton,
-                            width = px(TOGGLE),
-                            height = px(TOGGLE),
-                            radius = px(3),
-                            icon = val!(
-                                Icon,
-                                image = icons::CHEVRON,
-                                size = px(8),
-                                color = theme.text_muted,
-                                rotation = CHEVRON_OPEN
-                            )
-                        )),
-                        node,
-                    );
+                    let toggle = ui.elem(elem!(
+                        !GhostButton,
+                        width = px(TOGGLE),
+                        height = px(TOGGLE),
+                        radius = px(3),
+                        icon = val!(
+                            Icon,
+                            image = icons::CHEVRON,
+                            size = px(8),
+                            color = theme.text_muted,
+                            rotation = CHEVRON_OPEN
+                        )
+                    ));
+                    folds(toggle, node);
                 }
 
                 // Takes the rest of the row, so a header asking for
                 // its full width gets what is left beside a chevron.
                 ui.elem(elem!(Frame, flex_grow = 1.0f32)).with(
                     move |ui| {
-                        let header = ui.elem(header);
+                        let mut header = ui.elem(header);
                         if enabled && !chevron {
-                            folds(header, node);
+                            header = folds(header, node);
                         }
+                        on_header(header);
                     },
                 );
             });
@@ -205,10 +214,10 @@ where
 
 /// Makes `button` the one that folds `node`, turning its chevron with
 /// the state.
-fn folds(
-    button: ElementMut<'_, '_, BevyHost, ButtonElem>,
+fn folds<'u, 'a>(
+    button: ElementMut<'u, 'a, BevyHost, ButtonElem>,
     node: Entity,
-) {
+) -> ElementMut<'u, 'a, BevyHost, ButtonElem> {
     button
         .observe(move |_: On<Activate>, mut commands: Commands| {
             commands.queue(move |world: &mut World| {
@@ -225,5 +234,5 @@ fn folds(
                     CHEVRON_OPEN
                 }
             },
-        );
+        )
 }
