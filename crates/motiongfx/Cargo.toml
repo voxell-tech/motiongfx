@@ -30,4 +30,5 @@ workspace = true
 
 [features]
 default = ["std", "tracing"]
+tracing = ["dep:tracing"]
 std = []
