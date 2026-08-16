@@ -3644,6 +3644,7 @@ dependencies = [
  "hashbrown 0.17.1",
  "libm",
  "nonempty",
+ "tracing",
  "typarena",
 ]
 
