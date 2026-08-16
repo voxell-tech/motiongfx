@@ -253,7 +253,7 @@ impl TrackFragment {
                 ));
 
                 field = key.field();
-                field_offset = field_len;
+                field_offset += field_len;
                 field_len = 0;
             }
             field_len += 1;
@@ -581,5 +581,62 @@ mod tests {
 
         assert_eq!(track.duration(), Duration::ZERO);
         assert!(track.sequences_spans().is_empty());
+    }
+
+    #[test]
+    fn field_spans_cover_every_lane() {
+        const DUMMY: Sequence = Sequence::new(clip(0));
+
+        let fa = UntypedField::placeholder_with_path("a");
+        let fb = UntypedField::placeholder_with_path("b");
+        let fc = UntypedField::placeholder_with_path("c");
+
+        let mut ids = IdRegistry::new();
+        let s1 = ids.register_instance(DummyId(1));
+        let s2 = ids.register_instance(DummyId(2));
+
+        let k = |sid, field| {
+            ActionKey::new(
+                UntypedSubjectId::new::<DummyId>(sid),
+                field,
+            )
+        };
+
+        let track = TrackFragment::new()
+            .upsert_sequence(k(s1, fa), DUMMY.clone())
+            .upsert_sequence(k(s2, fa), DUMMY.clone())
+            .upsert_sequence(k(s1, fb), DUMMY.clone())
+            .upsert_sequence(k(s1, fc), DUMMY.clone())
+            .compile();
+
+        // Fields in the order `compile` sorts them into.
+        let mut covered = Vec::new();
+
+        for (field, expected) in [(fa, 2), (fb, 1), (fc, 1)] {
+            let spans = track
+                .lookup_field_spans(field)
+                .expect("field was compiled in");
+
+            assert_eq!(spans.len(), expected, "{field:?}");
+            assert!(
+                spans.iter().all(|(key, _)| *key.field() == field),
+                "{field:?} span points at the wrong lanes",
+            );
+
+            covered.extend(spans.iter().map(|(key, _)| *key));
+        }
+
+        // Every lane, once: a drifted offset repeats one and skips
+        // another.
+        let lanes = track
+            .sequences_spans()
+            .iter()
+            .map(|(key, _)| *key)
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            covered, lanes,
+            "field spans must cover every lane"
+        );
     }
 }
