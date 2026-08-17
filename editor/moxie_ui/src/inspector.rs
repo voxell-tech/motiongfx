@@ -107,6 +107,33 @@ pub fn when_changed(
     move |world, _| changed(world)
 }
 
+/// Fires when `get`'s value differs from the last poll, and on the
+/// first poll. For a [`Source::changed`] with no tick to ride:
+/// `PartialReflect` has no `PartialEq`, so this compares through
+/// [`PartialReflect::reflect_partial_eq`] instead.
+pub fn reflect_changed(
+    get: impl Fn(&World) -> Option<Box<dyn PartialReflect>>
+    + Send
+    + Sync
+    + 'static,
+) -> impl FnMut(&World) -> bool + Send + Sync + 'static {
+    let mut seen: Option<Option<Box<dyn PartialReflect>>> = None;
+    move |world| {
+        let current = get(world);
+        let fired = !seen.as_ref().is_some_and(|last| {
+            match (last, &current) {
+                (Some(last), Some(current)) => last
+                    .reflect_partial_eq(&**current)
+                    .unwrap_or(false),
+                (None, None) => true,
+                _ => false,
+            }
+        });
+        seen = Some(current);
+        fired
+    }
+}
+
 /// The widget for whatever `source` currently holds.
 ///
 /// A registered [`Inspect`] wins; failing that an enum picks its own
