@@ -20,7 +20,9 @@ use moxie_ui::elements::{
     ButtonElem, ButtonElemCursor, Frame, Label, Panel, TintButton,
 };
 use moxie_ui::fold::{Foldable, Toggle};
-use moxie_ui::reactive::{BevyHost, BevyUi, component_changed_on};
+use moxie_ui::reactive::{
+    BevyHost, BevyUi, component_changed_on, value_changed,
+};
 use moxie_ui::theme::EditorTheme;
 
 use super::PANEL_PADDING;
@@ -217,14 +219,9 @@ fn has_children(world: &World, entity: Entity) -> bool {
 fn selection_changed(
     entity: Entity,
 ) -> impl FnMut(&World, Entity) -> bool {
-    let mut seen: Option<bool> = None;
-    move |world, _| {
-        let current =
-            world.resource::<SelectedEntity>().0 == Some(entity);
-        let fired = seen != Some(current);
-        seen = Some(current);
-        fired
-    }
+    value_changed(move |world, _| {
+        world.resource::<SelectedEntity>().0 == Some(entity)
+    })
 }
 
 fn is_subject(world: &World, entity: Entity) -> bool {

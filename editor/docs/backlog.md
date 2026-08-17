@@ -20,3 +20,15 @@ those as moxie_ui elements styled off `EditorTheme`, then drop
       them.
 - [ ] `Label`'s `None => ThemedText` fallback should default to
       `theme.text_primary` directly.
+
+## `BevyElementVisual` boilerplate
+
+Every `ElementVisual<BevyHost>` impl starts with
+`world.entity_mut(node)`. A forwarding blanket impl hits Rust's
+orphan rule; the marker-param workaround compiles but can't satisfy
+`Element<H>`'s bound without changing `fynix_mock`'s kernel.
+
+- [ ] Add a `macro_rules!` in `bevy_fynix` forwarding a narrower
+      `BevyElementVisual` impl into `ElementVisual<BevyHost>`.
+- [ ] Or an attribute macro on the impl itself, skipping the repeated
+      type name - needs a new `bevy_fynix_macros` proc-macro crate.

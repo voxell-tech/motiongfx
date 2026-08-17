@@ -23,7 +23,7 @@ use fynix_mock::ui::{BuildFn, ChangedFn, ElementHandle};
 
 use super::Frame;
 use crate::inspector::{Field, InspectorFields, Section};
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::{BevyHost, BevyUi, value_changed};
 
 /// One component of one entity.
 pub struct ComponentInspector {
@@ -153,13 +153,7 @@ fn resource_entity(
 fn entity_changed(
     resource: TypeId,
 ) -> impl FnMut(&World, Entity) -> bool {
-    let mut seen: Option<Option<Entity>> = None;
-    move |world, _| {
-        let current = resource_entity(world, resource);
-        let fired = seen != Some(current);
-        seen = Some(current);
-        fired
-    }
+    value_changed(move |world, _| resource_entity(world, resource))
 }
 
 /// Fires when `entity`'s set of inspectable components changes, and
@@ -171,13 +165,7 @@ fn entity_changed(
 fn components_changed(
     entity: Entity,
 ) -> impl FnMut(&World, Entity) -> bool {
-    let mut seen: Option<Vec<(TypeId, &'static str)>> = None;
-    move |world, _| {
-        let current = inspectable(world, entity);
-        let fired = seen.as_ref() != Some(&current);
-        seen = Some(current);
-        fired
-    }
+    value_changed(move |world, _| inspectable(world, entity))
 }
 
 /// Every component on `entity` the inspector can reach, by type and
@@ -252,11 +240,5 @@ fn column(
 fn presence_changed(
     field: Field,
 ) -> impl FnMut(&World, Entity) -> bool {
-    let mut seen: Option<bool> = None;
-    move |world, _| {
-        let present = field.exists(world);
-        let fired = seen != Some(present);
-        seen = Some(present);
-        fired
-    }
+    value_changed(move |world, _| field.exists(world))
 }

@@ -18,7 +18,7 @@ use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
 use moxie_ui::elements::{Frame, Label, Panel};
-use moxie_ui::inspector::{Source, inspect_value};
+use moxie_ui::inspector::{Source, inspect_value, reflect_changed};
 use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
 use moxie_ui::theme::EditorTheme;
 
@@ -281,22 +281,7 @@ impl Source for Pooled {
         &self,
     ) -> Box<dyn FnMut(&World) -> bool + Send + Sync> {
         let pooled = *self;
-        let mut seen: Option<Option<Box<dyn PartialReflect>>> = None;
-
-        Box::new(move |world| {
-            let current = pooled.get(world);
-            let fired = !seen.as_ref().is_some_and(|last| {
-                match (last, &current) {
-                    (Some(last), Some(current)) => last
-                        .reflect_partial_eq(&**current)
-                        .unwrap_or(false),
-                    (None, None) => true,
-                    _ => false,
-                }
-            });
-            seen = Some(current);
-            fired
-        })
+        Box::new(reflect_changed(move |world| pooled.get(world)))
     }
 
     fn boxed(&self) -> Box<dyn Source> {
@@ -355,22 +340,7 @@ impl Source for Property {
         &self,
     ) -> Box<dyn FnMut(&World) -> bool + Send + Sync> {
         let property = self.clone();
-        let mut seen: Option<Option<Box<dyn PartialReflect>>> = None;
-
-        Box::new(move |world| {
-            let current = property.get(world);
-            let fired = !seen.as_ref().is_some_and(|last| {
-                match (last, &current) {
-                    (Some(last), Some(current)) => last
-                        .reflect_partial_eq(&**current)
-                        .unwrap_or(false),
-                    (None, None) => true,
-                    _ => false,
-                }
-            });
-            seen = Some(current);
-            fired
-        })
+        Box::new(reflect_changed(move |world| property.get(world)))
     }
 
     fn boxed(&self) -> Box<dyn Source> {

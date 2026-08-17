@@ -194,16 +194,9 @@ impl Source for Field {
         &self,
     ) -> Box<dyn FnMut(&World) -> bool + Send + Sync> {
         let field = self.clone();
-        let mut seen: Option<Tick> = None;
-        let mut polled = false;
-
-        Box::new(move |world| {
-            let current = field.changed_tick(world);
-            let fired = !polled || seen != current;
-            seen = current;
-            polled = true;
-            fired
-        })
+        Box::new(crate::reactive::tick_changed(move |world| {
+            field.changed_tick(world)
+        }))
     }
 
     fn boxed(&self) -> Box<dyn Source> {
