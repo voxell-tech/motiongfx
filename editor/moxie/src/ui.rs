@@ -110,14 +110,15 @@ fn setup_editor_ui(
     tree.split(viewport, Edge::Bottom, "timeline".into());
     let vsplit = tree.root.expect("root split exists");
     tree.set_fraction(vsplit, 0.7);
-    if let Some(timeline) = tree.find_leaf_with_window("timeline")
-        && let Some(DockNode::Leaf(leaf)) = tree.get_mut(timeline)
-    {
+    let timeline = tree
+        .find_leaf_with_window("timeline")
+        .expect("just split in a timeline leaf");
+    if let Some(DockNode::Leaf(leaf)) = tree.get_mut(timeline) {
         leaf.area_id = "timeline".into();
     }
 
-    tree.split(viewport, Edge::Right, "action".into());
-    if let Some(hsplit) = tree.parent_of(viewport) {
+    tree.split(timeline, Edge::Right, "action".into());
+    if let Some(hsplit) = tree.parent_of(timeline) {
         tree.set_fraction(hsplit, 0.8);
     }
 
