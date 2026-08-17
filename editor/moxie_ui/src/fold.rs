@@ -14,8 +14,8 @@ use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
 
 use crate::elements::{
-    ButtonElem, ButtonElemCursor, Frame, FrameCursor, GhostButton,
-    Icon, IconCursor,
+    ButtonElem, ButtonElemCursor, Frame, FrameCursor, Icon,
+    IconCursor, TintButton,
 };
 use crate::icons;
 use crate::reactive::{BevyHost, BevyUi, component_changed_on};
@@ -132,7 +132,7 @@ where
             .with(move |ui| {
                 if chevron {
                     let toggle = ui.elem(elem!(
-                        !GhostButton,
+                        !TintButton,
                         width = px(TOGGLE),
                         height = px(TOGGLE),
                         radius = px(3),
