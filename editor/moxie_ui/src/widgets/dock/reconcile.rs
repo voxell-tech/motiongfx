@@ -23,11 +23,15 @@ use super::tree::{
     DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId,
     SplitAxis, TabId,
 };
+use crate::elements::FrameCursor;
 use crate::elements::dock::{
-    Area, AreaCursor, DockHost, SplitGroup, SplitHandle, SplitPanel,
-    SplitPanelCursor, TabContent, TabContentCursor,
+    Area, AreaCursor, DockHost, SplitGroup, SplitHandle,
+    SplitHandleCursor, SplitPanel, SplitPanelCursor, TabContent,
+    TabContentCursor, handle_bar, handle_line,
 };
+use crate::motion::{HOVER, MotionExt};
 use crate::reactive::{BevyUi, resource_changed, structure_changed};
+use crate::theme::EditorTheme;
 
 pub struct ReconcilePlugin;
 
@@ -121,6 +125,8 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
     let a_visible = leaf_visible(ui.world, split.a);
     let b_visible = leaf_visible(ui.world, split.b);
     let handle_visible = a_visible && b_visible;
+    let line_color =
+        ui.world.resource::<EditorTheme>().palette.base[2];
 
     ui.elem(elem!(SplitGroup, node = id, axis = flex_direction))
         .with(move |ui| {
@@ -130,8 +136,15 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
                 SplitHandle,
                 node = id,
                 axis = flex_direction,
-                visible = handle_visible
-            ));
+                visible = handle_visible,
+                line = handle_line(flex_direction, line_color),
+                bar = handle_bar(flex_direction)
+            ))
+            .lit(
+                |handle| handle.bar().background(),
+                HOVER,
+                HOVER,
+            );
 
             build_panel(id, split.b, false, b_visible, ui);
         });
