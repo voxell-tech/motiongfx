@@ -98,13 +98,9 @@ pub fn component_changed<C: Component>()
 pub fn component_changed_on<C: Component>(
     entity: Entity,
 ) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
-    let mut seen: Option<Option<Tick>> = None;
-    move |world, _| {
-        let current = component_tick::<C>(world, entity);
-        let fired = seen != Some(current);
-        seen = Some(current);
-        fired
-    }
+    let mut changed =
+        tick_changed(move |world| component_tick::<C>(world, entity));
+    move |world, _| changed(world)
 }
 
 /// When `C` on `entity` was last written.
@@ -115,6 +111,22 @@ fn component_tick<C: Component>(
     let ComponentTicks { changed, .. } =
         world.get_entity(entity).ok()?.get_change_ticks::<C>()?;
     Some(changed)
+}
+
+/// Fires when `read`'s tick differs from the last poll, and on the
+/// first poll. The core [`component_changed_on`] and
+/// [`Field::changed`](crate::inspector::Field) both build on: what
+/// varies between them is only how the tick is read.
+pub(crate) fn tick_changed(
+    mut read: impl FnMut(&World) -> Option<Tick> + Send + Sync + 'static,
+) -> impl FnMut(&World) -> bool + Send + Sync + 'static {
+    let mut seen: Option<Option<Tick>> = None;
+    move |world| {
+        let current = read(world);
+        let fired = seen != Some(current);
+        seen = Some(current);
+        fired
+    }
 }
 
 /// Fires when the current `S` differs from the last poll.
