@@ -25,8 +25,8 @@ pub use registry::{
     DockWindowBuildFn, DockWindowDescriptor, WindowRegistry,
 };
 pub use split::{
-    Panel, PanelGroup, PanelHandle, SplitPanelPlugin, panel,
-    panel_group, panel_handle,
+    HANDLE_SIZE, Panel, PanelGroup, PanelHandle, SplitPanelPlugin,
+    panel, panel_group, panel_handle,
 };
 pub use tabs::DockTabRow;
 pub use tree::{

@@ -31,7 +31,8 @@ impl Plugin for SplitPanelPlugin {
     }
 }
 
-const HANDLE_SIZE: f32 = 3.0;
+/// A drag handle's width/height, and its hit area.
+pub const HANDLE_SIZE: f32 = 3.0;
 const HANDLE_HOVER_COLOR: Color = Color::srgba(1.0, 1.0, 1.0, 0.12);
 
 #[derive(Component)]

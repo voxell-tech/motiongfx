@@ -129,6 +129,7 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
             ui.elem(elem!(
                 SplitHandle,
                 node = id,
+                axis = flex_direction,
                 visible = handle_visible
             ));
 

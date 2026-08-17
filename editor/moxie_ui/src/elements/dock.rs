@@ -14,8 +14,8 @@ use fynix_mock::lenz::Lenz;
 
 use crate::widgets::dock::{
     ActiveDockWindow, DockArea, DockAreaStyle, DockTabContent,
-    DockTreeHost, DockWindow, NodeBinding, NodeId, Panel, PanelGroup,
-    PanelHandle, TabId,
+    DockTreeHost, DockWindow, HANDLE_SIZE, NodeBinding, NodeId,
+    Panel, PanelGroup, PanelHandle, TabId,
 };
 
 /// Column that fills its parent, which most of the dock's nodes are.
@@ -115,6 +115,8 @@ impl ElementVisual<BevyHost> for SplitGroup {
 pub struct SplitHandle {
     #[default(NodeId(0))]
     pub node: NodeId,
+    #[default(::Row)]
+    pub axis: FlexDirection,
     /// Hidden when either side of the split has collapsed: there is
     /// nothing left to drag between.
     #[default(true)]
@@ -122,10 +124,23 @@ pub struct SplitHandle {
 }
 
 impl SplitHandle {
+    /// Full-sized hit area, pulled back onto the seam by a matching
+    /// negative margin so the panels read as touching.
     fn node(&self) -> Node {
+        let pull = px(-HANDLE_SIZE / 2.0);
+        let margin = match self.axis {
+            FlexDirection::Row | FlexDirection::RowReverse => {
+                UiRect::horizontal(pull)
+            }
+            FlexDirection::Column | FlexDirection::ColumnReverse => {
+                UiRect::vertical(pull)
+            }
+        };
+
         Node {
-            min_width: px(3),
-            min_height: px(3),
+            min_width: px(HANDLE_SIZE),
+            min_height: px(HANDLE_SIZE),
+            margin,
             display: display(self.visible),
             ..default()
         }
@@ -154,7 +169,7 @@ impl ElementVisual<BevyHost> for SplitHandle {
             SplitHandleField::Node => {
                 entity.insert(NodeBinding(self.node));
             }
-            SplitHandleField::Visible => {
+            SplitHandleField::Axis | SplitHandleField::Visible => {
                 entity.insert(self.node());
             }
         }
