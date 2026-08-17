@@ -1,7 +1,4 @@
 use bevy::feathers::cursor::EntityCursor;
-use bevy::picking::events::{
-    Cancel, Out, Over, Pointer, Press, Release,
-};
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
@@ -14,15 +11,15 @@ use fynix_mock::lenz::Lenz;
 /// while held - a saturated blue, deliberately not the editor's usual
 /// gray hover overlay: a clip is a colored timeline object in its own
 /// right, not chrome, so it lights up in its own family of color.
-const HOVER_TINT: Color = Color::srgb(0.35, 0.70, 1.0);
-const PRESS_TINT: Color = Color::srgb(0.55, 0.82, 1.0);
+///
+/// Public so a call site can pair it with [`MotionExt::lit`](
+/// crate::motion::MotionExt::lit): the element itself only owns its
+/// look, not its own interaction wiring.
+pub const HOVER_TINT: Color = Color::srgb(0.35, 0.70, 1.0);
+pub const PRESS_TINT: Color = Color::srgb(0.55, 0.82, 1.0);
 
 /// One action's clip on the timeline: a colored, absolutely
-/// positioned, bordered hit area. Owns its interaction directly - a
-/// pointer cursor and a hover/press tint via observers on its own
-/// entity - rather than reaching for the editor's generic button
-/// motion, since a clip's hover color is a deliberately different
-/// look, not the shared gray overlay every chrome button uses.
+/// positioned, bordered hit area.
 #[derive(Element, OverrideDefault, Lenz)]
 pub struct TimelineAction {
     pub top: f32,
@@ -56,29 +53,15 @@ impl TimelineAction {
     }
 }
 
-/// The clip's resting fill, so the hover/press observers know what to
-/// fade back to on the way out.
-#[derive(Component)]
-struct BaseFill(Color);
-
 impl ElementVisual<BevyHost> for TimelineAction {
     fn build_fields(&self, world: &mut World, node: Entity) {
         world.entity_mut(node).insert((
             self.node(),
             BackgroundColor(self.fill),
             BorderColor::all(self.border),
-            BaseFill(self.fill),
             ButtonBehavior,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
-
-        world
-            .entity_mut(node)
-            .observe(on_over)
-            .observe(on_out)
-            .observe(on_press)
-            .observe(on_release)
-            .observe(on_cancel);
     }
 
     fn patch_fields(
@@ -96,10 +79,9 @@ impl ElementVisual<BevyHost> for TimelineAction {
                 world.entity_mut(node).insert(self.node());
             }
             TimelineActionField::Fill => {
-                world.entity_mut(node).insert((
-                    BackgroundColor(self.fill),
-                    BaseFill(self.fill),
-                ));
+                world
+                    .entity_mut(node)
+                    .insert(BackgroundColor(self.fill));
             }
             TimelineActionField::Border => {
                 world
@@ -107,61 +89,5 @@ impl ElementVisual<BevyHost> for TimelineAction {
                     .insert(BorderColor::all(self.border));
             }
         }
-    }
-}
-
-fn on_over(
-    over: On<Pointer<Over>>,
-    mut q: Query<&mut BackgroundColor>,
-) {
-    if let Ok(mut background) = q.get_mut(over.entity) {
-        background.0 = HOVER_TINT;
-    }
-}
-
-fn on_press(
-    press: On<Pointer<Press>>,
-    mut q: Query<&mut BackgroundColor>,
-) {
-    if let Ok(mut background) = q.get_mut(press.entity) {
-        background.0 = PRESS_TINT;
-    }
-}
-
-fn on_release(
-    release: On<Pointer<Release>>,
-    mut q: Query<&mut BackgroundColor>,
-) {
-    if let Ok(mut background) = q.get_mut(release.entity) {
-        background.0 = HOVER_TINT;
-    }
-}
-
-fn on_out(
-    out: On<Pointer<Out>>,
-    q_base: Query<&BaseFill>,
-    mut q_background: Query<&mut BackgroundColor>,
-) {
-    reset(out.entity, &q_base, &mut q_background);
-}
-
-fn on_cancel(
-    cancel: On<Pointer<Cancel>>,
-    q_base: Query<&BaseFill>,
-    mut q_background: Query<&mut BackgroundColor>,
-) {
-    reset(cancel.entity, &q_base, &mut q_background);
-}
-
-/// Back to the resting fill: what `Out`/`Cancel` share.
-fn reset(
-    entity: Entity,
-    q_base: &Query<&BaseFill>,
-    q_background: &mut Query<&mut BackgroundColor>,
-) {
-    if let (Ok(base), Ok(mut background)) =
-        (q_base.get(entity), q_background.get_mut(entity))
-    {
-        background.0 = base.0;
     }
 }

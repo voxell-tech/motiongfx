@@ -21,10 +21,12 @@ use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
 use moxie_ui::elements::{
-    Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
-    LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
-    TimelineAction, TimelineBlock,
+    Button, ButtonElemCursor, Frame, HOVER_TINT, Icon, IconCursor,
+    Label, LabelCursor, PRESS_TINT, Panel, PlayheadLine,
+    PlayheadLineCursor, ScrollArea, TimelineAction,
+    TimelineActionCursor, TimelineBlock,
 };
+use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{
     BevyHost, BevyUi, resource_changed, value_changed,
 };
@@ -254,6 +256,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     },
                     selected = is_selected
                 ))
+                .lit(|action| action.fill(), HOVER_TINT, PRESS_TINT)
                 .observe(
                     move |_: On<Activate>,
                           mut selected: ResMut<SelectedAction>| {

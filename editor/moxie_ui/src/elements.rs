@@ -62,7 +62,8 @@ pub use tab::{
     TabRow, TabRowCursor, TabRowField,
 };
 pub use timeline_action::{
-    TimelineAction, TimelineActionCursor, TimelineActionField,
+    HOVER_TINT, PRESS_TINT, TimelineAction, TimelineActionCursor,
+    TimelineActionField,
 };
 pub use timeline_block::{
     TimelineBlock, TimelineBlockCursor, TimelineBlockField,
