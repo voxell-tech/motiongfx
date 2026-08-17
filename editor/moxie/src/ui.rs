@@ -1,5 +1,6 @@
 mod action;
 mod hierarchy;
+mod inspector;
 mod settings;
 mod timeline;
 
@@ -119,6 +120,11 @@ fn setup_editor_ui(
 
     tree.split(timeline, Edge::Right, "action".into());
     if let Some(hsplit) = tree.parent_of(timeline) {
+        tree.set_fraction(hsplit, 0.8);
+    }
+
+    tree.split(viewport, Edge::Right, "inspector".into());
+    if let Some(hsplit) = tree.parent_of(viewport) {
         tree.set_fraction(hsplit, 0.8);
     }
 
@@ -246,6 +252,15 @@ fn register_windows(registry: &mut WindowRegistry) {
         icon: Some(crate::icons::ACTION.into()),
         build: |ui: &mut BevyUi| {
             ui.compose(action::ActionPanel);
+        },
+    });
+
+    registry.register(DockWindowDescriptor {
+        id: "inspector".into(),
+        name: "Inspector".into(),
+        icon: Some(crate::icons::INSPECTOR.into()),
+        build: |ui: &mut BevyUi| {
+            ui.compose(inspector::InspectorPanel);
         },
     });
 
