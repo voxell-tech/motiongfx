@@ -31,8 +31,8 @@ impl Plugin for SplitPanelPlugin {
     }
 }
 
-const HANDLE_SIZE: f32 = 3.0;
-const HANDLE_HOVER_COLOR: Color = Color::srgba(1.0, 1.0, 1.0, 0.12);
+/// A drag handle's width/height, and its hit area.
+pub const HANDLE_SIZE: f32 = 8.0;
 
 #[derive(Component)]
 pub struct PanelGroup {
@@ -46,11 +46,6 @@ pub struct Panel {
 
 #[derive(Component)]
 pub struct PanelHandle;
-
-/// Present on a handle while it's being dragged, so the highlight
-/// stays visible for the whole drag even if the cursor leaves it.
-#[derive(Component)]
-struct HandleDragging;
 
 pub fn panel_group<
     C: SpawnableList<ChildOf> + Send + Sync + 'static,
@@ -174,8 +169,6 @@ fn on_handle_added(
         .insert(EntityCursor::System(cursor_icon))
         .observe(on_handle_drag_start)
         .observe(on_handle_drag_end)
-        .observe(on_handle_hover)
-        .observe(on_handle_unhover)
         .observe(handle_panel_drag);
 }
 
@@ -184,17 +177,11 @@ fn on_handle_drag_start(
     handles: Query<&ChildOf, With<PanelHandle>>,
     nodes: Query<&Node>,
     mut override_cursor: ResMut<OverrideCursor>,
-    mut commands: Commands,
 ) {
     let handle = trigger.event_target();
     let Ok(&ChildOf(parent)) = handles.get(handle) else {
         return;
     };
-    // Keep the highlight shown for the whole drag.
-    commands.entity(handle).insert((
-        HandleDragging,
-        BackgroundColor(HANDLE_HOVER_COLOR),
-    ));
     let Ok(node) = nodes.get(parent) else {
         return;
     };
@@ -209,17 +196,11 @@ fn on_handle_drag_end(
     handles: Query<&ChildOf, With<PanelHandle>>,
     nodes: Query<&Node>,
     mut override_cursor: ResMut<OverrideCursor>,
-    mut commands: Commands,
 ) {
     let handle = trigger.event_target();
     let Ok(&ChildOf(parent)) = handles.get(handle) else {
         return;
     };
-    // End of drag: drop the marker and clear the highlight.
-    commands
-        .entity(handle)
-        .remove::<HandleDragging>()
-        .insert(BackgroundColor(Color::NONE));
     let Ok(node) = nodes.get(parent) else {
         return;
     };
@@ -227,28 +208,6 @@ fn on_handle_drag_end(
     if override_cursor.0 == Some(EntityCursor::System(cursor_icon)) {
         override_cursor.0 = None;
     }
-}
-
-fn on_handle_hover(
-    trigger: On<Pointer<Over>>,
-    mut commands: Commands,
-) {
-    commands
-        .entity(trigger.event_target())
-        .insert(BackgroundColor(HANDLE_HOVER_COLOR));
-}
-
-fn on_handle_unhover(
-    trigger: On<Pointer<Out>>,
-    dragging: Query<(), With<HandleDragging>>,
-    mut commands: Commands,
-) {
-    let handle = trigger.event_target();
-    // Leaving the handle mid-drag keeps the highlight.
-    if dragging.contains(handle) {
-        return;
-    }
-    commands.entity(handle).insert(BackgroundColor(Color::NONE));
 }
 
 fn handle_panel_drag(

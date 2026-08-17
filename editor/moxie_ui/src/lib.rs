@@ -7,6 +7,7 @@
 )]
 
 pub mod elements;
+pub mod fold;
 pub mod icons;
 pub mod inspector;
 pub mod motion;

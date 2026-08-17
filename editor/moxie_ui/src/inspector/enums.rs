@@ -6,16 +6,24 @@
 //! is also what lets it serve enums from crates the inspector cannot
 //! name.
 //!
-//! Only unit variants can be picked. Switching into one that carries
-//! data would mean inventing that data, so an enum that has any is
-//! shown at whichever variant it is already on, with that variant's
-//! fields walked underneath like a struct's.
+//! Switching into a variant that carries data means inventing that
+//! data: a unit variant needs none, and a variant with fields is
+//! constructible when every one of its field types has a registered
+//! [`ReflectDefault`]. An enum with any variant that isn't - some
+//! field type nothing derives `Default` for - is shown read-only, at
+//! whichever variant it is already on, with that variant's fields
+//! walked underneath like a struct's.
 
 use bevy::prelude::*;
 use bevy::reflect::enums::{
-    DynamicEnum, DynamicVariant, VariantType,
+    DynamicEnum, DynamicVariant, VariantInfo,
 };
-use bevy::reflect::{PartialReflect, ReflectRef, TypeInfo};
+use bevy::reflect::std_traits::ReflectDefault;
+use bevy::reflect::structs::DynamicStruct;
+use bevy::reflect::tuple::DynamicTuple;
+use bevy::reflect::{
+    PartialReflect, ReflectRef, TypeInfo, TypeRegistry,
+};
 use bevy::ui_widgets::Activate;
 
 use bevy_fynix::ElementMutExt;
@@ -54,17 +62,83 @@ pub(super) fn variants(
     Some(info.variant_names().iter().map(|n| n.to_string()).collect())
 }
 
-/// Whether every variant is a unit one, and so free to pick.
-pub(super) fn all_unit(value: &dyn PartialReflect) -> bool {
+/// Whether every variant of `value`'s type can be switched into.
+pub(super) fn constructible(
+    value: &dyn PartialReflect,
+    registry: &TypeRegistry,
+) -> bool {
     let Some(TypeInfo::Enum(info)) =
         value.get_represented_type_info()
     else {
         return false;
     };
 
-    (0..info.variant_len()).all(|index| {
-        info.variant_at(index)
-            .is_some_and(|v| v.variant_type() == VariantType::Unit)
+    info.iter().all(|variant| defaultable(variant, registry))
+}
+
+/// A unit variant needs nothing; a variant with fields needs every
+/// field's type to carry a [`ReflectDefault`].
+fn defaultable(
+    variant: &VariantInfo,
+    registry: &TypeRegistry,
+) -> bool {
+    match variant {
+        VariantInfo::Unit(_) => true,
+        VariantInfo::Struct(info) => info
+            .iter()
+            .all(|field| has_default(field.type_id(), registry)),
+        VariantInfo::Tuple(info) => info
+            .iter()
+            .all(|field| has_default(field.type_id(), registry)),
+    }
+}
+
+fn has_default(
+    type_id: core::any::TypeId,
+    registry: &TypeRegistry,
+) -> bool {
+    registry.get_type_data::<ReflectDefault>(type_id).is_some()
+}
+
+/// `name` as a [`DynamicVariant`] of `value`'s type, its fields (if
+/// any) filled from their own [`ReflectDefault`]. `None` if the
+/// variant isn't constructible - a caller only reaches this from a
+/// picker [`constructible`] already gated, so that should not happen.
+fn constructed(
+    value: &dyn PartialReflect,
+    registry: &TypeRegistry,
+    name: &str,
+) -> Option<DynamicVariant> {
+    let TypeInfo::Enum(info) = value.get_represented_type_info()?
+    else {
+        return None;
+    };
+
+    Some(match info.variant(name)? {
+        VariantInfo::Unit(_) => DynamicVariant::Unit,
+        VariantInfo::Struct(info) => {
+            let mut fields = DynamicStruct::default();
+            for field in info.iter() {
+                let default = registry
+                    .get_type_data::<ReflectDefault>(field.type_id())?
+                    .default();
+                fields.insert_boxed(
+                    field.name(),
+                    default.into_partial_reflect(),
+                );
+            }
+            DynamicVariant::Struct(fields)
+        }
+        VariantInfo::Tuple(info) => {
+            let mut fields = DynamicTuple::default();
+            for field in info.iter() {
+                let default = registry
+                    .get_type_data::<ReflectDefault>(field.type_id())?
+                    .default();
+                fields.insert_boxed(default.into_partial_reflect());
+            }
+            DynamicVariant::Tuple(fields)
+        }
     })
 }
 
@@ -79,10 +153,10 @@ fn active(source: &dyn Source, world: &World) -> Option<String> {
 
 /// The variant, as a dropdown over the rest.
 ///
-/// `pick` is false for an enum carrying data, which then only names
-/// where it stands - moving it would mean inventing that data. The
-/// two look nothing alike, so they share a [`Frame`] and this comes
-/// back the same either way.
+/// `pick` is false when some variant of the type isn't
+/// [`constructible`], which then only names where it stands. The two
+/// look nothing alike, so they share a [`Frame`] and this comes back
+/// the same either way.
 pub(super) struct VariantPicker<'a> {
     pub source: &'a dyn Source,
     pub variants: Vec<String>,
@@ -225,10 +299,18 @@ fn option(
         let (source, variant) = (edited.boxed(), chosen.clone());
 
         commands.queue(move |world: &mut World| {
-            source.set(
-                world,
-                &DynamicEnum::new(variant, DynamicVariant::Unit),
-            );
+            let Some(value) = source.get(world) else {
+                return;
+            };
+            let dynamic = {
+                let registry =
+                    world.resource::<AppTypeRegistry>().read();
+                constructed(&*value, &registry, &variant)
+            };
+            if let Some(dynamic) = dynamic {
+                source
+                    .set(world, &DynamicEnum::new(variant, dynamic));
+            }
         });
     });
 }

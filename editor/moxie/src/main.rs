@@ -1,11 +1,11 @@
-//! Demonstrates the [`MoxiePlugin`] timeline editor.
+//! The editor binary: [`MoxiePlugin`] over a starting scene.
 //!
-//! A row of cubes runs through four phases - pop in together, rotate
-//! in staggered pairs, race each other, then settle - deliberately
-//! mixing every [`Combinator`] and nesting them inside one another, so
-//! the timeline panel has a real tree to show. The editor docks a
-//! timeline panel at the bottom of the window: use the play/pause
-//! button to control playback and drag on the timeline to scrub.
+//! Until it can open a saved one, that scene is built here. Two rows
+//! of shapes run through five phases - pop in together, rotate in
+//! staggered pairs, race each other, drift apart, then settle - which
+//! between them mix and nest every [`Combinator`], so the timeline
+//! panel has a real tree to show. The shapes hang under a row each,
+//! so the hierarchy panel has one too.
 
 use bevy::asset::uuid::Uuid;
 use bevy::color::palettes;
@@ -25,12 +25,15 @@ use motiongfx_scene::block::{
     ActionCmd, Block, Combinator, Node as AnimNode,
 };
 use motiongfx_scene::refs::FieldRef;
+// Aliased: `Subject` is also what this file calls one of its own
+// animated things.
 use motiongfx_scene::scene::{
-    FieldSeed, Scene as AnimScene, Stage, Subject,
+    FieldSeed, Scene as AnimScene, Stage, Subject as StageSubject,
 };
 use motiongfx_scene::value::ValueColumn;
 
-const CUBE_COUNT: usize = 6;
+/// Shapes in a row, and rows in the scene.
+const PER_ROW: usize = 3;
 
 fn main() {
     App::new()
@@ -48,11 +51,11 @@ fn main() {
         .run();
 }
 
-/// One cube: its subject id and spawn `x`, so later phases can move it
-/// relative to where it started.
-struct Cube {
-    subject: SceneUid,
-    x: f32,
+/// One animated thing: its subject id and where it starts, so a later
+/// phase can move it relative to that.
+struct Subject {
+    id: SceneUid,
+    start: Vec3,
 }
 
 /// The initial value of one animated field, pooled alongside the
@@ -125,16 +128,20 @@ fn move_to(
     })
 }
 
-/// Spawns a row of cubes and an [`EditorScene`] animating them through
-/// four phases, deliberately mixing and nesting every [`Combinator`]:
+/// Spawns two rows of shapes and an [`EditorScene`] animating them
+/// through five phases, deliberately mixing and nesting every
+/// [`Combinator`]:
 ///
-/// 1. **Scale in** (`All`) - every cube pops in at once.
-/// 2. **Paired rotate** (`Flow` of `All` pairs) - cubes rotate two at a
-///    time, each pair staggered after the last.
-/// 3. **Race** (`Any` of an action and a `Chain`) - two cubes chase the
-///    same finish line; the phase ends the instant the faster one
+/// 1. **Scale in** (`All`) - every shape pops in at once.
+/// 2. **Paired rotate** (`Flow` of `All` pairs) - shapes rotate two at
+///    a time, each pair staggered after the last.
+/// 3. **Race** (`Any` of an action and a `Chain`) - two shapes chase
+///    the same finish line; the phase ends the instant the faster one
 ///    does, leaving the slower one mid-flight.
-/// 4. **Finale** (`Chain` of `All` then `Flow`) - every cube settles
+/// 4. **Drift** (`All`) - the rows themselves move apart. Nothing
+///    animates the shapes here: they come along because they hang
+///    under a row, which is what the hierarchy panel is showing.
+/// 5. **Finale** (`Chain` of `All` then `Flow`) - every shape settles
 ///    its scale together, then unwinds its rotation one at a time.
 ///
 /// Built as a [`Scene`] rather than through `motiongfx`'s imperative
@@ -146,56 +153,106 @@ fn spawn_timeline(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let mesh = meshes.add(Cuboid::default());
     let mut values = ValuePool::default();
 
-    let cubes: Vec<Cube> = (0..CUBE_COUNT)
-        .map(|i| {
-            let x = (i as f32) - (CUBE_COUNT as f32 - 1.0) * 0.5;
-            let material =
-                materials.add(StandardMaterial::from_color(
-                    palettes::tailwind::SKY_400,
-                ));
+    // Flat shapes are meshed in the XY plane, so they face the camera
+    // to begin with - and are double sided, or a rotation would turn
+    // them edge-on and then away.
+    let rows = [
+        (
+            "Solids",
+            1.2,
+            palettes::tailwind::SKY_400,
+            [
+                meshes.add(Cuboid::default()),
+                meshes.add(Sphere::new(0.6)),
+                meshes.add(Torus::new(0.22, 0.45)),
+            ],
+        ),
+        (
+            "Flats",
+            -1.2,
+            palettes::tailwind::AMBER_400,
+            [
+                meshes.add(Rectangle::new(1.1, 1.1)),
+                meshes.add(Circle::new(0.62)),
+                meshes.add(RegularPolygon::new(0.68, 6)),
+            ],
+        ),
+    ];
+
+    let mut parents = Vec::new();
+    let mut shapes = Vec::new();
+
+    for (name, y, color, row_meshes) in rows {
+        let origin = Vec3::new(0.0, y, 0.0);
+        let uid = EntityUid::new();
+        let parent = commands
+            .spawn((
+                uid,
+                Name::new(name),
+                Transform::from_translation(origin),
+                Visibility::default(),
+            ))
+            .id();
+        parents.push(Subject {
+            id: SceneUid::Entity(uid),
+            start: origin,
+        });
+
+        let material = materials.add(StandardMaterial {
+            base_color: color.into(),
+            double_sided: true,
+            cull_mode: None,
+            ..default()
+        });
+
+        for (i, mesh) in row_meshes.into_iter().enumerate() {
+            let x = ((i as f32) - (PER_ROW as f32 - 1.0) * 0.5) * 2.0;
+            let start = Vec3::new(x, 0.0, 0.0);
             let uid = EntityUid::new();
+
             commands.spawn((
                 uid,
-                Mesh3d(mesh.clone()),
-                MeshMaterial3d(material),
-                Transform::from_xyz(x * 1.5, 0.0, 0.0)
+                Name::new(format!("{name} {i}")),
+                Mesh3d(mesh),
+                MeshMaterial3d(material.clone()),
+                Transform::from_translation(start)
                     .with_scale(Vec3::ZERO),
+                ChildOf(parent),
             ));
-            Cube {
-                subject: SceneUid::Entity(uid),
-                x: x * 1.5,
-            }
-        })
-        .collect();
+            shapes.push(Subject {
+                id: SceneUid::Entity(uid),
+                start,
+            });
+        }
+    }
 
-    // Phase 1 - every cube pops in together.
+    // Phase 1 - every shape pops in together.
     let scale_in = Block {
         combinator: Combinator::All,
-        children: cubes
+        children: shapes
             .iter()
-            .map(|cube| {
-                scale_to(cube.subject, &mut values, Vec3::ONE, cs(40))
+            .map(|shape| {
+                scale_to(shape.id, &mut values, Vec3::ONE, cs(40))
             })
             .collect(),
     };
 
-    // Phase 2 - cubes rotate two at a time (an `All` pair), each pair
+    // Phase 2 - shapes rotate two at a time (an `All` pair), each pair
     // staggered after the last (a `Flow` of those pairs).
     let paired_rotate = Block {
         combinator: Combinator::Flow(cs(25)),
-        children: cubes
+        children: shapes
             .chunks(2)
             .map(|pair| {
                 AnimNode::block(Block {
                     combinator: Combinator::All,
                     children: pair
                         .iter()
-                        .map(|cube| {
+                        .map(|shape| {
                             rotate_to(
-                                cube.subject,
+                                shape.id,
                                 &mut values,
                                 Quat::from_rotation_y(
                                     core::f32::consts::PI,
@@ -209,31 +266,31 @@ fn spawn_timeline(
             .collect(),
     };
 
-    // Phase 3 - two cubes race for the same finish line: a lone slow
+    // Phase 3 - two shapes race for the same finish line: a lone slow
     // hop against a `Chain` of two quick hops. `Any` ends the instant
     // the faster one does, so the slow hop is left unfinished.
     let race = Block {
         combinator: Combinator::Any,
         children: vec![
             move_to(
-                cubes[0].subject,
+                shapes[0].id,
                 &mut values,
-                Vec3::new(cubes[0].x, 1.5, 0.0),
+                shapes[0].start + Vec3::Y * 1.5,
                 s(2),
             ),
             AnimNode::block(Block {
                 combinator: Combinator::Chain,
                 children: vec![
                     move_to(
-                        cubes[1].subject,
+                        shapes[1].id,
                         &mut values,
-                        Vec3::new(cubes[1].x, 1.0, 0.0),
+                        shapes[1].start + Vec3::Y,
                         cs(50),
                     ),
                     move_to(
-                        cubes[1].subject,
+                        shapes[1].id,
                         &mut values,
-                        Vec3::new(cubes[1].x, 0.0, 0.0),
+                        shapes[1].start,
                         cs(50),
                     ),
                 ],
@@ -241,18 +298,35 @@ fn spawn_timeline(
         ],
     };
 
-    // Phase 4 - settle every cube's scale together (`All`), then
+    // Phase 4 - the rows themselves move apart. Nothing here names a
+    // shape: they follow because they hang under a row.
+    let drift = Block {
+        combinator: Combinator::All,
+        children: parents
+            .iter()
+            .map(|row| {
+                move_to(
+                    row.id,
+                    &mut values,
+                    row.start + Vec3::Y * row.start.y.signum() * 0.6,
+                    cs(60),
+                )
+            })
+            .collect(),
+    };
+
+    // Phase 5 - settle every shape's scale together (`All`), then
     // unwind their rotation one at a time (`Flow`).
     let finale = Block {
         combinator: Combinator::Chain,
         children: vec![
             AnimNode::block(Block {
                 combinator: Combinator::All,
-                children: cubes
+                children: shapes
                     .iter()
-                    .map(|cube| {
+                    .map(|shape| {
                         scale_to(
-                            cube.subject,
+                            shape.id,
                             &mut values,
                             Vec3::splat(0.7),
                             cs(30),
@@ -262,11 +336,11 @@ fn spawn_timeline(
             }),
             AnimNode::block(Block {
                 combinator: Combinator::Flow(cs(8)),
-                children: cubes
+                children: shapes
                     .iter()
-                    .map(|cube| {
+                    .map(|shape| {
                         rotate_to(
-                            cube.subject,
+                            shape.id,
                             &mut values,
                             Quat::IDENTITY,
                             cs(40),
@@ -281,23 +355,27 @@ fn spawn_timeline(
         AnimNode::block(scale_in),
         AnimNode::block(paired_rotate),
         AnimNode::block(race),
+        AnimNode::block(drift),
         AnimNode::block(finale),
     ]);
 
-    // Every field the animation touches, at what the cubes spawn
+    // Every field the animation touches, at what the shapes spawn
     // holding. Not redundant with that spawn: baking reads off the
-    // world, and an edit recompiles with the cubes wherever the last
-    // run left them.
+    // world, and an edit recompiles with them wherever the last run
+    // left them. A row starts at full scale; a shape pops in from
+    // nothing.
     let stage = Stage {
-        subjects: cubes
+        subjects: shapes
             .iter()
-            .map(|cube| Subject {
-                id: cube.subject,
+            .map(|shape| (shape, Vec3::ZERO))
+            .chain(parents.iter().map(|row| (row, Vec3::ONE)))
+            .map(|(subject, scale)| StageSubject {
+                id: subject.id,
                 fields: vec![
                     seed(
                         &mut values,
                         field_ref(path!(<Transform>::translation)),
-                        Vec3::new(cube.x, 0.0, 0.0),
+                        subject.start,
                     ),
                     seed(
                         &mut values,
@@ -307,7 +385,7 @@ fn spawn_timeline(
                     seed(
                         &mut values,
                         field_ref(path!(<Transform>::scale)),
-                        Vec3::ZERO,
+                        scale,
                     ),
                 ],
             })

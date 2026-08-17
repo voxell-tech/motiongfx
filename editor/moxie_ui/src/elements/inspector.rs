@@ -119,14 +119,7 @@ impl Composer<BevyHost> for EntityInspector {
 
         column(ui, px(8), components_changed(entity), move |ui| {
             for (component, name) in inspectable(ui.world, entity) {
-                // Headed by the whole component, at the empty path,
-                // which the walk only ever hands groups *inside* -
-                // so a component's fold and its groups' never
-                // collide.
-                let field = Field::new(entity, component);
-
                 ui.compose(Section {
-                    field,
                     name: name.to_string(),
                     body: move |ui: &mut BevyUi| {
                         ui.compose(ComponentInspector {

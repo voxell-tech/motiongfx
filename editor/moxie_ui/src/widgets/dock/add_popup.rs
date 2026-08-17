@@ -158,7 +158,7 @@ fn build_popup(ui: &mut BevyUi) {
         padding = UiRect::all(px(4)),
         radius = px(6),
         background = Color::srgba(0.11, 0.10, 0.11, 0.98),
-        z = Some(181)
+        z = 181
     ))
     .with(move |ui| build_rows(ui, area));
 }

@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/*", "editor/*", "examples/*", ]
-exclude = ["editor/assets"]
+exclude = ["editor/assets", "editor/docs"]
 
 [workspace.package]
 version = "0.3.0"

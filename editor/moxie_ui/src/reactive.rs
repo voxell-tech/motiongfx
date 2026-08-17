@@ -76,17 +76,45 @@ where
     }
 }
 
-/// Fires when the watched node's `C` differs from the last poll.
+/// Fires when the node's `C` was written since the last poll, and on
+/// the first poll.
 ///
-/// The entity-local counterpart to [`resource_changed`]: state for a
-/// single widget instance (a popup's open/closed, a field's edit
-/// buffer) belongs on that widget's own node, not in a global
-/// `Resource` that every instance of the widget would have to share.
-/// `C` absent reads as unchanged, not a rebuild — a node that hasn't
-/// had its state inserted yet is not yet ready to build.
-pub fn component_changed<C: Component + Clone + PartialEq>()
+/// State belonging to one widget instance lives on its own node
+/// rather than in a `Resource` every instance would share. Rides the
+/// tick, so [`value_changed`] is what to reach for when the value is
+/// what matters.
+pub fn component_changed<C: Component>()
 -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
-    value_changed(|world, node| world.get::<C>(node).cloned())
+    let mut seen: Option<Option<Tick>> = None;
+    move |world, node| {
+        let current = component_tick::<C>(world, node);
+        let fired = seen != Some(current);
+        seen = Some(current);
+        fired
+    }
+}
+
+/// Same, for `C` on some other entity than the node.
+pub fn component_changed_on<C: Component>(
+    entity: Entity,
+) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+    let mut seen: Option<Option<Tick>> = None;
+    move |world, _| {
+        let current = component_tick::<C>(world, entity);
+        let fired = seen != Some(current);
+        seen = Some(current);
+        fired
+    }
+}
+
+/// When `C` on `entity` was last written.
+fn component_tick<C: Component>(
+    world: &World,
+    entity: Entity,
+) -> Option<Tick> {
+    let ComponentTicks { changed, .. } =
+        world.get_entity(entity).ok()?.get_change_ticks::<C>()?;
+    Some(changed)
 }
 
 /// Fires when the current `S` differs from the last poll.

@@ -1,7 +1,3 @@
-//! The editor's dockable windows (viewport, timeline, hierarchy,
-//! action, settings) and the startup system that spawns them against
-//! a dedicated UI camera.
-
 mod action;
 mod hierarchy;
 mod settings;
@@ -16,17 +12,17 @@ use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 
 use crate::{
     EditorSettings, EditorState, PreviewImage, SelectedAction,
-    playback, scene, view,
+    SelectedEntity, playback, scene, view,
 };
 use bevy_fynix::ElementMutExt;
 use fynix_mock::elem;
-use moxie_ui::MoxieUiPlugin;
 use moxie_ui::elements::{Frame, FrameCursor, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
     DockWindowDescriptor, Edge, WindowRegistry, dock,
 };
+use moxie_ui::{MoxieUiPlugin, palette};
 
 /// Wires feathers theming, the editor UI tree, and the per-frame
 /// timeline/playback/preview systems.
@@ -37,6 +33,7 @@ impl Plugin for UiPlugin {
         app.add_plugins(MoxieUiPlugin)
             .init_resource::<EditorState>()
             .init_resource::<SelectedAction>()
+            .init_resource::<SelectedEntity>()
             .add_systems(Startup, setup_editor_ui)
             .add_systems(
                 Update,
@@ -89,7 +86,7 @@ fn setup_editor_ui(
             Camera2d
             Camera {
                 order: 10,
-                clear_color: Color::BLACK,
+                clear_color: { palette::BASE[0] },
             }
             TrackViewportCamera
         ])
@@ -102,25 +99,31 @@ fn setup_editor_ui(
 
     register_windows(&mut registry);
 
-    // Layout: viewport (+ its sibling tabs) on top, timeline below.
-    // Leaves are not persistent: emptied areas collapse
-    // automatically.
+    //
+    // The dock layout.
+    //
     let viewport = tree.set_root_leaf(
         DockLeaf::new("viewport", DockAreaStyle::TabBar)
-            .with_windows(vec![
-                "viewport".into(),
-                "hierarchy".into(),
-                "action".into(),
-                "settings".into(),
-            ]),
+            .with_windows(vec!["viewport".into()]),
     );
+
     tree.split(viewport, Edge::Bottom, "timeline".into());
-    let split = tree.root.expect("root split exists");
-    tree.set_fraction(split, 0.7);
+    let vsplit = tree.root.expect("root split exists");
+    tree.set_fraction(vsplit, 0.7);
     if let Some(timeline) = tree.find_leaf_with_window("timeline")
         && let Some(DockNode::Leaf(leaf)) = tree.get_mut(timeline)
     {
         leaf.area_id = "timeline".into();
+    }
+
+    tree.split(viewport, Edge::Right, "action".into());
+    if let Some(hsplit) = tree.parent_of(viewport) {
+        tree.set_fraction(hsplit, 0.8);
+    }
+
+    tree.split(viewport, Edge::Left, "hierarchy".into());
+    if let Some(hsplit) = tree.parent_of(viewport) {
+        tree.set_fraction(hsplit, 0.2);
     }
 
     // The kernel builds the whole tree under this root. `Commands`

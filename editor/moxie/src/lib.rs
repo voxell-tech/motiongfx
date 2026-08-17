@@ -74,6 +74,10 @@ pub(crate) struct EditorState {
 #[derive(Resource, Default, Clone, PartialEq)]
 pub(crate) struct SelectedAction(pub(crate) Option<Vec<usize>>);
 
+/// The entity currently selected in the hierarchy panel, if any.
+#[derive(Resource, Default, Clone, Copy, PartialEq)]
+pub(crate) struct SelectedEntity(pub(crate) Option<Entity>);
+
 #[derive(Debug, Resource, SettingsGroup, Reflect)]
 #[reflect(Resource, SettingsGroup, Default)]
 pub struct EditorSettings {
