@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use fynix_mock::composer::Composer;
 use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
-use moxie_ui::elements::{EntityInspector, Label, Panel};
+use moxie_ui::elements::{EntityInspector, Label, ScrollArea};
 use moxie_ui::reactive::{BevyHost, BevyUi, resource_changed};
 use moxie_ui::theme::EditorTheme;
 
@@ -16,18 +16,19 @@ use crate::SelectedEntity;
 pub(super) struct InspectorPanel;
 
 impl Composer<BevyHost> for InspectorPanel {
-    type Element = Panel;
+    type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Panel> {
+    ) -> ElementHandle<BevyHost, ScrollArea> {
         ui.elem(elem!(
-            Panel,
-            direction = FlexDirection::Column,
+            ScrollArea,
+            width = percent(100),
+            flex_grow = 1.0f32,
             row_gap = px(8),
             padding = UiRect::all(px(PANEL_PADDING)),
-            scrolls = true
+            scroll_x = false
         ))
         .watch(resource_changed::<SelectedEntity>(), build)
         .handle()
