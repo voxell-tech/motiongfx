@@ -19,8 +19,6 @@ use moxie_ui::theme::EditorTheme;
 
 use crate::project;
 
-const HEIGHT: f32 = 28.0;
-
 /// What [`Label`] defaults to, which is what the entries are drawn at.
 const LABEL_SIZE: f32 = 12.0;
 
@@ -36,10 +34,8 @@ impl Composer<BevyHost> for TopBar {
         ui.elem(elem!(
             Frame,
             width = percent(100),
-            height = px(HEIGHT),
             direction = FlexDirection::Row,
             align = AlignItems::Center,
-            column_gap = px(2)
         ))
         .with(|ui| {
             ui.compose(Menu {

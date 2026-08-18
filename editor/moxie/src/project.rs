@@ -25,7 +25,7 @@ use serde::de::{DeserializeSeed, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserializer, Serialize, Serializer};
 
-use crate::{EditorScene, SelectedAction, SelectedEntity};
+use crate::{EditorScene, SceneRoot, SelectedAction, SelectedEntity};
 
 const EXTENSION: &str = "mox";
 
@@ -94,8 +94,10 @@ struct Project {
 }
 
 fn serialize(world: &mut World) -> Option<String> {
+    // The root comes too, or the `ChildOf` on everything below it
+    // would name an entity the file never held.
     let subjects: Vec<Entity> = world
-        .query_filtered::<Entity, With<EntityUid>>()
+        .query_filtered::<Entity, Or<(With<EntityUid>, With<SceneRoot>)>>()
         .iter(world)
         .collect();
 
@@ -154,15 +156,22 @@ fn deserialize(
 
 /// Drops the loaded project, so nothing of it outlives the load.
 ///
-/// The selections go with it: both name something in the scene being
+/// Despawning [`SceneRoot`] is the whole of it, since every subject
+/// hangs under it and bevy takes a despawned entity's descendants with
+/// it. The selections go too: both name something in the scene being
 /// replaced, and neither means anything in the one arriving.
 fn clear(world: &mut World) {
-    let subjects: Vec<Entity> = world
-        .query_filtered::<Entity, With<EntityUid>>()
+    let roots = world
+        .query_filtered::<Entity, With<SceneRoot>>()
         .iter(world)
-        .collect();
-    for subject in subjects {
-        if let Ok(entity) = world.get_entity_mut(subject) {
+        .collect::<Vec<_>>();
+
+    if roots.len() > 1 {
+        warn!("There is more that one root in the world");
+    }
+
+    for root in roots {
+        if let Ok(entity) = world.get_entity_mut(root) {
             entity.despawn();
         }
     }
@@ -176,6 +185,7 @@ fn clear(world: &mut World) {
 /// file that hoards it would not load into a different one.
 fn subject_components() -> WorldFilter {
     WorldFilter::deny_all()
+        .allow::<SceneRoot>()
         .allow::<EntityUid>()
         .allow::<Name>()
         .allow::<Transform>()

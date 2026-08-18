@@ -37,10 +37,12 @@ impl Plugin for UiPlugin {
             .init_resource::<EditorState>()
             .init_resource::<SelectedAction>()
             .init_resource::<SelectedEntity>()
+            .init_resource::<hierarchy::Dragging>()
             .add_systems(Startup, setup_editor_ui)
             .add_systems(
                 Update,
                 (
+                    crate::ensure_scene_root,
                     scene::recompile_dirty_scene.run_if(
                         resource_changed::<scene::EditorScene>,
                     ),

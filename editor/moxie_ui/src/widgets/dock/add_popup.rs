@@ -12,10 +12,10 @@ use bevy::ui::UiGlobalTransform;
 use bevy::ui_widgets::Activate;
 
 use super::area::DockTabAddButton;
-use super::drag::logical_rect;
 use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tree::DockTree;
+use crate::layout::logical_rect;
 use bevy_fynix::ElementMutExt;
 use fynix_mock::{elem, val};
 
