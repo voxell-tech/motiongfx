@@ -88,6 +88,13 @@ pub(crate) fn recompile_dirty_scene(world: &mut World) {
                         .stage(&editor_scene.registry, world)
                         .expect("editor scene should stage");
 
+                    // Bakes the new timeline's `prev` values off the
+                    // world we just staged. Without this the stage
+                    // pose sits unreplayed until the next scheduled
+                    // sample, and anything reading the world before
+                    // then sees it raw.
+                    manager.load_pending_timelines(world);
+
                     if let Some(time) = playhead
                         && let Some(timeline) =
                             manager.get_timeline_mut(&new_id)
@@ -95,6 +102,10 @@ pub(crate) fn recompile_dirty_scene(world: &mut World) {
                         timeline.set_target_track(0);
                         timeline.set_target_time(time);
                     }
+
+                    // Replays up to the restored time, landing each
+                    // finished action back on its end value.
+                    manager.sample_timelines(world);
 
                     match existing {
                         Some((entity, _)) => {
