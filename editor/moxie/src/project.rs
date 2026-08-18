@@ -1,6 +1,6 @@
 //! Saving and loading the editor's project file.
 //!
-//! A `.mgx` holds both halves of a project in one RON document: the
+//! A `.mox` holds both halves of a project in one RON document: the
 //! entities, as a reflected [`DynamicWorld`], and the animation over
 //! them, as a [`Scene`]. Neither is much use alone - the animation
 //! addresses its subjects by [`EntityUid`], which only means anything
@@ -27,7 +27,7 @@ use serde::{Deserializer, Serialize, Serializer};
 
 use crate::{EditorScene, SelectedAction, SelectedEntity};
 
-const EXTENSION: &str = "mgx";
+const EXTENSION: &str = "mox";
 
 // The name a project file is written and read under, and its two
 // fields. Shared so the reader and the writer cannot drift apart.
