@@ -1,7 +1,7 @@
 //! Wiring a lane to a pointer event, which is Bevy's own concern and
 //! not fynix's: [`Fynix::aim`] takes a node, a field, and a target,
 //! and nothing about when to call it. [`Aiming`] is what decides when,
-//! for whichever [`EntityEvent`] a call site names — there is no
+//! for whichever [`EntityEvent`] a call site names - there is no
 //! closed vocabulary of "interactions" here, only whatever event type
 //! is asked for.
 
@@ -89,7 +89,7 @@ pub trait OnExt<E: Element<BevyHost>> {
     /// this node. Ends, and registers as one observer, at the `;`.
     fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, V>;
 
-    /// The same, but watching `child` rather than this node — for a
+    /// The same, but watching `child` rather than this node, for a
     /// lane on a `#[elem]` field whose own hit area should be what
     /// reacts, found with [`ElementMut::child`].
     fn on_entity<V: EntityEvent>(

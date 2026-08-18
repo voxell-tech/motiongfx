@@ -69,7 +69,7 @@ pub trait Style {
     /// A style meant to be applied more than once is implemented for
     /// `&Self`.
     ///
-    /// Nothing, by default, for a style that only moves — see
+    /// Nothing, by default, for a style that only moves; see
     /// [`attach`](Self::attach).
     fn apply(self, element: &mut Self::Element)
     where

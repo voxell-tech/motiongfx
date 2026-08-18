@@ -6,7 +6,7 @@
 //!
 //! What a host does *not* supply: any notion of an interaction.
 //! [`Fynix::aim`](crate::Fynix::aim) is the one primitive for pointing
-//! a lane somewhere, and it takes only a node, a field, and a target —
+//! a lane somewhere, and it takes only a node, a field, and a target:
 //! nothing about when to call it. Wiring that to an event is entirely
 //! the backend's own business, because the events differ by backend
 //! and even within one backend there's no single "interaction" that

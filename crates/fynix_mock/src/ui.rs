@@ -1,7 +1,7 @@
 //! The builder.
 //!
 //! [`Ui`] holds `&mut World` and builds as it goes, so a builder gets
-//! each element's node the moment it makes one — letting a binding
+//! each element's node the moment it makes one, letting a binding
 //! refer to a sibling or parent by handle. The cost: a builder can't
 //! hold a world borrow across a build, so collect what you need first.
 //!

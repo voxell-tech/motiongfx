@@ -30,7 +30,7 @@ use widgets::dock::DockPlugin;
 /// the dock engine, the
 /// default reflect-inspector widgets, and the kernel.
 ///
-/// Doesn't build a root itself — spawn one and call
+/// Doesn't build a root itself; spawn one and call
 /// [`reactive::watch_root`] wherever the app does its own `Startup`
 /// setup.
 #[derive(Default)]

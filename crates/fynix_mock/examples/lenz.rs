@@ -2,7 +2,7 @@
 //!
 //! Paths are not about UI: nothing here is an element, and there is no
 //! backend. A walk is built from types, costs nothing at runtime, and
-//! ends in one of three ways — reach the value, name the whole walk,
+//! ends in one of three ways: reach the value, name the whole walk,
 //! or list the hops it took.
 
 use fynix_mock::OverrideDefault;

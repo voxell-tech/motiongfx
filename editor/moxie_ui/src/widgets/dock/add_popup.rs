@@ -4,7 +4,7 @@
 //! State-driven: the click observer only writes
 //! [`AddWindowPopupState`]; a watcher renders whatever that says.
 //! The state lives on the overlay node itself (there's exactly one),
-//! rather than a global `Resource` — see [`crate::reactive::component_changed`].
+//! rather than a global `Resource`; see [`crate::reactive::component_changed`].
 
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
