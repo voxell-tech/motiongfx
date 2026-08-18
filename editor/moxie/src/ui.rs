@@ -38,6 +38,7 @@ impl Plugin for UiPlugin {
             .init_resource::<SelectedAction>()
             .init_resource::<SelectedEntity>()
             .init_resource::<hierarchy::Dragging>()
+            .init_resource::<scene::EditorScene>()
             .add_systems(Startup, setup_editor_ui)
             .add_systems(
                 Update,

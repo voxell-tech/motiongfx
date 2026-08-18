@@ -109,7 +109,7 @@ fn serialize(world: &mut World) -> Option<String> {
         .extract_entities(subjects.into_iter())
         .build();
 
-    let scene = world.get_resource::<EditorScene>()?;
+    let scene = world.resource::<EditorScene>();
     let document = Document {
         world: &dynamic,
         scene: &scene.scene().0,
