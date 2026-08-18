@@ -57,8 +57,6 @@ impl Composer<BevyHost> for TopBar {
 /// One menu: the name in the bar, and what picking an entry runs.
 struct Menu {
     name: &'static str,
-    /// Each runs against the whole world, which is what an action on
-    /// the project as a whole needs.
     entries: Vec<(&'static str, fn(&mut World))>,
 }
 
@@ -103,9 +101,7 @@ impl Composer<BevyHost> for Menu {
 /// The name in the bar, which opens the menu.
 ///
 /// A button rather than a [`Dropdown`]: an entry in a menu bar is a
-/// word, not a form control, so it wears no chevron. What makes it a
-/// menu is the pair of behaviours below, which the menu's own observer
-/// reaches it through.
+/// word, not a form control, so it wears no chevron.
 fn title(ui: &mut BevyUi, theme: &EditorTheme, name: &str) {
     ui.elem(elem!(
         !MenuButton,
@@ -116,6 +112,8 @@ fn title(ui: &mut BevyUi, theme: &EditorTheme, name: &str) {
             color = Some(theme.text_primary)
         )
     ))
+    // What the menu's own observer reaches this through to open the
+    // list beneath it.
     .insert((MenuButtonBehavior, ActivateOnPress));
 }
 

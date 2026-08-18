@@ -147,12 +147,6 @@ impl Composer<BevyHost> for EntityInspector {
 
 /// A whole component on one row, named where a group of fields would
 /// have been headed.
-///
-/// Built straight from the field rather than through a
-/// [`ComponentInspector`], which fills the width it is given and so
-/// would leave nothing for the name beside it. The component going is
-/// what [`components_changed`] already watches for, so the row goes
-/// with it.
 fn single(ui: &mut BevyUi, name: &str, field: Field) {
     let theme = ui.world.resource::<EditorTheme>().clone();
     let name = name.to_string();
@@ -173,6 +167,8 @@ fn single(ui: &mut BevyUi, name: &str, field: Field) {
             color = Some(theme.text_primary),
             bold = true
         ));
+        // Straight from the field: a `ComponentInspector` fills the
+        // width it is given, leaving nothing for the name beside it.
         inspect_value(ui, &field);
     });
 }

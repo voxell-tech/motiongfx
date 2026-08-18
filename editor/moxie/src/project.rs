@@ -29,8 +29,8 @@ use crate::{EditorScene, SelectedAction, SelectedEntity};
 
 const EXTENSION: &str = "mgx";
 
-/// The name a project file is written and read under, and its two
-/// fields. Shared so the reader and the writer cannot drift apart.
+// The name a project file is written and read under, and its two
+// fields. Shared so the reader and the writer cannot drift apart.
 const PROJECT: &str = "Project";
 const WORLD: &str = "world";
 const SCENE: &str = "scene";
