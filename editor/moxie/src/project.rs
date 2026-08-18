@@ -190,6 +190,7 @@ fn subject_components() -> WorldFilter {
         .allow::<Name>()
         .allow::<Transform>()
         .allow::<Visibility>()
+        .allow::<Children>()
         .allow::<ChildOf>()
         .allow::<Mesh3d>()
         .allow::<MeshMaterial3d<StandardMaterial>>()
