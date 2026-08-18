@@ -70,7 +70,7 @@
           "bevy_camera::visibility::Visibility": Inherited,
           "bevy_ecs::hierarchy::ChildOf": (4294966868),
           "bevy_ecs::name::Name": "Solids 2",
-          "bevy_mesh::components::Mesh3d": (Path("meshes/torus.glb#Mesh0/Primitive0")),
+          "bevy_mesh::components::Mesh3d": (Path("meshes/monkey.glb#Mesh0/Primitive0")),
           "bevy_motiongfx::scene::id::EntityUid": ("15860121-b882-4dd0-94d5-6f8563c80178"),
           "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
           "bevy_transform::components::transform::Transform": (

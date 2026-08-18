@@ -41,9 +41,6 @@ use crate::motion::{HOVER, MotionExt};
 use crate::reactive::{BevyHost, BevyUi};
 use crate::theme::EditorTheme;
 
-/// What [`Label`] defaults to, which is what the rows are drawn at.
-const LABEL_SIZE: f32 = 12.0;
-
 /// Every variant of `value`'s type, if it is an enum at all.
 ///
 /// Read off the type, not the value, so the choices do not change
@@ -182,7 +179,7 @@ impl Composer<BevyHost> for VariantPicker<'_> {
         let source = source.boxed();
         // Sized to the longest variant, not the one showing, so
         // picking another does not resize the row.
-        let width = Dropdown::width_for(&variants, LABEL_SIZE);
+        let width = Dropdown::width_for(&variants, 12.0);
 
         ui.elem(elem!(Frame, align = AlignItems::Center))
             .with(move |ui| {

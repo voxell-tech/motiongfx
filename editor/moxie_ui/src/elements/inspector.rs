@@ -16,16 +16,24 @@ use std::any::TypeId;
 
 use bevy::ecs::reflect::ReflectComponent;
 use bevy::prelude::*;
+use bevy::reflect::std_traits::ReflectDefault;
+use bevy::ui_widgets::{Activate, ActivateOnPress, MenuButton};
 
+use bevy_fynix::ElementMutExt;
 use fynix_mock::composer::Composer;
-use fynix_mock::elem;
 use fynix_mock::ui::{BuildFn, ChangedFn, ElementHandle};
+use fynix_mock::{elem, val};
 
-use super::{Frame, Label};
+use super::{
+    Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
+    DropdownMenu, Frame, Icon, Label, TintButton,
+};
+use crate::icons;
 use crate::inspector::{
     Field, InspectorFields, ReflectInspectable, Section,
     inspect_value, is_single_value,
 };
+use crate::motion::{HOVER, MotionExt};
 use crate::reactive::{BevyHost, BevyUi, value_changed};
 use crate::theme::EditorTheme;
 
@@ -141,8 +149,182 @@ impl Composer<BevyHost> for EntityInspector {
                     },
                 });
             }
+
+            ui.compose(AddComponent { entity });
         })
     }
+}
+
+/// The menu that adds a component to `entity`.
+///
+/// Rebuilt alongside the rest of [`EntityInspector`], on the same
+/// signal - the set it offers is exactly what changes on that signal.
+struct AddComponent {
+    entity: Entity,
+}
+
+impl Composer<BevyHost> for AddComponent {
+    type Element = DropdownMenu;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, DropdownMenu> {
+        let entity = self.entity;
+        let theme = ui.world.resource::<EditorTheme>().clone();
+        let options = addable(ui.world, entity);
+        let width = Dropdown::width_for(
+            &options
+                .iter()
+                .map(|(_, name)| name.to_string())
+                .collect::<Vec<_>>(),
+            12.0,
+        );
+
+        ui.elem(elem!(DropdownMenu))
+            .with(move |ui| {
+                ui.elem(elem!(
+                    !TintButton,
+                    icon = val!(
+                        Icon,
+                        image = icons::PLUS,
+                        color = theme.text_muted
+                    )
+                ))
+                .insert((MenuButton, ActivateOnPress));
+
+                ui.elem(elem!(DropdownList, width = width)).with(
+                    move |ui| {
+                        // A menu popup only opens with a focusable
+                        // child in it - an empty list has to say why
+                        // it's empty rather than showing nothing.
+                        if options.is_empty() {
+                            ui.elem(elem!(
+                                DropdownItem,
+                                label = val!(
+                                    Label,
+                                    text = "Nothing left to add"
+                                        .to_string(),
+                                    color = Some(theme.text_muted)
+                                )
+                            ));
+                            return;
+                        }
+
+                        for (component, name) in options {
+                            add_component_item(
+                                ui, &theme, entity, component, name,
+                            );
+                        }
+                    },
+                );
+            })
+            .handle()
+    }
+}
+
+/// One entry in [`AddComponent`]'s list. Picking it inserts the
+/// component and closes the list.
+fn add_component_item(
+    ui: &mut BevyUi,
+    theme: &EditorTheme,
+    entity: Entity,
+    component: TypeId,
+    name: &str,
+) {
+    ui.elem(elem!(
+        DropdownItem,
+        label = val!(
+            Label,
+            text = name.to_string(),
+            wrap = false,
+            color = Some(theme.text_primary)
+        )
+    ))
+    .lit(|item| item.fill(), HOVER, HOVER)
+    .observe(move |_: On<Activate>, mut commands: Commands| {
+        commands.queue(move |world: &mut World| {
+            add_component(world, entity, component);
+        });
+    });
+}
+
+/// What [`AddComponent`] offers: every [`register_inspectable`](
+/// crate::inspector::InspectAppExt::register_inspectable) type
+/// `entity` does not already carry, that also has a registered
+/// [`ReflectDefault`] to construct one with - a type with no `Default`
+/// has nothing this could insert.
+///
+/// Sorted by name, for the same reason [`inspectable`] is.
+fn addable(
+    world: &World,
+    entity: Entity,
+) -> Vec<(TypeId, &'static str)> {
+    let Ok(entity_ref) = world.get_entity(entity) else {
+        return Vec::new();
+    };
+
+    let registry = world.resource::<AppTypeRegistry>().read();
+    let mut out: Vec<(TypeId, &'static str)> = registry
+        .iter()
+        .filter(|registration| {
+            registration.data::<ReflectInspectable>().is_some()
+                && registration.data::<ReflectDefault>().is_some()
+        })
+        .filter_map(|registration| {
+            let reflect_component =
+                registration.data::<ReflectComponent>()?;
+            if reflect_component.contains(entity_ref) {
+                return None;
+            }
+            Some((
+                registration.type_id(),
+                registration
+                    .type_info()
+                    .type_path_table()
+                    .short_path(),
+            ))
+        })
+        .collect();
+
+    out.sort_by_key(|(_, name)| *name);
+    out
+}
+
+/// Inserts `component`'s default value onto `entity`. Does nothing if
+/// either has since stopped being possible - the entity despawned, or
+/// the component arrived by some other means between the menu opening
+/// and this running.
+fn add_component(
+    world: &mut World,
+    entity: Entity,
+    component: TypeId,
+) {
+    let registry = world.resource::<AppTypeRegistry>().clone();
+    let registry = registry.read();
+
+    let Some(registration) = registry.get(component) else {
+        return;
+    };
+    let (Some(default), Some(reflect_component)) = (
+        registration.data::<ReflectDefault>(),
+        registration.data::<ReflectComponent>(),
+    ) else {
+        return;
+    };
+    let Ok(mut entity) = world.get_entity_mut(entity) else {
+        return;
+    };
+    if reflect_component.contains(entity.as_readonly()) {
+        return;
+    }
+
+    let value = default.default();
+    reflect_component.insert(
+        &mut entity,
+        value.as_partial_reflect(),
+        &registry,
+    );
 }
 
 /// A whole component on one row, named where a group of fields would

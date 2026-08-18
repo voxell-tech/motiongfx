@@ -19,9 +19,6 @@ use moxie_ui::theme::EditorTheme;
 
 use crate::project;
 
-/// What [`Label`] defaults to, which is what the entries are drawn at.
-const LABEL_SIZE: f32 = 12.0;
-
 pub(super) struct TopBar;
 
 impl Composer<BevyHost> for TopBar {
@@ -72,7 +69,7 @@ impl Composer<BevyHost> for Menu {
                 .iter()
                 .map(|(entry, _)| entry.to_string())
                 .collect::<Vec<_>>(),
-            LABEL_SIZE,
+            12.0,
         );
 
         ui.elem(elem!(DropdownMenu))

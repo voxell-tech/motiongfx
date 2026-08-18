@@ -10,7 +10,7 @@
 /// omitted.
 pub const PLACEHOLDER: &str = "icons/general/placeholder.png";
 
-/// The tab bar's "add tab" button.
+/// A plus sign, for a button that adds something.
 pub const PLUS: &str = "icons/general/plus.png";
 
 /// A group's fold toggle in the inspector. Points up; rotated per

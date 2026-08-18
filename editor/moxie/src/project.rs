@@ -9,6 +9,7 @@
 use std::path::{Path, PathBuf};
 
 use bevy::asset::{AssetServer, LoadFromPath};
+use bevy::light::CascadeShadowConfig;
 use bevy::prelude::*;
 use bevy::reflect::TypeRegistry;
 use bevy::world_serialization::serde::{
@@ -192,8 +193,15 @@ fn subject_components() -> WorldFilter {
         .allow::<Visibility>()
         .allow::<Children>()
         .allow::<ChildOf>()
+        .allow::<Camera3d>()
+        .allow::<CascadeShadowConfig>()
+        .allow::<DirectionalLight>()
+        .allow::<PointLight>()
+        .allow::<RectLight>()
+        .allow::<SpotLight>()
         .allow::<Mesh3d>()
         .allow::<MeshMaterial3d<StandardMaterial>>()
+        .allow::<Camera2d>()
 }
 
 enum Dialog {

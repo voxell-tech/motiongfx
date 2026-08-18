@@ -18,6 +18,7 @@ mod text;
 mod tree;
 mod vector;
 
+use bevy::light::CascadeShadowConfig;
 use bevy::prelude::*;
 use bevy::reflect::{FromType, GetTypeRegistration, PartialReflect};
 
@@ -57,7 +58,16 @@ impl Plugin for InspectPlugin {
             .register_inspect::<Name>()
             .register_inspectable::<Name>()
             .register_inspectable::<Visibility>()
-            .register_inspectable::<Transform>();
+            .register_inspectable::<Transform>()
+            .register_inspectable::<Camera3d>()
+            .register_inspectable::<CascadeShadowConfig>()
+            .register_inspectable::<DirectionalLight>()
+            .register_inspectable::<PointLight>()
+            .register_inspectable::<RectLight>()
+            .register_inspectable::<SpotLight>()
+            .register_inspectable::<Mesh3d>()
+            .register_inspectable::<MeshMaterial3d<StandardMaterial>>(
+            );
     }
 }
 
