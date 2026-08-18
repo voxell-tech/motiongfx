@@ -14,6 +14,7 @@
 mod enums;
 mod field;
 mod primitive;
+mod text;
 mod tree;
 mod vector;
 
@@ -119,8 +120,16 @@ pub trait SourceExt: Source {
         T::from_reflect(&*self.get(world)?)
     }
 
+    /// Skips the write if `value` is what the source already holds -
+    /// a field commits on blur as well as on edit, and that would
+    /// otherwise bump the component's tick for nothing.
     fn write<T: PartialReflect>(&self, world: &mut World, value: T) {
-        self.set(world, &value);
+        let unchanged = self.get(world).is_some_and(|current| {
+            current.reflect_partial_eq(&value).unwrap_or(false)
+        });
+        if !unchanged {
+            self.set(world, &value);
+        }
     }
 }
 

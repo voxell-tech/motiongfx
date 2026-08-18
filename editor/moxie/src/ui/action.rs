@@ -262,12 +262,6 @@ impl Source for Pooled {
     }
 
     fn set(&self, world: &mut World, value: &dyn PartialReflect) {
-        // A rebuild (any selection change) blurs whichever field had
-        // focus, which resubmits its value unedited. Skip the no-op.
-        if unchanged(self.get(world).as_deref(), value) {
-            return;
-        }
-
         let Some(mut editor) =
             world.get_resource_mut::<EditorScene>()
         else {
@@ -316,11 +310,6 @@ impl Source for Property {
     }
 
     fn set(&self, world: &mut World, value: &dyn PartialReflect) {
-        // Same blur guard as `Pooled::set`.
-        if unchanged(self.get(world).as_deref(), value) {
-            return;
-        }
-
         let Some(mut editor) =
             world.get_resource_mut::<EditorScene>()
         else {
@@ -465,18 +454,6 @@ fn line(
         ui.elem(elem!(Label, text = name, color = Some(muted)));
         body(ui);
     });
-}
-
-/// Whether `value` is what `current` already holds, via
-/// [`PartialReflect::reflect_partial_eq`] - `PartialReflect` has no
-/// `PartialEq`. `None` is never unchanged.
-fn unchanged(
-    current: Option<&dyn PartialReflect>,
-    value: &dyn PartialReflect,
-) -> bool {
-    current.is_some_and(|current| {
-        current.reflect_partial_eq(value).unwrap_or(false)
-    })
 }
 
 /// What the panel says when there is nothing to show.

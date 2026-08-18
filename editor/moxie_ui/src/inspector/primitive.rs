@@ -3,7 +3,6 @@
 
 use bevy::feathers::controls::{NumberFormat, NumberInputValue};
 use bevy::prelude::*;
-use bevy::text::{EditableText, TextEditChange};
 use bevy::ui_widgets::ValueChange;
 
 use bevy_fynix::ElementMutExt;
@@ -11,7 +10,6 @@ use fynix_mock::elem;
 
 use crate::elements::{
     CheckBox, CheckBoxCursor, NumberField, NumberFieldCursor,
-    TextField, TextFieldCursor,
 };
 use crate::reactive::BevyUi;
 
@@ -132,93 +130,4 @@ number_widget! {
     // clamp on the way back - `as` alone would wrap or truncate.
     u32 => I64, I64, i64, |value: i64| value.clamp(0, u32::MAX as i64) as u32, |value| value as i64;
     u64 => I64, I64, i64, |value: i64| value.max(0) as u64, |value| value as i64;
-}
-
-/// A single-line text input.
-///
-/// `T` is whatever the leaf actually is - `String` reads and writes
-/// through as-is, `Name` converts at the edges - the same shape
-/// [`number_field`] takes for numeric payloads.
-///
-/// Feathers has no `ValueChange` for text the way it does for
-/// numbers, so this listens for [`TextEditChange`] directly - which
-/// also fires on a bare cursor move, hence the guard against writing
-/// back a value that has not actually changed.
-fn text_field<T: FromReflect>(
-    source: &dyn Source,
-    ui: &mut BevyUi,
-    to_value: fn(String) -> T,
-    to_shown: fn(&T) -> String,
-) {
-    let edited = source.boxed();
-    let read = source.boxed();
-    let shown = read
-        .read::<T>(ui.world)
-        .as_ref()
-        .map(to_shown)
-        .unwrap_or_default();
-
-    let field =
-        ui.elem(elem!(TextField, value = shown, width = px(110)));
-    let node = field.id();
-
-    field.bind(
-        |input| input.value(),
-        when_changed(source),
-        move |world, _| {
-            read.read::<T>(world)
-                .as_ref()
-                .map(to_shown)
-                .unwrap_or_default()
-        },
-    );
-
-    let Some(children) =
-        ui.world.get::<Children>(node).map(|c| c.to_vec())
-    else {
-        return;
-    };
-    let Some(&text_input) = children.iter().find(|&&child| {
-        ui.world.get::<EditableText>(child).is_some()
-    }) else {
-        return;
-    };
-
-    ui.world.entity_mut(text_input).observe(
-        move |change: On<TextEditChange>,
-              texts: Query<&EditableText>,
-              mut commands: Commands| {
-            let Ok(text) = texts.get(change.event_target()) else {
-                return;
-            };
-            let (source, value) =
-                (edited.boxed(), text.value().to_string());
-
-            commands.queue(move |world: &mut World| {
-                if source
-                    .read::<T>(world)
-                    .as_ref()
-                    .map(to_shown)
-                    .as_deref()
-                    != Some(value.as_str())
-                {
-                    source.write(world, to_value(value));
-                }
-            });
-        },
-    );
-}
-
-impl Inspect for String {
-    fn build(source: &dyn Source, ui: &mut BevyUi) {
-        text_field(source, ui, |value| value, String::clone);
-    }
-}
-
-impl Inspect for Name {
-    fn build(source: &dyn Source, ui: &mut BevyUi) {
-        text_field(source, ui, Name::new, |name| {
-            name.as_str().to_string()
-        });
-    }
 }

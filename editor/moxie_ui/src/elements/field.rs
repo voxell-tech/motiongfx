@@ -8,7 +8,7 @@ use bevy::feathers::controls::{
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::scene::EntityWorldMutSceneExt;
-use bevy::text::{EditableText, TextEdit};
+use bevy::text::EditableText;
 use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
@@ -229,28 +229,29 @@ impl TextField {
         self.show(world, node);
     }
 
-    /// Writes `self.value` into the child [`EditableText`], found by
-    /// marker rather than position - the container may end up with
-    /// other children later (an icon, say), and nothing here should
-    /// depend on which one comes first.
+    /// Writes `self.value` into the child [`EditableText`].
     fn show(&self, world: &mut World, node: Entity) {
-        let Some(children) =
-            world.get::<Children>(node).map(|c| c.to_vec())
-        else {
+        let Some(text_input) = Self::text_input(world, node) else {
             return;
         };
-
-        for child in children {
-            if let Some(mut text) =
-                world.get_mut::<EditableText>(child)
-            {
-                text.queue_edit(TextEdit::SelectAll);
-                text.queue_edit(TextEdit::Insert(
-                    self.value.as_str().into(),
-                ));
-                break;
-            }
+        if let Some(mut text) =
+            world.get_mut::<EditableText>(text_input)
+        {
+            text.editor_mut().set_text(&self.value);
         }
+    }
+
+    /// The child entity actually holding [`EditableText`], found by
+    /// marker rather than position - the container may end up with
+    /// other children later (an icon, say), and nothing here should
+    /// depend on which one comes first. What a caller reaching past
+    /// this element's own fields (to wire an observer directly, say)
+    /// needs too.
+    pub fn text_input(world: &World, node: Entity) -> Option<Entity> {
+        world
+            .get::<Children>(node)?
+            .iter()
+            .find(|&child| world.get::<EditableText>(child).is_some())
     }
 }
 
