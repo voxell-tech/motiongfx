@@ -1,12 +1,14 @@
 //! What an inspector row is edited with.
 
 use bevy::feathers::controls::{
-    FeathersNumberInput, NumberFormat, NumberInputValue,
+    FeathersNumberInput, FeathersTextInput,
+    FeathersTextInputContainer, NumberFormat, NumberInputValue,
     UpdateNumberInput,
 };
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::scene::EntityWorldMutSceneExt;
+use bevy::text::{EditableText, TextEdit};
 use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
@@ -186,6 +188,86 @@ impl ElementVisual<BevyHost> for NumberField {
                 });
             }
             NumberFieldField::Width => {
+                if let Some(mut layout) = world.get_mut::<Node>(node)
+                {
+                    layout.width = self.width;
+                }
+            }
+        }
+    }
+}
+
+/// A single-line string, edited in place.
+#[derive(Element, OverrideDefault, Lenz)]
+pub struct TextField {
+    pub value: String,
+    #[default(px(110))]
+    pub width: Val,
+}
+
+impl TextField {
+    /// Feathers wants its own child entity for the editable text -
+    /// see the type's own docs - so this node is the container, and
+    /// the widget beneath it what actually holds [`EditableText`].
+    fn scene(&self, world: &mut World, node: Entity) {
+        let scene = bsn! {
+            @FeathersTextInputContainer
+            Children [
+                ( @FeathersTextInput )
+            ]
+        };
+
+        if let Err(err) = world.entity_mut(node).apply_scene(scene) {
+            error!("failed to build a text field: {err}");
+        }
+
+        if let Some(mut layout) = world.get_mut::<Node>(node) {
+            layout.width = self.width;
+            layout.flex_grow = 0.0;
+        }
+
+        self.show(world, node);
+    }
+
+    /// Writes `self.value` into the child [`EditableText`], found by
+    /// marker rather than position - the container may end up with
+    /// other children later (an icon, say), and nothing here should
+    /// depend on which one comes first.
+    fn show(&self, world: &mut World, node: Entity) {
+        let Some(children) =
+            world.get::<Children>(node).map(|c| c.to_vec())
+        else {
+            return;
+        };
+
+        for child in children {
+            if let Some(mut text) =
+                world.get_mut::<EditableText>(child)
+            {
+                text.queue_edit(TextEdit::SelectAll);
+                text.queue_edit(TextEdit::Insert(
+                    self.value.as_str().into(),
+                ));
+                break;
+            }
+        }
+    }
+}
+
+impl ElementVisual<BevyHost> for TextField {
+    fn build_fields(&self, world: &mut World, node: Entity) {
+        self.scene(world, node);
+    }
+
+    fn patch_fields(
+        &self,
+        world: &mut World,
+        node: Entity,
+        field: TextFieldField,
+    ) {
+        match field {
+            TextFieldField::Value => self.show(world, node),
+            TextFieldField::Width => {
                 if let Some(mut layout) = world.get_mut::<Node>(node)
                 {
                     layout.width = self.width;

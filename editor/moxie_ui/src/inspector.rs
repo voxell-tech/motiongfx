@@ -24,10 +24,12 @@ use crate::reactive::BevyUi;
 pub use field::Field;
 pub use tree::{InspectorFields, Section};
 
-/// The widgets the inspector can edit out of the box.
+/// The widgets and the entity-inspector sections available out of
+/// the box.
 ///
-/// Anything else is one [`InspectAppExt::register_inspect`] away, and
-/// needs no change here.
+/// Anything else is one [`InspectAppExt::register_inspect`] or
+/// [`InspectAppExt::register_inspectable`] away, and needs no change
+/// here.
 pub struct InspectPlugin;
 
 impl Plugin for InspectPlugin {
@@ -48,7 +50,11 @@ impl Plugin for InspectPlugin {
             .register_inspect::<UVec2>()
             .register_inspect::<UVec3>()
             .register_inspect::<UVec4>()
-            .register_inspect::<Quat>();
+            .register_inspect::<Quat>()
+            .register_inspect::<String>()
+            .register_inspect::<Name>()
+            .register_inspectable::<Name>()
+            .register_inspectable::<Transform>();
     }
 }
 
@@ -56,12 +62,37 @@ impl Plugin for InspectPlugin {
 pub trait InspectAppExt {
     /// Makes `T` editable wherever the inspector meets it.
     fn register_inspect<T: Inspect>(&mut self) -> &mut Self;
+
+    /// Makes `T` a section of its own wherever an [`EntityInspector`](
+    /// crate::elements::EntityInspector) meets it.
+    ///
+    /// Opt-in, the same way [`register_inspect`](Self::register_inspect)
+    /// is: `T` having `#[reflect(Component)]` is what lets the
+    /// inspector *reach* a value, not what decides whether it's worth
+    /// a row. Bevy and its plugins reflect plenty a person never
+    /// authors - `GlobalTransform` recomputed from `Transform` every
+    /// frame, `ComputedNode` from layout - and showing those is noise,
+    /// not data.
+    fn register_inspectable<
+        T: Component + Reflect + TypePath + GetTypeRegistration,
+    >(
+        &mut self,
+    ) -> &mut Self;
 }
 
 impl InspectAppExt for App {
     fn register_inspect<T: Inspect>(&mut self) -> &mut Self {
         self.register_type::<T>()
             .register_type_data::<T, ReflectInspect>()
+    }
+
+    fn register_inspectable<
+        T: Component + Reflect + TypePath + GetTypeRegistration,
+    >(
+        &mut self,
+    ) -> &mut Self {
+        self.register_type::<T>()
+            .register_type_data::<T, ReflectInspectable>()
     }
 }
 
@@ -198,5 +229,17 @@ impl ReflectInspect {
 impl<T: Inspect> FromType<T> for ReflectInspect {
     fn from_type() -> Self {
         Self { build: T::build }
+    }
+}
+
+/// Marks a component as one an [`EntityInspector`](
+/// crate::elements::EntityInspector) shows. See
+/// [`InspectAppExt::register_inspectable`].
+#[derive(Clone)]
+pub struct ReflectInspectable;
+
+impl<T: Component + Reflect> FromType<T> for ReflectInspectable {
+    fn from_type() -> Self {
+        Self
     }
 }
