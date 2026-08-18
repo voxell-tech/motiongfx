@@ -214,6 +214,17 @@ fn entries(world: &World, field: &Field) -> Vec<Entry> {
     out
 }
 
+/// Whether `field` holds one editable value rather than a set of
+/// fields, and so belongs on a row of its own: there is no group to
+/// fold, and no field name to head one with.
+pub(crate) fn is_single_value(world: &World, field: &Field) -> bool {
+    match entries(world, field).as_slice() {
+        [Entry::Leaf { .. }] => true,
+        [Entry::Variant { children, .. }] => children.is_empty(),
+        _ => false,
+    }
+}
+
 /// Fires when the *shape* under `field` changes, meaning its set of
 /// entries, and not merely their values.
 ///

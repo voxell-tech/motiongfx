@@ -21,11 +21,13 @@ use fynix_mock::composer::Composer;
 use fynix_mock::elem;
 use fynix_mock::ui::{BuildFn, ChangedFn, ElementHandle};
 
-use super::Frame;
+use super::{Frame, Label};
 use crate::inspector::{
     Field, InspectorFields, ReflectInspectable, Section,
+    inspect_value, is_single_value,
 };
 use crate::reactive::{BevyHost, BevyUi, value_changed};
+use crate::theme::EditorTheme;
 
 /// One component of one entity.
 pub struct ComponentInspector {
@@ -104,8 +106,9 @@ impl Composer<BevyHost> for ResourceInspector {
     }
 }
 
-/// Every component of one entity the inspector can read, each under
-/// a collapsible header of its own.
+/// Every component of one entity the inspector can read: those with
+/// fields under a collapsible header of their own, and those holding
+/// a single value on one row.
 pub struct EntityInspector {
     pub entity: Entity,
 }
@@ -121,6 +124,13 @@ impl Composer<BevyHost> for EntityInspector {
 
         column(ui, px(8), components_changed(entity), move |ui| {
             for (component, name) in inspectable(ui.world, entity) {
+                let field = Field::new(entity, component);
+
+                if is_single_value(ui.world, &field) {
+                    single(ui, name, field);
+                    continue;
+                }
+
                 ui.compose(Section {
                     name: name.to_string(),
                     body: move |ui: &mut BevyUi| {
@@ -133,6 +143,38 @@ impl Composer<BevyHost> for EntityInspector {
             }
         })
     }
+}
+
+/// A whole component on one row, named where a group of fields would
+/// have been headed.
+///
+/// Built straight from the field rather than through a
+/// [`ComponentInspector`], which fills the width it is given and so
+/// would leave nothing for the name beside it. The component going is
+/// what [`components_changed`] already watches for, so the row goes
+/// with it.
+fn single(ui: &mut BevyUi, name: &str, field: Field) {
+    let theme = ui.world.resource::<EditorTheme>().clone();
+    let name = name.to_string();
+
+    ui.elem(elem!(
+        Frame,
+        width = percent(100),
+        direction = FlexDirection::Row,
+        justify = JustifyContent::SpaceBetween,
+        align = AlignItems::Center,
+        column_gap = px(8),
+        padding = UiRect::vertical(px(3))
+    ))
+    .with(move |ui| {
+        ui.elem(elem!(
+            Label,
+            text = name,
+            color = Some(theme.text_primary),
+            bold = true
+        ));
+        inspect_value(ui, &field);
+    });
 }
 
 /// The entity bevy is currently keeping `resource` on.

@@ -23,6 +23,7 @@ use bevy::reflect::{FromType, GetTypeRegistration, PartialReflect};
 
 use crate::reactive::BevyUi;
 pub use field::Field;
+pub(crate) use tree::is_single_value;
 pub use tree::{InspectorFields, Section};
 
 /// The widgets and the entity-inspector sections available out of
