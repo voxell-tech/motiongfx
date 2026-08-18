@@ -13,6 +13,7 @@
 mod block_layout;
 mod icons;
 mod playback;
+mod project;
 mod scene;
 mod ui;
 mod view;
@@ -36,7 +37,14 @@ impl Plugin for MoxiePlugin {
         app.add_plugins(SettingsPlugin::new(
             "org.voxell.motiongfx.editor",
         ))
-        .add_plugins(ui::UiPlugin);
+        .add_plugins(ui::UiPlugin)
+        // What a saved subject is made of, beyond what the inspector
+        // and `bevy_motiongfx` already register between them. Nothing
+        // reaches an unregistered type through reflection, so a
+        // project file would quietly lose these.
+        .register_type::<Visibility>()
+        .register_type::<ChildOf>()
+        .register_type::<Mesh3d>();
     }
 }
 

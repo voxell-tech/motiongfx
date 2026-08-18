@@ -114,6 +114,27 @@ impl Style for TintButton {
     }
 }
 
+/// A menu bar's own button: square, full height, and lighting up only
+/// under the cursor, so a row of them reads as one strip rather than a
+/// row of separate controls.
+pub struct MenuButton;
+
+impl Style for MenuButton {
+    type Host = BevyHost;
+    type Element = ButtonElem;
+
+    fn apply(self, button: &mut ButtonElem) {
+        button.fill = Color::NONE;
+        button.radius = Val::ZERO;
+        button.height = percent(100);
+        button.padding = UiRect::axes(px(10), Val::ZERO);
+    }
+
+    fn attach(elem: ElementMut<BevyHost, ButtonElem>) {
+        lit(elem);
+    }
+}
+
 /// A button with no surface of its own until the cursor is on it, for
 /// one that sits in a row of its own kind or on something that is
 /// already a surface.

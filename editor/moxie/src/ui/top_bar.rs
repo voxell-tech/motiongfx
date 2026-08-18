@@ -1,0 +1,144 @@
+//! The menu bar above the dock, holding what acts on the project as a
+//! whole rather than on anything a panel is showing.
+
+use bevy::prelude::*;
+use bevy::ui_widgets::{
+    Activate, ActivateOnPress, MenuButton as MenuButtonBehavior,
+};
+use bevy_fynix::ElementMutExt;
+use fynix_mock::composer::Composer;
+use fynix_mock::ui::ElementHandle;
+use fynix_mock::{elem, val};
+use moxie_ui::elements::{
+    Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
+    DropdownMenu, Frame, Label, MenuButton,
+};
+use moxie_ui::motion::{HOVER, MotionExt};
+use moxie_ui::reactive::{BevyHost, BevyUi};
+use moxie_ui::theme::EditorTheme;
+
+use crate::project;
+
+const HEIGHT: f32 = 28.0;
+
+/// What [`Label`] defaults to, which is what the entries are drawn at.
+const LABEL_SIZE: f32 = 12.0;
+
+pub(super) struct TopBar;
+
+impl Composer<BevyHost> for TopBar {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            height = px(HEIGHT),
+            direction = FlexDirection::Row,
+            align = AlignItems::Center,
+            column_gap = px(2)
+        ))
+        .with(|ui| {
+            ui.compose(Menu {
+                name: "File",
+                entries: vec![
+                    ("Open", project::load_scene),
+                    ("Save", project::save_scene),
+                ],
+            });
+        })
+        .handle()
+    }
+}
+
+/// One menu: the name in the bar, and what picking an entry runs.
+struct Menu {
+    name: &'static str,
+    /// Each runs against the whole world, which is what an action on
+    /// the project as a whole needs.
+    entries: Vec<(&'static str, fn(&mut World))>,
+}
+
+impl Composer<BevyHost> for Menu {
+    type Element = DropdownMenu;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, DropdownMenu> {
+        let Self { name, entries } = self;
+        let theme = ui.world.resource::<EditorTheme>().clone();
+        // Sized to the longest entry, so the list clears its own text
+        // whichever menu it belongs to.
+        let width = Dropdown::width_for(
+            &entries
+                .iter()
+                .map(|(entry, _)| entry.to_string())
+                .collect::<Vec<_>>(),
+            LABEL_SIZE,
+        );
+
+        ui.elem(elem!(DropdownMenu))
+            .with(move |ui| {
+                title(ui, &theme, name);
+
+                ui.elem(elem!(
+                    DropdownList,
+                    width = width,
+                    radius = Val::ZERO
+                ))
+                .with(move |ui| {
+                    for (entry, run) in entries {
+                        item(ui, &theme, entry, run);
+                    }
+                });
+            })
+            .handle()
+    }
+}
+
+/// The name in the bar, which opens the menu.
+///
+/// A button rather than a [`Dropdown`]: an entry in a menu bar is a
+/// word, not a form control, so it wears no chevron. What makes it a
+/// menu is the pair of behaviours below, which the menu's own observer
+/// reaches it through.
+fn title(ui: &mut BevyUi, theme: &EditorTheme, name: &str) {
+    ui.elem(elem!(
+        !MenuButton,
+        label = val!(
+            Label,
+            text = name.to_string(),
+            wrap = false,
+            color = Some(theme.text_primary)
+        )
+    ))
+    .insert((MenuButtonBehavior, ActivateOnPress));
+}
+
+/// One row of the open menu. Picking it closes the list, and runs
+/// `run` once the click's own commands have been applied.
+fn item(
+    ui: &mut BevyUi,
+    theme: &EditorTheme,
+    entry: &str,
+    run: fn(&mut World),
+) {
+    ui.elem(elem!(
+        DropdownItem,
+        radius = Val::ZERO,
+        label = val!(
+            Label,
+            text = entry.to_string(),
+            wrap = false,
+            color = Some(theme.text_primary)
+        )
+    ))
+    .lit(|item| item.fill(), HOVER, HOVER)
+    .observe(move |_: On<Activate>, mut commands: Commands| {
+        commands.queue(run);
+    });
+}
