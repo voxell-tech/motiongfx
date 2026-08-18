@@ -80,8 +80,8 @@ pub(crate) fn ensure_scene_root(
 
 /// Marker component for the root [`Entity`] of the scene.
 /// All subjects with [`EntityUid`] lives under this.
-#[derive(Component, Reflect, Default)]
-#[reflect(Component, Default)]
+#[derive(Component, Reflect, Default, Clone)]
+#[reflect(Component, Default, Clone)]
 pub struct SceneRoot;
 
 /// Pixels per second of animation (horizontal zoom).

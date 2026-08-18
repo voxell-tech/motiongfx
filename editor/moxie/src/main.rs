@@ -8,7 +8,6 @@
 //! so the hierarchy panel has one too.
 
 use bevy::asset::uuid::Uuid;
-use bevy::color::palettes;
 use bevy::prelude::*;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
@@ -150,14 +149,11 @@ fn move_to(
 /// produces from it is just a disposable, derived view.
 fn spawn_timeline(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     let mut values = ValuePool::default();
 
     // The scene root, so top-level subjects have an order to sit in.
-    // Spawned before everything else so it exists before any subject
-    // that needs to parent under it.
     let root = commands
         .spawn((
             SceneRoot,
@@ -166,42 +162,50 @@ fn spawn_timeline(
         ))
         .id();
 
-    // Flat shapes are meshed in the XY plane, so they face the camera
-    // to begin with - and are double sided, or a rotation would turn
-    // them edge-on and then away.
+    // Each row's mesh set: solids use 3D shapes, flats are flat and
+    // double-sided for ortho-facing renders.
+    struct RowAssets {
+        meshes: [Handle<Mesh>; 3],
+        material: Handle<StandardMaterial>,
+    }
+
     let rows = [
-        (
-            "Solids",
-            1.2,
-            palettes::tailwind::SKY_400,
-            [
-                meshes.add(Cuboid::default()),
-                meshes.add(Sphere::new(0.6)),
-                meshes.add(Torus::new(0.22, 0.45)),
+        RowAssets {
+            meshes: [
+                asset_server.load("meshes/cube.glb#Mesh0/Primitive0"),
+                asset_server
+                    .load("meshes/sphere.glb#Mesh0/Primitive0"),
+                asset_server
+                    .load("meshes/torus.glb#Mesh0/Primitive0"),
             ],
-        ),
-        (
-            "Flats",
-            -1.2,
-            palettes::tailwind::AMBER_400,
-            [
-                meshes.add(Rectangle::new(1.1, 1.1)),
-                meshes.add(Circle::new(0.62)),
-                meshes.add(RegularPolygon::new(0.68, 6)),
+            material: asset_server.load("materials/default.mat"),
+        },
+        RowAssets {
+            meshes: [
+                asset_server
+                    .load("meshes/plane.glb#Mesh0/Primitive0"),
+                asset_server
+                    .load("meshes/sphere_flat.glb#Mesh0/Primitive0"),
+                asset_server.load(
+                    "meshes/cylinder_flat.glb#Mesh0/Primitive0",
+                ),
             ],
-        ),
+            material: asset_server.load("materials/default.mat"),
+        },
     ];
+
+    let row_data = [("Solids", 1.2f32), ("Flats", -1.2f32)];
 
     let mut parents = Vec::new();
     let mut shapes = Vec::new();
 
-    for (name, y, color, row_meshes) in rows {
-        let origin = Vec3::new(0.0, y, 0.0);
+    for ((name, y), assets) in row_data.iter().zip(rows) {
+        let origin = Vec3::new(0.0, *y, 0.0);
         let uid = EntityUid::new();
         let parent = commands
             .spawn((
                 uid,
-                Name::new(name),
+                Name::new(name.to_string()),
                 Transform::from_translation(origin),
                 Visibility::default(),
                 ChildOf(root),
@@ -212,14 +216,7 @@ fn spawn_timeline(
             start: origin,
         });
 
-        let material = materials.add(StandardMaterial {
-            base_color: color.into(),
-            double_sided: true,
-            cull_mode: None,
-            ..default()
-        });
-
-        for (i, mesh) in row_meshes.into_iter().enumerate() {
+        for (i, mesh) in assets.meshes.iter().enumerate() {
             let x = ((i as f32) - (PER_ROW as f32 - 1.0) * 0.5) * 2.0;
             let start = Vec3::new(x, 0.0, 0.0);
             let uid = EntityUid::new();
@@ -227,8 +224,8 @@ fn spawn_timeline(
             commands.spawn((
                 uid,
                 Name::new(format!("{name} {i}")),
-                Mesh3d(mesh),
-                MeshMaterial3d(material.clone()),
+                Mesh3d(mesh.clone()),
+                MeshMaterial3d(assets.material.clone()),
                 Transform::from_translation(start)
                     .with_scale(Vec3::ZERO),
                 ChildOf(parent),
