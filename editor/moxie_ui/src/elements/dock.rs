@@ -7,6 +7,7 @@
 //! [`DockTree`]: crate::widgets::dock::DockTree
 
 use bevy::prelude::*;
+use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
 use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
@@ -43,7 +44,10 @@ fn display(visible: bool) -> Display {
 pub struct DockHost;
 
 impl ElementVisual<BevyHost> for DockHost {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             DockTreeHost,
             Node {
@@ -77,7 +81,10 @@ pub struct SplitGroup {
 }
 
 impl ElementVisual<BevyHost> for SplitGroup {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             NodeBinding(self.node),
             PanelGroup {
@@ -213,7 +220,10 @@ pub fn handle_line(axis: FlexDirection, color: Color) -> Frame {
 }
 
 impl ElementVisual<BevyHost> for SplitHandle {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             PanelHandle,
             NodeBinding(self.node),
@@ -271,7 +281,10 @@ impl SplitPanel {
 }
 
 impl ElementVisual<BevyHost> for SplitPanel {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world
             .entity_mut(node)
             .insert((Panel { ratio: self.ratio }, self.node()));
@@ -312,7 +325,10 @@ pub struct Area {
 }
 
 impl ElementVisual<BevyHost> for Area {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             DockArea {
                 id: self.id.clone(),
@@ -361,7 +377,10 @@ pub struct TabContent {
 }
 
 impl ElementVisual<BevyHost> for TabContent {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             DockWindow {
                 descriptor_id: self.window_id.clone(),

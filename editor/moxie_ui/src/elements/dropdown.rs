@@ -12,11 +12,11 @@ use bevy::feathers::cursor::EntityCursor;
 use bevy::input_focus::tab_navigation::TabIndex;
 use bevy::prelude::*;
 use bevy::scene::EntityWorldMutSceneExt;
-use bevy::ui::widget::ImageNode;
 use bevy::ui_widgets::{
     ActivateOnPress, Button as ButtonBehavior, MenuButton, MenuItem,
 };
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
 use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
@@ -33,7 +33,10 @@ use super::{Icon, Label};
 pub struct DropdownMenu;
 
 impl ElementVisual<BevyHost> for DropdownMenu {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         if let Err(err) =
             world.entity_mut(node).apply_scene(bsn! { @FeathersMenu })
         {
@@ -117,30 +120,22 @@ impl Dropdown {
     }
 
     /// Keeps the chevron its own size while the label gives way.
-    ///
-    /// Found by its image rather than by position: the chevron is the
-    /// only child that draws one, and nothing here should depend on
-    /// which order the fields happen to be in.
-    fn hold_chevron(world: &mut World, node: Entity) {
-        let Some(children) =
-            world.get::<Children>(node).map(|c| c.to_vec())
-        else {
+    fn hold_chevron(ui: &mut BevyUi<'_>) {
+        let Some(chevron) = ui.child(DropdownCursor::chevron) else {
             return;
         };
 
-        for child in children {
-            if world.get::<ImageNode>(child).is_some()
-                && let Some(mut layout) = world.get_mut::<Node>(child)
-            {
-                layout.flex_shrink = 0.0;
-            }
+        if let Some(mut layout) = ui.world.get_mut::<Node>(chevron) {
+            layout.flex_shrink = 0.0;
         }
     }
 }
 
 impl ElementVisual<BevyHost> for Dropdown {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+
+        ui.world.entity_mut(node).insert((
             self.node(),
             BackgroundColor(self.fill),
             ButtonBehavior,
@@ -150,7 +145,7 @@ impl ElementVisual<BevyHost> for Dropdown {
             MenuButton,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
-        Self::hold_chevron(world, node);
+        Self::hold_chevron(ui);
     }
 
     fn patch_fields(
@@ -204,7 +199,10 @@ impl DropdownList {
 }
 
 impl ElementVisual<BevyHost> for DropdownList {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         if let Err(err) = world
             .entity_mut(node)
             .apply_scene(bsn! { @FeathersMenuPopup })
@@ -260,7 +258,10 @@ impl DropdownItem {
 }
 
 impl ElementVisual<BevyHost> for DropdownItem {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             self.node(),
             BackgroundColor(self.fill),

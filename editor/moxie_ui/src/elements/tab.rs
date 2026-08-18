@@ -3,6 +3,7 @@
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
 use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
@@ -19,7 +20,10 @@ pub struct TabBar {
 }
 
 impl ElementVisual<BevyHost> for TabBar {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             Node {
                 flex_direction: FlexDirection::Row,
@@ -62,7 +66,10 @@ impl ElementVisual<BevyHost> for TabBar {
 pub struct TabRow;
 
 impl ElementVisual<BevyHost> for TabRow {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             DockTabRow,
             Node {
@@ -121,7 +128,10 @@ impl Tab {
 }
 
 impl ElementVisual<BevyHost> for Tab {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             DockTab {
                 window_id: self.window_id.clone(),

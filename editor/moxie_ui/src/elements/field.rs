@@ -12,6 +12,7 @@ use bevy::text::EditableText;
 use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
 use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
@@ -81,7 +82,10 @@ impl CheckBox {
 }
 
 impl ElementVisual<BevyHost> for CheckBox {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             CheckboxBehavior,
             EntityCursor::System(SystemCursorIcon::Pointer),
@@ -169,7 +173,10 @@ impl NumberField {
 }
 
 impl ElementVisual<BevyHost> for NumberField {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         self.scene(world, node);
     }
 
@@ -256,7 +263,10 @@ impl TextField {
 }
 
 impl ElementVisual<BevyHost> for TextField {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         self.scene(world, node);
     }
 

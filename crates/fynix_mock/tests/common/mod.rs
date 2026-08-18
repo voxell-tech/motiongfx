@@ -10,7 +10,7 @@
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
 use fynix_mock::lenz::{Cursor, FieldPath, Identity, Lenz};
-use fynix_mock::ui::ElementMut;
+use fynix_mock::ui::{ElementMut, Ui};
 use fynix_mock::{Fynix, OverrideDefault};
 use hashbrown::HashMap;
 
@@ -200,7 +200,10 @@ pub struct Label {
 }
 
 impl ElementVisual<Backend> for Label {
-    fn build_fields(&self, world: &mut World, node: usize) {
+    fn build_fields(&self, ui: &mut Ui<'_, Backend>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.node(node).text = self.text.clone();
         world.node(node).size = self.size;
     }

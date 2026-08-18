@@ -243,6 +243,23 @@ impl<H: Host> Default for Records<H> {
     }
 }
 
+impl<H: Host> Records<H> {
+    /// Where every `#[elem]` field's node is recorded. The field
+    /// itself stays private, so a caller that only wants to resolve
+    /// one goes through [`Store::child`] instead of reaching in here.
+    pub fn store(&self) -> &Store<H> {
+        &self.store
+    }
+
+    /// As [`store`](Self::store), for `#[derive(Element)]`'s own
+    /// generated code and anything else driving
+    /// [`Element`](crate::element::Element) by hand - see its
+    /// `build`/`patch`/`despawn`.
+    pub fn store_mut(&mut self) -> &mut Store<H> {
+        &mut self.store
+    }
+}
+
 /// Builds elements under a parent and records their reactivity.
 pub struct Ui<'a, H: Host> {
     /// What the builders read and the applies write. Public, because
@@ -254,7 +271,12 @@ pub struct Ui<'a, H: Host> {
 }
 
 impl<'a, H: Host> Ui<'a, H> {
-    pub(crate) fn new(
+    /// Not for hand-written code: `#[derive(Element)]`'s own generated
+    /// `build` is what constructs the `Ui` a
+    /// [`build_fields`](crate::element::ElementVisual::build_fields)
+    /// is handed, from the world and records it already has in scope.
+    #[doc(hidden)]
+    pub fn new(
         world: &'a mut H::World,
         parent: H::Node,
         records: &'a mut Records<H>,
@@ -266,9 +288,24 @@ impl<'a, H: Host> Ui<'a, H> {
         }
     }
 
-    /// The node these children are being built under.
+    /// The node these children are being built under - or, from
+    /// inside [`build_fields`](crate::element::ElementVisual::build_fields),
+    /// the element's own node.
     pub fn parent(&self) -> H::Node {
         self.parent
+    }
+
+    /// The node a `#[elem]` field of [`parent`](Self::parent) built,
+    /// however many hops the path takes to reach it. See
+    /// [`Store::child`].
+    pub fn child<S, P>(
+        &self,
+        field: impl FnOnce(Cursor<Identity<S>>) -> Cursor<P>,
+    ) -> Option<H::Node>
+    where
+        P: FieldPath<Source = S>,
+    {
+        self.records.store.child(self.parent, field)
     }
 
     /// Run a [`StyledElem`]'s cascade, then build what it left, and
@@ -288,11 +325,8 @@ impl<'a, H: Host> Ui<'a, H> {
     {
         let element = styled.create();
 
-        let node = element.build(
-            self.world,
-            self.parent,
-            &mut self.records.store,
-        );
+        let node =
+            element.build(self.world, self.parent, self.records);
         self.records.elements.insert(node, element);
         self.records.element_nodes.insert(node);
 
@@ -423,12 +457,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     where
         P: FieldPath<Source = E>,
     {
-        field(Cursor::new())
-            .hops()
-            .into_iter()
-            .try_fold(self.node, |node, hop| {
-                self.ui.records.store.get(node, hop)
-            })
+        self.ui.records.store.child(self.node, field)
     }
 
     /// Build children under this element.

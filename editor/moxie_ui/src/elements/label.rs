@@ -1,5 +1,6 @@
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
+use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
 use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
@@ -45,7 +46,10 @@ impl Label {
 }
 
 impl ElementVisual<BevyHost> for Label {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         let mut entity = world.entity_mut(node);
 
         entity.insert((

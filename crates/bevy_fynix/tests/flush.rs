@@ -3,6 +3,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::prelude::*;
+use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
 use bevy_fynix::{FynixPlugin, watch_root};
 use bevy_ui::Node;
@@ -23,7 +24,10 @@ pub struct Label {
 }
 
 impl ElementVisual<BevyHost> for Label {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert(Caption(self.text.clone()));
     }
 

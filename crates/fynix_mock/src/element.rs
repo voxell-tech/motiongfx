@@ -12,6 +12,7 @@
 use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::store::Store;
+use crate::ui::{Records, Ui};
 
 // Same name as the trait, in the macro namespace, the way `Default`
 // and `Clone` do it.
@@ -25,13 +26,15 @@ pub use fynix_mock_macros::Element;
 pub trait Element<H: Host>: ElementVisual<H> + Default {
     /// Build this element under `parent`, children and all.
     ///
-    /// Every child's node is recorded in `store`, which is what lets
-    /// [`patch`](Self::patch) find it again.
+    /// Every child's node is recorded in `records`, which is what lets
+    /// [`patch`](Self::patch) find it again - and what
+    /// [`build_fields`](ElementVisual::build_fields) gets handed as a
+    /// [`Ui`] of its own, rooted on the node this returns.
     fn build(
         &self,
         world: &mut H::World,
         parent: H::Node,
-        store: &mut Store<H>,
+        records: &mut Records<H>,
     ) -> H::Node;
 
     /// Apply a change named by a path, as
@@ -65,11 +68,14 @@ pub trait Element<H: Host>: ElementVisual<H> + Default {
 /// only place that knows both what the data means and how the backend
 /// draws it, and it is not concerned with children.
 pub trait ElementVisual<H: Host>: Fields {
-    /// Write this element's own fields onto `node`.
+    /// Write this element's own fields onto `ui.parent()`.
     ///
-    /// The node already exists, and the `#[elem]` fields are not this
-    /// method's business.
-    fn build_fields(&self, world: &mut H::World, node: H::Node);
+    /// The node already exists, and its `#[elem]` fields are already
+    /// built under it - reach one with [`Ui::child`]. `ui` is real:
+    /// nothing stops this from building further children of its own
+    /// with [`Ui::elem`]/[`Ui::compose`], the way any other build
+    /// would.
+    fn build_fields(&self, ui: &mut Ui<'_, H>);
 
     /// Push one changed field into visuals that already exist.
     ///

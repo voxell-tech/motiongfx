@@ -6,7 +6,8 @@ mod common;
 use common::{Label, LabelCursor, World};
 use fynix_mock::element::{Element, ElementVisual, Fields};
 use fynix_mock::lenz::Lenz;
-use fynix_mock::store::Store;
+use fynix_mock::ui::Records;
+use fynix_mock::ui::Ui;
 
 /// `Default`, so an element generic over its look has one too.
 pub trait Look: Default + 'static {
@@ -30,7 +31,10 @@ pub struct Themed<L: Look> {
 }
 
 impl<L: Look> ElementVisual<common::Backend> for Themed<L> {
-    fn build_fields(&self, world: &mut World, node: usize) {
+    fn build_fields(&self, ui: &mut Ui<'_, common::Backend>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.node(node).glyph = self.look.glyph();
     }
 
@@ -51,31 +55,31 @@ impl<L: Look> ElementVisual<common::Backend> for Themed<L> {
 #[test]
 fn generic_element_builds_its_children() {
     let (mut world, parent) = World::with_root();
-    let mut store = Store::new();
+    let mut records = Records::default();
     let themed = Themed::<Dark>::default();
 
-    let node = themed.build(&mut world, parent, &mut store);
+    let node = themed.build(&mut world, parent, &mut records);
 
     assert_eq!(world.get(node).glyph, '*');
 
     let label = Themed::<Dark>::cursor().label().hops();
-    let label = store.get(node, label[0]).unwrap();
+    let label = records.store().get(node, label[0]).unwrap();
     assert_eq!(world.get(label).text, "Label");
 }
 
 #[test]
 fn generic_element_patches_through_its_child() {
     let (mut world, parent) = World::with_root();
-    let mut store = Store::new();
+    let mut records = Records::default();
     let mut themed = Themed::<Dark>::default();
-    let node = themed.build(&mut world, parent, &mut store);
+    let node = themed.build(&mut world, parent, &mut records);
 
     let path = Themed::<Dark>::cursor().label().text();
     let ids = path.hops();
-    let label = store.get(node, ids[0]).unwrap();
+    let label = records.store().get(node, ids[0]).unwrap();
 
     *(path.accessor().get_mut)(&mut themed).unwrap() = "Saved".into();
-    themed.patch(&mut world, node, &ids, &mut store);
+    themed.patch(&mut world, node, &ids, records.store_mut());
 
     assert_eq!(world.get(label).text, "Saved");
 }

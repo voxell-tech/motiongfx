@@ -9,7 +9,7 @@
 use hashbrown::HashMap;
 
 use crate::host::Host;
-use crate::lenz::FieldId;
+use crate::lenz::{Cursor, FieldId, FieldPath, Identity};
 
 /// The node each `#[elem]` field built, per parent.
 pub struct Store<H: Host> {
@@ -65,6 +65,24 @@ impl<H: Host> Store<H> {
         self.children.retain(|(parent, _), child| {
             H::exists(world, *parent) && H::exists(world, *child)
         });
+    }
+
+    /// The node a `#[elem]` field built, however many hops the path
+    /// takes to reach it. What [`ElementMut::child`](
+    /// crate::ui::ElementMut::child) and
+    /// [`Ui::child`](crate::ui::Ui::child) both walk.
+    pub fn child<S, P>(
+        &self,
+        node: H::Node,
+        field: impl FnOnce(Cursor<Identity<S>>) -> Cursor<P>,
+    ) -> Option<H::Node>
+    where
+        P: FieldPath<Source = S>,
+    {
+        field(Cursor::new())
+            .hops()
+            .into_iter()
+            .try_fold(node, |node, hop| self.get(node, hop))
     }
 
     pub fn len(&self) -> usize {

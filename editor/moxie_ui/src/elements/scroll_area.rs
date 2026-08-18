@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollArea as ScrollAreaBehavior;
+use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
 use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
@@ -73,7 +74,10 @@ fn axis(scrolls: bool) -> OverflowAxis {
 }
 
 impl ElementVisual<BevyHost> for ScrollArea {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         world.entity_mut(node).insert((
             self.node(),
             BackgroundColor(self.background),

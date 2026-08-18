@@ -12,8 +12,8 @@ use common::{Backend, Label, World};
 use fynix_mock::Fynix;
 use fynix_mock::element::Element;
 use fynix_mock::host::Host;
-use fynix_mock::store::Store;
 use fynix_mock::style::{Raw, Style, StyledElem};
+use fynix_mock::ui::Records;
 use fynix_mock::{elem, val};
 
 /// What the cascade produced, for a test that only wants the value.
@@ -189,11 +189,14 @@ fn finished_element_passes_through_untouched() {
 #[test]
 fn what_the_cascade_left_is_what_gets_built() {
     let (mut world, parent) = World::with_root();
-    let mut store = Store::new();
+    let mut records = Records::default();
 
     let label = create(elem!(!Title, text = "Save"));
     let node = Element::<Backend>::build(
-        &label, &mut world, parent, &mut store,
+        &label,
+        &mut world,
+        parent,
+        &mut records,
     );
 
     assert_eq!(world.get(node).text, "Save");

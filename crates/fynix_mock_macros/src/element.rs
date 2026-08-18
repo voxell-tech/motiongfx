@@ -63,8 +63,8 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             builds.push(quote! {
                 if let ::core::option::Option::Some(elem) = #elem {
                     let child =
-                        #as_elem::build(elem, world, node, store);
-                    store.insert(node, #id, child);
+                        #as_elem::build(elem, world, node, records);
+                    records.store_mut().insert(node, #id, child);
                 }
             });
 
@@ -143,7 +143,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 &self,
                 world: &mut H::World,
                 parent: H::Node,
-                store: &mut #root::store::Store<H>,
+                records: &mut #root::ui::Records<H>,
             ) -> H::Node {
                 let node = <H as #root::host::Host>::spawn(
                     world, parent,
@@ -151,8 +151,9 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
 
                 #(#builds)*
 
+                let mut ui = #root::ui::Ui::new(world, node, records);
                 <Self as #root::element::ElementVisual<H>>
-                    ::build_fields(self, world, node);
+                    ::build_fields(self, &mut ui);
                 node
             }
 

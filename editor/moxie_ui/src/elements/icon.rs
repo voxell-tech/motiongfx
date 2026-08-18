@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
+use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
 use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
@@ -27,7 +28,10 @@ impl Icon {
 }
 
 impl ElementVisual<BevyHost> for Icon {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+        let node = ui.parent();
+        let world = &mut *ui.world;
+
         let image = world.load_asset(self.image.clone());
 
         world.entity_mut(node).insert((
