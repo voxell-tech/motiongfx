@@ -168,7 +168,8 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
                 rows: vec![
                     (
                         "Combinator".into(),
-                        combinator_name(&block.combinator),
+                        combinator_name(&block.combinator)
+                            .to_string(),
                     ),
                     (
                         "Children".into(),
@@ -394,13 +395,13 @@ fn subject_name(action: &ActionCmd<Backend>) -> String {
     format!("{uid}")
 }
 
-fn combinator_name(combinator: &Combinator) -> String {
+fn combinator_name(combinator: &Combinator) -> &'static str {
     match combinator {
-        Combinator::Chain => "Chain".to_string(),
-        Combinator::All => "All".to_string(),
-        Combinator::Any => "Any".to_string(),
+        Combinator::Chain => "Chain",
+        Combinator::All => "All",
+        Combinator::Any => "Any",
         // Its stagger is editable, so the row above only names it.
-        Combinator::Flow(_) => "Flow".to_string(),
+        Combinator::Flow(_) => "Flow",
     }
 }
 

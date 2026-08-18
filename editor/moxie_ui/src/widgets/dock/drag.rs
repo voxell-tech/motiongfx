@@ -14,6 +14,7 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabRow;
 use super::tree::{DockTree, Edge as TreeEdge, TabId};
+use crate::layout::logical_rect;
 
 pub struct DockDragPlugin;
 
@@ -73,19 +74,6 @@ pub struct DragGhost;
 
 #[derive(Component)]
 pub struct DropOverlay;
-
-/// Node rect in logical (UI) coordinates. Shared with the add-popup.
-pub(super) fn logical_rect(
-    computed: &ComputedNode,
-    transform: &UiGlobalTransform,
-) -> Rect {
-    let inv = computed.inverse_scale_factor();
-    let size = computed.size() * inv;
-    let (_scale, _angle, center) =
-        transform.to_scale_angle_translation();
-    let center = center.trunc() * inv;
-    Rect::from_center_size(center, size)
-}
 
 fn on_tab_drag_start(
     trigger: On<Pointer<DragStart>>,

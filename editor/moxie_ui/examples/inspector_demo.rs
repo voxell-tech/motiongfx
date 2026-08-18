@@ -151,7 +151,6 @@ fn panel(
 
     ui.elem(elem!(
         Frame,
-        // width = px(320),
         direction = FlexDirection::Column,
         row_gap = px(12),
         padding = UiRect::all(px(12)),

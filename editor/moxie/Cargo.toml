@@ -18,7 +18,12 @@ bevy = { workspace = true, default-features = true, features = [
     "bevy_feathers",
     "bevy_ui_widgets",
     "bevy_settings",
+    "scene",
+    "serialize",
 ] }
+ron = { workspace = true }
+rfd = { workspace = true }
+serde = { workspace = true }
 
 [lints]
 workspace = true

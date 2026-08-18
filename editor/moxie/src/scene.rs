@@ -9,6 +9,9 @@ use bevy_motiongfx::scene::asset::MotionGfxScene;
 use bevy_motiongfx::scene::backend::{
     BackendRegistry, default_scene_registry,
 };
+use bevy_motiongfx::scene::value_pool::ValuePool;
+use motiongfx_scene::block::Block;
+use motiongfx_scene::scene::{Scene, Stage};
 
 /// The project: a scene plus the registry that resolves its names.
 ///
@@ -41,6 +44,20 @@ impl EditorScene {
     /// The scene, to change.
     pub(crate) fn edit(&mut self) -> &mut MotionGfxScene {
         &mut self.scene
+    }
+}
+
+impl Default for EditorScene {
+    /// Nothing in it, so a fresh editor already has something to edit
+    /// and save before anything is loaded or created by hand.
+    fn default() -> Self {
+        Self::new(MotionGfxScene(Scene {
+            stage: Stage {
+                subjects: Vec::new(),
+            },
+            animation: Block::chain(Vec::new()),
+            values: ValuePool::default(),
+        }))
     }
 }
 

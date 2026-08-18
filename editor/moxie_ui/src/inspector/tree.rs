@@ -199,11 +199,30 @@ fn entries(world: &World, field: &Field) -> Vec<Entry> {
                 path: String::new(),
                 type_id,
             });
+        } else if let Some(variants) = enums::variants(value) {
+            out.push(Entry::Variant {
+                path: String::new(),
+                name: String::new(),
+                variants,
+                pick: enums::constructible(value, &registry),
+                children: collect_entries(&registry, value, ""),
+            });
         } else {
             out = collect_entries(&registry, value, "");
         }
     });
     out
+}
+
+/// Whether `field` holds one editable value rather than a set of
+/// fields, and so belongs on a row of its own: there is no group to
+/// fold, and no field name to head one with.
+pub(crate) fn is_single_value(world: &World, field: &Field) -> bool {
+    match entries(world, field).as_slice() {
+        [Entry::Leaf { .. }] => true,
+        [Entry::Variant { children, .. }] => children.is_empty(),
+        _ => false,
+    }
 }
 
 /// Fires when the *shape* under `field` changes, meaning its set of
@@ -347,6 +366,17 @@ fn build_variant(
                 pick,
             });
         });
+        return;
+    }
+
+    // The root has no name to head a group with - see `entries`.
+    if path.is_empty() {
+        ui.compose(enums::VariantPicker {
+            source: &field,
+            variants,
+            pick,
+        });
+        build_entries(ui, root, children);
         return;
     }
 

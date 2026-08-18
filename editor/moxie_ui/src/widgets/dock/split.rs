@@ -14,6 +14,8 @@ use bevy::prelude::*;
 use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
 
+use crate::layout::logical_rect;
+
 pub struct SplitPanelPlugin;
 
 impl Plugin for SplitPanelPlugin {
@@ -247,8 +249,8 @@ fn handle_panel_drag(
     else {
         return;
     };
-    let before_rect = super::drag::logical_rect(bc, bt);
-    let after_rect = super::drag::logical_rect(ac, at);
+    let before_rect = logical_rect(bc, bt);
+    let after_rect = logical_rect(ac, at);
     let cursor = drag.pointer_location.position / ui_scale.0;
 
     let vertical = matches!(

@@ -185,15 +185,20 @@ pub struct DropdownList {
     /// Matched to the control's, so the two line up.
     #[default(px(160))]
     pub width: Val,
+    /// What the popup scene rounds its own corners to, so leaving this
+    /// alone keeps the look feathers gave it.
+    #[default(px(4))]
+    pub radius: Val,
 }
 
 impl DropdownList {
-    /// Only the width. The rest of the node belongs to the popup
-    /// scene, and writing it whole would undo the placement that came
-    /// with it.
+    /// Only the width and the corners. The rest of the node belongs to
+    /// the popup scene, and writing it whole would undo the placement
+    /// that came with it.
     fn size(&self, world: &mut World, node: Entity) {
         if let Some(mut layout) = world.get_mut::<Node>(node) {
             layout.min_width = self.width;
+            layout.border_radius = BorderRadius::all(self.radius);
         }
     }
 }
@@ -217,7 +222,9 @@ impl ElementVisual<BevyHost> for DropdownList {
         field: DropdownListField,
     ) {
         match field {
-            DropdownListField::Width => self.size(world, node),
+            DropdownListField::Width | DropdownListField::Radius => {
+                self.size(world, node)
+            }
         }
     }
 }

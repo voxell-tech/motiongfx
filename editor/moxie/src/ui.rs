@@ -3,6 +3,7 @@ mod hierarchy;
 mod inspector;
 mod settings;
 mod timeline;
+mod top_bar;
 
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
@@ -36,6 +37,8 @@ impl Plugin for UiPlugin {
             .init_resource::<EditorState>()
             .init_resource::<SelectedAction>()
             .init_resource::<SelectedEntity>()
+            .init_resource::<hierarchy::Dragging>()
+            .init_resource::<scene::EditorScene>()
             .add_systems(Startup, setup_editor_ui)
             .add_systems(
                 Update,
@@ -160,6 +163,7 @@ fn setup_editor_ui(
 fn build_editor_ui(ui: &mut BevyUi) {
     // Non-visual binds live at the root: they hang off a node only for
     // lifetime, and write to resources or assets.
+    ui.compose(top_bar::TopBar);
     dock(ui);
 }
 

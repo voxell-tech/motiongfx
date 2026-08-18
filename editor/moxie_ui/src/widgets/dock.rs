@@ -51,8 +51,5 @@ impl Plugin for DockPlugin {
     }
 }
 
-// Backgrounds come from the glass materials (`crate::glass`)
-// and colors from the theme (`crate::theme`); only metrics live here.
-
 /// Tab-bar height, in px.
 pub(crate) const TAB_HEIGHT: f32 = 24.0;

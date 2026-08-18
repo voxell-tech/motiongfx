@@ -7,23 +7,30 @@
 //!
 //! [`Timeline`]: bevy_motiongfx::prelude::BevyTimeline
 
-// Inherent to Bevy ECS: systems take many params and query tuples.
-#![allow(clippy::type_complexity, clippy::too_many_arguments)]
+#![allow(
+    clippy::type_complexity,
+    clippy::too_many_arguments,
+    reason = "Inherent to Bevy ECS: systems take many params and query tuples."
+)]
 
 mod block_layout;
 mod icons;
 mod playback;
+mod project;
 mod scene;
+pub mod std_material_asset;
 mod ui;
 mod view;
 
 use core::time::Duration;
 
+use bevy::ecs::reflect::AppTypeRegistry;
 use bevy::prelude::*;
 use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
 };
 use bevy_motiongfx::prelude::TimelineId;
+use bevy_motiongfx::scene::id::EntityUid;
 
 pub use scene::EditorScene;
 
@@ -36,9 +43,46 @@ impl Plugin for MoxiePlugin {
         app.add_plugins(SettingsPlugin::new(
             "org.voxell.motiongfx.editor",
         ))
-        .add_plugins(ui::UiPlugin);
+        .add_plugins(ui::UiPlugin)
+        .add_systems(PreUpdate, ensure_scene_root);
+
+        let registry =
+            app.world().resource::<AppTypeRegistry>().clone();
+        app.register_asset_loader(
+            std_material_asset::MaterialAssetLoader::new(&registry),
+        );
     }
 }
+
+/// Ensures an [`Entity`] with [`SceneRoot`] exists.
+pub(crate) fn ensure_scene_root(
+    mut commands: Commands,
+    roots: Query<Entity, With<SceneRoot>>,
+    root_subjects: Query<Entity, (With<EntityUid>, Without<ChildOf>)>,
+) {
+    let root_count = roots.count();
+    if root_count > 1 {
+        error!("There are more than one root in the scene!");
+    } else if root_count == 0 {
+        let root = commands
+            .spawn((
+                SceneRoot,
+                Transform::IDENTITY,
+                Visibility::Inherited,
+            ))
+            .id();
+
+        for subject in &root_subjects {
+            commands.entity(root).add_child(subject);
+        }
+    }
+}
+
+/// Marker component for the root [`Entity`] of the scene.
+/// All subjects with [`EntityUid`] lives under this.
+#[derive(Component, Reflect, Default, Clone)]
+#[reflect(Component, Default, Clone)]
+pub struct SceneRoot;
 
 /// Pixels per second of animation (horizontal zoom).
 pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
