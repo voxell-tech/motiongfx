@@ -6,6 +6,7 @@ mod timeline;
 
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
+use bevy::ecs::schedule::common_conditions::resource_changed;
 use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
 use bevy::ui::widget::ImageNode;
@@ -39,7 +40,9 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 (
-                    scene::recompile_dirty_scene,
+                    scene::recompile_dirty_scene.run_if(
+                        resource_changed::<scene::EditorScene>,
+                    ),
                     playback::track_first_timeline,
                     playback::play_pause_hotkey,
                     playback::stop_at_track_end,

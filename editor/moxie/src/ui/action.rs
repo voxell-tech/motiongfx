@@ -262,11 +262,8 @@ impl Source for Pooled {
     }
 
     fn set(&self, world: &mut World, value: &dyn PartialReflect) {
-        // A number field commits on blur as well as on edit, and
-        // rebuilding the panel (any time the selection moves) blurs
-        // whichever field had focus - a resubmit of what's already
-        // there, not a real edit. Skip it: marking the scene dirty
-        // over nothing would recompile it for no reason.
+        // A rebuild (any selection change) blurs whichever field had
+        // focus, which resubmits its value unedited. Skip the no-op.
         if unchanged(self.get(world).as_deref(), value) {
             return;
         }
@@ -319,7 +316,7 @@ impl Source for Property {
     }
 
     fn set(&self, world: &mut World, value: &dyn PartialReflect) {
-        // Same resubmit-on-blur guard as `Pooled::set`.
+        // Same blur guard as `Pooled::set`.
         if unchanged(self.get(world).as_deref(), value) {
             return;
         }
@@ -470,11 +467,9 @@ fn line(
     });
 }
 
-/// Whether `value` is what `current` already holds - `PartialReflect`
-/// has no `PartialEq`, so this goes through
-/// [`PartialReflect::reflect_partial_eq`] instead. `None` on either
-/// side never counts as unchanged: nothing to compare against, so
-/// the write goes through.
+/// Whether `value` is what `current` already holds, via
+/// [`PartialReflect::reflect_partial_eq`] - `PartialReflect` has no
+/// `PartialEq`. `None` is never unchanged.
 fn unchanged(
     current: Option<&dyn PartialReflect>,
     value: &dyn PartialReflect,
