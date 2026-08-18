@@ -18,11 +18,13 @@ mod icons;
 mod playback;
 mod project;
 mod scene;
+pub mod std_material_asset;
 mod ui;
 mod view;
 
 use core::time::Duration;
 
+use bevy::ecs::reflect::AppTypeRegistry;
 use bevy::prelude::*;
 use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
@@ -43,6 +45,12 @@ impl Plugin for MoxiePlugin {
         ))
         .add_plugins(ui::UiPlugin)
         .add_systems(PreUpdate, ensure_scene_root);
+
+        let registry =
+            app.world().resource::<AppTypeRegistry>().clone();
+        app.register_asset_loader(
+            std_material_asset::MaterialAssetLoader::new(&registry),
+        );
     }
 }
 
