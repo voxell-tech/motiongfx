@@ -55,6 +55,7 @@ impl Plugin for InspectPlugin {
             .register_inspect::<String>()
             .register_inspect::<Name>()
             .register_inspectable::<Name>()
+            .register_inspectable::<Visibility>()
             .register_inspectable::<Transform>();
     }
 }

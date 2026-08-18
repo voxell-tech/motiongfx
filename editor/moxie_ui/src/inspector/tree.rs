@@ -199,6 +199,14 @@ fn entries(world: &World, field: &Field) -> Vec<Entry> {
                 path: String::new(),
                 type_id,
             });
+        } else if let Some(variants) = enums::variants(value) {
+            out.push(Entry::Variant {
+                path: String::new(),
+                name: String::new(),
+                variants,
+                pick: enums::constructible(value, &registry),
+                children: collect_entries(&registry, value, ""),
+            });
         } else {
             out = collect_entries(&registry, value, "");
         }
@@ -347,6 +355,17 @@ fn build_variant(
                 pick,
             });
         });
+        return;
+    }
+
+    // The root has no name to head a group with - see `entries`.
+    if path.is_empty() {
+        ui.compose(enums::VariantPicker {
+            source: &field,
+            variants,
+            pick,
+        });
+        build_entries(ui, root, children);
         return;
     }
 
