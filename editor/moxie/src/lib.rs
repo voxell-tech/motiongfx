@@ -42,16 +42,39 @@ impl Plugin for MoxiePlugin {
             "org.voxell.motiongfx.editor",
         ))
         .add_plugins(ui::UiPlugin)
-        // What a saved subject is made of, beyond what the inspector
-        // and `bevy_motiongfx` already register between them. Nothing
-        // reaches an unregistered type through reflection, so a
-        // project file would quietly lose these.
-        .register_type::<Visibility>()
-        .register_type::<ChildOf>()
-        .register_type::<Mesh3d>()
-        .register_type::<SceneRoot>();
+        .add_systems(PreUpdate, ensure_scene_root);
     }
 }
+
+/// Ensures an [`Entity`] with [`SceneRoot`] exists.
+pub(crate) fn ensure_scene_root(
+    mut commands: Commands,
+    roots: Query<Entity, With<SceneRoot>>,
+    root_subjects: Query<Entity, (With<EntityUid>, Without<ChildOf>)>,
+) {
+    let root_count = roots.count();
+    if root_count > 1 {
+        error!("There are more than one root in the scene!");
+    } else if root_count == 0 {
+        let root = commands
+            .spawn((
+                SceneRoot,
+                Transform::IDENTITY,
+                Visibility::Inherited,
+            ))
+            .id();
+
+        for subject in &root_subjects {
+            commands.entity(root).add_child(subject);
+        }
+    }
+}
+
+/// Marker component for the root [`Entity`] of the scene.
+/// All subjects with [`EntityUid`] lives under this.
+#[derive(Component, Reflect, Default)]
+#[reflect(Component, Default)]
+pub struct SceneRoot;
 
 /// Pixels per second of animation (horizontal zoom).
 pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
@@ -80,57 +103,6 @@ pub(crate) struct EditorState {
     /// polling a component query. Written by `on_toggle_playback` and
     /// `stop_at_track_end`.
     pub(crate) is_playing: bool,
-}
-
-/// What every subject hangs under, so that [`Children`] is where a
-/// subject's place in the scene lives, at every depth. Without it the
-/// top level would have no order to speak of: nothing relates one
-/// parentless entity to the next.
-///
-/// Deliberately not a subject itself. With no
-/// [`EntityUid`](bevy_motiongfx::scene::id::EntityUid) the animation
-/// cannot address it and the hierarchy panel never draws it. It is
-/// saved regardless, because a child's [`ChildOf`] has to resolve to
-/// something when the project is read back.
-#[derive(Component, Reflect, Default)]
-#[reflect(Component)]
-pub(crate) struct SceneRoot;
-
-/// Keeps the scene rooted: spawns a [`SceneRoot`] when there is none,
-/// and takes in any subject left outside it.
-///
-/// Adoption is what lets a subject be spawned without knowing the root
-/// exists. `main.rs` builds its scene top-level, and a project written
-/// before the root did comes back the same way; both are taken in on
-/// the frame they arrive. The root sits at the identity transform, so
-/// nothing moves by being adopted.
-pub(crate) fn ensure_scene_root(
-    mut commands: Commands,
-    roots: Query<Entity, With<SceneRoot>>,
-    subjects: Query<(Entity, Option<&ChildOf>), With<EntityUid>>,
-    in_scene: Query<(), Or<(With<EntityUid>, With<SceneRoot>)>>,
-) {
-    let root = match roots.iter().next() {
-        Some(root) => root,
-        None => commands
-            .spawn((
-                SceneRoot,
-                Transform::default(),
-                Visibility::default(),
-            ))
-            .id(),
-    };
-
-    for (subject, parent) in &subjects {
-        // A parent that is gone reads the same as none: a project can
-        // name one that was never saved.
-        let held = parent
-            .is_some_and(|parent| in_scene.contains(parent.parent()));
-
-        if !held {
-            commands.entity(root).add_child(subject);
-        }
-    }
 }
 
 /// The path (root-to-node child indices) of the action currently

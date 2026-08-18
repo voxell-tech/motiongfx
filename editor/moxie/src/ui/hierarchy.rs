@@ -165,18 +165,25 @@ impl Composer<BevyHost> for Roots {
 /// Spawns a subject at the top level, and selects it so the inspector
 /// is already pointed at what was just made.
 ///
-/// Left parentless, for [`ensure_scene_root`](crate::ensure_scene_root)
-/// to take in. Nothing of the animation changes either: a
-/// [`Stage`](motiongfx_scene::scene::Stage) seeds the fields an action
-/// drives, and a subject with no action on it keeps whatever it was
-/// spawned holding.
+/// Nothing of the animation changes: a [`Stage`](motiongfx_scene::scene::Stage)
+/// seeds the fields an action drives, and a subject with no action on
+/// it keeps whatever it was spawned holding.
 fn create(world: &mut World) {
+    let Ok(root) = world
+        .query_filtered::<Entity, With<SceneRoot>>()
+        .single(world)
+    else {
+        error!("Scene root does not exist!");
+        return;
+    };
+
     let entity = world
         .spawn((
             EntityUid::new(),
             Name::new("Entity"),
             Transform::default(),
             Visibility::default(),
+            ChildOf(root),
         ))
         .id();
 

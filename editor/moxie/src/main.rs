@@ -18,7 +18,7 @@ use bevy_motiongfx::scene::backend::{
 };
 use bevy_motiongfx::scene::id::SceneUid;
 use bevy_motiongfx::scene::value_pool::ValuePool;
-use moxie::MoxiePlugin;
+use moxie::{MoxiePlugin, SceneRoot};
 // Aliased: `Node` and `Scene` both also name `bevy`/`bevy_ui` types
 // pulled in above.
 use motiongfx_scene::block::{
@@ -155,6 +155,17 @@ fn spawn_timeline(
 ) {
     let mut values = ValuePool::default();
 
+    // The scene root, so top-level subjects have an order to sit in.
+    // Spawned before everything else so it exists before any subject
+    // that needs to parent under it.
+    let root = commands
+        .spawn((
+            SceneRoot,
+            Transform::default(),
+            Visibility::default(),
+        ))
+        .id();
+
     // Flat shapes are meshed in the XY plane, so they face the camera
     // to begin with - and are double sided, or a rotation would turn
     // them edge-on and then away.
@@ -193,6 +204,7 @@ fn spawn_timeline(
                 Name::new(name),
                 Transform::from_translation(origin),
                 Visibility::default(),
+                ChildOf(root),
             ))
             .id();
         parents.push(Subject {

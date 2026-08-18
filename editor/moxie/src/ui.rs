@@ -42,7 +42,6 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 (
-                    crate::ensure_scene_root,
                     scene::recompile_dirty_scene.run_if(
                         resource_changed::<scene::EditorScene>,
                     ),
