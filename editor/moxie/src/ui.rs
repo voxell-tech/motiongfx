@@ -1,10 +1,12 @@
 mod action;
 mod hierarchy;
+mod inspector;
 mod settings;
 mod timeline;
 
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
+use bevy::ecs::schedule::common_conditions::resource_changed;
 use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
 use bevy::ui::widget::ImageNode;
@@ -38,7 +40,9 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 (
-                    scene::recompile_dirty_scene,
+                    scene::recompile_dirty_scene.run_if(
+                        resource_changed::<scene::EditorScene>,
+                    ),
                     playback::track_first_timeline,
                     playback::play_pause_hotkey,
                     playback::stop_at_track_end,
@@ -110,13 +114,19 @@ fn setup_editor_ui(
     tree.split(viewport, Edge::Bottom, "timeline".into());
     let vsplit = tree.root.expect("root split exists");
     tree.set_fraction(vsplit, 0.7);
-    if let Some(timeline) = tree.find_leaf_with_window("timeline")
-        && let Some(DockNode::Leaf(leaf)) = tree.get_mut(timeline)
-    {
+    let timeline = tree
+        .find_leaf_with_window("timeline")
+        .expect("just split in a timeline leaf");
+    if let Some(DockNode::Leaf(leaf)) = tree.get_mut(timeline) {
         leaf.area_id = "timeline".into();
     }
 
-    tree.split(viewport, Edge::Right, "action".into());
+    tree.split(timeline, Edge::Right, "action".into());
+    if let Some(hsplit) = tree.parent_of(timeline) {
+        tree.set_fraction(hsplit, 0.8);
+    }
+
+    tree.split(viewport, Edge::Right, "inspector".into());
     if let Some(hsplit) = tree.parent_of(viewport) {
         tree.set_fraction(hsplit, 0.8);
     }
@@ -245,6 +255,15 @@ fn register_windows(registry: &mut WindowRegistry) {
         icon: Some(crate::icons::ACTION.into()),
         build: |ui: &mut BevyUi| {
             ui.compose(action::ActionPanel);
+        },
+    });
+
+    registry.register(DockWindowDescriptor {
+        id: "inspector".into(),
+        name: "Inspector".into(),
+        icon: Some(crate::icons::INSPECTOR.into()),
+        build: |ui: &mut BevyUi| {
+            ui.compose(inspector::InspectorPanel);
         },
     });
 

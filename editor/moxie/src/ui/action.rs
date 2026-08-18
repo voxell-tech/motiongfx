@@ -17,7 +17,7 @@ use fynix_mock::composer::Composer;
 use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
-use moxie_ui::elements::{Frame, Label, Panel};
+use moxie_ui::elements::{Frame, Label, ScrollArea};
 use moxie_ui::inspector::{Source, inspect_value, reflect_changed};
 use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
 use moxie_ui::theme::EditorTheme;
@@ -29,18 +29,19 @@ use crate::{EditorScene, SelectedAction};
 pub(super) struct ActionPanel;
 
 impl Composer<BevyHost> for ActionPanel {
-    type Element = Panel;
+    type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Panel> {
+    ) -> ElementHandle<BevyHost, ScrollArea> {
         ui.elem(elem!(
-            Panel,
-            direction = FlexDirection::Column,
+            ScrollArea,
+            width = percent(100),
+            flex_grow = 1.0f32,
             row_gap = px(8),
             padding = px(PANEL_PADDING),
-            scrolls = true
+            scroll_x = false
         ))
         // The shape only: each input binds its own value, so typing
         // into one never rebuilds the panel out from under it.

@@ -20,6 +20,7 @@ use moxie_ui::elements::{
     ComponentInspector, EntityInspector, Frame, Label,
     ResourceInspector,
 };
+use moxie_ui::inspector::InspectAppExt;
 use moxie_ui::reactive::BevyUi;
 use moxie_ui::theme::EditorTheme;
 
@@ -36,7 +37,7 @@ fn main() {
         ))
         .register_type::<Showcase>()
         .register_type::<LocalTransform>()
-        .register_type::<Orbit>()
+        .register_inspectable::<Orbit>()
         .insert_resource(Showcase::default())
         .add_systems(Startup, setup)
         .run();
@@ -82,9 +83,9 @@ struct Subject(Entity);
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
 
-    // `Transform` drags `GlobalTransform` in with it, so the entity
-    // inspector has a third section to find without being told about
-    // any of them.
+    // `Transform` also drags `GlobalTransform` in, but the entity
+    // inspector only shows what's registered `register_inspectable` -
+    // `GlobalTransform` is reflected, never opted in, so it stays out.
     let subject = commands
         .spawn((
             Transform::from_xyz(1.0, 2.0, 3.0),

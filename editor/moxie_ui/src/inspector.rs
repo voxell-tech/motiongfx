@@ -14,6 +14,7 @@
 mod enums;
 mod field;
 mod primitive;
+mod text;
 mod tree;
 mod vector;
 
@@ -24,10 +25,12 @@ use crate::reactive::BevyUi;
 pub use field::Field;
 pub use tree::{InspectorFields, Section};
 
-/// The widgets the inspector can edit out of the box.
+/// The widgets and the entity-inspector sections available out of
+/// the box.
 ///
-/// Anything else is one [`InspectAppExt::register_inspect`] away, and
-/// needs no change here.
+/// Anything else is one [`InspectAppExt::register_inspect`] or
+/// [`InspectAppExt::register_inspectable`] away, and needs no change
+/// here.
 pub struct InspectPlugin;
 
 impl Plugin for InspectPlugin {
@@ -48,7 +51,11 @@ impl Plugin for InspectPlugin {
             .register_inspect::<UVec2>()
             .register_inspect::<UVec3>()
             .register_inspect::<UVec4>()
-            .register_inspect::<Quat>();
+            .register_inspect::<Quat>()
+            .register_inspect::<String>()
+            .register_inspect::<Name>()
+            .register_inspectable::<Name>()
+            .register_inspectable::<Transform>();
     }
 }
 
@@ -56,12 +63,34 @@ impl Plugin for InspectPlugin {
 pub trait InspectAppExt {
     /// Makes `T` editable wherever the inspector meets it.
     fn register_inspect<T: Inspect>(&mut self) -> &mut Self;
+
+    /// Makes `T` a section of its own wherever an [`EntityInspector`](
+    /// crate::elements::EntityInspector) meets it.
+    ///
+    /// Opt-in like [`register_inspect`](Self::register_inspect):
+    /// `#[reflect(Component)]` lets the inspector reach a value, not
+    /// decide it's worth a row - Bevy reflects plenty nobody authors,
+    /// like `GlobalTransform`.
+    fn register_inspectable<
+        T: Component + Reflect + TypePath + GetTypeRegistration,
+    >(
+        &mut self,
+    ) -> &mut Self;
 }
 
 impl InspectAppExt for App {
     fn register_inspect<T: Inspect>(&mut self) -> &mut Self {
         self.register_type::<T>()
             .register_type_data::<T, ReflectInspect>()
+    }
+
+    fn register_inspectable<
+        T: Component + Reflect + TypePath + GetTypeRegistration,
+    >(
+        &mut self,
+    ) -> &mut Self {
+        self.register_type::<T>()
+            .register_type_data::<T, ReflectInspectable>()
     }
 }
 
@@ -91,8 +120,16 @@ pub trait SourceExt: Source {
         T::from_reflect(&*self.get(world)?)
     }
 
+    /// Skips the write if `value` is what the source already holds -
+    /// a field commits on blur as well as on edit, and that would
+    /// otherwise bump the component's tick for nothing.
     fn write<T: PartialReflect>(&self, world: &mut World, value: T) {
-        self.set(world, &value);
+        let unchanged = self.get(world).is_some_and(|current| {
+            current.reflect_partial_eq(&value).unwrap_or(false)
+        });
+        if !unchanged {
+            self.set(world, &value);
+        }
     }
 }
 
@@ -198,5 +235,17 @@ impl ReflectInspect {
 impl<T: Inspect> FromType<T> for ReflectInspect {
     fn from_type() -> Self {
         Self { build: T::build }
+    }
+}
+
+/// Marks a component as one an [`EntityInspector`](
+/// crate::elements::EntityInspector) shows. See
+/// [`InspectAppExt::register_inspectable`].
+#[derive(Clone)]
+pub struct ReflectInspectable;
+
+impl<T: Component + Reflect> FromType<T> for ReflectInspectable {
+    fn from_type() -> Self {
+        Self
     }
 }

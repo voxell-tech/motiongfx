@@ -5,9 +5,9 @@
 //! Drag/move/resize mutate the tree only.
 //!
 //! The watcher fires on [`topology`], a fingerprint that omits split
-//! fractions and the active tab — those change too often (a splitter
-//! drag writes every frame) and ride on bindings instead. Only
-//! structural edits rebuild the layout.
+//! fractions and the active tab, since those change too often (a
+//! splitter drag writes every frame) and ride on bindings instead.
+//! Only structural edits rebuild the layout.
 
 use std::fmt::Write as _;
 

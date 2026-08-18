@@ -17,7 +17,8 @@ use fynix_mock::composer::Composer;
 use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
 use moxie_ui::elements::{
-    ButtonElem, ButtonElemCursor, Frame, Label, Panel, TintButton,
+    ButtonElem, ButtonElemCursor, Frame, GhostButton, Label,
+    LabelCursor, Panel,
 };
 use moxie_ui::fold::{Foldable, Toggle};
 use moxie_ui::reactive::{
@@ -107,7 +108,7 @@ impl Composer<BevyHost> for Subtree {
 
         ui.compose(Foldable {
             header: elem!(
-                !TintButton,
+                !GhostButton,
                 width = percent(100),
                 height = px(18),
                 justify = JustifyContent::FlexStart,
@@ -151,6 +152,11 @@ impl Composer<BevyHost> for Subtree {
                                 Color::NONE
                             }
                         },
+                    )
+                    .bind(
+                        |button| button.label().text(),
+                        component_changed_on::<Name>(entity),
+                        move |world, _| name_of(world, entity),
                     );
             },
             body: move |ui: &mut BevyUi| {

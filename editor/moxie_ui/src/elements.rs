@@ -38,7 +38,8 @@ pub use dropdown::{
 };
 pub use field::{
     CheckBox, CheckBoxCursor, CheckBoxField, NumberField,
-    NumberFieldCursor, NumberFieldField,
+    NumberFieldCursor, NumberFieldField, TextField, TextFieldCursor,
+    TextFieldField,
 };
 pub use frame::{Frame, FrameCursor, FrameField};
 pub use icon::{Icon, IconCursor, IconField};

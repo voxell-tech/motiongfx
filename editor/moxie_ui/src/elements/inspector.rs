@@ -22,7 +22,9 @@ use fynix_mock::elem;
 use fynix_mock::ui::{BuildFn, ChangedFn, ElementHandle};
 
 use super::Frame;
-use crate::inspector::{Field, InspectorFields, Section};
+use crate::inspector::{
+    Field, InspectorFields, ReflectInspectable, Section,
+};
 use crate::reactive::{BevyHost, BevyUi, value_changed};
 
 /// One component of one entity.
@@ -168,8 +170,8 @@ fn components_changed(
     value_changed(move |world, _| inspectable(world, entity))
 }
 
-/// Every component on `entity` the inspector can reach, by type and
-/// the short name its section is headed with.
+/// Every component on `entity` the inspector can reach and shows, by
+/// type and the short name its section is headed with.
 ///
 /// Sorted by that name: an archetype lists what it holds in whatever
 /// order it happens to, and a panel whose sections reshuffle when a
@@ -195,6 +197,8 @@ fn inspectable(
             // Without this there is no way to reach the value at
             // all, whatever its fields would have said.
             registration.data::<ReflectComponent>()?;
+            // Opt-in - see InspectAppExt::register_inspectable.
+            registration.data::<ReflectInspectable>()?;
             Some((
                 id,
                 registration

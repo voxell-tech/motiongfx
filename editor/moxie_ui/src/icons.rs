@@ -1,7 +1,7 @@
 //! Icon asset paths moxie_ui's own widgets reach for, relative to
 //! the shared `editor/assets` folder (see `AssetPlugin::file_path` in
 //! the consuming app). An app's *own* icons (panel tabs, playback,
-//! ...) belong in the app's crate instead — this is only for icons
+//! ...) belong in the app's crate instead. This is only for icons
 //! the dock/inspector engine itself draws.
 
 /// Shown when a tab has no [`DockWindowDescriptor::icon`](
