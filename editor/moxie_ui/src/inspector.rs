@@ -66,13 +66,10 @@ pub trait InspectAppExt {
     /// Makes `T` a section of its own wherever an [`EntityInspector`](
     /// crate::elements::EntityInspector) meets it.
     ///
-    /// Opt-in, the same way [`register_inspect`](Self::register_inspect)
-    /// is: `T` having `#[reflect(Component)]` is what lets the
-    /// inspector *reach* a value, not what decides whether it's worth
-    /// a row. Bevy and its plugins reflect plenty a person never
-    /// authors - `GlobalTransform` recomputed from `Transform` every
-    /// frame, `ComputedNode` from layout - and showing those is noise,
-    /// not data.
+    /// Opt-in like [`register_inspect`](Self::register_inspect):
+    /// `#[reflect(Component)]` lets the inspector reach a value, not
+    /// decide it's worth a row - Bevy reflects plenty nobody authors,
+    /// like `GlobalTransform`.
     fn register_inspectable<
         T: Component + Reflect + TypePath + GetTypeRegistration,
     >(

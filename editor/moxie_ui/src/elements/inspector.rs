@@ -197,10 +197,7 @@ fn inspectable(
             // Without this there is no way to reach the value at
             // all, whatever its fields would have said.
             registration.data::<ReflectComponent>()?;
-            // Opt-in, like a widget - see
-            // InspectAppExt::register_inspectable. Being reflected is
-            // not being worth a row: plenty Bevy reflects is
-            // recomputed or internal, and showing all of it is noise.
+            // Opt-in - see InspectAppExt::register_inspectable.
             registration.data::<ReflectInspectable>()?;
             Some((
                 id,
