@@ -81,8 +81,6 @@ impl Composer<BevyHost> for AddButton {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
-        let accent = ui.world.resource::<EditorTheme>().accent;
-
         ui.elem(elem!(
             Frame,
             position = PositionType::Absolute,
@@ -96,11 +94,7 @@ impl Composer<BevyHost> for AddButton {
         .with(move |ui| {
             ui.elem(elem!(
                 !TintButton,
-                icon = val!(
-                    Icon,
-                    image = crate::icons::PLUS,
-                    color = accent
-                )
+                icon = val!(Icon, image = crate::icons::PLUS,)
             ))
             .observe(
                 |_: On<Activate>, mut commands: Commands| {
