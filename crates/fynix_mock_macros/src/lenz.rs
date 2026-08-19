@@ -7,9 +7,25 @@ use crate::common::{
 };
 
 pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
+    expand_filtered(ast, |_| true)
+}
+
+/// As [`expand`], but skipping any field `keep` returns `false` for.
+///
+/// What `#[derive(Element)]` reaches for instead of `expand`: a field
+/// marked `#[elem(ignore)]` gets no cursor either, so nothing can
+/// name a path to it at all.
+pub fn expand_filtered(
+    ast: &DeriveInput,
+    keep: impl Fn(&syn::Field) -> bool,
+) -> syn::Result<TokenStream2> {
     let lenz = lenz_path();
     let name = &ast.ident;
-    let fields = named_fields(ast, "Lenz")?;
+    let fields: Vec<_> = named_fields(ast, "Lenz")?
+        .iter()
+        .filter(|field| keep(field))
+        .cloned()
+        .collect();
 
     let generics = generics(ast)?;
     let decl = &generics.decl;

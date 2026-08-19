@@ -29,8 +29,10 @@ pub fn derive_lenz(input: TokenStream) -> TokenStream {
 ///
 /// Fields marked `#[elem(child)]` are left out: they are elements of
 /// their own, and patch through their own id. Fields marked
-/// `#[elem(no_patch)]` are left out too: they only ever change at
-/// build, so there is nothing for the field/patch system to reach.
+/// `#[elem(ignore)]` are left out too, and out of the cursor
+/// [`Lenz`] would otherwise give them: they only ever change at
+/// build, so there is nothing for the field/patch system, or a path
+/// naming one for it to reach, to find there.
 ///
 /// Also derives what [`Lenz`] and [`OverrideDefault`] would: an
 /// element's own dispatch reports a field by the id `Lenz` gives it,

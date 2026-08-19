@@ -16,19 +16,17 @@ const FILL: Color = Color::srgba(1.0, 1.0, 1.0, 0.06);
 /// A tinted button's icon and label colour.
 const TINT: Color = crate::palette::BLUE;
 
-/// What lights up under the cursor. A style has no node to wire this
-/// on, so it leaves the choice here for
+/// What lights up under the cursor, and to what colour. A style has
+/// no node to wire this on, so it leaves the choice here for
 /// [`build_fields`](ElementVisual::build_fields) to read once the
-/// node exists.
-#[derive(Clone, Copy, PartialEq, Default)]
+/// node exists. `None` on [`ButtonElem::on_hover`] is no highlight at
+/// all.
+#[derive(Clone, Copy, PartialEq)]
 pub enum Hover {
-    #[default]
-    None,
     /// [`Button`], [`GhostButton`], [`MenuButton`]: the surface
     /// itself.
-    Fill,
-    /// [`TintButton`]: the icon and label, tinted to the colour
-    /// carried here rather than `fill`.
+    Fill(Color),
+    /// [`TintButton`]: the icon and label, not the surface.
     IconLabel(Color),
 }
 
@@ -67,8 +65,8 @@ pub struct ButtonElem {
     pub radius: Val,
     /// Set by whichever [`Style`] built this - see [`Hover`]. Never
     /// patched: read once, in `build_fields`.
-    #[elem(no_patch)]
-    hover: Hover,
+    #[elem(ignore)]
+    on_hover: Option<Hover>,
 }
 
 impl ButtonElem {
@@ -108,7 +106,7 @@ impl Style for Button {
         button.width = px(26);
         button.height = px(26);
         button.radius = px(6);
-        button.hover = Hover::Fill;
+        button.on_hover = Some(Hover::Fill(motion::HOVER));
     }
 }
 
@@ -130,7 +128,7 @@ impl Style for TintButton {
     type Element = ButtonElem;
 
     fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
-        button.hover = Hover::IconLabel(self.tint);
+        button.on_hover = Some(Hover::IconLabel(self.tint));
     }
 }
 
@@ -148,7 +146,7 @@ impl Style for MenuButton {
         button.radius = Val::ZERO;
         button.height = percent(100);
         button.padding = UiRect::axes(px(10), Val::ZERO);
-        button.hover = Hover::Fill;
+        button.on_hover = Some(Hover::Fill(motion::HOVER));
     }
 }
 
@@ -163,7 +161,7 @@ impl Style for GhostButton {
 
     fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
         button.fill = Color::NONE;
-        button.hover = Hover::Fill;
+        button.on_hover = Some(Hover::Fill(motion::HOVER));
     }
 }
 
@@ -180,46 +178,50 @@ impl ElementVisual<BevyHost> for ButtonElem {
 
         // What the style asked for, wired against a base this method
         // already has as `&self` - the node has no entry in the
-        // kernel's own table yet for `.lit()` to read one from.
-        match self.hover {
-            Hover::None => {}
-            Hover::Fill => {
+        // kernel's own table yet for `.lit()` to read one from. Both
+        // stops light to the same colour: `Hover` carries one, not a
+        // separate hover and press shade.
+        let (fill, icon_label) = match self.on_hover {
+            None => (None, None),
+            Some(Hover::Fill(color)) => (Some(color), None),
+            Some(Hover::IconLabel(color)) => (None, Some(color)),
+        };
+
+        if let Some(color) = fill {
+            ui.this::<Self>().lit_from(
+                |button| button.fill(),
+                self.fill,
+                color,
+                color,
+            );
+        }
+
+        if let Some(tint) = icon_label {
+            // Each read straight from `self`, not through the
+            // cursor: absent is skipped rather than defaulted, the
+            // way the field simply not lighting up would read if
+            // `icon`/`label` were never there to begin with.
+            if let Some(icon) = &self.icon {
                 ui.this::<Self>().lit_from(
-                    |button| button.fill(),
-                    self.fill,
-                    motion::HOVER,
-                    motion::PRESS,
+                    |button| button.icon().color(),
+                    icon.color,
+                    tint,
+                    tint,
                 );
             }
-            Hover::IconLabel(tint) => {
-                // Each read straight from `self`, not through the
-                // cursor: absent is skipped rather than defaulted,
-                // the way the field simply not lighting up would
-                // read if `icon`/`label` were never there to begin
-                // with.
-                if let Some(icon) = &self.icon {
-                    ui.this::<Self>().lit_from(
-                        |button| button.icon().color(),
-                        icon.color,
-                        tint,
-                        tint,
-                    );
-                }
-                // `label().color()` hops through an `Option`
-                // transparently, so its base is `Color`, not
-                // `Option<Color>` - and a label with no colour of its
-                // own has nowhere for that hop to land, same as
-                // before.
-                if let Some(color) =
-                    self.label.as_ref().and_then(|label| label.color)
-                {
-                    ui.this::<Self>().lit_from(
-                        |button| button.label().color(),
-                        color,
-                        tint,
-                        tint,
-                    );
-                }
+            // `label().color()` hops through an `Option`
+            // transparently, so its base is `Color`, not
+            // `Option<Color>` - and a label with no colour of its own
+            // has nowhere for that hop to land, same as before.
+            if let Some(color) =
+                self.label.as_ref().and_then(|label| label.color)
+            {
+                ui.this::<Self>().lit_from(
+                    |button| button.label().color(),
+                    color,
+                    tint,
+                    tint,
+                );
             }
         }
     }

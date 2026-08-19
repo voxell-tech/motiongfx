@@ -13,7 +13,13 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     // fields - the two have never once been derived apart from
     // `Element` across this workspace, so `Element` derives them
     // itself rather than asking a caller to remember both.
-    let lenz = crate::lenz::expand(ast)?;
+    //
+    // `#[elem(ignore)]` is left out of the cursor too: `Default`
+    // still needs to see the field, which is why it stays in for
+    // `override_default`, but nothing should be able to name a path
+    // to it once it can't be patched.
+    let lenz =
+        crate::lenz::expand_filtered(ast, |field| !ignore(field))?;
     let default = crate::override_default::expand(ast)?;
 
     let root = crate_path();
@@ -105,12 +111,15 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             continue;
         }
 
-        // A field marked `#[elem(no_patch)]` only ever changes at
+        // A field marked `#[elem(ignore)]` only ever changes at
         // build. Leaving it out of the enum the same way `child`
         // does makes that true rather than merely asked for: nothing
         // can name it to walk a path there, so a stray `.bind()`
-        // writes the field and has no way to tell the backend.
-        if no_patch(field) {
+        // writes the field and has no way to tell the backend. It is
+        // left out of the cursor entirely too (see the call to
+        // `lenz::expand_filtered` above), so there is no `.field()`
+        // to even reach for one in the first place.
+        if ignore(field) {
             continue;
         }
 
@@ -223,7 +232,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
 /// What `#[elem(...)]` says about this field, if it carries one.
 ///
 /// One attribute, one directive: `elem(child)` for a field that is an
-/// element in its own right, `elem(no_patch)` for one that only ever
+/// element in its own right, `elem(ignore)` for one that only ever
 /// changes at build. Nothing else names it, so there is nothing to
 /// disambiguate between the two forms.
 fn elem_directive(field: &Field) -> Option<syn::Ident> {
@@ -240,10 +249,11 @@ fn is_elem(field: &Field) -> bool {
         .is_some_and(|directive| directive == "child")
 }
 
-/// Whether the field carries `#[elem(no_patch)]`: a regular field
-/// that only ever changes at build (in `build_fields`), so it has
-/// nothing to reach through the field/patch system.
-fn no_patch(field: &Field) -> bool {
+/// Whether the field carries `#[elem(ignore)]`: a regular field that
+/// only ever changes at build (in `build_fields`), so it has nothing
+/// to reach through the field/patch system, and no cursor to name a
+/// path to it with either.
+fn ignore(field: &Field) -> bool {
     elem_directive(field)
-        .is_some_and(|directive| directive == "no_patch")
+        .is_some_and(|directive| directive == "ignore")
 }
