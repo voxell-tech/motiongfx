@@ -223,19 +223,18 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
     let show_bar = matches!(leaf.style, DockAreaStyle::TabBar);
     let active = active_of(ui.world, id);
 
-    let area = ui
-        .elem(elem!(
-            Area,
-            node = id,
-            id = area_id,
-            style = style,
-            active = ActiveDockWindow(active)
-        ))
-        .bind(
-            |area| area.active(),
-            resource_changed::<DockTree>(),
-            move |world, _| ActiveDockWindow(active_of(world, id)),
-        );
+    let mut area = ui.elem(elem!(
+        Area,
+        node = id,
+        id = area_id,
+        style = style,
+        active = ActiveDockWindow(active)
+    ));
+    area.bind(
+        |area| area.active(),
+        resource_changed::<DockTree>(),
+        move |world, _| ActiveDockWindow(active_of(world, id)),
+    );
 
     // The area's handle is in hand, so the tab bar gets it directly
     // rather than walking up for it.

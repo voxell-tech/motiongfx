@@ -53,13 +53,13 @@ pub(crate) enum At {
 }
 
 /// Makes `header` a row that can be picked up, and dropped into.
-pub(super) fn rows<'u, 'a>(
-    header: ElementMut<'u, 'a, BevyHost, ButtonElem>,
+pub(super) fn rows<'r, 'u, 'a>(
+    header: &'r mut ElementMut<'u, 'a, BevyHost, ButtonElem>,
     subject: Entity,
-) -> ElementMut<'u, 'a, BevyHost, ButtonElem> {
-    let dropped_into = drops(header, subject, At::Into);
+) -> &'r mut ElementMut<'u, 'a, BevyHost, ButtonElem> {
+    drops(header, subject, At::Into);
 
-    dropped_into
+    header
         .observe(
             move |start: On<Pointer<DragStart>>,
                   names: Query<&Name>,
@@ -116,11 +116,11 @@ pub(super) fn rows<'u, 'a>(
 
 /// Makes `elem` somewhere a row can be dropped, landing it at `at`
 /// relative to `subject`.
-pub(super) fn drops<'u, 'a, E: Element<BevyHost>>(
-    elem: ElementMut<'u, 'a, BevyHost, E>,
+pub(super) fn drops<'r, 'u, 'a, E: Element<BevyHost>>(
+    elem: &'r mut ElementMut<'u, 'a, BevyHost, E>,
     subject: Entity,
     at: At,
-) -> ElementMut<'u, 'a, BevyHost, E> {
+) -> &'r mut ElementMut<'u, 'a, BevyHost, E> {
     elem.observe(
         move |over: On<Pointer<DragOver>>,
               mut dragging: ResMut<Dragging>| {

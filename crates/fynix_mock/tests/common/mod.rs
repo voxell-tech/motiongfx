@@ -11,7 +11,7 @@ use fynix_mock::Fynix;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
 use fynix_mock::lenz::{Cursor, FieldPath, Identity};
-use fynix_mock::ui::{ElementMut, Ui};
+use fynix_mock::ui::{Draw, ElementMut};
 use hashbrown::HashMap;
 
 /// What this test stands in for a pointer with: not fynix's concern,
@@ -30,11 +30,11 @@ type Aim = Box<dyn Fn(&mut Fynix<Backend>) + Send + Sync>;
 /// events it actually has. This one is a stand-in for a pointer.
 pub trait TestAim<E> {
     fn aim_on<P>(
-        self,
+        &mut self,
         on: Interact,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
         target: Option<P::Target>,
-    ) -> Self
+    ) -> &mut Self
     where
         P: FieldPath<Source = E>,
         P::Target: Clone + Send + Sync;
@@ -44,17 +44,43 @@ impl<E: Element<Backend>> TestAim<E>
     for ElementMut<'_, '_, Backend, E>
 {
     fn aim_on<P>(
-        self,
+        &mut self,
         on: Interact,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
         target: Option<P::Target>,
-    ) -> Self
+    ) -> &mut Self
     where
         P: FieldPath<Source = E>,
         P::Target: Clone + Send + Sync,
     {
         let node = self.id();
         self.ui.world.interactions.push((
+            node,
+            on,
+            Box::new(move |kernel: &mut Fynix<Backend>| {
+                kernel.aim(node, field, target.clone());
+            }),
+        ));
+        self
+    }
+}
+
+/// As above, from [`build_fields`](ElementVisual::build_fields):
+/// [`Draw`] carries `world` directly rather than through a [`Ui`], but
+/// otherwise wires the same interaction the same way.
+impl<E: Element<Backend>> TestAim<E> for Draw<'_, Backend, E> {
+    fn aim_on<P>(
+        &mut self,
+        on: Interact,
+        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+        target: Option<P::Target>,
+    ) -> &mut Self
+    where
+        P: FieldPath<Source = E>,
+        P::Target: Clone + Send + Sync,
+    {
+        let node = self.id();
+        self.world.interactions.push((
             node,
             on,
             Box::new(move |kernel: &mut Fynix<Backend>| {
@@ -204,9 +230,9 @@ pub struct Label {
 }
 
 impl ElementVisual<Backend> for Label {
-    fn build_fields(&self, ui: &mut Ui<'_, Backend>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, draw: &mut Draw<'_, Backend, Self>) {
+        let node = draw.id();
+        let world = &mut *draw.world;
 
         world.node(node).text = self.text.clone();
         world.node(node).size = self.size;

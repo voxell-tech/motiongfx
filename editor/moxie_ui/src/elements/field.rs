@@ -1,6 +1,6 @@
 //! What an inspector row is edited with.
 
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::BevyHost;
 use bevy::feathers::controls::{
     FeathersNumberInput, FeathersTextInput,
     FeathersTextInputContainer, NumberFormat, NumberInputValue,
@@ -14,6 +14,7 @@ use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
+use fynix_mock::ui::Draw;
 
 /// A box that is ticked or not.
 ///
@@ -79,9 +80,9 @@ impl CheckBox {
 }
 
 impl ElementVisual<BevyHost> for CheckBox {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         world.entity_mut(node).insert((
             CheckboxBehavior,
@@ -170,9 +171,9 @@ impl NumberField {
 }
 
 impl ElementVisual<BevyHost> for NumberField {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         self.scene(world, node);
     }
@@ -260,9 +261,9 @@ impl TextField {
 }
 
 impl ElementVisual<BevyHost> for TextField {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         self.scene(world, node);
     }

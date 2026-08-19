@@ -217,7 +217,7 @@ fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
 /// the line it commits to - the way a split's handle is wider than the
 /// seam it draws.
 fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
-    let marker = ui.elem(elem!(
+    let mut marker = ui.elem(elem!(
         Frame,
         width = percent(100),
         height = px(GAP_HIT),
@@ -225,7 +225,7 @@ fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
         direction = FlexDirection::Column
     ));
 
-    drag::drops(marker, entity, at).with(move |ui| {
+    drag::drops(&mut marker, entity, at).with(move |ui| {
         ui.elem(elem!(Frame, width = percent(100), height = px(GAP)))
             .bind(
                 |line| line.background(),
@@ -280,13 +280,13 @@ impl Composer<BevyHost> for Subtree {
             // chevron beside it folds.
             toggle: Toggle::Chevron,
             enabled: has_children(ui.world, entity),
-            on_header: move |header: ElementMut<
+            on_header: move |mut header: ElementMut<
                 '_,
                 '_,
                 BevyHost,
                 ButtonElem,
             >| {
-                drag::rows(header, entity)
+                drag::rows(&mut header, entity)
                     .observe(
                         move |_: On<Activate>,
                               mut selected: ResMut<

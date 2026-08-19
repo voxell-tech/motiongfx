@@ -1,13 +1,15 @@
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::BevyHost;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::ElementMutExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::style::Style;
+use fynix_mock::ui::Draw;
 
 use super::{Icon, IconCursor, Label, LabelCursor};
-use crate::motion::{self, MotionExt};
+use crate::motion::{self, LitFrom as _};
 use crate::theme::EditorTheme;
 
 /// The faint surface a filled button rests at.
@@ -168,10 +170,8 @@ impl Style for GhostButton {
 }
 
 impl ElementVisual<BevyHost> for ButtonElem {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-
-        ui.world.entity_mut(node).insert((
+    fn build_fields(&self, draw: &mut Draw<BevyHost, Self>) {
+        draw.insert((
             self.node(),
             self.background(),
             ButtonBehavior,
@@ -190,7 +190,7 @@ impl ElementVisual<BevyHost> for ButtonElem {
         };
 
         if let Some(color) = fill {
-            ui.this::<Self>().lit_from(
+            draw.lit_from(
                 |button| button.fill(),
                 self.fill,
                 color,
@@ -204,7 +204,7 @@ impl ElementVisual<BevyHost> for ButtonElem {
             // way the field simply not lighting up would read if
             // `icon`/`label` were never there to begin with.
             if let Some(icon) = &self.icon {
-                ui.this::<Self>().lit_from(
+                draw.lit_from(
                     |button| button.icon().color(),
                     icon.color,
                     tint,
@@ -218,7 +218,7 @@ impl ElementVisual<BevyHost> for ButtonElem {
             if let Some(color) =
                 self.label.as_ref().and_then(|label| label.color)
             {
-                ui.this::<Self>().lit_from(
+                draw.lit_from(
                     |button| button.label().color(),
                     color,
                     tint,

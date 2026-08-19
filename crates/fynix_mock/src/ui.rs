@@ -193,6 +193,99 @@ where
     }
 }
 
+/// Every field currently travelling rather than snapped to its base,
+/// keyed like the bindings: one per field, so a second lane on the
+/// same one replaces rather than doubles.
+///
+/// Opaque on purpose: [`Lane`] is `pub(crate)`, so this is what a
+/// borrow of the table looks like to anything outside this crate -
+/// [`Draw`] holds one directly, the same way it holds a [`Store`],
+/// without either leaking what a lane actually is.
+pub struct Lanes<H: Host>(
+    HashMap<(H::Node, FieldId), Box<dyn Lane<H>>>,
+);
+
+impl<H: Host> Default for Lanes<H> {
+    fn default() -> Self {
+        Self(HashMap::new())
+    }
+}
+
+impl<H: Host> Lanes<H> {
+    pub(crate) fn insert(
+        &mut self,
+        node: H::Node,
+        key: FieldId,
+        lane: Box<dyn Lane<H>>,
+    ) {
+        self.0.insert((node, key), lane);
+    }
+
+    pub(crate) fn get_mut(
+        &mut self,
+        node: H::Node,
+        key: FieldId,
+    ) -> Option<&mut Box<dyn Lane<H>>> {
+        self.0.get_mut(&(node, key))
+    }
+
+    pub(crate) fn retain(
+        &mut self,
+        mut keep: impl FnMut(H::Node) -> bool,
+    ) {
+        self.0.retain(|(node, _), _| keep(*node));
+    }
+
+    pub(crate) fn iter_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (H::Node, &mut Box<dyn Lane<H>>)> {
+        self.0.iter_mut().map(|((node, _), lane)| (*node, lane))
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+/// The shared insides of [`ElementMut::transition_from`] and
+/// [`Draw::transition_from`] - only where the lane table comes from
+/// differs between them.
+fn insert_lane<H, E, P>(
+    lanes: &mut Lanes<H>,
+    node: H::Node,
+    field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
+    base: P::Target,
+    transition: Transition<P::Target>,
+) where
+    H: Host,
+    E: Element<H> + Send + Sync,
+    P: FieldPath<Source = E>,
+    P::Target: PartialEq + Clone + Send + Sync,
+{
+    let cursor = field(Cursor::new());
+    let accessor = cursor.accessor();
+
+    lanes.insert(
+        node,
+        cursor.key(),
+        Box::new(Travel::<H, E, P::Target> {
+            accessor,
+            hops: cursor.hops(),
+            transition,
+            shown: base.clone(),
+            from: base.clone(),
+            heading: base,
+            target: None,
+            elapsed: 0.0,
+            host: PhantomData,
+        }),
+    );
+}
+
 /// A watcher rooted at a node.
 pub struct Watcher<H: Host> {
     pub(crate) root: H::Node,
@@ -217,7 +310,7 @@ pub struct Records<H: Host> {
     pub(crate) bindings: HashMap<(H::Node, FieldId), Binding<H>>,
     /// Keyed like the bindings, and one per field: two overlays on one
     /// field would each be the last word.
-    pub(crate) lanes: HashMap<(H::Node, FieldId), Box<dyn Lane<H>>>,
+    pub(crate) lanes: Lanes<H>,
     pub(crate) elements: Elements<H>,
     /// Which nodes have a row in `mounts`. The table is keyed by type
     /// as well as node, so there is no way to ask it what it holds
@@ -234,7 +327,7 @@ impl<H: Host> Default for Records<H> {
     fn default() -> Self {
         Self {
             bindings: HashMap::new(),
-            lanes: HashMap::new(),
+            lanes: Lanes::default(),
             elements: Elements::<H>::new(),
             element_nodes: HashSet::new(),
             store: Store::new(),
@@ -257,6 +350,17 @@ impl<H: Host> Records<H> {
     /// `build`/`patch`/`despawn`.
     pub fn store_mut(&mut self) -> &mut Store<H> {
         &mut self.store
+    }
+
+    /// The store and the lanes together, for
+    /// [`Draw::new`](Draw::new) - what `#[derive(Element)]`'s own
+    /// generated `build` reaches for rather than
+    /// [`store_mut`](Self::store_mut) and a lane accessor called
+    /// separately, which would each want their own exclusive borrow
+    /// of `self` at once.
+    #[doc(hidden)]
+    pub fn draw_parts(&mut self) -> (&mut Lanes<H>, &mut Store<H>) {
+        (&mut self.lanes, &mut self.store)
     }
 }
 
@@ -346,23 +450,6 @@ impl<'a, H: Host> Ui<'a, H> {
         }
     }
 
-    /// An [`ElementMut`] for the node [`build_fields`](
-    /// crate::element::ElementVisual::build_fields) is building -
-    /// itself, not a child. For wiring an observer or a lane onto its
-    /// own node, which needs an [`ElementMut`] and `build_fields` is
-    /// only ever handed the [`Ui`] around it.
-    pub fn this<E: Element<H> + Send + Sync>(
-        &mut self,
-    ) -> ElementMut<'_, 'a, H, E> {
-        let node = self.parent;
-
-        ElementMut {
-            ui: self,
-            node,
-            element: PhantomData,
-        }
-    }
-
     /// Run a [`Composer`], and take back the root of what it built.
     ///
     /// Unlike [`elem`](Self::elem), what goes in is never stored -
@@ -383,6 +470,91 @@ impl<'a, H: Host> Ui<'a, H> {
             node,
             element: PhantomData,
         }
+    }
+}
+
+/// What [`build_fields`](crate::element::ElementVisual::build_fields)
+/// writes through: this element's own node, `world`, and `theme`,
+/// plus the two tables a look wired at build time reaches for again -
+/// [`child`](Self::child) and [`transition_from`](Self::transition_from).
+///
+/// Deliberately not [`ElementMut`]: `bind`/`watch`/`with` declare what
+/// a node does once it exists, and a node running its own
+/// `build_fields` has not finished existing yet - calling any of them
+/// on itself, mid build, would not mean what it means anywhere else
+/// they're reached for. Nor is it [`Records`] itself, or even both its
+/// tables through one borrow of it: `#[elem(child)]`'s children keep
+/// [`Store`] straight, and a lane keeps [`Lanes`] straight, without
+/// `build_fields` ever seeing either name.
+pub struct Draw<'a, H: Host, E: Element<H>> {
+    pub world: &'a mut H::World,
+    pub theme: &'a H::Theme,
+    node: H::Node,
+    lanes: &'a mut Lanes<H>,
+    store: &'a mut Store<H>,
+    element: PhantomData<fn() -> E>,
+}
+
+impl<'a, H: Host, E: Element<H>> Draw<'a, H, E> {
+    /// Not for hand-written code: `#[derive(Element)]`'s own generated
+    /// `build` is what constructs this, from the pieces of
+    /// [`Records`] it already has in scope - see
+    /// [`Records::draw_parts`].
+    #[doc(hidden)]
+    pub fn new(
+        world: &'a mut H::World,
+        node: H::Node,
+        lanes: &'a mut Lanes<H>,
+        store: &'a mut Store<H>,
+        theme: &'a H::Theme,
+    ) -> Self {
+        Self {
+            world,
+            theme,
+            node,
+            lanes,
+            store,
+            element: PhantomData,
+        }
+    }
+
+    /// This element's own node.
+    pub fn id(&self) -> H::Node {
+        self.node
+    }
+
+    /// The node an `#[elem(child)]` child took.
+    ///
+    /// `None` when the walk names a field that is not an element, or
+    /// an `Option` child that is absent.
+    pub fn child<P>(
+        &self,
+        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
+    ) -> Option<H::Node>
+    where
+        P: FieldPath<Source = E>,
+    {
+        self.store.child(self.node, field)
+    }
+
+    /// As [`ElementMut::transition_from`]: a lane starting from `base`
+    /// rather than a base read out of the kernel's own table, which
+    /// this node has no entry in yet.
+    pub fn transition_from<P>(
+        &mut self,
+        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
+        base: P::Target,
+        transition: Transition<P::Target>,
+    ) -> &mut Self
+    where
+        E: Send + Sync,
+        P: FieldPath<Source = E>,
+        P::Target: PartialEq + Clone + Send + Sync,
+    {
+        insert_lane::<H, E, P>(
+            self.lanes, self.node, field, base, transition,
+        );
+        self
     }
 }
 
@@ -449,10 +621,10 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     /// Use this *or* [`Self::with`], not both: a fire clears whatever
     /// children the node has.
     pub fn watch(
-        self,
+        &mut self,
         changed: impl ChangedFn<H>,
         build: impl BuildFn<H>,
-    ) -> Self {
+    ) -> &mut Self {
         self.ui.records.spawned.push(Watcher {
             root: self.node,
             changed: Box::new(changed),
@@ -479,7 +651,10 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     }
 
     /// Build children under this element.
-    pub fn with(self, f: impl FnOnce(&mut Ui<'_, H>)) -> Self {
+    pub fn with(
+        &mut self,
+        f: impl FnOnce(&mut Ui<'_, H>),
+    ) -> &mut Self {
         let mut child = Ui::new(
             self.ui.world,
             self.node,
@@ -497,10 +672,10 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     /// the base shows. The element is never written, so a target
     /// arriving mid flight carries on from where it had got to.
     pub fn transition<P>(
-        self,
+        &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
         transition: Transition<P::Target>,
-    ) -> Self
+    ) -> &mut Self
     where
         E: Send + Sync,
         P: FieldPath<Source = E>,
@@ -522,7 +697,8 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         };
 
         self.ui.records.lanes.insert(
-            (self.node, cursor.key()),
+            self.node,
+            cursor.key(),
             Box::new(Travel::<H, E, P::Target> {
                 accessor,
                 hops: cursor.hops(),
@@ -547,32 +723,22 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     /// base - `base` is it, passed straight through instead of
     /// fetched.
     pub fn transition_from<P>(
-        self,
+        &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
         base: P::Target,
         transition: Transition<P::Target>,
-    ) -> Self
+    ) -> &mut Self
     where
         E: Send + Sync,
         P: FieldPath<Source = E>,
         P::Target: PartialEq + Clone + Send + Sync,
     {
-        let cursor = field(Cursor::new());
-        let accessor = cursor.accessor();
-
-        self.ui.records.lanes.insert(
-            (self.node, cursor.key()),
-            Box::new(Travel::<H, E, P::Target> {
-                accessor,
-                hops: cursor.hops(),
-                transition,
-                shown: base.clone(),
-                from: base.clone(),
-                heading: base,
-                target: None,
-                elapsed: 0.0,
-                host: PhantomData,
-            }),
+        insert_lane::<H, E, P>(
+            &mut self.ui.records.lanes,
+            self.node,
+            field,
+            base,
+            transition,
         );
         self
     }
@@ -586,14 +752,14 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     /// fields, and an absent `Option` along the way skips both rather
     /// than panicking.
     pub fn bind<P>(
-        self,
+        &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
         changed: impl ChangedFn<H>,
         value: impl Fn(&H::World, H::Node) -> P::Target
         + Send
         + Sync
         + 'static,
-    ) -> Self
+    ) -> &mut Self
     where
         P: FieldPath<Source = E>,
         P::Target: Send + Sync,

@@ -4,10 +4,11 @@ use bevy_app::prelude::*;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::prelude::*;
 use bevy_fynix::host::BevyHost;
-use bevy_fynix::{BevyUi, FynixPlugin, watch_root};
+use bevy_fynix::{FynixPlugin, watch_root};
 use bevy_ui::Node;
 use fynix_mock::elem;
 use fynix_mock::element::{Element, ElementVisual};
+use fynix_mock::ui::Draw;
 
 /// Nothing in these tests reads a theme - a host still needs one.
 #[derive(Resource, Clone, Default)]
@@ -27,9 +28,12 @@ pub struct Label {
 }
 
 impl ElementVisual<Host> for Label {
-    fn build_fields(&self, ui: &mut BevyUi<'_, NoTheme>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(
+        &self,
+        draw: &mut Draw<'_, BevyHost<NoTheme>, Self>,
+    ) {
+        let node = draw.id();
+        let world = &mut *draw.world;
 
         world.entity_mut(node).insert(Caption(self.text.clone()));
     }

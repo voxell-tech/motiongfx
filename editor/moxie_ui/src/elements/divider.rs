@@ -1,9 +1,10 @@
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::BevyHost;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
+use fynix_mock::ui::Draw;
 
 const DIVIDER_WIDTH: f32 = 6.0;
 
@@ -48,9 +49,9 @@ impl Divider {
 }
 
 impl ElementVisual<BevyHost> for Divider {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         let (layout, cursor) = self.shape();
 

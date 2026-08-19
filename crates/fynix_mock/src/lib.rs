@@ -202,7 +202,7 @@ impl<H: Host> Fynix<H> {
         records
             .bindings
             .retain(|(node, _), _| H::exists(world, *node));
-        records.lanes.retain(|(node, _), _| H::exists(world, *node));
+        records.lanes.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
         // The table is keyed by type as well as node, so it cannot be
@@ -235,8 +235,8 @@ impl<H: Host> Fynix<H> {
         // base they left.
         let delta = H::delta(world);
 
-        for ((node, _), lane) in lanes.iter_mut() {
-            lane.advance(delta, elements, world, *node, store);
+        for (node, lane) in lanes.iter_mut() {
+            lane.advance(delta, elements, world, node, store);
         }
     }
 
@@ -257,7 +257,7 @@ impl<H: Host> Fynix<H> {
     {
         let key = field(Cursor::new()).key();
 
-        if let Some(lane) = self.records.lanes.get_mut(&(node, key)) {
+        if let Some(lane) = self.records.lanes.get_mut(node, key) {
             let mut target = target;
             lane.aim(&mut target);
         }

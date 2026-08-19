@@ -78,38 +78,38 @@ fn build_tab(
     let lit = text_color(ui.world, leaf, tab_id);
     let close_color = ui.world.resource::<EditorTheme>().text_muted;
 
-    let tab = ui
-        .elem(elem!(
-            Tab,
-            window_id = window_id,
-            tab = tab_id,
-            active = is_active,
-            icon = icon.map(|image| val!(
+    let mut tab = ui.elem(elem!(
+        Tab,
+        window_id = window_id,
+        tab = tab_id,
+        active = is_active,
+        icon = icon.map(|image| val!(
+            Icon,
+            image = image,
+            color = lit,
+            size = px(12)
+        )),
+        label = val!(
+            Label,
+            text = label,
+            color = Some(lit),
+            bold = true,
+            wrap = false
+        ),
+        close = val!(
+            !GhostButton,
+            width = px(14),
+            height = px(14),
+            radius = px(2),
+            icon = val!(
                 Icon,
-                image = image,
-                color = lit,
-                size = px(12)
-            )),
-            label = val!(
-                Label,
-                text = label,
-                color = Some(lit),
-                bold = true,
-                wrap = false
-            ),
-            close = val!(
-                !GhostButton,
-                width = px(14),
-                height = px(14),
-                radius = px(2),
-                icon = val!(
-                    Icon,
-                    image = feathers_icons::X,
-                    color = close_color,
-                    size = px(10)
-                )
+                image = feathers_icons::X,
+                color = close_color,
+                size = px(10)
             )
-        ))
+        )
+    ));
+    tab
         // Which tab is active follows the tree, and must not rebuild the
         // tab: a drag in progress would go with it.
         .bind(

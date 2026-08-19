@@ -12,7 +12,7 @@ use bevy_ecs::prelude::*;
 use fynix_mock::Fynix;
 use fynix_mock::element::Element;
 use fynix_mock::lenz::{Cursor, FieldPath, Identity};
-use fynix_mock::ui::ElementMut;
+use fynix_mock::ui::{Draw, ElementMut};
 
 use crate::host::BevyHost;
 use crate::with_kernel;
@@ -128,6 +128,28 @@ impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
             aim: self.id(),
             watch: entity,
             world: self.ui.world,
+            aims: Vec::new(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
+    OnExt<E, Theme> for Draw<'_, BevyHost<Theme>, E>
+{
+    fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, Theme, V> {
+        let node = self.id();
+        self.on_entity(node)
+    }
+
+    fn on_entity<V: EntityEvent>(
+        &mut self,
+        entity: Entity,
+    ) -> Aiming<'_, E, Theme, V> {
+        Aiming {
+            aim: self.id(),
+            watch: entity,
+            world: self.world,
             aims: Vec::new(),
             marker: PhantomData,
         }

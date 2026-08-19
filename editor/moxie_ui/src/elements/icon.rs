@@ -1,7 +1,8 @@
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use fynix_mock::element::{Element, ElementVisual};
+use fynix_mock::ui::Draw;
 
 /// An image at a size of its own, which is what a [`Button`] shows.
 ///
@@ -25,9 +26,9 @@ impl Icon {
 }
 
 impl ElementVisual<BevyHost> for Icon {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         let image = world.load_asset(self.image.clone());
 

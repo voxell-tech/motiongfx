@@ -165,7 +165,9 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         impl<H, #decl> #root::element::Element<H> for #name #ty
         where
             H: #root::host::Host,
-            Self: #root::element::ElementVisual<H>,
+            Self: #root::element::ElementVisual<H>
+                + ::core::marker::Send
+                + ::core::marker::Sync,
             #(#elem_bounds,)*
             #predicates
         {
@@ -182,10 +184,12 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
 
                 #(#builds)*
 
-                let mut ui =
-                    #root::ui::Ui::new(world, node, records, theme);
+                let (lanes, store) = records.draw_parts();
+                let mut draw = #root::ui::Draw::new(
+                    world, node, lanes, store, theme,
+                );
                 <Self as #root::element::ElementVisual<H>>
-                    ::build_fields(self, &mut ui);
+                    ::build_fields(self, &mut draw);
                 node
             }
 

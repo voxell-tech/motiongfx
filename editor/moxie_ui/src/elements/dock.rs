@@ -6,9 +6,10 @@
 //!
 //! [`DockTree`]: crate::widgets::dock::DockTree
 
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
+use fynix_mock::ui::Draw;
 
 use super::Frame;
 use crate::widgets::dock::{
@@ -41,9 +42,9 @@ fn display(visible: bool) -> Display {
 pub struct DockHost;
 
 impl ElementVisual<BevyHost> for DockHost {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         world.entity_mut(node).insert((
             DockTreeHost,
@@ -78,9 +79,9 @@ pub struct SplitGroup {
 }
 
 impl ElementVisual<BevyHost> for SplitGroup {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         world.entity_mut(node).insert((
             NodeBinding(self.node),
@@ -217,9 +218,9 @@ pub fn handle_line(axis: FlexDirection, color: Color) -> Frame {
 }
 
 impl ElementVisual<BevyHost> for SplitHandle {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         world.entity_mut(node).insert((
             PanelHandle,
@@ -278,9 +279,9 @@ impl SplitPanel {
 }
 
 impl ElementVisual<BevyHost> for SplitPanel {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         world
             .entity_mut(node)
@@ -322,9 +323,9 @@ pub struct Area {
 }
 
 impl ElementVisual<BevyHost> for Area {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         world.entity_mut(node).insert((
             DockArea {
@@ -374,9 +375,9 @@ pub struct TabContent {
 }
 
 impl ElementVisual<BevyHost> for TabContent {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         world.entity_mut(node).insert((
             DockWindow {

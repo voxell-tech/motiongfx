@@ -12,7 +12,7 @@
 use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::store::Store;
-use crate::ui::{Records, Ui};
+use crate::ui::{Draw, Records};
 
 // Same name as the trait, in the macro namespace, the way `Default`
 // and `Clone` do it.
@@ -71,14 +71,17 @@ pub trait Element<H: Host>: ElementVisual<H> + Default {
 /// only place that knows both what the data means and how the backend
 /// draws it, and it is not concerned with children.
 pub trait ElementVisual<H: Host>: Fields {
-    /// Write this element's own fields onto `ui.parent()`.
+    /// Write this element's own fields onto `draw`'s own node.
     ///
-    /// The node already exists, and its `#[elem(child)]` fields are already
-    /// built under it - reach one with [`Ui::child`]. `ui` is real:
-    /// nothing stops this from building further children of its own
-    /// with [`Ui::elem`]/[`Ui::compose`], the way any other build
-    /// would.
-    fn build_fields(&self, ui: &mut Ui<'_, H>);
+    /// The node already exists, and its `#[elem(child)]` fields are
+    /// already built under it - reach one with [`Draw::child`].
+    /// Handed as `Self`'s own [`Draw`] rather than a bare `Ui`, since a
+    /// node this method draws on always is one - there is no longer a
+    /// type to get wrong the way `ui.this::<Self>()` once let a caller
+    /// do.
+    fn build_fields(&self, draw: &mut Draw<'_, H, Self>)
+    where
+        Self: Element<H> + Send + Sync;
 
     /// Push one changed field into visuals that already exist.
     ///

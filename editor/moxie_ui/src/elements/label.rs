@@ -1,7 +1,8 @@
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::BevyHost;
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
+use fynix_mock::ui::Draw;
 
 /// A theme-inheriting text label.
 #[derive(Element)]
@@ -43,9 +44,9 @@ impl Label {
 }
 
 impl ElementVisual<BevyHost> for Label {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
-        let node = ui.parent();
-        let world = &mut *ui.world;
+    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
+        let node = element.id();
+        let world = &mut *element.world;
 
         let mut entity = world.entity_mut(node);
 

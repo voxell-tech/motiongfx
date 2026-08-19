@@ -14,7 +14,7 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::system::IntoObserverSystem;
 use fynix_mock::Fynix;
 use fynix_mock::element::Element;
-use fynix_mock::ui::{BuildFn, ElementMut, Ui};
+use fynix_mock::ui::{BuildFn, Draw, ElementMut, Ui};
 
 use crate::host::BevyHost;
 
@@ -108,32 +108,63 @@ pub trait ElementMutExt<
     Theme: Resource + Clone + Default,
 >
 {
+    /// This node itself, for whatever `bevy_ecs` offers that has no
+    /// shorthand of its own here - `element.entity_mut().insert(...)`
+    /// rather than reaching for `element.ui.world` and the node by
+    /// hand.
+    fn entity_mut(&mut self) -> EntityWorldMut<'_>;
+
     /// Watch this node for `V`.
     fn observe<V: EntityEvent, B: Bundle, M>(
-        self,
+        &mut self,
         observer: impl IntoObserverSystem<V, B, M>,
-    ) -> Self;
+    ) -> &mut Self;
 
     /// Put `bundle` on this node, once, now.
-    fn insert(self, bundle: impl Bundle) -> Self;
+    fn insert(&mut self, bundle: impl Bundle) -> &mut Self;
 }
 
 impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
     ElementMutExt<E, Theme>
     for ElementMut<'_, '_, BevyHost<Theme>, E>
 {
-    fn observe<V: EntityEvent, B: Bundle, M>(
-        self,
-        observer: impl IntoObserverSystem<V, B, M>,
-    ) -> Self {
+    fn entity_mut(&mut self) -> EntityWorldMut<'_> {
         let node = self.id();
-        self.ui.world.entity_mut(node).observe(observer);
+        self.ui.world.entity_mut(node)
+    }
+
+    fn observe<V: EntityEvent, B: Bundle, M>(
+        &mut self,
+        observer: impl IntoObserverSystem<V, B, M>,
+    ) -> &mut Self {
+        self.entity_mut().observe(observer);
         self
     }
 
-    fn insert(self, bundle: impl Bundle) -> Self {
+    fn insert(&mut self, bundle: impl Bundle) -> &mut Self {
+        self.entity_mut().insert(bundle);
+        self
+    }
+}
+
+impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
+    ElementMutExt<E, Theme> for Draw<'_, BevyHost<Theme>, E>
+{
+    fn entity_mut(&mut self) -> EntityWorldMut<'_> {
         let node = self.id();
-        self.ui.world.entity_mut(node).insert(bundle);
+        self.world.entity_mut(node)
+    }
+
+    fn observe<V: EntityEvent, B: Bundle, M>(
+        &mut self,
+        observer: impl IntoObserverSystem<V, B, M>,
+    ) -> &mut Self {
+        self.entity_mut().observe(observer);
+        self
+    }
+
+    fn insert(&mut self, bundle: impl Bundle) -> &mut Self {
+        self.entity_mut().insert(bundle);
         self
     }
 }

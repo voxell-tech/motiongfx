@@ -112,7 +112,7 @@ where
         let theme = ui.world.resource::<EditorTheme>().clone();
         let chevron = enabled && toggle == Toggle::Chevron;
 
-        let root = ui.elem(elem!(
+        let mut root = ui.elem(elem!(
             Frame,
             width = percent(100),
             direction = FlexDirection::Column,
@@ -131,7 +131,7 @@ where
             ))
             .with(move |ui| {
                 if chevron {
-                    let toggle = ui.elem(elem!(
+                    let mut toggle = ui.elem(elem!(
                         !TintButton::default(),
                         width = px(TOGGLE),
                         height = px(TOGGLE),
@@ -144,7 +144,7 @@ where
                             rotation = CHEVRON_OPEN
                         )
                     ));
-                    folds(toggle, node);
+                    folds(&mut toggle, node);
                 }
 
                 // Takes the rest of the row, so a header asking for
@@ -153,7 +153,7 @@ where
                     move |ui| {
                         let mut header = ui.elem(header);
                         if enabled && !chevron {
-                            header = folds(header, node);
+                            folds(&mut header, node);
                         }
                         on_header(header);
                     },
@@ -214,10 +214,10 @@ where
 
 /// Makes `button` the one that folds `node`, turning its chevron with
 /// the state.
-fn folds<'u, 'a>(
-    button: ElementMut<'u, 'a, BevyHost, ButtonElem>,
+fn folds(
+    button: &mut ElementMut<'_, '_, BevyHost, ButtonElem>,
     node: Entity,
-) -> ElementMut<'u, 'a, BevyHost, ButtonElem> {
+) {
     button
         .observe(move |_: On<Activate>, mut commands: Commands| {
             commands.queue(move |world: &mut World| {
@@ -234,5 +234,5 @@ fn folds<'u, 'a>(
                     CHEVRON_OPEN
                 }
             },
-        )
+        );
 }
