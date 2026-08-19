@@ -40,7 +40,7 @@ impl ElementVisual<Host> for Label {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost<NoTheme>>,
+        patch: &mut Patch<BevyHost<NoTheme>>,
         field: LabelField,
     ) {
         let node = patch.id();

@@ -45,7 +45,7 @@ impl<L: Look> ElementVisual<common::Backend> for Themed<L> {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, common::Backend>,
+        patch: &mut Patch<common::Backend>,
         field: ThemedField,
     ) {
         let node = patch.id();

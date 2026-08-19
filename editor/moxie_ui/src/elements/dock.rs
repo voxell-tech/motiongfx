@@ -59,7 +59,7 @@ impl ElementVisual<BevyHost> for DockHost {
 
     fn patch_fields(
         &self,
-        _patch: &mut Patch<'_, BevyHost>,
+        _patch: &mut Patch<BevyHost>,
         field: DockHostField,
     ) {
         match field {}
@@ -93,7 +93,7 @@ impl ElementVisual<BevyHost> for SplitGroup {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: SplitGroupField,
     ) {
         let node = patch.id();
@@ -235,7 +235,7 @@ impl ElementVisual<BevyHost> for SplitHandle {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: SplitHandleField,
     ) {
         let node = patch.id();
@@ -293,7 +293,7 @@ impl ElementVisual<BevyHost> for SplitPanel {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: SplitPanelField,
     ) {
         let node = patch.id();
@@ -345,7 +345,7 @@ impl ElementVisual<BevyHost> for Area {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: AreaField,
     ) {
         let node = patch.id();
@@ -409,7 +409,7 @@ impl ElementVisual<BevyHost> for TabContent {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: TabContentField,
     ) {
         let node = patch.id();

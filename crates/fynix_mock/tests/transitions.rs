@@ -172,7 +172,7 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
 
         fn patch_fields(
             &self,
-            patch: &mut Patch<'_, Backend>,
+            patch: &mut Patch<Backend>,
             field: GrowerField,
         ) {
             let node = patch.id();

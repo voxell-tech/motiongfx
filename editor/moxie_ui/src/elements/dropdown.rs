@@ -44,7 +44,7 @@ impl ElementVisual<BevyHost> for DropdownMenu {
 
     fn patch_fields(
         &self,
-        _patch: &mut Patch<'_, BevyHost>,
+        _patch: &mut Patch<BevyHost>,
         field: DropdownMenuField,
     ) {
         match field {}
@@ -150,7 +150,7 @@ impl ElementVisual<BevyHost> for Dropdown {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: DropdownField,
     ) {
         let node = patch.id();
@@ -217,7 +217,7 @@ impl ElementVisual<BevyHost> for DropdownList {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: DropdownListField,
     ) {
         let node = patch.id();
@@ -277,7 +277,7 @@ impl ElementVisual<BevyHost> for DropdownItem {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: DropdownItemField,
     ) {
         let node = patch.id();

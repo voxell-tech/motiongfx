@@ -90,11 +90,7 @@ pub trait ElementVisual<H: Host>: Fields {
     ///
     /// A field naming a plain struct is written whole. Only elements
     /// are reached one hop at a time, and those never arrive here.
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<'_, H>,
-        field: Self::Field,
-    );
+    fn patch_fields(&self, patch: &mut Patch<H>, field: Self::Field);
 }
 
 /// A struct whose own fields can be named one by one.

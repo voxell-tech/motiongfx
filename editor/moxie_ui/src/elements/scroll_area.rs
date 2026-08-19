@@ -85,7 +85,7 @@ impl ElementVisual<BevyHost> for ScrollArea {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: ScrollAreaField,
     ) {
         let node = patch.id();

@@ -35,7 +35,7 @@ impl ElementVisual<common::Backend> for Pair {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, common::Backend>,
+        patch: &mut Patch<common::Backend>,
         field: PairField,
     ) {
         let node = patch.id();

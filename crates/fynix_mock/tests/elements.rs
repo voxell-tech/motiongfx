@@ -51,7 +51,7 @@ impl ElementVisual<Backend> for Icon {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, Backend>,
+        patch: &mut Patch<Backend>,
         field: IconField,
     ) {
         let node = patch.id();
@@ -80,7 +80,7 @@ impl ElementVisual<Backend> for Button {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, Backend>,
+        patch: &mut Patch<Backend>,
         field: ButtonField,
     ) {
         let node = patch.id();

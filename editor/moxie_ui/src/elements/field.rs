@@ -118,7 +118,7 @@ impl ElementVisual<BevyHost> for CheckBox {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: CheckBoxField,
     ) {
         let node = patch.id();
@@ -182,7 +182,7 @@ impl ElementVisual<BevyHost> for NumberField {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: NumberFieldField,
     ) {
         let node = patch.id();
@@ -274,7 +274,7 @@ impl ElementVisual<BevyHost> for TextField {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: TextFieldField,
     ) {
         let node = patch.id();

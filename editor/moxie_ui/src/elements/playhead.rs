@@ -39,7 +39,7 @@ impl ElementVisual<BevyHost> for PlayheadLine {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: PlayheadLineField,
     ) {
         let node = patch.id();

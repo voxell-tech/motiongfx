@@ -34,7 +34,7 @@ impl ElementVisual<BevyHost> for TimelineTrack {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: TimelineTrackField,
     ) {
         let node = patch.id();

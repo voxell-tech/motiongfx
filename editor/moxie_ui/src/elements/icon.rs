@@ -49,7 +49,7 @@ impl ElementVisual<BevyHost> for Icon {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: IconField,
     ) {
         let node = patch.id();

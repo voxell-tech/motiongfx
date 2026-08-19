@@ -240,7 +240,7 @@ impl ElementVisual<Backend> for Label {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, Backend>,
+        patch: &mut Patch<Backend>,
         field: LabelField,
     ) {
         let node = patch.id();

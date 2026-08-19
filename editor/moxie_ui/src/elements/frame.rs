@@ -97,7 +97,7 @@ impl ElementVisual<BevyHost> for Frame {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: FrameField,
     ) {
         let node = patch.id();

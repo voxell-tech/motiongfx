@@ -45,7 +45,7 @@ impl ElementVisual<BevyHost> for TabBar {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: TabBarField,
     ) {
         let node = patch.id();
@@ -88,7 +88,7 @@ impl ElementVisual<BevyHost> for TabRow {
 
     fn patch_fields(
         &self,
-        _patch: &mut Patch<'_, BevyHost>,
+        _patch: &mut Patch<BevyHost>,
         field: TabRowField,
     ) {
         match field {}
@@ -155,7 +155,7 @@ impl ElementVisual<BevyHost> for Tab {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: TabField,
     ) {
         let node = patch.id();

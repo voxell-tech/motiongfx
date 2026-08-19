@@ -56,7 +56,7 @@ impl ElementVisual<BevyHost> for TimelineBlock {
 
     fn patch_fields(
         &self,
-        patch: &mut Patch<'_, BevyHost>,
+        patch: &mut Patch<BevyHost>,
         field: TimelineBlockField,
     ) {
         let node = patch.id();
