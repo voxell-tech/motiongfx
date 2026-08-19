@@ -4,14 +4,12 @@ use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 const DIVIDER_WIDTH: f32 = 6.0;
 
 /// The draggable line between two panes.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Divider {
     #[default(px(DIVIDER_WIDTH))]
     pub thickness: Val,

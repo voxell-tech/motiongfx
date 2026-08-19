@@ -4,9 +4,7 @@ use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 use fynix_mock::style::Style;
 
 use super::{Icon, IconCursor, Label, LabelCursor};
@@ -37,15 +35,15 @@ pub enum Hover {
 /// A hit area holding an icon, a label, both, or whatever is built
 /// under it. Undressed: [`Button`] and [`GhostButton`] are the two
 /// looks the editor gives it.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct ButtonElem {
     /// A node of its own, so its image and colour can be bound
     /// without touching the button.
-    #[elem]
+    #[elem(child)]
     pub icon: Option<Icon>,
     /// A node of its own, so its text can be bound without touching
     /// the button.
-    #[elem]
+    #[elem(child)]
     pub label: Option<Label>,
     /// Between the icon and the label, when both are there.
     #[default(px(6))]
@@ -67,7 +65,9 @@ pub struct ButtonElem {
     pub padding: UiRect,
     #[default(::ZERO)]
     pub radius: Val,
-    /// Set by whichever [`Style`] built this - see [`Hover`].
+    /// Set by whichever [`Style`] built this - see [`Hover`]. Never
+    /// patched: read once, in `build_fields`.
+    #[elem(no_patch)]
     hover: Hover,
 }
 
@@ -248,9 +248,6 @@ impl ElementVisual<BevyHost> for ButtonElem {
             | ButtonElemField::Radius => {
                 entity.insert(self.node());
             }
-            // Read once, at build - see `build_fields`. Nothing ever
-            // writes this afterwards.
-            ButtonElemField::Hover => {}
         }
     }
 }

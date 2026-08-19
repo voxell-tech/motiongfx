@@ -5,15 +5,13 @@ use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 use super::{ButtonElem, Icon, Label};
 use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
 
 /// The strip across the top of a leaf.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TabBar {
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.03))]
     pub background: Color,
@@ -62,7 +60,7 @@ impl ElementVisual<BevyHost> for TabBar {
 }
 
 /// What the tabs themselves sit in, which scrolls when they overflow.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TabRow;
 
 impl ElementVisual<BevyHost> for TabRow {
@@ -101,13 +99,13 @@ impl ElementVisual<BevyHost> for TabRow {
 /// Which tab is active is a field rather than a rebuild, because
 /// switching tabs must not take the drag in progress or the row's
 /// scroll offset with it.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Tab {
-    #[elem]
+    #[elem(child)]
     pub icon: Option<Icon>,
-    #[elem]
+    #[elem(child)]
     pub label: Label,
-    #[elem]
+    #[elem(child)]
     pub close: Option<ButtonElem>,
     pub window_id: String,
     #[default(TabId(0))]

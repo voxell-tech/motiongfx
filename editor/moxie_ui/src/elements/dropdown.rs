@@ -18,9 +18,7 @@ use bevy::ui_widgets::{
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 use super::{Icon, Label};
 
@@ -29,7 +27,7 @@ use super::{Icon, Label};
 /// Carries the observer that opens and closes the list, which reaches
 /// both by looking through this node's children - so the two must be
 /// built underneath it, in either order.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct DropdownMenu;
 
 impl ElementVisual<BevyHost> for DropdownMenu {
@@ -55,13 +53,13 @@ impl ElementVisual<BevyHost> for DropdownMenu {
 }
 
 /// The shut control: what is chosen now, and a chevron.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Dropdown {
     /// A node of its own, so the choice showing can be bound without
     /// the control being rebuilt.
-    #[elem]
+    #[elem(child)]
     pub label: Label,
-    #[elem]
+    #[elem(child)]
     pub chevron: Icon,
     /// Wide enough to stay readable when the choice is a short word.
     #[default(px(72))]
@@ -175,7 +173,7 @@ impl ElementVisual<BevyHost> for Dropdown {
 /// Placed by the popup scene it is built from, so it flips above the
 /// control rather than off the bottom of the window, and is not
 /// clipped by whatever it was opened inside.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct DropdownList {
     /// Matched to the control's, so the two line up.
     #[default(px(160))]
@@ -231,9 +229,9 @@ impl ElementVisual<BevyHost> for DropdownList {
 ///
 /// Picking one closes the list. It also has to be focusable, because
 /// focus is what keeps the list open at all.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct DropdownItem {
-    #[elem]
+    #[elem(child)]
     pub label: Label,
     #[default(px(20))]
     pub height: Val,

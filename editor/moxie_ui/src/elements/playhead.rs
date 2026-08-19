@@ -1,14 +1,12 @@
 use bevy::prelude::*;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 const PLAYHEAD_COLOR: Color = Color::srgb(0.95, 0.30, 0.35);
 
 /// The playhead line, positioned by the editor's playhead system.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct PlayheadLine {
     pub left: f32,
 }

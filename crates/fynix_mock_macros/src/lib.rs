@@ -11,6 +11,9 @@ use syn::{DeriveInput, parse_macro_input};
 /// Generates the field paths for a struct: a zero-sized
 /// `FieldPath` marker per field, and a `Cursor` method that walks to
 /// it. Call `accessor()` to end the walk.
+///
+/// [`Element`] already derives this for its own struct - reach for
+/// this directly only for one that never derives `Element` at all.
 #[proc_macro_derive(Lenz)]
 pub fn derive_lenz(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
@@ -24,12 +27,17 @@ pub fn derive_lenz(input: TokenStream) -> TokenStream {
 /// dispatching on a field is a `match` the compiler checks for
 /// exhaustiveness.
 ///
-/// Fields marked `#[elem]` are left out: they are elements of their
-/// own, and patch through their own id.
+/// Fields marked `#[elem(child)]` are left out: they are elements of
+/// their own, and patch through their own id. Fields marked
+/// `#[elem(no_patch)]` are left out too: they only ever change at
+/// build, so there is nothing for the field/patch system to reach.
 ///
-/// Needs `#[derive(Lenz)]` on the same struct: a variant reports the
-/// id of the path marker that `Lenz` emits.
-#[proc_macro_derive(Element, attributes(elem))]
+/// Also derives what [`Lenz`] and [`OverrideDefault`] would: an
+/// element's own dispatch reports a field by the id `Lenz` gives it,
+/// so the two have always been derived together, and `#[default(...)]`
+/// is the usual way an element's own fields differ from their type's
+/// default.
+#[proc_macro_derive(Element, attributes(elem, default))]
 pub fn derive_element(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     match element::expand(&ast) {
@@ -42,6 +50,9 @@ pub fn derive_element(input: TokenStream) -> TokenStream {
 /// other than its own default: `#[default(px(4))]` for a value, or
 /// `#[default(size: 24)]` to keep the field's default and override
 /// fields of it.
+///
+/// [`Element`] already derives this for its own struct - reach for
+/// this directly only for one that never derives `Element` at all.
 #[proc_macro_derive(OverrideDefault, attributes(default))]
 pub fn derive_override_default(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);

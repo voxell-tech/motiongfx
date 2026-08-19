@@ -1,15 +1,13 @@
 use bevy::prelude::*;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 /// The scrubbable timeline track: a plain node sized to the track's
 /// duration. The consuming app resolves its own pixels per second
 /// scale and passes the result as `width`, so a clip at time `t` sits
 /// at `t * pixels_per_second` from the track's left edge.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TimelineTrack {
     pub width: f32,
 }

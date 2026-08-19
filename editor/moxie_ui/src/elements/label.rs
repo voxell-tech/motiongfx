@@ -2,12 +2,10 @@ use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 /// A theme-inheriting text label.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Label {
     pub text: String,
     #[default(12.0)]

@@ -8,6 +8,14 @@ use crate::common::{
 };
 
 pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
+    // `Element`'s own dispatch names a field by the id `Lenz` gives
+    // it, and almost always wants `#[default(...)]` for its own
+    // fields - the two have never once been derived apart from
+    // `Element` across this workspace, so `Element` derives them
+    // itself rather than asking a caller to remember both.
+    let lenz = crate::lenz::expand(ast)?;
+    let default = crate::override_default::expand(ast)?;
+
     let root = crate_path();
     let name = &ast.ident;
     let fields = named_fields(ast, "Element")?;
@@ -36,9 +44,9 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         let marker = quote!(#path_mod::#field_name #ty);
         let id = quote!(<#marker as #root::lenz::FieldPath>::id());
 
-        // A field marked `#[elem]` is an element in its own right. It
-        // is absent from the enum, because naming it there would
-        // offer a second, redundant way in.
+        // A field marked `#[elem(child)]` is an element in its own
+        // right. It is absent from the enum, because naming it there
+        // would offer a second, redundant way in.
         if is_elem(field) {
             // `Option<T>` builds nothing when absent, so the store
             // simply has no entry and the walk stops there.
@@ -96,6 +104,15 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             continue;
         }
 
+        // A field marked `#[elem(no_patch)]` only ever changes at
+        // build. Leaving it out of the enum the same way `child`
+        // does makes that true rather than merely asked for: nothing
+        // can name it to walk a path there, so a stray `.bind()`
+        // writes the field and has no way to tell the backend.
+        if no_patch(field) {
+            continue;
+        }
+
         let variant = format_ident!("{}", pascal_case(field_name));
 
         variants.push(quote!(#variant,));
@@ -110,6 +127,9 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     }
 
     Ok(quote! {
+        #lenz
+        #default
+
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum #field_enum {
             #(#variants)*
@@ -197,7 +217,30 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     })
 }
 
-/// Whether the field carries `#[elem]`.
+/// What `#[elem(...)]` says about this field, if it carries one.
+///
+/// One attribute, one directive: `elem(child)` for a field that is an
+/// element in its own right, `elem(no_patch)` for one that only ever
+/// changes at build. Nothing else names it, so there is nothing to
+/// disambiguate between the two forms.
+fn elem_directive(field: &Field) -> Option<syn::Ident> {
+    let attr = field
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("elem"))?;
+    attr.parse_args::<syn::Ident>().ok()
+}
+
+/// Whether the field carries `#[elem(child)]`.
 fn is_elem(field: &Field) -> bool {
-    field.attrs.iter().any(|attr| attr.path().is_ident("elem"))
+    elem_directive(field)
+        .is_some_and(|directive| directive == "child")
+}
+
+/// Whether the field carries `#[elem(no_patch)]`: a regular field
+/// that only ever changes at build (in `build_fields`), so it has
+/// nothing to reach through the field/patch system.
+fn no_patch(field: &Field) -> bool {
+    elem_directive(field)
+        .is_some_and(|directive| directive == "no_patch")
 }

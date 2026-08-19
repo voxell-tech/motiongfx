@@ -244,7 +244,7 @@ impl<H: Host> Default for Records<H> {
 }
 
 impl<H: Host> Records<H> {
-    /// Where every `#[elem]` field's node is recorded. The field
+    /// Where every `#[elem(child)]` field's node is recorded. The field
     /// itself stays private, so a caller that only wants to resolve
     /// one goes through [`Store::child`] instead of reaching in here.
     pub fn store(&self) -> &Store<H> {
@@ -295,7 +295,7 @@ impl<'a, H: Host> Ui<'a, H> {
         self.parent
     }
 
-    /// The node a `#[elem]` field of [`parent`](Self::parent) built,
+    /// The node a `#[elem(child)]` field of [`parent`](Self::parent) built,
     /// however many hops the path takes to reach it. See
     /// [`Store::child`].
     pub fn child<S, P>(
@@ -452,7 +452,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         self
     }
 
-    /// The node an `#[elem]` child took.
+    /// The node an `#[elem(child)]` child took.
     ///
     /// For what the child owns rather than the element does: an
     /// observer on the button inside a tab fires for that button, and

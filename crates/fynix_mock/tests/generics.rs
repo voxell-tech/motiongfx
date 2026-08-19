@@ -5,7 +5,6 @@ mod common;
 
 use common::{Label, LabelCursor, World};
 use fynix_mock::element::{Element, ElementVisual, Fields};
-use fynix_mock::lenz::Lenz;
 use fynix_mock::ui::Records;
 use fynix_mock::ui::Ui;
 
@@ -23,9 +22,9 @@ impl Look for Dark {
     }
 }
 
-#[derive(Element, Default, Lenz)]
+#[derive(Element)]
 pub struct Themed<L: Look> {
-    #[elem]
+    #[elem(child)]
     pub label: Label,
     pub look: L,
 }

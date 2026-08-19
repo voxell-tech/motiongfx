@@ -4,14 +4,13 @@
 mod common;
 
 use common::{Backend, Label, LabelCursor, World};
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual, Fields};
 use fynix_mock::host::Host;
-use fynix_mock::lenz::{FieldPath, Lenz};
+use fynix_mock::lenz::FieldPath;
 use fynix_mock::ui::Records;
 use fynix_mock::ui::Ui;
 
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Icon {
     #[default('+')]
     pub glyph: char,
@@ -19,19 +18,19 @@ pub struct Icon {
 
 /// Plain data, not an element: no node of its own, so `Button` draws
 /// it.
-#[derive(Element, Default, Lenz)]
+#[derive(Element)]
 pub struct Border {
     pub width: u32,
     pub radius: u32,
 }
 
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Button {
-    #[elem]
+    #[elem(child)]
     pub label: Label,
     /// Present by default, so the tests that want one say nothing and
     /// the one that wants none clears it.
-    #[elem]
+    #[elem(child)]
     #[default(..)]
     pub icon: Option<Icon>,
     #[default(4)]

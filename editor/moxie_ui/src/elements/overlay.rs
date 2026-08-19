@@ -2,13 +2,11 @@ use bevy::picking::Pickable;
 use bevy::prelude::*;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 /// A node the size of the window, for something that positions itself
 /// against the window rather than against a parent.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Overlay {
     /// Whether the pointer sees it. Off unless it is there to catch
     /// something: seen, it is the target of every press, and a press

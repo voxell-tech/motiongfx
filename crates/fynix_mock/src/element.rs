@@ -2,7 +2,7 @@
 //!
 //! [`ElementVisual`] is the half you write, and it only ever sees the
 //! fields this element draws itself. [`Element`] is the half
-//! `#[derive(Element)]` writes: it owns the `#[elem]` children, builds
+//! `#[derive(Element)]` writes: it owns the `#[elem(child)]` children, builds
 //! them before the element's own fields exist, and walks down to them
 //! when a change names one.
 //!
@@ -18,7 +18,7 @@ use crate::ui::{Records, Ui};
 // and `Clone` do it.
 pub use fynix_mock_macros::Element;
 
-/// An element and the `#[elem]` children beneath it.
+/// An element and the `#[elem(child)]` children beneath it.
 ///
 /// Written by `#[derive(Element)]`, once for every backend at a time:
 /// the owner never names a child's backend, and never says twice how
@@ -70,7 +70,7 @@ pub trait Element<H: Host>: ElementVisual<H> + Default {
 pub trait ElementVisual<H: Host>: Fields {
     /// Write this element's own fields onto `ui.parent()`.
     ///
-    /// The node already exists, and its `#[elem]` fields are already
+    /// The node already exists, and its `#[elem(child)]` fields are already
     /// built under it - reach one with [`Ui::child`]. `ui` is real:
     /// nothing stops this from building further children of its own
     /// with [`Ui::elem`]/[`Ui::compose`], the way any other build
@@ -96,7 +96,7 @@ pub trait ElementVisual<H: Host>: Fields {
 /// compiler checks: gain a field, and every place that dispatches on
 /// one stops compiling until it says what the new field means.
 ///
-/// Fields marked `#[elem]` are absent from the enum. They are
+/// Fields marked `#[elem(child)]` are absent from the enum. They are
 /// elements themselves, and [`Element`] reaches them.
 pub trait Fields: 'static {
     type Field: Copy + 'static;

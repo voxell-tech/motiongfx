@@ -1,9 +1,7 @@
 use bevy::prelude::*;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 use super::Label;
 
@@ -12,9 +10,9 @@ use super::Label;
 /// `Node::Block` in a scene's animation tree gets one of these -
 /// an action leaf has no children and so no label, and stays a plain
 /// `Frame` instead.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TimelineBlock {
-    #[elem]
+    #[elem(child)]
     pub label: Label,
     pub top: f32,
     pub left: f32,

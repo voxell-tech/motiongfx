@@ -7,11 +7,11 @@
 // Each test file uses a different part of this.
 #![allow(dead_code)]
 
+use fynix_mock::Fynix;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
-use fynix_mock::lenz::{Cursor, FieldPath, Identity, Lenz};
+use fynix_mock::lenz::{Cursor, FieldPath, Identity};
 use fynix_mock::ui::{ElementMut, Ui};
-use fynix_mock::{Fynix, OverrideDefault};
 use hashbrown::HashMap;
 
 /// What this test stands in for a pointer with: not fynix's concern,
@@ -191,7 +191,7 @@ impl Host for Backend {
 
 /// The default is what a test gets when it only cares that a label is
 /// there, so nothing has to spell one out.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Label {
     #[default(String::from("Label"))]
     pub text: String,

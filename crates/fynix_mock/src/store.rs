@@ -1,4 +1,4 @@
-//! Where the `#[elem]` children went.
+//! Where the `#[elem(child)]` children went.
 //!
 //! A parent builds its children and forgets them; the store remembers
 //! which node each one got, so a later patch can walk down to it. The
@@ -11,7 +11,7 @@ use hashbrown::HashMap;
 use crate::host::Host;
 use crate::lenz::{Cursor, FieldId, FieldPath, Identity};
 
-/// The node each `#[elem]` field built, per parent.
+/// The node each `#[elem(child)]` field built, per parent.
 pub struct Store<H: Host> {
     children: HashMap<(H::Node, FieldId), H::Node>,
 }
@@ -67,7 +67,7 @@ impl<H: Host> Store<H> {
         });
     }
 
-    /// The node a `#[elem]` field built, however many hops the path
+    /// The node a `#[elem(child)]` field built, however many hops the path
     /// takes to reach it. What [`ElementMut::child`](
     /// crate::ui::ElementMut::child) and
     /// [`Ui::child`](crate::ui::Ui::child) both walk.

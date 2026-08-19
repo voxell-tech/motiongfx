@@ -9,9 +9,7 @@
 use bevy::prelude::*;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 use super::Frame;
 use crate::widgets::dock::{
@@ -40,7 +38,7 @@ fn display(visible: bool) -> Display {
 }
 
 /// The node the whole tree is rendered underneath.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct DockHost;
 
 impl ElementVisual<BevyHost> for DockHost {
@@ -70,7 +68,7 @@ impl ElementVisual<BevyHost> for DockHost {
 }
 
 /// A split: two panels and the handle between them.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct SplitGroup {
     #[default(NodeId(0))]
     pub node: NodeId,
@@ -121,7 +119,7 @@ impl ElementVisual<BevyHost> for SplitGroup {
 /// What a split is dragged by: a full-sized hit area holding a
 /// slim, always-visible [`line`](Self::line) and a wider
 /// [`bar`](Self::bar) that only shows on hover.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct SplitHandle {
     #[default(NodeId(0))]
     pub node: NodeId,
@@ -133,12 +131,12 @@ pub struct SplitHandle {
     pub visible: bool,
     /// Marks the seam at rest. Never interactive, and never lit -
     /// [`handle_line`] gives it a fixed color.
-    #[elem]
+    #[elem(child)]
     pub line: Frame,
     /// Half the hit area and centred in it, so the seam reads flush
     /// until the cursor finds it. `lit` on this is what actually
     /// colors the handle.
-    #[elem]
+    #[elem(child)]
     pub bar: Frame,
 }
 
@@ -256,7 +254,7 @@ impl ElementVisual<BevyHost> for SplitHandle {
 /// One side of a split. The ratio is bound rather than built:
 /// dragging the handle rewrites it every frame, and must not rebuild
 /// what the panel holds.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct SplitPanel {
     #[default(1.0)]
     pub ratio: f32,
@@ -310,7 +308,7 @@ impl ElementVisual<BevyHost> for SplitPanel {
 }
 
 /// A leaf of the tree: a tab bar, and the content of every tab.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Area {
     #[default(NodeId(0))]
     pub node: NodeId,
@@ -368,7 +366,7 @@ impl ElementVisual<BevyHost> for Area {
 /// One tab's content. Switching tabs flips `display` through a
 /// binding rather than rebuilding: the content owns cameras, scroll
 /// offsets and live edits that have to survive a tab switch.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TabContent {
     pub window_id: String,
     #[default(TabId(0))]

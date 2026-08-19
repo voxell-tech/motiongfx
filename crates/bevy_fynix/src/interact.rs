@@ -28,7 +28,7 @@ type Aim = Box<dyn Fn(&mut Fynix<BevyHost>, Entity) + Send + Sync>;
 /// `label.on::<V>().aim(a).aim(b);` registers one observer that runs
 /// both, rather than one observer per field.
 ///
-/// `watch` and `aim` differ for a lane on a `#[elem]` child: the event
+/// `watch` and `aim` differ for a lane on a `#[elem(child)]` child: the event
 /// has to come from the child's own hit area, but the lane lives
 /// keyed on the owner, which is where every `.transition()` and
 /// `.bind()` on it puts things.
@@ -90,7 +90,7 @@ pub trait OnExt<E: Element<BevyHost>> {
     fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, V>;
 
     /// The same, but watching `child` rather than this node, for a
-    /// lane on a `#[elem]` field whose own hit area should be what
+    /// lane on a `#[elem(child)]` field whose own hit area should be what
     /// reacts, found with [`ElementMut::child`].
     fn on_entity<V: EntityEvent>(
         &mut self,

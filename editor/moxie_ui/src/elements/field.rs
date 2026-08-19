@@ -14,16 +14,14 @@ use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 /// A box that is ticked or not.
 ///
 /// `checked` is a field rather than something written from outside,
 /// so the value it shows follows whatever the world says: bevy tracks
 /// it as the presence of a marker, and this turns that into data.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct CheckBox {
     pub checked: bool,
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.08))]
@@ -137,7 +135,7 @@ impl ElementVisual<BevyHost> for CheckBox {
 }
 
 /// A number, typed or dragged.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct NumberField {
     pub format: NumberFormat,
     /// What it shows. Pushed as an event rather than written as a
@@ -205,7 +203,7 @@ impl ElementVisual<BevyHost> for NumberField {
 }
 
 /// A single-line string, edited in place.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TextField {
     pub value: String,
     #[default(px(110))]

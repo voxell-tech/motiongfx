@@ -7,17 +7,15 @@ use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
 use bevy_fynix::{FynixPlugin, watch_root};
 use bevy_ui::Node;
-use fynix_mock::OverrideDefault;
 use fynix_mock::elem;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 /// What the element writes. A real one would write `bevy_ui`
 /// components; this only has to be visible from a test.
 #[derive(Component, Debug, PartialEq)]
 struct Caption(String);
 
-#[derive(OverrideDefault, Lenz, Element)]
+#[derive(Element)]
 pub struct Label {
     #[default(String::from("Label"))]
     pub text: String,

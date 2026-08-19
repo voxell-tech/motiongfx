@@ -4,20 +4,18 @@
 mod common;
 
 use common::{Label, LabelCursor, World};
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 use fynix_mock::ui::Records;
 use fynix_mock::ui::Ui;
 
 /// Two labels that already say which is which, so a test can tell one
 /// node from the other without setting anything up.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Pair {
-    #[elem]
+    #[elem(child)]
     #[default(text: String::from("up"), size: 1)]
     pub top: Label,
-    #[elem]
+    #[elem(child)]
     #[default(text: String::from("down"), size: 2)]
     pub bottom: Label,
     #[default(7)]

@@ -4,9 +4,7 @@ use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 /// What a clip's fill brightens to under the cursor, and further
 /// while held - a saturated blue, deliberately not the editor's usual
@@ -21,7 +19,7 @@ pub const PRESS_TINT: Color = Color::srgb(0.55, 0.82, 1.0);
 
 /// One action's clip on the timeline: a colored, absolutely
 /// positioned, bordered hit area.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TimelineAction {
     pub top: f32,
     pub left: f32,

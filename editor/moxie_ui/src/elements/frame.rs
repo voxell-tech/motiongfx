@@ -1,13 +1,11 @@
 use bevy::prelude::*;
 use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 
 /// The sized, optionally filled container almost every other widget's
 /// root node turns out to be.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Frame {
     pub width: Val,
     pub height: Val,
