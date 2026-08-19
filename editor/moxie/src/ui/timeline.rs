@@ -16,7 +16,7 @@ use crate::playback::{
     on_track_drag, on_track_press, on_track_release,
 };
 use crate::{EditorScene, EditorState, SelectedAction};
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};

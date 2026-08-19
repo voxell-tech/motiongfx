@@ -16,7 +16,7 @@ use bevy::feathers::controls::{NumberFormat, NumberInputValue};
 use bevy::prelude::*;
 use bevy::ui_widgets::ValueChange;
 
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::elem;
 
 use super::{Inspect, Source, SourceExt, when_changed};

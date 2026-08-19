@@ -7,7 +7,7 @@
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::style::StyledElem;
 use fynix_mock::ui::{ElementHandle, ElementMut};

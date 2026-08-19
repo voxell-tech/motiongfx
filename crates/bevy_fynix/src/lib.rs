@@ -104,7 +104,12 @@ pub(crate) fn with_kernel<Theme: Resource + Clone + Default>(
 }
 
 /// What bevy wants on a node that the element itself has no say in.
-pub trait ElementMutExt<
+///
+/// `observe`/`insert`/`remove` are all just `entity_mut()` plus
+/// whatever `bevy_ecs` already offers - the one real difference
+/// between `ElementMut` and `Build` is how each reaches the world in
+/// the first place, so that is the only method either has to provide.
+pub trait EntityExt<
     E: Element<BevyHost<Theme>>,
     Theme: Resource + Clone + Default,
 >
@@ -118,66 +123,38 @@ pub trait ElementMutExt<
     fn observe<V: EntityEvent, B: Bundle, M>(
         &mut self,
         observer: impl IntoObserverSystem<V, B, M>,
-    ) -> &mut Self;
+    ) -> &mut Self {
+        self.entity_mut().observe(observer);
+        self
+    }
 
     /// Put `bundle` on this node, once, now.
-    fn insert(&mut self, bundle: impl Bundle) -> &mut Self;
+    fn insert(&mut self, bundle: impl Bundle) -> &mut Self {
+        self.entity_mut().insert(bundle);
+        self
+    }
 
     /// Take `B` off this node, once, now.
-    fn remove<B: Bundle>(&mut self) -> &mut Self;
+    fn remove<B: Bundle>(&mut self) -> &mut Self {
+        self.entity_mut().remove::<B>();
+        self
+    }
 }
 
 impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
-    ElementMutExt<E, Theme>
-    for ElementMut<'_, '_, BevyHost<Theme>, E>
+    EntityExt<E, Theme> for ElementMut<'_, '_, BevyHost<Theme>, E>
 {
     fn entity_mut(&mut self) -> EntityWorldMut<'_> {
         let node = self.id();
         self.ui.world.entity_mut(node)
     }
-
-    fn observe<V: EntityEvent, B: Bundle, M>(
-        &mut self,
-        observer: impl IntoObserverSystem<V, B, M>,
-    ) -> &mut Self {
-        self.entity_mut().observe(observer);
-        self
-    }
-
-    fn insert(&mut self, bundle: impl Bundle) -> &mut Self {
-        self.entity_mut().insert(bundle);
-        self
-    }
-
-    fn remove<B: Bundle>(&mut self) -> &mut Self {
-        self.entity_mut().remove::<B>();
-        self
-    }
 }
 
 impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
-    ElementMutExt<E, Theme> for Build<'_, BevyHost<Theme>, E>
+    EntityExt<E, Theme> for Build<'_, BevyHost<Theme>, E>
 {
     fn entity_mut(&mut self) -> EntityWorldMut<'_> {
         let node = self.id();
         self.world.entity_mut(node)
-    }
-
-    fn observe<V: EntityEvent, B: Bundle, M>(
-        &mut self,
-        observer: impl IntoObserverSystem<V, B, M>,
-    ) -> &mut Self {
-        self.entity_mut().observe(observer);
-        self
-    }
-
-    fn insert(&mut self, bundle: impl Bundle) -> &mut Self {
-        self.entity_mut().insert(bundle);
-        self
-    }
-
-    fn remove<B: Bundle>(&mut self) -> &mut Self {
-        self.entity_mut().remove::<B>();
-        self
     }
 }

@@ -94,6 +94,11 @@ impl<E: 'static, Theme: Resource + Clone + Default, V: EntityEvent>
 }
 
 /// What Bevy wants on a node that the element itself has no say in.
+///
+/// `on` is just `on_entity` aimed at this node's own id - the one
+/// real difference between `ElementMut` and `Build` is how each
+/// reaches the world `Aiming` needs, so `on_entity` is the only method
+/// either has to provide.
 pub trait OnExt<
     E: Element<BevyHost<Theme>>,
     Theme: Resource + Clone + Default,
@@ -101,7 +106,15 @@ pub trait OnExt<
 {
     /// Open a group of aims that fire together whenever `V` happens to
     /// this node. Ends, and registers as one observer, at the `;`.
-    fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, Theme, V>;
+    fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, Theme, V> {
+        let node = self.id();
+        self.on_entity(node)
+    }
+
+    /// This element's own node. Every host `OnExt` is implemented for
+    /// already has one; named here so `on`'s default body can reach
+    /// it without knowing which.
+    fn id(&self) -> Entity;
 
     /// The same, but watching `child` rather than this node, for a
     /// lane on a `#[elem(child)]` field whose own hit area should be what
@@ -115,9 +128,8 @@ pub trait OnExt<
 impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
     OnExt<E, Theme> for ElementMut<'_, '_, BevyHost<Theme>, E>
 {
-    fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, Theme, V> {
-        let node = self.id();
-        self.on_entity(node)
+    fn id(&self) -> Entity {
+        ElementMut::id(self)
     }
 
     fn on_entity<V: EntityEvent>(
@@ -137,9 +149,8 @@ impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
 impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
     OnExt<E, Theme> for Build<'_, BevyHost<Theme>, E>
 {
-    fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, Theme, V> {
-        let node = self.id();
-        self.on_entity(node)
+    fn id(&self) -> Entity {
+        Build::id(self)
     }
 
     fn on_entity<V: EntityEvent>(

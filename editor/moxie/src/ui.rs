@@ -17,7 +17,7 @@ use crate::{
     EditorSettings, EditorState, PreviewImage, SelectedAction,
     SelectedEntity, playback, scene, view,
 };
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::elem;
 use moxie_ui::elements::{Frame, FrameCursor, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};

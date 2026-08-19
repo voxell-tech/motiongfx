@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::{
     Activate, ActivateOnPress, MenuButton as MenuButtonBehavior,
 };
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};

@@ -5,7 +5,7 @@ use bevy::feathers::constants::icons as feathers_icons;
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::{elem, val};
 
 use super::area::DockTabAddButton;

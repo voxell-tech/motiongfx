@@ -15,7 +15,7 @@ pub(crate) use drag::Dragging;
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use bevy_motiongfx::scene::id::EntityUid;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::{ElementHandle, ElementMut};

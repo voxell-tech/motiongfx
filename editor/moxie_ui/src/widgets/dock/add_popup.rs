@@ -16,7 +16,7 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tree::DockTree;
 use crate::layout::logical_rect;
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::{elem, val};
 
 use crate::elements::{Frame, GhostButton, Icon, Label, Overlay};

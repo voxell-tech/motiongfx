@@ -19,7 +19,7 @@ use bevy::prelude::*;
 use bevy::reflect::std_traits::ReflectDefault;
 use bevy::ui_widgets::{Activate, ActivateOnPress, MenuButton};
 
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::records::{BuildFn, ChangedFn};
 use fynix_mock::ui::ElementHandle;
