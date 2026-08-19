@@ -6,7 +6,7 @@ use bevy::window::SystemCursorIcon;
 use bevy_fynix::ElementMutExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::style::Style;
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 use super::{Icon, IconCursor, Label, LabelCursor};
 use crate::motion::{self, LitFrom as _};
@@ -230,10 +230,12 @@ impl ElementVisual<BevyHost> for ButtonElem {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: ButtonElemField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut entity = world.entity_mut(node);
 
         match field {

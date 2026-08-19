@@ -60,6 +60,7 @@ type BoxedApply<H> = Box<
             &mut <H as Host>::World,
             <H as Host>::Node,
             &mut Store<H>,
+            &<H as Host>::Theme,
         ) + Send
         + Sync,
 >;

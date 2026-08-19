@@ -8,7 +8,7 @@ use fynix_mock::element::{Element, ElementVisual, Fields};
 use fynix_mock::host::Host;
 use fynix_mock::lenz::FieldPath;
 use fynix_mock::records::Records;
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 #[derive(Element)]
 pub struct Icon {
@@ -51,10 +51,12 @@ impl ElementVisual<Backend> for Icon {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: usize,
+        patch: &mut Patch<'_, Backend>,
         field: IconField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             IconField::Glyph => world.node(node).glyph = self.glyph,
         }
@@ -78,10 +80,12 @@ impl ElementVisual<Backend> for Button {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: usize,
+        patch: &mut Patch<'_, Backend>,
         field: ButtonField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             ButtonField::Padding => {
                 world.node(node).padding = self.padding
@@ -149,7 +153,13 @@ fn path_into_a_child_is_patched_by_that_child() {
     // Write through the lens, then patch the field it walked to.
     let path = Button::cursor().label().text();
     *(path.accessor().get_mut)(&mut button).unwrap() = "Saved".into();
-    button.patch(&mut world, node, &path.hops(), records.store_mut());
+    button.patch(
+        &mut world,
+        node,
+        &path.hops(),
+        records.store_mut(),
+        &(),
+    );
 
     assert_eq!(world.get(label).text, "Saved");
     assert_eq!(world.get(label).size, 13);
@@ -165,7 +175,13 @@ fn path_into_plain_data_is_finished_by_its_owner() {
 
     let path = Button::cursor().border().width();
     *(path.accessor().get_mut)(&mut button).unwrap() = 2;
-    button.patch(&mut world, node, &path.hops(), records.store_mut());
+    button.patch(
+        &mut world,
+        node,
+        &path.hops(),
+        records.store_mut(),
+        &(),
+    );
 
     assert_eq!(world.get(node).border_width, 2);
     assert_eq!(world.get(node).border_radius, 0);
@@ -193,7 +209,7 @@ fn patching_an_unnamed_field_changes_nothing() {
 
     // A real path, but to a field of something else entirely.
     let path = Label::cursor().size().hops();
-    button.patch(&mut world, node, &path, records.store_mut());
+    button.patch(&mut world, node, &path, records.store_mut(), &());
 
     assert_eq!(world.get(node).padding, 4);
 }

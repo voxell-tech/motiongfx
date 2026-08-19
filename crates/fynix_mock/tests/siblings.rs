@@ -6,7 +6,7 @@ mod common;
 use common::{Label, LabelCursor, World};
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::records::Records;
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// Two labels that already say which is which, so a test can tell one
 /// node from the other without setting anything up.
@@ -35,10 +35,12 @@ impl ElementVisual<common::Backend> for Pair {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: usize,
+        patch: &mut Patch<'_, common::Backend>,
         field: PairField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             PairField::Gap => world.node(node).padding = self.gap,
         }
@@ -82,7 +84,13 @@ fn patching_one_of_a_pair_leaves_the_other() {
 
     let path = Pair::cursor().bottom().text();
     *(path.accessor().get_mut)(&mut pair).unwrap() = "DOWN".into();
-    pair.patch(&mut world, node, &path.hops(), records.store_mut());
+    pair.patch(
+        &mut world,
+        node,
+        &path.hops(),
+        records.store_mut(),
+        &(),
+    );
 
     assert_eq!(world.get(bottom).text, "DOWN");
     assert_eq!(world.get(top).text, "up");

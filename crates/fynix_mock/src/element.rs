@@ -13,7 +13,7 @@ use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::records::Records;
 use crate::store::Store;
-use crate::ui::Draw;
+use crate::ui::{Draw, Patch};
 
 // Same name as the trait, in the macro namespace, the way `Default`
 // and `Clone` do it.
@@ -47,13 +47,15 @@ pub trait Element<H: Host>: ElementVisual<H> + Default {
     /// A path naming a child is walked down, one hop per element,
     /// until it reaches the one that owns it. Anything else is this
     /// element's own field, and goes to
-    /// [`patch_fields`](ElementVisual::patch_fields).
+    /// [`patch_fields`](ElementVisual::patch_fields). `theme` is
+    /// threaded through the same walk, never cloned.
     fn patch(
         &self,
         world: &mut H::World,
         node: H::Node,
         path: &[FieldId],
         store: &mut Store<H>,
+        theme: &H::Theme,
     );
 
     /// Destroy this element, its children, and what the store holds
@@ -80,7 +82,7 @@ pub trait ElementVisual<H: Host>: Fields {
     /// node this method draws on always is one - there is no longer a
     /// type to get wrong the way `ui.this::<Self>()` once let a caller
     /// do.
-    fn build_fields(&self, draw: &mut Draw<'_, H, Self>)
+    fn build_fields(&self, draw: &mut Draw<H, Self>)
     where
         Self: Element<H> + Send + Sync;
 
@@ -90,8 +92,7 @@ pub trait ElementVisual<H: Host>: Fields {
     /// are reached one hop at a time, and those never arrive here.
     fn patch_fields(
         &self,
-        world: &mut H::World,
-        node: H::Node,
+        patch: &mut Patch<'_, H>,
         field: Self::Field,
     );
 }

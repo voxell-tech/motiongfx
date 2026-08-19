@@ -1,7 +1,7 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 use super::Label;
 
@@ -56,10 +56,12 @@ impl ElementVisual<BevyHost> for TimelineBlock {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: TimelineBlockField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             TimelineBlockField::Top
             | TimelineBlockField::Left

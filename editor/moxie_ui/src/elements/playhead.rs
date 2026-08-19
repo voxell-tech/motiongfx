@@ -1,7 +1,7 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 const PLAYHEAD_COLOR: Color = Color::srgb(0.95, 0.30, 0.35);
 
@@ -39,10 +39,12 @@ impl ElementVisual<BevyHost> for PlayheadLine {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: PlayheadLineField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             PlayheadLineField::Left => {
                 if let Some(mut node) = world.get_mut::<Node>(node) {

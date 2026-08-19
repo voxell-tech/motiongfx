@@ -5,7 +5,7 @@ use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 use super::{ButtonElem, Icon, Label};
 use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
@@ -45,10 +45,12 @@ impl ElementVisual<BevyHost> for TabBar {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: TabBarField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             TabBarField::Background => {
                 world
@@ -86,8 +88,7 @@ impl ElementVisual<BevyHost> for TabRow {
 
     fn patch_fields(
         &self,
-        _world: &mut World,
-        _node: Entity,
+        _patch: &mut Patch<'_, BevyHost>,
         field: TabRowField,
     ) {
         match field {}
@@ -154,10 +155,12 @@ impl ElementVisual<BevyHost> for Tab {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: TabField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut entity = world.entity_mut(node);
 
         match field {

@@ -231,7 +231,7 @@ impl<H: Host> Fynix<H> {
             if !(binding.changed)(world, *node) {
                 continue;
             }
-            (binding.apply)(elements, world, *node, store);
+            (binding.apply)(elements, world, *node, store, theme);
         }
 
         // After the bindings, so a lane gets the last word over the
@@ -239,7 +239,7 @@ impl<H: Host> Fynix<H> {
         let delta = H::delta(world);
 
         for (node, lane) in lanes.iter_mut() {
-            lane.advance(delta, elements, world, node, store);
+            lane.advance(delta, elements, world, node, store, theme);
         }
     }
 

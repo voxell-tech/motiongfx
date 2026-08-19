@@ -2,7 +2,7 @@ use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollArea as ScrollAreaBehavior;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// A sized container with real, interactive scrolling - trackpad and
 /// mouse-wheel input actually move it (`ScrollAreaBehavior`), not just
@@ -85,10 +85,12 @@ impl ElementVisual<BevyHost> for ScrollArea {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: ScrollAreaField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             ScrollAreaField::Background => {
                 world

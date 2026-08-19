@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 const DIVIDER_WIDTH: f32 = 6.0;
 
@@ -64,10 +64,12 @@ impl ElementVisual<BevyHost> for Divider {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: DividerField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             // Either one changes both: the thickness lands on
             // whichever axis the orientation put it.

@@ -8,7 +8,7 @@ use bevy_fynix::{FynixPlugin, watch_root};
 use bevy_ui::Node;
 use fynix_mock::elem;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// Nothing in these tests reads a theme - a host still needs one.
 #[derive(Resource, Clone, Default)]
@@ -40,10 +40,12 @@ impl ElementVisual<Host> for Label {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost<NoTheme>>,
         field: LabelField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             LabelField::Text => {
                 world

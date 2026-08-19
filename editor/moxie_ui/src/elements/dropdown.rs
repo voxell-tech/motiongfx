@@ -18,7 +18,7 @@ use bevy::ui_widgets::{
 };
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 use super::{Icon, Label};
 
@@ -44,8 +44,7 @@ impl ElementVisual<BevyHost> for DropdownMenu {
 
     fn patch_fields(
         &self,
-        _world: &mut World,
-        _node: Entity,
+        _patch: &mut Patch<'_, BevyHost>,
         field: DropdownMenuField,
     ) {
         match field {}
@@ -151,10 +150,12 @@ impl ElementVisual<BevyHost> for Dropdown {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: DropdownField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut entity = world.entity_mut(node);
 
         match field {
@@ -216,10 +217,12 @@ impl ElementVisual<BevyHost> for DropdownList {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: DropdownListField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             DropdownListField::Width | DropdownListField::Radius => {
                 self.size(world, node)
@@ -274,10 +277,12 @@ impl ElementVisual<BevyHost> for DropdownItem {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: DropdownItemField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut entity = world.entity_mut(node);
 
         match field {

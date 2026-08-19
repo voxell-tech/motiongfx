@@ -2,7 +2,7 @@ use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// An image at a size of its own, which is what a [`Button`] shows.
 ///
@@ -49,10 +49,12 @@ impl ElementVisual<BevyHost> for Icon {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: IconField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             IconField::Image => {
                 let image = world.load_asset(self.image.clone());

@@ -2,7 +2,7 @@ use crate::reactive::BevyHost;
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// A theme-inheriting text label.
 #[derive(Element)]
@@ -65,10 +65,12 @@ impl ElementVisual<BevyHost> for Label {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: LabelField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut node = world.entity_mut(node);
 
         match field {

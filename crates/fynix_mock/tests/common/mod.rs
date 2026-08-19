@@ -11,7 +11,7 @@ use fynix_mock::Fynix;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
 use fynix_mock::lenz::{Cursor, FieldPath, Identity};
-use fynix_mock::ui::{Draw, ElementMut};
+use fynix_mock::ui::{Draw, ElementMut, Patch};
 use hashbrown::HashMap;
 
 /// What this test stands in for a pointer with: not fynix's concern,
@@ -240,10 +240,12 @@ impl ElementVisual<Backend> for Label {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: usize,
+        patch: &mut Patch<'_, Backend>,
         field: LabelField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             LabelField::Text => {
                 world.node(node).text = self.text.clone()

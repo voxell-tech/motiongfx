@@ -2,7 +2,7 @@ use crate::reactive::BevyHost;
 use bevy::picking::Pickable;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// A node the size of the window, for something that positions itself
 /// against the window rather than against a parent.
@@ -46,10 +46,12 @@ impl ElementVisual<BevyHost> for Overlay {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: OverlayField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut entity = world.entity_mut(node);
 
         match field {

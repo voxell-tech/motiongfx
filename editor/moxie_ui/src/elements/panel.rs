@@ -1,7 +1,7 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// What a docked window fills its area with: the whole of it, and
 /// scrolling if what it holds does not fit.
@@ -60,10 +60,12 @@ impl ElementVisual<BevyHost> for Panel {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: PanelField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             PanelField::Scroll => {
                 if let Some(mut scroll) =

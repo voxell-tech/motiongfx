@@ -91,7 +91,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                     ) = (#elem, store.get(node, *head))
                     {
                         #as_elem::patch(
-                            elem, world, child, rest, store,
+                            elem, world, child, rest, store, theme,
                         );
                     }
                     return;
@@ -199,6 +199,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 node: H::Node,
                 path: &[#root::lenz::FieldId],
                 store: &mut #root::store::Store<H>,
+                theme: &H::Theme,
             ) {
                 let ::core::option::Option::Some((head, rest)) =
                     path.split_first()
@@ -215,8 +216,10 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 if let ::core::option::Option::Some(field) =
                     <Self as #root::element::Fields>::field(*head)
                 {
+                    let mut patch =
+                        #root::ui::Patch::new(world, node, theme);
                     <Self as #root::element::ElementVisual<H>>
-                        ::patch_fields(self, world, node, field);
+                        ::patch_fields(self, &mut patch, field);
                 }
             }
 

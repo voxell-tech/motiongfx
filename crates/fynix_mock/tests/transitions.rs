@@ -9,7 +9,7 @@ use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
 use fynix_mock::style::Style;
 use fynix_mock::transition::Transition;
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 use fynix_mock::{Fynix, elem};
 use motiongfx_interp::ease;
 use motiongfx_interp::interpolation::Interpolation;
@@ -172,10 +172,12 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
 
         fn patch_fields(
             &self,
-            world: &mut World,
-            node: usize,
+            patch: &mut Patch<'_, Backend>,
             field: GrowerField,
         ) {
+            let node = patch.id();
+            let world = &mut *patch.world;
+
             match field {
                 GrowerField::Text => {
                     world.node(node).text = self.text.clone()

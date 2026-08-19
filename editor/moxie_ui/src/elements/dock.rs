@@ -9,7 +9,7 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 use super::Frame;
 use crate::widgets::dock::{
@@ -59,8 +59,7 @@ impl ElementVisual<BevyHost> for DockHost {
 
     fn patch_fields(
         &self,
-        _world: &mut World,
-        _node: Entity,
+        _patch: &mut Patch<'_, BevyHost>,
         field: DockHostField,
     ) {
         match field {}
@@ -94,10 +93,12 @@ impl ElementVisual<BevyHost> for SplitGroup {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: SplitGroupField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut entity = world.entity_mut(node);
 
         match field {
@@ -234,10 +235,12 @@ impl ElementVisual<BevyHost> for SplitHandle {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: SplitHandleField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut entity = world.entity_mut(node);
 
         match field {
@@ -290,10 +293,12 @@ impl ElementVisual<BevyHost> for SplitPanel {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: SplitPanelField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut entity = world.entity_mut(node);
 
         match field {
@@ -340,10 +345,12 @@ impl ElementVisual<BevyHost> for Area {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: AreaField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         let mut entity = world.entity_mut(node);
 
         match field {
@@ -402,10 +409,12 @@ impl ElementVisual<BevyHost> for TabContent {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: TabContentField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             // Only `display`: the content pane's own layout is its
             // business, and writing the whole `Node` would clobber

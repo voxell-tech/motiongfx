@@ -6,7 +6,7 @@ mod common;
 use common::{Label, LabelCursor, World};
 use fynix_mock::element::{Element, ElementVisual, Fields};
 use fynix_mock::records::Records;
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// `Default`, so an element generic over its look has one too.
 /// `Send`/`Sync` too, since `Themed<L>` is an `Element`, and
@@ -45,10 +45,12 @@ impl<L: Look> ElementVisual<common::Backend> for Themed<L> {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: usize,
+        patch: &mut Patch<'_, common::Backend>,
         field: ThemedField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             ThemedField::Look => {
                 world.node(node).glyph = self.look.glyph()
@@ -84,7 +86,7 @@ fn generic_element_patches_through_its_child() {
     let label = records.store().get(node, ids[0]).unwrap();
 
     *(path.accessor().get_mut)(&mut themed).unwrap() = "Saved".into();
-    themed.patch(&mut world, node, &ids, records.store_mut());
+    themed.patch(&mut world, node, &ids, records.store_mut(), &());
 
     assert_eq!(world.get(label).text, "Saved");
 }

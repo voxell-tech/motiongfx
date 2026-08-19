@@ -1,7 +1,7 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// The sized, optionally filled container almost every other widget's
 /// root node turns out to be.
@@ -97,10 +97,12 @@ impl ElementVisual<BevyHost> for Frame {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: FrameField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             FrameField::Background => {
                 world

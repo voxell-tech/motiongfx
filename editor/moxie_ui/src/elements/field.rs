@@ -14,7 +14,7 @@ use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::Draw;
+use fynix_mock::ui::{Draw, Patch};
 
 /// A box that is ticked or not.
 ///
@@ -118,10 +118,12 @@ impl ElementVisual<BevyHost> for CheckBox {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: CheckBoxField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             CheckBoxField::Checked => self.tick(world, node),
             CheckBoxField::Fill => {
@@ -180,10 +182,12 @@ impl ElementVisual<BevyHost> for NumberField {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: NumberFieldField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             NumberFieldField::Format => self.scene(world, node),
             NumberFieldField::Value => {
@@ -270,10 +274,12 @@ impl ElementVisual<BevyHost> for TextField {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<'_, BevyHost>,
         field: TextFieldField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             TextFieldField::Value => self.show(world, node),
             TextFieldField::Width => {

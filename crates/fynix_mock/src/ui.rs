@@ -217,6 +217,37 @@ impl<'a, H: Host, E: Element<H>> Draw<'a, H, E> {
     }
 }
 
+/// What [`patch_fields`](crate::element::ElementVisual::patch_fields)
+/// writes through: the node a change already landed on, `world`, and
+/// `theme` - the same three [`Draw`] gives `build_fields`, now for a
+/// write a later change makes rather than the one a build did. No
+/// [`Store`]/[`Lanes`] here: a patch writes an existing node's fields,
+/// never wires a child or a lane the way a build can.
+pub struct Patch<'a, H: Host> {
+    pub world: &'a mut H::World,
+    pub theme: &'a H::Theme,
+    node: H::Node,
+}
+
+impl<'a, H: Host> Patch<'a, H> {
+    /// Not for hand-written code: `#[derive(Element)]`'s own generated
+    /// `patch` is what constructs this, once it has walked down to the
+    /// element that owns the field a change named.
+    #[doc(hidden)]
+    pub fn new(
+        world: &'a mut H::World,
+        node: H::Node,
+        theme: &'a H::Theme,
+    ) -> Self {
+        Self { world, theme, node }
+    }
+
+    /// This element's own node.
+    pub fn id(&self) -> H::Node {
+        self.node
+    }
+}
+
 /// A typed, [`Copy`] handle to a node: what names an element once
 /// there is no borrow of the [`Ui`] left to name it through.
 ///
@@ -427,7 +458,8 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         let apply = move |elements: &mut Elements<H>,
                           world: &mut H::World,
                           node: H::Node,
-                          store: &mut Store<H>| {
+                          store: &mut Store<H>,
+                          theme: &H::Theme| {
             let new = value(world, node);
 
             // `E` is still in hand here, so the element comes back as
@@ -440,7 +472,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             };
             *field = new;
 
-            element.patch(world, node, &hops, store);
+            element.patch(world, node, &hops, store, theme);
         };
 
         self.ui.records.bindings.insert(

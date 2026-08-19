@@ -35,6 +35,7 @@ pub(crate) trait Lane<H: Host>: Send + Sync {
         world: &mut H::World,
         node: H::Node,
         store: &mut Store<H>,
+        theme: &H::Theme,
     ) -> bool;
 }
 
@@ -74,6 +75,7 @@ where
         world: &mut H::World,
         node: H::Node,
         store: &mut Store<H>,
+        theme: &H::Theme,
     ) -> bool {
         let Some(element) = elements.get_mut::<E>(&node) else {
             return false;
@@ -118,7 +120,7 @@ where
         };
         let base = core::mem::replace(field, self.shown.clone());
 
-        element.patch(world, node, &self.hops, store);
+        element.patch(world, node, &self.hops, store, theme);
 
         if let Some(field) = (self.accessor.get_mut)(element) {
             *field = base;
