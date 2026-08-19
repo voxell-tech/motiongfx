@@ -330,13 +330,22 @@ impl<'a, H: Host> Ui<'a, H> {
         self.records.elements.insert(node, element);
         self.records.element_nodes.insert(node);
 
-        // The style's other half. It takes the element whole, so what
-        // is handed back is a second borrow.
-        S::attach(ElementMut {
+        ElementMut {
             ui: self,
             node,
             element: PhantomData,
-        });
+        }
+    }
+
+    /// An [`ElementMut`] for the node [`build_fields`](
+    /// crate::element::ElementVisual::build_fields) is building -
+    /// itself, not a child. For wiring an observer or a lane onto its
+    /// own node, which needs an [`ElementMut`] and `build_fields` is
+    /// only ever handed the [`Ui`] around it.
+    pub fn this<E: Element<H> + Send + Sync>(
+        &mut self,
+    ) -> ElementMut<'_, 'a, H, E> {
+        let node = self.parent;
 
         ElementMut {
             ui: self,
@@ -498,6 +507,45 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         let Some(base) = base else {
             return self;
         };
+
+        self.ui.records.lanes.insert(
+            (self.node, cursor.key()),
+            Box::new(Travel::<H, E, P::Target> {
+                accessor,
+                hops: cursor.hops(),
+                transition,
+                shown: base.clone(),
+                from: base.clone(),
+                heading: base,
+                target: None,
+                elapsed: 0.0,
+                host: PhantomData,
+            }),
+        );
+        self
+    }
+
+    /// As [`transition`](Self::transition), but for
+    /// [`build_fields`](crate::element::ElementVisual::build_fields):
+    /// this node's element has not reached the kernel's own table yet
+    /// (that only happens once `build` returns, and `build_fields`
+    /// runs inside it), so there is nothing there yet to read a base
+    /// from. `build_fields` already has `&self`, which is that same
+    /// base - `base` is it, passed straight through instead of
+    /// fetched.
+    pub fn transition_from<P>(
+        self,
+        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
+        base: P::Target,
+        transition: Transition<P::Target>,
+    ) -> Self
+    where
+        E: Send + Sync,
+        P: FieldPath<Source = E>,
+        P::Target: PartialEq + Clone + Send + Sync,
+    {
+        let cursor = field(Cursor::new());
+        let accessor = cursor.accessor();
 
         self.ui.records.lanes.insert(
             (self.node, cursor.key()),

@@ -184,7 +184,7 @@ impl Composer<BevyHost> for AddComponent {
         ui.elem(elem!(DropdownMenu))
             .with(move |ui| {
                 ui.elem(elem!(
-                    !TintButton,
+                    !TintButton::default(),
                     icon = val!(
                         Icon,
                         image = icons::PLUS,

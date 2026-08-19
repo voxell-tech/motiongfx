@@ -132,7 +132,7 @@ where
             .with(move |ui| {
                 if chevron {
                     let toggle = ui.elem(elem!(
-                        !TintButton,
+                        !TintButton::default(),
                         width = px(TOGGLE),
                         height = px(TOGGLE),
                         radius = px(3),

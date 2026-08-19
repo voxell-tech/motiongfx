@@ -131,6 +131,18 @@ impl<H: Host> Fynix<H> {
         self.records.element_nodes.len()
     }
 
+    /// The current value of `E` built on `node`, if the kernel still
+    /// has one.
+    ///
+    /// For an observer that wants to read what a field decided rather
+    /// than have it baked in at the moment the observer was
+    /// registered - the same value [`ElementMut::bind`](
+    /// crate::ui::ElementMut::bind) patches onto the node whenever it
+    /// changes, so reading it here always sees the latest.
+    pub fn element<E: 'static>(&self, node: H::Node) -> Option<&E> {
+        self.records.elements.get(&node)
+    }
+
     /// How many bindings the kernel is holding.
     ///
     /// One per field bound to a live node, so this is what grows if a

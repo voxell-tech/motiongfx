@@ -93,7 +93,7 @@ impl Composer<BevyHost> for AddButton {
         ))
         .with(move |ui| {
             ui.elem(elem!(
-                !TintButton,
+                !TintButton::default(),
                 icon = val!(Icon, image = crate::icons::PLUS,)
             ))
             .observe(

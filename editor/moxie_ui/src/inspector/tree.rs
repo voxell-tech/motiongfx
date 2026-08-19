@@ -429,7 +429,7 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
 
         ui.compose(Foldable {
             header: elem!(
-                !TintButton,
+                !TintButton::default(),
                 width = percent(100),
                 height = auto(),
                 justify = JustifyContent::FlexStart,

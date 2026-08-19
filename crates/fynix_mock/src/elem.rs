@@ -42,7 +42,7 @@ use crate::elem;
 /// impl Style for Title {
 ///     type Host = Backend;
 ///     type Element = Label;
-///     fn apply(self, label: &mut Label) { label.size = 10; }
+///     fn apply(&self, label: &mut Label) { label.size = 10; }
 /// }
 ///
 /// elem!(!Title);                      // a style

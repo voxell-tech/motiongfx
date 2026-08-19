@@ -55,7 +55,7 @@ fn build_add_button(area: Entity, ui: &mut BevyUi) {
     let muted = ui.world.resource::<EditorTheme>().text_muted;
 
     ui.elem(elem!(
-        !TintButton,
+        !TintButton::default(),
         icon = val!(Icon, image = icons::PLUS, color = muted)
     ))
     .insert(DockTabAddButton { area_entity: area })
