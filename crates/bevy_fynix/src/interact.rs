@@ -134,6 +134,14 @@ impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
     }
 }
 
+/// The observer currently watching `V` on this node, so a rewire (a
+/// patch that runs `build_fields` again) can despawn it before
+/// spawning its replacement rather than stacking a second one
+/// alongside it - `EntityWorldMut::observe` always adds, never
+/// replaces.
+#[derive(Component)]
+struct Watching<V>(Entity, PhantomData<fn() -> V>);
+
 /// Run `aim` whenever `V` fires on `watch`, naming `aim_node` as what
 /// it moves.
 ///
@@ -151,15 +159,30 @@ fn watch<Theme: Resource + Clone + Default, V: EntityEvent>(
 ) {
     let aim = Arc::new(aim);
 
-    world.entity_mut(watch).observe(
-        move |_: On<V>, mut commands: Commands| {
-            let aim = Arc::clone(&aim);
+    // Spawned directly rather than through `EntityWorldMut::observe`,
+    // which hands back the entity it watches rather than the
+    // observer it just made - there would be no way to find this one
+    // again to despawn it.
+    if let Some(&Watching(old, _)) = world.get::<Watching<V>>(watch) {
+        world.despawn(old);
+    }
 
-            commands.queue(move |world: &mut World| {
-                with_kernel::<Theme>(world, |kernel, _| {
-                    aim(kernel, aim_node)
+    let observer = world
+        .spawn(
+            Observer::new(move |_: On<V>, mut commands: Commands| {
+                let aim = Arc::clone(&aim);
+
+                commands.queue(move |world: &mut World| {
+                    with_kernel::<Theme>(world, |kernel, _| {
+                        aim(kernel, aim_node)
+                    });
                 });
-            });
-        },
-    );
+            })
+            .with_entity(watch),
+        )
+        .id();
+
+    world
+        .entity_mut(watch)
+        .insert(Watching::<V>(observer, PhantomData));
 }
