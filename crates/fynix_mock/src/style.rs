@@ -50,7 +50,7 @@ use crate::host::Host;
 ///     type Host = Backend;
 ///     type Element = Label;
 ///
-///     fn apply(&self, label: &mut Label) {
+///     fn apply(self, label: &mut Label) {
 ///         label.size = 20 / self.level;
 ///
 ///         if self.level == 1 {
@@ -71,9 +71,12 @@ pub trait Style {
     type Host: Host;
     type Element: Default;
 
-    /// Borrows rather than consumes: a style meant to be applied more
-    /// than once is implemented for `&Self`.
-    fn apply(&self, element: &mut Self::Element) {
+    /// Called once, so it consumes rather than borrows: a style
+    /// meant to be applied more than once is implemented for `&Self`.
+    fn apply(self, element: &mut Self::Element)
+    where
+        Self: Sized,
+    {
         let _ = element;
     }
 }

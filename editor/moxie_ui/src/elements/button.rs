@@ -103,7 +103,7 @@ impl Style for Button {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(&self, button: &mut ButtonElem) {
+    fn apply(self, button: &mut ButtonElem) {
         button.fill = FILL;
         button.width = px(26);
         button.height = px(26);
@@ -129,7 +129,7 @@ impl Style for TintButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(&self, button: &mut ButtonElem) {
+    fn apply(self, button: &mut ButtonElem) {
         button.hover = Hover::IconLabel(self.tint);
     }
 }
@@ -143,7 +143,7 @@ impl Style for MenuButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(&self, button: &mut ButtonElem) {
+    fn apply(self, button: &mut ButtonElem) {
         button.fill = Color::NONE;
         button.radius = Val::ZERO;
         button.height = percent(100);
@@ -161,7 +161,7 @@ impl Style for GhostButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(&self, button: &mut ButtonElem) {
+    fn apply(self, button: &mut ButtonElem) {
         button.fill = Color::NONE;
         button.hover = Hover::Fill;
     }
