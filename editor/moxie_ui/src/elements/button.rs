@@ -19,10 +19,12 @@ const TINT: Color = crate::palette::BLUE;
 /// What lights up under the cursor, and to what colour. A style has
 /// no node to wire this on, so it leaves the choice here for
 /// [`build_fields`](ElementVisual::build_fields) to read once the
-/// node exists. `None` on [`ButtonElem::on_hover`] is no highlight at
-/// all.
-#[derive(Clone, Copy, PartialEq)]
+/// node exists.
+#[derive(Clone, Copy, PartialEq, Default)]
 pub enum Hover {
+    /// Nothing lights up.
+    #[default]
+    None,
     /// [`Button`], [`GhostButton`], [`MenuButton`]: the surface
     /// itself.
     Fill(Color),
@@ -66,7 +68,7 @@ pub struct ButtonElem {
     /// Set by whichever [`Style`] built this - see [`Hover`]. Never
     /// patched: read once, in `build_fields`.
     #[elem(ignore)]
-    on_hover: Option<Hover>,
+    hover: Hover,
 }
 
 impl ButtonElem {
@@ -106,7 +108,7 @@ impl Style for Button {
         button.width = px(26);
         button.height = px(26);
         button.radius = px(6);
-        button.on_hover = Some(Hover::Fill(motion::HOVER));
+        button.hover = Hover::Fill(motion::HOVER);
     }
 }
 
@@ -128,7 +130,7 @@ impl Style for TintButton {
     type Element = ButtonElem;
 
     fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
-        button.on_hover = Some(Hover::IconLabel(self.tint));
+        button.hover = Hover::IconLabel(self.tint);
     }
 }
 
@@ -146,7 +148,7 @@ impl Style for MenuButton {
         button.radius = Val::ZERO;
         button.height = percent(100);
         button.padding = UiRect::axes(px(10), Val::ZERO);
-        button.on_hover = Some(Hover::Fill(motion::HOVER));
+        button.hover = Hover::Fill(motion::HOVER);
     }
 }
 
@@ -161,7 +163,7 @@ impl Style for GhostButton {
 
     fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
         button.fill = Color::NONE;
-        button.on_hover = Some(Hover::Fill(motion::HOVER));
+        button.hover = Hover::Fill(motion::HOVER);
     }
 }
 
@@ -181,10 +183,10 @@ impl ElementVisual<BevyHost> for ButtonElem {
         // kernel's own table yet for `.lit()` to read one from. Both
         // stops light to the same colour: `Hover` carries one, not a
         // separate hover and press shade.
-        let (fill, icon_label) = match self.on_hover {
-            None => (None, None),
-            Some(Hover::Fill(color)) => (Some(color), None),
-            Some(Hover::IconLabel(color)) => (None, Some(color)),
+        let (fill, icon_label) = match self.hover {
+            Hover::None => (None, None),
+            Hover::Fill(color) => (Some(color), None),
+            Hover::IconLabel(color) => (None, Some(color)),
         };
 
         if let Some(color) = fill {
