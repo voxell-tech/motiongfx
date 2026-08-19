@@ -1,14 +1,14 @@
+use crate::reactive::{BevyHost, BevyUi};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::BevyUi;
-use bevy_fynix::host::BevyHost;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::style::Style;
 
 use super::{Icon, IconCursor, Label, LabelCursor};
 use crate::motion::{self, MotionExt};
+use crate::theme::EditorTheme;
 
 /// The faint surface a filled button rests at.
 const FILL: Color = Color::srgba(1.0, 1.0, 1.0, 0.06);
@@ -103,7 +103,7 @@ impl Style for Button {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem) {
+    fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
         button.fill = FILL;
         button.width = px(26);
         button.height = px(26);
@@ -129,7 +129,7 @@ impl Style for TintButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem) {
+    fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
         button.hover = Hover::IconLabel(self.tint);
     }
 }
@@ -143,7 +143,7 @@ impl Style for MenuButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem) {
+    fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.radius = Val::ZERO;
         button.height = percent(100);
@@ -161,7 +161,7 @@ impl Style for GhostButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem) {
+    fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.hover = Hover::Fill;
     }

@@ -57,7 +57,7 @@ fn generic_element_builds_its_children() {
     let mut records = Records::default();
     let themed = Themed::<Dark>::default();
 
-    let node = themed.build(&mut world, parent, &mut records);
+    let node = themed.build(&mut world, parent, &mut records, &());
 
     assert_eq!(world.get(node).glyph, '*');
 
@@ -71,7 +71,7 @@ fn generic_element_patches_through_its_child() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
     let mut themed = Themed::<Dark>::default();
-    let node = themed.build(&mut world, parent, &mut records);
+    let node = themed.build(&mut world, parent, &mut records, &());
 
     let path = Themed::<Dark>::cursor().label().text();
     let ids = path.hops();

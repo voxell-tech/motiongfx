@@ -1,10 +1,9 @@
 //! A leaf's tab bar: the strip, the scrolling row, and one tab.
 
+use crate::reactive::{BevyHost, BevyUi};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::BevyUi;
-use bevy_fynix::host::BevyHost;
 use fynix_mock::element::{Element, ElementVisual};
 
 use super::{ButtonElem, Icon, Label};

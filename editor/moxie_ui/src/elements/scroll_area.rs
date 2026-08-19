@@ -1,7 +1,6 @@
+use crate::reactive::{BevyHost, BevyUi};
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollArea as ScrollAreaBehavior;
-use bevy_fynix::BevyUi;
-use bevy_fynix::host::BevyHost;
 use fynix_mock::element::{Element, ElementVisual};
 
 /// A sized container with real, interactive scrolling - trackpad and

@@ -19,7 +19,8 @@ use crate::with_kernel;
 
 /// One queued aim: point a field somewhere on the kernel, given the
 /// node it belongs to.
-type Aim = Box<dyn Fn(&mut Fynix<BevyHost>, Entity) + Send + Sync>;
+type Aim<Theme> =
+    Box<dyn Fn(&mut Fynix<BevyHost<Theme>>, Entity) + Send + Sync>;
 
 /// Aims queued for one event type on one node, until they are dropped
 /// onto a single observer.
@@ -32,15 +33,22 @@ type Aim = Box<dyn Fn(&mut Fynix<BevyHost>, Entity) + Send + Sync>;
 /// has to come from the child's own hit area, but the lane lives
 /// keyed on the owner, which is where every `.transition()` and
 /// `.bind()` on it puts things.
-pub struct Aiming<'w, E: 'static, V: EntityEvent> {
+pub struct Aiming<
+    'w,
+    E: 'static,
+    Theme: Resource + Clone + Default,
+    V: EntityEvent,
+> {
     aim: Entity,
     watch: Entity,
     world: &'w mut World,
-    aims: Vec<Aim>,
+    aims: Vec<Aim<Theme>>,
     marker: PhantomData<fn() -> (E, V)>,
 }
 
-impl<E: 'static, V: EntityEvent> Aiming<'_, E, V> {
+impl<E: 'static, Theme: Resource + Clone + Default, V: EntityEvent>
+    Aiming<'_, E, Theme, V>
+{
     /// Point `field` at `target` whenever the event this was opened
     /// for fires on this node, or release it with `None`.
     ///
@@ -63,14 +71,16 @@ impl<E: 'static, V: EntityEvent> Aiming<'_, E, V> {
     }
 }
 
-impl<E: 'static, V: EntityEvent> Drop for Aiming<'_, E, V> {
+impl<E: 'static, Theme: Resource + Clone + Default, V: EntityEvent>
+    Drop for Aiming<'_, E, Theme, V>
+{
     fn drop(&mut self) {
         let aims = core::mem::take(&mut self.aims);
         if aims.is_empty() {
             return;
         }
 
-        watch::<V>(
+        watch::<Theme, V>(
             self.world,
             self.watch,
             self.aim,
@@ -84,10 +94,14 @@ impl<E: 'static, V: EntityEvent> Drop for Aiming<'_, E, V> {
 }
 
 /// What Bevy wants on a node that the element itself has no say in.
-pub trait OnExt<E: Element<BevyHost>> {
+pub trait OnExt<
+    E: Element<BevyHost<Theme>>,
+    Theme: Resource + Clone + Default,
+>
+{
     /// Open a group of aims that fire together whenever `V` happens to
     /// this node. Ends, and registers as one observer, at the `;`.
-    fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, V>;
+    fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, Theme, V>;
 
     /// The same, but watching `child` rather than this node, for a
     /// lane on a `#[elem(child)]` field whose own hit area should be what
@@ -95,13 +109,13 @@ pub trait OnExt<E: Element<BevyHost>> {
     fn on_entity<V: EntityEvent>(
         &mut self,
         child: Entity,
-    ) -> Aiming<'_, E, V>;
+    ) -> Aiming<'_, E, Theme, V>;
 }
 
-impl<E: Element<BevyHost>> OnExt<E>
-    for ElementMut<'_, '_, BevyHost, E>
+impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
+    OnExt<E, Theme> for ElementMut<'_, '_, BevyHost<Theme>, E>
 {
-    fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, V> {
+    fn on<V: EntityEvent>(&mut self) -> Aiming<'_, E, Theme, V> {
         let node = self.id();
         self.on_entity(node)
     }
@@ -109,7 +123,7 @@ impl<E: Element<BevyHost>> OnExt<E>
     fn on_entity<V: EntityEvent>(
         &mut self,
         entity: Entity,
-    ) -> Aiming<'_, E, V> {
+    ) -> Aiming<'_, E, Theme, V> {
         Aiming {
             aim: self.id(),
             watch: entity,
@@ -126,11 +140,14 @@ impl<E: Element<BevyHost>> OnExt<E>
 /// Queued rather than run there and then, because a flush owns the
 /// kernel while it runs and an observer cannot know it isn't inside
 /// one.
-fn watch<V: EntityEvent>(
+fn watch<Theme: Resource + Clone + Default, V: EntityEvent>(
     world: &mut World,
     watch: Entity,
     aim_node: Entity,
-    aim: impl Fn(&mut Fynix<BevyHost>, Entity) + Send + Sync + 'static,
+    aim: impl Fn(&mut Fynix<BevyHost<Theme>>, Entity)
+    + Send
+    + Sync
+    + 'static,
 ) {
     let aim = Arc::new(aim);
 
@@ -139,7 +156,9 @@ fn watch<V: EntityEvent>(
             let aim = Arc::clone(&aim);
 
             commands.queue(move |world: &mut World| {
-                with_kernel(world, |kernel, _| aim(kernel, aim_node));
+                with_kernel::<Theme>(world, |kernel, _| {
+                    aim(kernel, aim_node)
+                });
             });
         },
     );

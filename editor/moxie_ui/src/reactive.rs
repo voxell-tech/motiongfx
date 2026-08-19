@@ -8,8 +8,20 @@
 use bevy::ecs::change_detection::{ComponentTicks, Tick};
 use bevy::prelude::*;
 
-pub use bevy_fynix::host::BevyHost;
-pub use bevy_fynix::{BevyUi, FynixPlugin, FynixSet, watch_root};
+// `watch_root` stays generic over `Theme`, same as `bevy_fynix`
+// itself: whatever `build` is typed with (`BevyUi`, below, in every
+// real call site) already fixes `Theme` to `EditorTheme` for the
+// compiler to infer - a wrapper here would only repeat that.
+pub use bevy_fynix::{FynixSet, watch_root};
+
+use crate::theme::EditorTheme;
+
+/// [`bevy_fynix::host::BevyHost`] is generic over its theme so that
+/// crate never has to name this editor's own - here, once, is where
+/// it does.
+pub type BevyHost = bevy_fynix::host::BevyHost<EditorTheme>;
+pub type BevyUi<'a> = bevy_fynix::BevyUi<'a, EditorTheme>;
+pub type FynixPlugin = bevy_fynix::FynixPlugin<EditorTheme>;
 
 /// Fires when `R` changed since the last poll. Also fires on the first
 /// poll, so a binding starts out in sync with the world.

@@ -151,10 +151,14 @@ pub struct Backend;
 impl Host for Backend {
     type Node = usize;
     type World = World;
+    /// Nothing in these tests reads a theme.
+    type Theme = ();
 
     fn delta(world: &World) -> f32 {
         world.delta
     }
+
+    fn theme(_world: &World) {}
 
     fn spawn(world: &mut World, parent: usize) -> usize {
         world.insert(Node {

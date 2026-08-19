@@ -48,7 +48,7 @@ fn two_children_of_one_type_keep_separate_nodes() {
     let mut records = Records::default();
     let pair = Pair::default();
 
-    let node = pair.build(&mut world, parent, &mut records);
+    let node = pair.build(&mut world, parent, &mut records, &());
 
     let top = Pair::cursor().top().hops();
     let bottom = Pair::cursor().bottom().hops();
@@ -67,7 +67,7 @@ fn patching_one_of_a_pair_leaves_the_other() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
     let mut pair = Pair::default();
-    let node = pair.build(&mut world, parent, &mut records);
+    let node = pair.build(&mut world, parent, &mut records, &());
     let top = records
         .store()
         .get(node, Pair::cursor().top().hops()[0])

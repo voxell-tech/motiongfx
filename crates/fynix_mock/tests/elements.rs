@@ -96,7 +96,7 @@ fn build_writes_the_element_and_its_children() {
     let mut records = Records::default();
     let button = Button::default();
 
-    let node = button.build(&mut world, parent, &mut records);
+    let node = button.build(&mut world, parent, &mut records, &());
 
     assert_eq!(world.get(node).padding, 4);
 
@@ -118,7 +118,7 @@ fn absent_child_leaves_no_entry() {
         ..Button::default()
     };
 
-    let node = button.build(&mut world, parent, &mut records);
+    let node = button.build(&mut world, parent, &mut records, &());
 
     assert!(
         records.store().get(node, button_path::icon::id()).is_none()
@@ -136,7 +136,7 @@ fn path_into_a_child_is_patched_by_that_child() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
     let mut button = Button::default();
-    let node = button.build(&mut world, parent, &mut records);
+    let node = button.build(&mut world, parent, &mut records, &());
     let label =
         records.store().get(node, button_path::label::id()).unwrap();
 
@@ -155,7 +155,7 @@ fn path_into_plain_data_is_finished_by_its_owner() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
     let mut button = Button::default();
-    let node = button.build(&mut world, parent, &mut records);
+    let node = button.build(&mut world, parent, &mut records, &());
 
     let path = Button::cursor().border().width();
     *(path.accessor().get_mut)(&mut button).unwrap() = 2;
@@ -183,7 +183,7 @@ fn patching_an_unnamed_field_changes_nothing() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
     let button = Button::default();
-    let node = button.build(&mut world, parent, &mut records);
+    let node = button.build(&mut world, parent, &mut records, &());
 
     // A real path, but to a field of something else entirely.
     let path = Label::cursor().size().hops();
@@ -197,7 +197,7 @@ fn despawn_takes_the_children_and_their_entries() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
     let button = Button::default();
-    let node = button.build(&mut world, parent, &mut records);
+    let node = button.build(&mut world, parent, &mut records, &());
     let label =
         records.store().get(node, button_path::label::id()).unwrap();
     let icon =
@@ -217,7 +217,7 @@ fn pruning_drops_what_the_app_despawned() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
     let button = Button::default();
-    let node = button.build(&mut world, parent, &mut records);
+    let node = button.build(&mut world, parent, &mut records, &());
 
     assert_eq!(records.store().len(), 2);
 

@@ -6,9 +6,8 @@
 //!
 //! [`DockTree`]: crate::widgets::dock::DockTree
 
+use crate::reactive::{BevyHost, BevyUi};
 use bevy::prelude::*;
-use bevy_fynix::BevyUi;
-use bevy_fynix::host::BevyHost;
 use fynix_mock::element::{Element, ElementVisual};
 
 use super::Frame;

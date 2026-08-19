@@ -23,9 +23,30 @@ pub trait Host: Sized + Send + Sync + 'static {
     /// two: the kernel only ever holds one of `&` or `&mut` at a time.
     type World: 'static;
 
+    /// Read-only context every [`Style::apply`](crate::style::Style::apply)
+    /// gets alongside the element it writes - a theme, most often. One
+    /// type for the whole host rather than per style, since a look
+    /// and the palette it draws from are rarely two different
+    /// questions.
+    ///
+    /// `Clone`, and read out of `World` by value rather than by
+    /// reference: a theme that lives *in* `World` (a `Resource`, on
+    /// most hosts) could never be borrowed out and held anywhere
+    /// alongside `&mut World`, [`Ui`](crate::ui::Ui) included. Cloned
+    /// once, into [`Fynix`](crate::Fynix)'s own field, at the top of
+    /// each [`flush`](crate::Fynix::flush) - everything downstream of
+    /// that borrows it from there instead, so this is the only clone
+    /// there ever is. `Default` is what a fresh [`Fynix`] starts with,
+    /// before its first flush ever runs.
+    type Theme: Clone + Default + 'static;
+
     /// Seconds since the last flush, which is what a transition
     /// advances by. The kernel has no clock of its own.
     fn delta(world: &Self::World) -> f32;
+
+    /// [`Self::Theme`], read out of `world`. Cloned once per element
+    /// built, not once per read - see [`Self::Theme`].
+    fn theme(world: &Self::World) -> Self::Theme;
 
     /// Create an empty node under `parent`.
     ///

@@ -198,7 +198,7 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
         type Host = Backend;
         type Element = Grower;
 
-        fn apply(self, grower: &mut Grower) {
+        fn apply(self, grower: &mut Grower, _theme: &()) {
             grower.size = 10;
             grower.grows_to = Some(20);
         }

@@ -23,9 +23,10 @@ use crate::host::Host;
 
 /// A look, as a mutation of an element that already has its defaults.
 ///
-/// Nothing here names a backend: `apply` only writes fields, so one
-/// style serves every [`Host`] the element is drawn
-/// on. What it carries are the fields of the struct it is written on:
+/// Nothing here names a backend beyond [`Host::Theme`]: `apply` only
+/// writes fields (reading `theme` for whichever it wants to draw
+/// from), so one style serves every [`Host`] the element is drawn on.
+/// What it carries are the fields of the struct it is written on:
 ///
 /// ```
 /// use fynix_mock::style::{Style, StyledElem};
@@ -34,11 +35,13 @@ use crate::host::Host;
 /// # impl Host for Backend {
 /// #     type Node = usize;
 /// #     type World = ();
+/// #     type Theme = ();
 /// #     fn spawn(_: &mut (), _: usize) -> usize { 0 }
 /// #     fn exists(_: &(), _: usize) -> bool { true }
 /// #     fn children(_: &(), _: usize) -> Vec<usize> { Vec::new() }
 /// #     fn despawn(_: &mut (), _: usize) {}
 /// #     fn delta(_: &()) -> f32 { 0.0 }
+/// #     fn theme(_: &()) {}
 /// # }
 ///
 /// #[derive(Default)]
@@ -50,7 +53,7 @@ use crate::host::Host;
 ///     type Host = Backend;
 ///     type Element = Label;
 ///
-///     fn apply(self, label: &mut Label) {
+///     fn apply(self, label: &mut Label, _theme: &()) {
 ///         label.size = 20 / self.level;
 ///
 ///         if self.level == 1 {
@@ -59,7 +62,7 @@ use crate::host::Host;
 ///     }
 /// }
 ///
-/// let label = Heading { level: 1 }.create();
+/// let label = Heading { level: 1 }.create(&());
 ///
 /// assert_eq!(label.size, 20);
 /// assert_eq!(label.weight, 700);
@@ -73,11 +76,18 @@ pub trait Style {
 
     /// Called once, so it consumes rather than borrows: a style
     /// meant to be applied more than once is implemented for `&Self`.
-    fn apply(self, element: &mut Self::Element)
-    where
+    ///
+    /// `theme` is [`Host::Theme`] - read from, never written: a style
+    /// decides its own look from it, but has no node yet to leave
+    /// anything reactive against it.
+    fn apply(
+        self,
+        element: &mut Self::Element,
+        theme: &<Self::Host as Host>::Theme,
+    ) where
         Self: Sized,
     {
-        let _ = element;
+        let _ = (element, theme);
     }
 }
 
@@ -87,7 +97,10 @@ pub trait StyledElem {
     type Element;
 
     /// Run the cascade, in order.
-    fn create(self) -> Self::Element;
+    fn create(
+        self,
+        theme: &<Self::Host as Host>::Theme,
+    ) -> Self::Element;
 }
 
 /// Default, then the style.
@@ -95,9 +108,9 @@ impl<S: Style> StyledElem for S {
     type Host = S::Host;
     type Element = S::Element;
 
-    fn create(self) -> S::Element {
+    fn create(self, theme: &<S::Host as Host>::Theme) -> S::Element {
         let mut elem = S::Element::default();
-        self.apply(&mut elem);
+        self.apply(&mut elem, theme);
 
         elem
     }
@@ -137,8 +150,8 @@ where
     type Host = S::Host;
     type Element = S::Element;
 
-    fn create(self) -> S::Element {
-        let mut elem = self.style.create();
+    fn create(self, theme: &<S::Host as Host>::Theme) -> S::Element {
+        let mut elem = self.style.create(theme);
         (self.inline)(&mut elem);
 
         elem
@@ -163,7 +176,7 @@ impl<H: Host, E> StyledElem for Raw<H, E> {
     type Host = H;
     type Element = E;
 
-    fn create(self) -> E {
+    fn create(self, _theme: &H::Theme) -> E {
         self.0
     }
 }

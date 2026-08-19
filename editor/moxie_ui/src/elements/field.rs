@@ -1,5 +1,6 @@
 //! What an inspector row is edited with.
 
+use crate::reactive::{BevyHost, BevyUi};
 use bevy::feathers::controls::{
     FeathersNumberInput, FeathersTextInput,
     FeathersTextInputContainer, NumberFormat, NumberInputValue,
@@ -12,8 +13,6 @@ use bevy::text::EditableText;
 use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::BevyUi;
-use bevy_fynix::host::BevyHost;
 use fynix_mock::element::{Element, ElementVisual};
 
 /// A box that is ticked or not.

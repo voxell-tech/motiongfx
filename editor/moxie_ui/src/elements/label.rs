@@ -1,7 +1,6 @@
+use crate::reactive::{BevyHost, BevyUi};
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
-use bevy_fynix::BevyUi;
-use bevy_fynix::host::BevyHost;
 use fynix_mock::element::{Element, ElementVisual};
 
 /// A theme-inheriting text label.

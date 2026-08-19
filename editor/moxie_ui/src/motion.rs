@@ -2,12 +2,12 @@
 //! than spelling it out. Each takes the field by cursor, so one of
 //! them serves every widget with a colour in the right place.
 
+use crate::reactive::BevyHost;
 use bevy::color::Mix;
 use bevy::picking::events::{
     Cancel, Out, Over, Pointer, Press, Release,
 };
 use bevy::prelude::*;
-use bevy_fynix::host::BevyHost;
 use bevy_fynix::interact::OnExt as _;
 use fynix_mock::element::Element;
 use fynix_mock::host::Host;

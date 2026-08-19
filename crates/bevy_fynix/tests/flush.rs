@@ -3,12 +3,17 @@
 use bevy_app::prelude::*;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::prelude::*;
-use bevy_fynix::BevyUi;
 use bevy_fynix::host::BevyHost;
-use bevy_fynix::{FynixPlugin, watch_root};
+use bevy_fynix::{BevyUi, FynixPlugin, watch_root};
 use bevy_ui::Node;
 use fynix_mock::elem;
 use fynix_mock::element::{Element, ElementVisual};
+
+/// Nothing in these tests reads a theme - a host still needs one.
+#[derive(Resource, Clone, Default)]
+struct NoTheme;
+
+type Host = BevyHost<NoTheme>;
 
 /// What the element writes. A real one would write `bevy_ui`
 /// components; this only has to be visible from a test.
@@ -21,8 +26,8 @@ pub struct Label {
     pub text: String,
 }
 
-impl ElementVisual<BevyHost> for Label {
-    fn build_fields(&self, ui: &mut BevyUi<'_>) {
+impl ElementVisual<Host> for Label {
+    fn build_fields(&self, ui: &mut BevyUi<'_, NoTheme>) {
         let node = ui.parent();
         let world = &mut *ui.world;
 
@@ -54,7 +59,7 @@ fn only_child(world: &World, root: Entity) -> Entity {
 
 fn app_with_root() -> (App, Entity) {
     let mut app = App::new();
-    app.add_plugins(FynixPlugin);
+    app.add_plugins(FynixPlugin::<NoTheme>::default());
 
     let root = app.world_mut().spawn(Node::default()).id();
     (app, root)
@@ -64,7 +69,7 @@ fn app_with_root() -> (App, Entity) {
 fn flush_builds_what_a_root_declares() {
     let (mut app, root) = app_with_root();
 
-    watch_root(app.world_mut(), root, |ui| {
+    watch_root::<NoTheme>(app.world_mut(), root, |ui| {
         ui.elem(elem!(Label, text = "Save"));
     });
 

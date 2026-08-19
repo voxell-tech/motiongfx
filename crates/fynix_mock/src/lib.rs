@@ -82,6 +82,11 @@ pub use fynix_mock_macros::OverrideDefault;
 pub struct Fynix<H: Host> {
     watchers: Vec<Watcher<H>>,
     records: Records<H>,
+    /// Refreshed once per [`flush`](Self::flush), from
+    /// [`Host::theme`] - its own field, not [`H::World`](Host::World),
+    /// so a build can borrow it for the whole flush alongside
+    /// `&mut H::World` without the two ever aliasing.
+    theme: H::Theme,
 }
 
 impl<H: Host> Default for Fynix<H> {
@@ -89,6 +94,7 @@ impl<H: Host> Default for Fynix<H> {
         Self {
             watchers: Vec::new(),
             records: Records::default(),
+            theme: H::Theme::default(),
         }
     }
 }
@@ -158,9 +164,18 @@ impl<H: Host> Fynix<H> {
 
     /// Run every watcher and binding whose predicate fires.
     pub fn flush(&mut self, world: &mut H::World) {
+        // Refreshed here and nowhere else - see `theme`'s own doc.
+        self.theme = H::theme(world);
+
         // Split the borrow: a build writes into `records` while
-        // `watchers` is still borrowed by the loop.
-        let Self { watchers, records } = self;
+        // `watchers` is still borrowed by the loop. `theme` comes
+        // along the same way, so it borrows from `self`, never from
+        // `world` - the two can never alias.
+        let Self {
+            watchers,
+            records,
+            theme,
+        } = self;
 
         for watcher in watchers.iter_mut() {
             // Per watcher, not once up front: an earlier rebuild in
@@ -173,7 +188,7 @@ impl<H: Host> Fynix<H> {
             }
 
             clear_children::<H>(world, watcher.root);
-            let mut ui = Ui::new(world, watcher.root, records);
+            let mut ui = Ui::new(world, watcher.root, records, theme);
             (watcher.build)(&mut ui);
         }
 

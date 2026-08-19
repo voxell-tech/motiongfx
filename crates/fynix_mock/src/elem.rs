@@ -25,11 +25,13 @@ use crate::elem;
 /// # impl Host for Backend {
 /// #     type Node = usize;
 /// #     type World = ();
+/// #     type Theme = ();
 /// #     fn spawn(_: &mut (), _: usize) -> usize { 0 }
 /// #     fn exists(_: &(), _: usize) -> bool { true }
 /// #     fn children(_: &(), _: usize) -> Vec<usize> { Vec::new() }
 /// #     fn despawn(_: &mut (), _: usize) {}
 /// #     fn delta(_: &()) -> f32 { 0.0 }
+/// #     fn theme(_: &()) {}
 /// # }
 /// # fn built<S: StyledElem<Host = Backend>>(_: S) {}
 /// #[derive(Default)]
@@ -42,7 +44,7 @@ use crate::elem;
 /// impl Style for Title {
 ///     type Host = Backend;
 ///     type Element = Label;
-///     fn apply(self, label: &mut Label) { label.size = 10; }
+///     fn apply(self, label: &mut Label, _theme: &()) { label.size = 10; }
 /// }
 ///
 /// elem!(!Title);                      // a style
@@ -59,7 +61,7 @@ use crate::elem;
 ///
 /// // Whichever it was, it ends the same way, and the order it ran in
 /// // is the precedence.
-/// let label = elem!(!Title, text = "Save").create();
+/// let label = elem!(!Title, text = "Save").create(&());
 ///
 /// assert_eq!(label.size, 10, "the style");
 /// assert_eq!(label.text, "Save", "the call site");
@@ -117,10 +119,13 @@ macro_rules! elem {
 macro_rules! val {
     // A style, marked `!` as in [`elem!`], run down to the element it
     // makes. What it hangs on a node is lost: a nested value has no
-    // node of its own until its owner builds it.
+    // node of its own until its owner builds it - and no `Ui` in
+    // scope to read a real theme from either, so `apply` gets its
+    // host's default one instead.
     (!$style:expr $(, $($field:tt)*)?) => {
         $crate::style::StyledElem::create(
-            $crate::elem!(!$style $(, $($field)*)?)
+            $crate::elem!(!$style $(, $($field)*)?),
+            &::core::default::Default::default(),
         )
     };
 

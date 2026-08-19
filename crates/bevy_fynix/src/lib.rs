@@ -7,6 +7,8 @@
 pub mod host;
 pub mod interact;
 
+use core::marker::PhantomData;
+
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::IntoObserverSystem;
@@ -16,24 +18,48 @@ use fynix_mock::ui::{BuildFn, ElementMut, Ui};
 
 use crate::host::BevyHost;
 
-/// Runs [`Fynix::flush`] in [`FynixSet`], every [`Update`].
-pub struct FynixPlugin;
+/// Runs [`Fynix::flush`] in [`FynixSet`], every [`Update`]. `Theme`
+/// is whatever the app's own [`Resource`] is - this crate never
+/// names it, only that one exists.
+pub struct FynixPlugin<Theme>(PhantomData<fn() -> Theme>);
 
-impl Plugin for FynixPlugin {
+impl<Theme> Default for FynixPlugin<Theme> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<Theme: Resource + Clone + Default> Plugin
+    for FynixPlugin<Theme>
+{
     fn build(&self, app: &mut App) {
-        app.init_resource::<BevyFynix>()
-            .add_systems(Update, flush.in_set(FynixSet));
+        // `Theme` is a `Resource` this crate takes on faith, not one
+        // it defines - initializing it here (it's already bound
+        // `Default`) is what lets an app that has no opinion on its
+        // own theme, and every test, add the plugin without a second
+        // `init_resource` of its own.
+        app.init_resource::<Theme>()
+            .init_resource::<BevyFynix<Theme>>()
+            .add_systems(Update, flush::<Theme>.in_set(FynixSet));
     }
 }
 
 /// What a build takes.
-pub type BevyUi<'a> = Ui<'a, BevyHost>;
+pub type BevyUi<'a, Theme> = Ui<'a, BevyHost<Theme>>;
 
 /// Private, because a flush owns the kernel for as long as it runs and
 /// anything it builds could otherwise borrow it again. Watchers are
 /// declared inside a build, and the first one through [`watch_root`].
-#[derive(Resource, Default)]
-struct BevyFynix(Fynix<BevyHost>);
+#[derive(Resource)]
+struct BevyFynix<Theme: Resource + Clone + Default>(
+    Fynix<BevyHost<Theme>>,
+);
+
+impl<Theme: Resource + Clone + Default> Default for BevyFynix<Theme> {
+    fn default() -> Self {
+        Self(Fynix::new())
+    }
+}
 
 /// Order systems against the flush: whatever a build reads should be
 /// written before [`FynixSet`] runs.
@@ -44,38 +70,44 @@ pub struct FynixSet;
 ///
 /// The bootstrap: everything reactive below it is declared inside
 /// `build`. Call it once per root, after spawning that root.
-pub fn watch_root(
+pub fn watch_root<Theme: Resource + Clone + Default>(
     world: &mut World,
     root: Entity,
-    build: impl BuildFn<BevyHost>,
+    build: impl BuildFn<BevyHost<Theme>>,
 ) {
     let mut pending = true;
 
-    world.resource_mut::<BevyFynix>().0.watch(
+    world.resource_mut::<BevyFynix<Theme>>().0.watch(
         root,
         move |_, _| core::mem::take(&mut pending),
         build,
     );
 }
 
-fn flush(world: &mut World) {
-    with_kernel(world, |kernel, world| kernel.flush(world));
+fn flush<Theme: Resource + Clone + Default>(world: &mut World) {
+    with_kernel::<Theme>(world, |kernel, world| kernel.flush(world));
 }
 
 /// Run `f` with the kernel out of the world, which is the only way to
 /// have both. Not for anything a flush can reach: the kernel is gone
 /// from the world for as long as this runs.
-pub(crate) fn with_kernel(
+pub(crate) fn with_kernel<Theme: Resource + Clone + Default>(
     world: &mut World,
-    f: impl FnOnce(&mut Fynix<BevyHost>, &mut World),
+    f: impl FnOnce(&mut Fynix<BevyHost<Theme>>, &mut World),
 ) {
-    world.resource_scope(|world, mut kernel: Mut<BevyFynix>| {
-        f(&mut kernel.0, world);
-    });
+    world.resource_scope(
+        |world, mut kernel: Mut<BevyFynix<Theme>>| {
+            f(&mut kernel.0, world);
+        },
+    );
 }
 
 /// What bevy wants on a node that the element itself has no say in.
-pub trait ElementMutExt<E: Element<BevyHost>> {
+pub trait ElementMutExt<
+    E: Element<BevyHost<Theme>>,
+    Theme: Resource + Clone + Default,
+>
+{
     /// Watch this node for `V`.
     fn observe<V: EntityEvent, B: Bundle, M>(
         self,
@@ -86,8 +118,9 @@ pub trait ElementMutExt<E: Element<BevyHost>> {
     fn insert(self, bundle: impl Bundle) -> Self;
 }
 
-impl<E: Element<BevyHost>> ElementMutExt<E>
-    for ElementMut<'_, '_, BevyHost, E>
+impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
+    ElementMutExt<E, Theme>
+    for ElementMut<'_, '_, BevyHost<Theme>, E>
 {
     fn observe<V: EntityEvent, B: Bundle, M>(
         self,

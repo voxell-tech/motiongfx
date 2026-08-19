@@ -7,6 +7,7 @@
 //! flips near the window edge, dismissal on focus loss, Escape, and
 //! arrow-key navigation.
 
+use crate::reactive::{BevyHost, BevyUi};
 use bevy::feathers::controls::{FeathersMenu, FeathersMenuPopup};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::input_focus::tab_navigation::TabIndex;
@@ -16,8 +17,6 @@ use bevy::ui_widgets::{
     ActivateOnPress, Button as ButtonBehavior, MenuButton, MenuItem,
 };
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::BevyUi;
-use bevy_fynix::host::BevyHost;
 use fynix_mock::element::{Element, ElementVisual};
 
 use super::{Icon, Label};

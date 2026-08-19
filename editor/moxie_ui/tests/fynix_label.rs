@@ -5,9 +5,10 @@ use bevy::prelude::FontSize;
 use bevy::prelude::{
     Children, Entity, Node, Resource, Text, TextFont, World,
 };
-use bevy_fynix::{FynixPlugin, watch_root};
 use fynix_mock::elem;
 use moxie_ui::elements::{Label, LabelCursor};
+use moxie_ui::reactive::{FynixPlugin, watch_root};
+use moxie_ui::theme::EditorTheme;
 
 /// What the label reads, so a binding has something to fire on.
 #[derive(Resource, Default)]
@@ -15,7 +16,9 @@ struct Caption(String);
 
 fn app_with_root() -> (App, Entity) {
     let mut app = App::new();
-    app.add_plugins(FynixPlugin).init_resource::<Caption>();
+    app.add_plugins(FynixPlugin::default())
+        .init_resource::<Caption>()
+        .init_resource::<EditorTheme>();
 
     let root = app.world_mut().spawn(Node::default()).id();
     (app, root)

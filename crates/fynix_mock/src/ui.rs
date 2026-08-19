@@ -266,6 +266,9 @@ pub struct Ui<'a, H: Host> {
     /// a host's own extensions need it and a build is the one place
     /// holding it.
     pub world: &'a mut H::World,
+    /// Borrowed from [`Fynix`](crate::Fynix)'s own field, never from
+    /// `world` - see [`Host::Theme`].
+    pub theme: &'a H::Theme,
     parent: H::Node,
     records: &'a mut Records<H>,
 }
@@ -280,9 +283,11 @@ impl<'a, H: Host> Ui<'a, H> {
         world: &'a mut H::World,
         parent: H::Node,
         records: &'a mut Records<H>,
+        theme: &'a H::Theme,
     ) -> Self {
         Self {
             world,
+            theme,
             parent,
             records,
         }
@@ -323,10 +328,14 @@ impl<'a, H: Host> Ui<'a, H> {
         S: StyledElem<Host = H, Element = E>,
         E: Element<H> + Send + Sync,
     {
-        let element = styled.create();
+        let element = styled.create(self.theme);
 
-        let node =
-            element.build(self.world, self.parent, self.records);
+        let node = element.build(
+            self.world,
+            self.parent,
+            self.records,
+            self.theme,
+        );
         self.records.elements.insert(node, element);
         self.records.element_nodes.insert(node);
 
@@ -471,8 +480,12 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
 
     /// Build children under this element.
     pub fn with(self, f: impl FnOnce(&mut Ui<'_, H>)) -> Self {
-        let mut child =
-            Ui::new(self.ui.world, self.node, self.ui.records);
+        let mut child = Ui::new(
+            self.ui.world,
+            self.node,
+            self.ui.records,
+            self.ui.theme,
+        );
         f(&mut child);
         self
     }

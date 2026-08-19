@@ -29,12 +29,15 @@ pub trait Element<H: Host>: ElementVisual<H> + Default {
     /// Every child's node is recorded in `records`, which is what lets
     /// [`patch`](Self::patch) find it again - and what
     /// [`build_fields`](ElementVisual::build_fields) gets handed as a
-    /// [`Ui`] of its own, rooted on the node this returns.
+    /// [`Ui`] of its own, rooted on the node this returns. `theme` is
+    /// what that `Ui` carries too - the same borrow passed down to
+    /// each recursive build of a `#[elem(child)]`, never cloned.
     fn build(
         &self,
         world: &mut H::World,
         parent: H::Node,
         records: &mut Records<H>,
+        theme: &H::Theme,
     ) -> H::Node;
 
     /// Apply a change named by a path, as

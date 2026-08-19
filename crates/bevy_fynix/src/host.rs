@@ -1,22 +1,32 @@
 //! The ECS as a [`Host`].
 
+use core::marker::PhantomData;
+
 use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::prelude::*;
 use bevy_time::Time;
 use bevy_ui::Node;
 use fynix_mock::host::Host;
 
-pub struct BevyHost;
+/// Generic over `Theme`, so this crate never has to name whatever
+/// concrete theme an app built on it reads - only that it lives in
+/// `World` as a [`Resource`] and can be cloned out.
+pub struct BevyHost<Theme>(PhantomData<fn() -> Theme>);
 
-impl Host for BevyHost {
+impl<Theme: Resource + Clone + Default> Host for BevyHost<Theme> {
     type Node = Entity;
     type World = World;
+    type Theme = Theme;
 
     fn delta(world: &World) -> f32 {
         world
             .get_resource::<Time>()
             .map(|time| time.delta_secs())
             .unwrap_or_default()
+    }
+
+    fn theme(world: &World) -> Theme {
+        world.resource::<Theme>().clone()
     }
 
     fn spawn(world: &mut World, parent: Entity) -> Entity {

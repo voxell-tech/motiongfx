@@ -42,7 +42,7 @@ impl Plugin for MoxieUiPlugin {
         app.add_plugins((
             FeathersPlugins,
             DockPlugin,
-            FynixPlugin,
+            FynixPlugin::default(),
             InspectPlugin,
         ))
         // The colours every widget reads.

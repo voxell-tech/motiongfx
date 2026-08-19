@@ -1,9 +1,8 @@
+use crate::reactive::{BevyHost, BevyUi};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::BevyUi;
-use bevy_fynix::host::BevyHost;
 use fynix_mock::element::{Element, ElementVisual};
 
 const DIVIDER_WIDTH: f32 = 6.0;
