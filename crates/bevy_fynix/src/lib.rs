@@ -14,7 +14,8 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::system::IntoObserverSystem;
 use fynix_mock::Fynix;
 use fynix_mock::element::Element;
-use fynix_mock::ui::{BuildFn, Draw, ElementMut, Ui};
+use fynix_mock::records::BuildFn;
+use fynix_mock::ui::{Draw, ElementMut, Ui};
 
 use crate::host::BevyHost;
 

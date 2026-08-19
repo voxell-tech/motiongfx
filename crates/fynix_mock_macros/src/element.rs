@@ -175,7 +175,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 &self,
                 world: &mut H::World,
                 parent: H::Node,
-                records: &mut #root::ui::Records<H>,
+                records: &mut #root::records::Records<H>,
                 theme: &H::Theme,
             ) -> H::Node {
                 let node = <H as #root::host::Host>::spawn(

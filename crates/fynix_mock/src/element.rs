@@ -11,8 +11,9 @@
 
 use crate::host::Host;
 use crate::lenz::FieldId;
+use crate::records::Records;
 use crate::store::Store;
-use crate::ui::{Draw, Records};
+use crate::ui::Draw;
 
 // Same name as the trait, in the macro namespace, the way `Default`
 // and `Clone` do it.

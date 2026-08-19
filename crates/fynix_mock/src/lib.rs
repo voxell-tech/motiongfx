@@ -12,13 +12,16 @@ use alloc::vec::Vec;
 
 use crate::host::Host;
 use crate::lenz::{Cursor, FieldPath, Identity};
-use crate::ui::{BuildFn, ChangedFn, Records, Ui, Watcher};
+use crate::records::{BuildFn, ChangedFn, Records, Watcher};
+use crate::ui::Ui;
 
 pub mod composer;
 mod elem;
 pub mod element;
 pub mod host;
+pub mod lanes;
 pub mod lenz;
+pub mod records;
 pub mod store;
 pub mod style;
 pub mod transition;

@@ -21,7 +21,8 @@ use bevy::ui_widgets::{Activate, ActivateOnPress, MenuButton};
 
 use bevy_fynix::ElementMutExt;
 use fynix_mock::composer::Composer;
-use fynix_mock::ui::{BuildFn, ChangedFn, ElementHandle};
+use fynix_mock::records::{BuildFn, ChangedFn};
+use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
 
 use super::{
