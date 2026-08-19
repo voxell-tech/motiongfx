@@ -109,11 +109,7 @@ pub(crate) fn with_kernel<Theme: Resource + Clone + Default>(
 /// whatever `bevy_ecs` already offers - the one real difference
 /// between `ElementMut` and `Build` is how each reaches the world in
 /// the first place, so that is the only method either has to provide.
-pub trait EntityExt<
-    E: Element<BevyHost<Theme>>,
-    Theme: Resource + Clone + Default,
->
-{
+pub trait EntityExt {
     /// This node itself, for whatever `bevy_ecs` offers that has no
     /// shorthand of its own here - `.entity_mut().insert(...)` rather
     /// than reaching for the world and the node by hand.
@@ -141,8 +137,10 @@ pub trait EntityExt<
     }
 }
 
-impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
-    EntityExt<E, Theme> for ElementMut<'_, '_, BevyHost<Theme>, E>
+impl<E, T> EntityExt for ElementMut<'_, '_, BevyHost<T>, E>
+where
+    T: Resource + Clone + Default,
+    E: Element<BevyHost<T>>,
 {
     fn entity_mut(&mut self) -> EntityWorldMut<'_> {
         let node = self.id();
@@ -150,8 +148,10 @@ impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
     }
 }
 
-impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
-    EntityExt<E, Theme> for Build<'_, BevyHost<Theme>, E>
+impl<E, T> EntityExt for Build<'_, BevyHost<T>, E>
+where
+    E: Element<BevyHost<T>>,
+    T: Resource + Clone + Default,
 {
     fn entity_mut(&mut self) -> EntityWorldMut<'_> {
         let node = self.id();
