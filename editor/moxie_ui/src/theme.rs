@@ -9,7 +9,7 @@
 
 use bevy::prelude::*;
 
-use crate::palette;
+use crate::monokai;
 
 /// Raw Monokai Pro palette, as the fields the rest of the editor reads
 /// by name. [`palette`] carries the same colours as `const`s, for
@@ -29,13 +29,13 @@ pub struct Palette {
 impl Default for Palette {
     fn default() -> Self {
         Self {
-            red: palette::RED,
-            orange: palette::ORANGE,
-            yellow: palette::YELLOW,
-            green: palette::GREEN,
-            blue: palette::BLUE,
-            purple: palette::PURPLE,
-            base: palette::BASE,
+            red: monokai::RED,
+            orange: monokai::ORANGE,
+            yellow: monokai::YELLOW,
+            green: monokai::GREEN,
+            blue: monokai::BLUE,
+            purple: monokai::PURPLE,
+            base: monokai::BASE,
         }
     }
 }

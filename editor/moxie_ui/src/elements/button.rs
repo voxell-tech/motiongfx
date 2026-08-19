@@ -16,7 +16,7 @@ use crate::theme::EditorTheme;
 const FILL: Color = Color::srgba(1.0, 1.0, 1.0, 0.06);
 
 /// A tinted button's icon and label colour.
-const TINT: Color = crate::palette::BLUE;
+const TINT: Color = crate::monokai::BLUE;
 
 /// What lights up under the cursor, and to what colour. A style has
 /// no node to wire this on, so it leaves the choice here for

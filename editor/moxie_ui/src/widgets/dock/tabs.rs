@@ -20,7 +20,7 @@ use crate::reactive::{BevyUi, resource_changed};
 use crate::theme::EditorTheme;
 
 /// What the close button's icon tints to under the cursor.
-const CLOSE_HOVER: Color = crate::palette::RED;
+const CLOSE_HOVER: Color = crate::monokai::RED;
 
 #[derive(Component)]
 pub struct DockTabRow;

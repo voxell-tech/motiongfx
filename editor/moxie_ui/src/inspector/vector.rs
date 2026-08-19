@@ -21,7 +21,7 @@ use fynix_mock::elem;
 
 use super::{Inspect, Source, SourceExt, when_changed};
 use crate::elements::{Frame, Label, NumberField, NumberFieldCursor};
-use crate::palette;
+use crate::monokai;
 use crate::reactive::BevyUi;
 use crate::theme::EditorTheme;
 
@@ -44,9 +44,9 @@ trait Axes: FromReflect + Send + Sync + 'static {
 /// Y green, Z blue.
 fn axis_color(theme: &EditorTheme, name: &str) -> Color {
     match name {
-        "x" => palette::RED,
-        "y" => palette::GREEN,
-        "z" => palette::BLUE,
+        "x" => monokai::RED,
+        "y" => monokai::GREEN,
+        "z" => monokai::BLUE,
         _ => theme.text_muted,
     }
 }
