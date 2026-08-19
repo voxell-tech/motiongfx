@@ -18,7 +18,7 @@ use bevy::ui_widgets::{
 };
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 use super::{Icon, Label};
 
@@ -31,9 +31,9 @@ use super::{Icon, Label};
 pub struct DropdownMenu;
 
 impl ElementVisual<BevyHost> for DropdownMenu {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         if let Err(err) =
             world.entity_mut(node).apply_scene(bsn! { @FeathersMenu })
@@ -117,14 +117,13 @@ impl Dropdown {
     }
 
     /// Keeps the chevron its own size while the label gives way.
-    fn hold_chevron(element: &mut Draw<'_, BevyHost, Self>) {
-        let Some(chevron) = element.child(DropdownCursor::chevron)
+    fn hold_chevron(build: &mut Build<BevyHost, Self>) {
+        let Some(chevron) = build.child(DropdownCursor::chevron)
         else {
             return;
         };
 
-        if let Some(mut layout) =
-            element.world.get_mut::<Node>(chevron)
+        if let Some(mut layout) = build.world.get_mut::<Node>(chevron)
         {
             layout.flex_shrink = 0.0;
         }
@@ -132,10 +131,10 @@ impl Dropdown {
 }
 
 impl ElementVisual<BevyHost> for Dropdown {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
 
-        element.world.entity_mut(node).insert((
+        build.world.entity_mut(node).insert((
             self.node(),
             BackgroundColor(self.fill),
             ButtonBehavior,
@@ -145,7 +144,7 @@ impl ElementVisual<BevyHost> for Dropdown {
             MenuButton,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
-        Self::hold_chevron(element);
+        Self::hold_chevron(build);
     }
 
     fn patch_fields(
@@ -201,9 +200,9 @@ impl DropdownList {
 }
 
 impl ElementVisual<BevyHost> for DropdownList {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         if let Err(err) = world
             .entity_mut(node)
@@ -262,9 +261,9 @@ impl DropdownItem {
 }
 
 impl ElementVisual<BevyHost> for DropdownItem {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.entity_mut(node).insert((
             self.node(),

@@ -6,7 +6,7 @@ use bevy::window::SystemCursorIcon;
 use bevy_fynix::ElementMutExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::style::Style;
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 use super::{Icon, IconCursor, Label, LabelCursor};
 use crate::motion::{self, LitFrom as _};
@@ -170,8 +170,8 @@ impl Style for GhostButton {
 }
 
 impl ElementVisual<BevyHost> for ButtonElem {
-    fn build_fields(&self, draw: &mut Draw<BevyHost, Self>) {
-        draw.insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             self.node(),
             self.background(),
             ButtonBehavior,
@@ -190,7 +190,7 @@ impl ElementVisual<BevyHost> for ButtonElem {
         };
 
         if let Some(color) = fill {
-            draw.lit_from(
+            build.lit_from(
                 |button| button.fill(),
                 self.fill,
                 color,
@@ -204,7 +204,7 @@ impl ElementVisual<BevyHost> for ButtonElem {
             // way the field simply not lighting up would read if
             // `icon`/`label` were never there to begin with.
             if let Some(icon) = &self.icon {
-                draw.lit_from(
+                build.lit_from(
                     |button| button.icon().color(),
                     icon.color,
                     tint,
@@ -218,7 +218,7 @@ impl ElementVisual<BevyHost> for ButtonElem {
             if let Some(color) =
                 self.label.as_ref().and_then(|label| label.color)
             {
-                draw.lit_from(
+                build.lit_from(
                     |button| button.label().color(),
                     color,
                     tint,

@@ -15,7 +15,7 @@ use bevy_ecs::system::IntoObserverSystem;
 use fynix_mock::Fynix;
 use fynix_mock::element::Element;
 use fynix_mock::records::BuildFn;
-use fynix_mock::ui::{Draw, ElementMut, Ui};
+use fynix_mock::ui::{Build, ElementMut, Ui};
 
 use crate::host::BevyHost;
 
@@ -110,9 +110,8 @@ pub trait ElementMutExt<
 >
 {
     /// This node itself, for whatever `bevy_ecs` offers that has no
-    /// shorthand of its own here - `element.entity_mut().insert(...)`
-    /// rather than reaching for `element.ui.world` and the node by
-    /// hand.
+    /// shorthand of its own here - `.entity_mut().insert(...)` rather
+    /// than reaching for the world and the node by hand.
     fn entity_mut(&mut self) -> EntityWorldMut<'_>;
 
     /// Watch this node for `V`.
@@ -123,6 +122,9 @@ pub trait ElementMutExt<
 
     /// Put `bundle` on this node, once, now.
     fn insert(&mut self, bundle: impl Bundle) -> &mut Self;
+
+    /// Take `B` off this node, once, now.
+    fn remove<B: Bundle>(&mut self) -> &mut Self;
 }
 
 impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
@@ -146,10 +148,15 @@ impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
         self.entity_mut().insert(bundle);
         self
     }
+
+    fn remove<B: Bundle>(&mut self) -> &mut Self {
+        self.entity_mut().remove::<B>();
+        self
+    }
 }
 
 impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
-    ElementMutExt<E, Theme> for Draw<'_, BevyHost<Theme>, E>
+    ElementMutExt<E, Theme> for Build<'_, BevyHost<Theme>, E>
 {
     fn entity_mut(&mut self) -> EntityWorldMut<'_> {
         let node = self.id();
@@ -166,6 +173,11 @@ impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
 
     fn insert(&mut self, bundle: impl Bundle) -> &mut Self {
         self.entity_mut().insert(bundle);
+        self
+    }
+
+    fn remove<B: Bundle>(&mut self) -> &mut Self {
+        self.entity_mut().remove::<B>();
         self
     }
 }

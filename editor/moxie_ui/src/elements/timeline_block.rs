@@ -1,7 +1,7 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 use super::Label;
 
@@ -43,9 +43,9 @@ impl TimelineBlock {
 }
 
 impl ElementVisual<BevyHost> for TimelineBlock {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.entity_mut(node).insert((
             self.node(),

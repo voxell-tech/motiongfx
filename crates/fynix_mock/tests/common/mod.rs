@@ -11,7 +11,7 @@ use fynix_mock::Fynix;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
 use fynix_mock::lenz::{Cursor, FieldPath, Identity};
-use fynix_mock::ui::{Draw, ElementMut, Patch};
+use fynix_mock::ui::{Build, ElementMut, Patch};
 use hashbrown::HashMap;
 
 /// What this test stands in for a pointer with: not fynix's concern,
@@ -66,9 +66,9 @@ impl<E: Element<Backend>> TestAim<E>
 }
 
 /// As above, from [`build_fields`](ElementVisual::build_fields):
-/// [`Draw`] carries `world` directly rather than through a [`Ui`], but
+/// [`Build`] carries `world` directly rather than through a [`Ui`], but
 /// otherwise wires the same interaction the same way.
-impl<E: Element<Backend>> TestAim<E> for Draw<'_, Backend, E> {
+impl<E: Element<Backend>> TestAim<E> for Build<'_, Backend, E> {
     fn aim_on<P>(
         &mut self,
         on: Interact,
@@ -230,7 +230,7 @@ pub struct Label {
 }
 
 impl ElementVisual<Backend> for Label {
-    fn build_fields(&self, draw: &mut Draw<'_, Backend, Self>) {
+    fn build_fields(&self, draw: &mut Build<Backend, Self>) {
         let node = draw.id();
         let world = &mut *draw.world;
 

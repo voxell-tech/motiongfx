@@ -1,7 +1,7 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 /// The scrubbable timeline track: a plain node sized to the track's
 /// duration. The consuming app resolves its own pixels per second
@@ -25,9 +25,9 @@ impl TimelineTrack {
 }
 
 impl ElementVisual<BevyHost> for TimelineTrack {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.entity_mut(node).insert(self.node());
     }

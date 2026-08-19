@@ -139,13 +139,13 @@ impl<H: Host> Records<H> {
     }
 
     /// The store and the lanes together, for
-    /// [`Draw::new`](crate::ui::Draw::new) - what `#[derive(Element)]`'s
+    /// [`Build::new`](crate::ui::Build::new) - what `#[derive(Element)]`'s
     /// own generated `build` reaches for rather than
     /// [`store_mut`](Self::store_mut) and a lane accessor called
     /// separately, which would each want their own exclusive borrow
     /// of `self` at once.
     #[doc(hidden)]
-    pub fn draw_parts(&mut self) -> (&mut Lanes<H>, &mut Store<H>) {
+    pub fn build_parts(&mut self) -> (&mut Lanes<H>, &mut Store<H>) {
         (&mut self.lanes, &mut self.store)
     }
 }

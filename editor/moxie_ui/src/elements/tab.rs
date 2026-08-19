@@ -5,7 +5,7 @@ use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 use super::{ButtonElem, Icon, Label};
 use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
@@ -18,9 +18,9 @@ pub struct TabBar {
 }
 
 impl ElementVisual<BevyHost> for TabBar {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.entity_mut(node).insert((
             Node {
@@ -66,9 +66,9 @@ impl ElementVisual<BevyHost> for TabBar {
 pub struct TabRow;
 
 impl ElementVisual<BevyHost> for TabRow {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.entity_mut(node).insert((
             DockTabRow,
@@ -127,9 +127,9 @@ impl Tab {
 }
 
 impl ElementVisual<BevyHost> for Tab {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.entity_mut(node).insert((
             DockTab {

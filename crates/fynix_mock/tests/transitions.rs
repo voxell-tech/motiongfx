@@ -9,7 +9,7 @@ use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
 use fynix_mock::style::Style;
 use fynix_mock::transition::Transition;
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 use fynix_mock::{Fynix, elem};
 use motiongfx_interp::ease;
 use motiongfx_interp::interpolation::Interpolation;
@@ -147,26 +147,27 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
     }
 
     impl ElementVisual<Backend> for Grower {
-        fn build_fields(&self, draw: &mut Draw<'_, Backend, Self>) {
-            let node = draw.id();
-            draw.world.node(node).text = self.text.clone();
-            draw.world.node(node).size = self.size;
+        fn build_fields(&self, build: &mut Build<Backend, Self>) {
+            let node = build.id();
+            build.world.node(node).text = self.text.clone();
+            build.world.node(node).size = self.size;
 
             if let Some(target) = self.grows_to {
-                draw.transition_from(
-                    |g| g.size(),
-                    self.size,
-                    Transition::secs(
-                        1.0,
-                        <u32 as Interpolation<()>>::interp,
-                    ),
-                )
-                .aim_on(Interact::Enter, |g| g.size(), Some(target))
-                .aim_on(
-                    Interact::Leave,
-                    |g| g.size(),
-                    None,
-                );
+                build
+                    .transition_from(
+                        |g| g.size(),
+                        self.size,
+                        Transition::secs(
+                            1.0,
+                            <u32 as Interpolation<()>>::interp,
+                        ),
+                    )
+                    .aim_on(
+                        Interact::Enter,
+                        |g| g.size(),
+                        Some(target),
+                    )
+                    .aim_on(Interact::Leave, |g| g.size(), None);
             }
         }
 

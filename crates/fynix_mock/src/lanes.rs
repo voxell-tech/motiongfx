@@ -135,7 +135,7 @@ where
 ///
 /// Opaque on purpose: [`Lane`] is `pub(crate)`, so this is what a
 /// borrow of the table looks like to anything outside this crate -
-/// [`Draw`](crate::ui::Draw) holds one directly, the same way it holds
+/// [`Build`](crate::ui::Build) holds one directly, the same way it holds
 /// a [`Store`], without either leaking what a lane actually is.
 pub struct Lanes<H: Host>(
     HashMap<(H::Node, FieldId), Box<dyn Lane<H>>>,
@@ -222,7 +222,7 @@ pub(crate) fn insert_travel<H, E, T>(
 
 /// The shared insides of
 /// [`ElementMut::transition_from`](crate::ui::ElementMut::transition_from)
-/// and [`Draw::transition_from`](crate::ui::Draw::transition_from) -
+/// and [`Build::transition_from`](crate::ui::Build::transition_from) -
 /// only where the lane table comes from differs between them.
 pub(crate) fn insert_lane<H, E, P>(
     lanes: &mut Lanes<H>,

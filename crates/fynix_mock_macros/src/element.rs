@@ -184,8 +184,8 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
 
                 #(#builds)*
 
-                let (lanes, store) = records.draw_parts();
-                let mut draw = #root::ui::Draw::new(
+                let (lanes, store) = records.build_parts();
+                let mut draw = #root::ui::Build::new(
                     world, node, lanes, store, theme,
                 );
                 <Self as #root::element::ElementVisual<H>>

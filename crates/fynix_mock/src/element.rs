@@ -13,7 +13,7 @@ use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::records::Records;
 use crate::store::Store;
-use crate::ui::{Draw, Patch};
+use crate::ui::{Build, Patch};
 
 // Same name as the trait, in the macro namespace, the way `Default`
 // and `Clone` do it.
@@ -77,12 +77,12 @@ pub trait ElementVisual<H: Host>: Fields {
     /// Write this element's own fields onto `draw`'s own node.
     ///
     /// The node already exists, and its `#[elem(child)]` fields are
-    /// already built under it - reach one with [`Draw::child`].
-    /// Handed as `Self`'s own [`Draw`] rather than a bare `Ui`, since a
+    /// already built under it - reach one with [`Build::child`].
+    /// Handed as `Self`'s own [`Build`] rather than a bare `Ui`, since a
     /// node this method draws on always is one - there is no longer a
     /// type to get wrong the way `ui.this::<Self>()` once let a caller
     /// do.
-    fn build_fields(&self, draw: &mut Draw<H, Self>)
+    fn build_fields(&self, draw: &mut Build<H, Self>)
     where
         Self: Element<H> + Send + Sync;
 

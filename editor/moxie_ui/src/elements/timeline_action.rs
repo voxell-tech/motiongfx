@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 /// What a clip's fill brightens to under the cursor, and further
 /// while held - a saturated blue, deliberately not the editor's usual
@@ -53,9 +53,9 @@ impl TimelineAction {
 }
 
 impl ElementVisual<BevyHost> for TimelineAction {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.entity_mut(node).insert((
             self.node(),

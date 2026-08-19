@@ -14,13 +14,9 @@ use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 /// A box that is ticked or not.
-///
-/// `checked` is a field rather than something written from outside,
-/// so the value it shows follows whatever the world says: bevy tracks
-/// it as the presence of a marker, and this turns that into data.
 #[derive(Element)]
 pub struct CheckBox {
     pub checked: bool,
@@ -80,9 +76,9 @@ impl CheckBox {
 }
 
 impl ElementVisual<BevyHost> for CheckBox {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.entity_mut(node).insert((
             CheckboxBehavior,
@@ -173,9 +169,9 @@ impl NumberField {
 }
 
 impl ElementVisual<BevyHost> for NumberField {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         self.scene(world, node);
     }
@@ -265,9 +261,9 @@ impl TextField {
 }
 
 impl ElementVisual<BevyHost> for TextField {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         self.scene(world, node);
     }

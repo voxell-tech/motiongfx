@@ -6,7 +6,7 @@ mod common;
 use common::{Label, LabelCursor, World};
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::records::Records;
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 /// Two labels that already say which is which, so a test can tell one
 /// node from the other without setting anything up.
@@ -23,12 +23,9 @@ pub struct Pair {
 }
 
 impl ElementVisual<common::Backend> for Pair {
-    fn build_fields(
-        &self,
-        draw: &mut Draw<'_, common::Backend, Self>,
-    ) {
-        let node = draw.id();
-        let world = &mut *draw.world;
+    fn build_fields(&self, build: &mut Build<common::Backend, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.node(node).padding = self.gap;
     }

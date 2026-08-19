@@ -6,11 +6,11 @@ mod common;
 use common::{Label, LabelCursor, World};
 use fynix_mock::element::{Element, ElementVisual, Fields};
 use fynix_mock::records::Records;
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 /// `Default`, so an element generic over its look has one too.
 /// `Send`/`Sync` too, since `Themed<L>` is an `Element`, and
-/// `build_fields` takes one by `Draw`, which asks the same of every
+/// `build_fields` takes one by `Build`, which asks the same of every
 /// element it names.
 pub trait Look: Default + Send + Sync + 'static {
     fn glyph(&self) -> char;
@@ -33,12 +33,9 @@ pub struct Themed<L: Look> {
 }
 
 impl<L: Look> ElementVisual<common::Backend> for Themed<L> {
-    fn build_fields(
-        &self,
-        draw: &mut Draw<'_, common::Backend, Self>,
-    ) {
-        let node = draw.id();
-        let world = &mut *draw.world;
+    fn build_fields(&self, build: &mut Build<common::Backend, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.node(node).glyph = self.look.glyph();
     }

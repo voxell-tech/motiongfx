@@ -8,7 +8,7 @@ use fynix_mock::element::{Element, ElementVisual, Fields};
 use fynix_mock::host::Host;
 use fynix_mock::lenz::FieldPath;
 use fynix_mock::records::Records;
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 #[derive(Element)]
 pub struct Icon {
@@ -39,12 +39,9 @@ pub struct Button {
 }
 
 impl ElementVisual<Backend> for Icon {
-    fn build_fields(
-        &self,
-        draw: &mut Draw<'_, common::Backend, Self>,
-    ) {
-        let node = draw.id();
-        let world = &mut *draw.world;
+    fn build_fields(&self, build: &mut Build<common::Backend, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.node(node).glyph = self.glyph;
     }
@@ -66,12 +63,9 @@ impl ElementVisual<Backend> for Icon {
 impl ElementVisual<Backend> for Button {
     /// Only what `Button` draws. Nothing here mentions `label` or
     /// `icon`: the derive builds and patches those.
-    fn build_fields(
-        &self,
-        draw: &mut Draw<'_, common::Backend, Self>,
-    ) {
-        let node = draw.id();
-        let world = &mut *draw.world;
+    fn build_fields(&self, build: &mut Build<common::Backend, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         world.node(node).padding = self.padding;
         world.node(node).border_width = self.border.width;

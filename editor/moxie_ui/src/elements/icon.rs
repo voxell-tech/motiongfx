@@ -2,7 +2,7 @@ use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 /// An image at a size of its own, which is what a [`Button`] shows.
 ///
@@ -14,8 +14,7 @@ pub struct Icon {
     pub color: Color,
     #[default(px(11))]
     pub size: Val,
-    /// Clockwise, in degrees - how a chevron reused for more than one
-    /// direction gets there without a second asset.
+    /// Clockwise, in degrees.
     pub rotation: f32,
 }
 
@@ -26,9 +25,9 @@ impl Icon {
 }
 
 impl ElementVisual<BevyHost> for Icon {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         let image = world.load_asset(self.image.clone());
 

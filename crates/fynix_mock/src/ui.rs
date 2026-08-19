@@ -145,7 +145,7 @@ impl<'a, H: Host> Ui<'a, H> {
 /// tables through one borrow of it: `#[elem(child)]`'s children keep
 /// [`Store`] straight, and a lane keeps [`Lanes`] straight, without
 /// `build_fields` ever seeing either name.
-pub struct Draw<'a, H: Host, E: Element<H>> {
+pub struct Build<'a, H: Host, E: Element<H>> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
     node: H::Node,
@@ -154,11 +154,11 @@ pub struct Draw<'a, H: Host, E: Element<H>> {
     element: PhantomData<fn() -> E>,
 }
 
-impl<'a, H: Host, E: Element<H>> Draw<'a, H, E> {
+impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
     /// Not for hand-written code: `#[derive(Element)]`'s own generated
     /// `build` is what constructs this, from the pieces of
     /// [`Records`] it already has in scope - see
-    /// [`Records::draw_parts`].
+    /// [`Records::build_parts`].
     #[doc(hidden)]
     pub fn new(
         world: &'a mut H::World,
@@ -219,7 +219,7 @@ impl<'a, H: Host, E: Element<H>> Draw<'a, H, E> {
 
 /// What [`patch_fields`](crate::element::ElementVisual::patch_fields)
 /// writes through: the node a change already landed on, `world`, and
-/// `theme` - the same three [`Draw`] gives `build_fields`, now for a
+/// `theme` - the same three [`Build`] gives `build_fields`, now for a
 /// write a later change makes rather than the one a build did. No
 /// [`Store`]/[`Lanes`] here: a patch writes an existing node's fields,
 /// never wires a child or a lane the way a build can.

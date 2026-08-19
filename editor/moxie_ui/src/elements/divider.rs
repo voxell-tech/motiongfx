@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Draw, Patch};
+use fynix_mock::ui::{Build, Patch};
 
 const DIVIDER_WIDTH: f32 = 6.0;
 
@@ -49,9 +49,9 @@ impl Divider {
 }
 
 impl ElementVisual<BevyHost> for Divider {
-    fn build_fields(&self, element: &mut Draw<'_, BevyHost, Self>) {
-        let node = element.id();
-        let world = &mut *element.world;
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
 
         let (layout, cursor) = self.shape();
 

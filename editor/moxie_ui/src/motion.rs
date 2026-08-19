@@ -14,7 +14,7 @@ use fynix_mock::element::Element;
 use fynix_mock::host::Host;
 use fynix_mock::lenz::{Cursor, FieldPath, Identity};
 use fynix_mock::transition::Transition;
-use fynix_mock::ui::{Draw, ElementMut};
+use fynix_mock::ui::{Build, ElementMut};
 use motiongfx_interp::ease;
 
 /// Long enough to read as a fade, short enough to feel immediate.
@@ -60,7 +60,7 @@ impl Lit for Option<Color> {
 /// Lights a field under the cursor, reading its base out of the
 /// kernel's own table - only ever true once a node has finished
 /// building, so only [`ElementMut`] offers this, not
-/// [`Draw`](fynix_mock::ui::Draw): a node running its own
+/// [`Build`](fynix_mock::ui::Build): a node running its own
 /// `build_fields` has no entry there yet.
 pub trait MotionExt<E: Element<Self::Host>> {
     type Host: Host;
@@ -97,7 +97,7 @@ pub trait MotionExt<E: Element<Self::Host>> {
 /// [`build_fields`](fynix_mock::element::ElementVisual::build_fields)
 /// reaches for, since `build_fields` already has it as `&self` and
 /// its own node has no entry there yet to read one from either way.
-/// Both [`ElementMut`] and [`Draw`](fynix_mock::ui::Draw) offer this.
+/// Both [`ElementMut`] and [`Build`](fynix_mock::ui::Build) offer this.
 pub trait LitFrom<E: Element<Self::Host>> {
     type Host: Host;
 
@@ -209,7 +209,7 @@ impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
 }
 
 impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
-    for Draw<'_, BevyHost, E>
+    for Build<'_, BevyHost, E>
 {
     type Host = BevyHost;
 
@@ -253,7 +253,7 @@ impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
 /// The pointer wiring [`MotionExt::lit_entity`] and
 /// [`LitFrom::lit_entity_from`] share - only how the lane's base is
 /// found differs between them, and both [`ElementMut`] and
-/// [`Draw`](fynix_mock::ui::Draw) offer [`OnExt`] the same way.
+/// [`Build`](fynix_mock::ui::Build) offer [`OnExt`] the same way.
 fn on_lit<T, E, P, Target>(
     elem: &mut T,
     entity: Entity,
