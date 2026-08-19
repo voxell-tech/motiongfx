@@ -44,8 +44,8 @@ pub trait Host: Sized + Send + Sync + 'static {
     /// advances by. The kernel has no clock of its own.
     fn delta(world: &Self::World) -> f32;
 
-    /// [`Self::Theme`], read out of `world`. Cloned once per element
-    /// built, not once per read - see [`Self::Theme`].
+    /// [`Self::Theme`], read out of `world`. Called once per flush,
+    /// not once per element built - see [`Self::Theme`].
     fn theme(world: &Self::World) -> Self::Theme;
 
     /// Create an empty node under `parent`.
