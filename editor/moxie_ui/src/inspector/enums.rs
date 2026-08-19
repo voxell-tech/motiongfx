@@ -37,7 +37,7 @@ use crate::elements::{
     DropdownList, DropdownMenu, Frame, Icon, Label, LabelCursor,
 };
 use crate::icons;
-use crate::motion::{HOVER, MotionExt};
+use crate::motion::MotionExt;
 use crate::reactive::{BevyHost, BevyUi};
 use crate::theme::EditorTheme;
 
@@ -247,7 +247,11 @@ fn control(
             rotation = 180.0f32
         )
     ))
-    .lit(|dropdown| dropdown.fill(), HOVER, HOVER)
+    .lit(
+        |dropdown| dropdown.fill(),
+        theme.hover_overlay,
+        theme.hover_overlay,
+    )
     .bind(
         |dropdown| dropdown.label().text(),
         when_changed(source),
@@ -291,7 +295,7 @@ fn option(
             color = Some(theme.text_primary)
         )
     ))
-    .lit(|item| item.fill(), HOVER, HOVER)
+    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         let (source, variant) = (edited.boxed(), chosen.clone());
 

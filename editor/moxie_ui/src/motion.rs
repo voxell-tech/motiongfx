@@ -17,13 +17,6 @@ use fynix_mock::transition::Transition;
 use fynix_mock::ui::{Build, ElementMut};
 use motiongfx_interp::ease;
 
-/// Long enough to read as a fade, short enough to feel immediate.
-const INTERACT_MS: u32 = 120;
-
-/// What a surface lights up to under the cursor, and while held.
-pub const HOVER: Color = Color::srgba(1.0, 1.0, 1.0, 0.14);
-pub const PRESS: Color = Color::srgba(1.0, 1.0, 1.0, 0.22);
-
 /// What `lit` can aim at: a colour itself, or a field that only wears
 /// one sometimes.
 pub trait Lit: Clone + PartialEq + Send + Sync + 'static {
@@ -62,9 +55,9 @@ impl Lit for Option<Color> {
 /// building, so only [`ElementMut`] offers this, not
 /// [`Build`](fynix_mock::ui::Build): a node running its own
 /// `build_fields` has no entry there yet.
-pub trait MotionExt<E: Element<Self::Host>> {
-    type Host: Host;
-
+pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
+    LitFrom<E>
+{
     /// Lights `field` under the cursor and again while held, leaving
     /// the element's own colour to show the rest of the time. The
     /// base is never written, so that is what it returns to.
@@ -101,6 +94,9 @@ pub trait MotionExt<E: Element<Self::Host>> {
 pub trait LitFrom<E: Element<Self::Host>> {
     type Host: Host;
 
+    /// As [`MotionExt::theme`].
+    fn theme(&self) -> &EditorTheme;
+
     fn lit_from<P, T>(
         &mut self,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
@@ -130,8 +126,6 @@ pub trait LitFrom<E: Element<Self::Host>> {
 impl<E: Element<BevyHost> + Send + Sync> MotionExt<E>
     for ElementMut<'_, '_, BevyHost, E>
 {
-    type Host = BevyHost;
-
     fn lit<P, T>(
         &mut self,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
@@ -157,9 +151,10 @@ impl<E: Element<BevyHost> + Send + Sync> MotionExt<E>
         P: FieldPath<Source = E, Target = T>,
         T: Lit,
     {
+        let interact_ms = self.theme().interact_ms;
         self.transition(
             field,
-            Transition::ms(INTERACT_MS, T::mix)
+            Transition::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
         on_lit(self, entity, field, hover, press)
@@ -171,6 +166,10 @@ impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
 {
     type Host = BevyHost;
 
+    fn theme(&self) -> &EditorTheme {
+        self.ui.theme
+    }
+
     fn lit_from<P, T>(
         &mut self,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
@@ -198,10 +197,11 @@ impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
         P: FieldPath<Source = E, Target = T>,
         T: Lit,
     {
+        let interact_ms = self.theme().interact_ms;
         self.transition_from(
             field,
             base,
-            Transition::ms(INTERACT_MS, T::mix)
+            Transition::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
         on_lit(self, entity, field, hover, press)
@@ -213,6 +213,10 @@ impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
 {
     type Host = BevyHost;
 
+    fn theme(&self) -> &EditorTheme {
+        self.theme
+    }
+
     fn lit_from<P, T>(
         &mut self,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
@@ -240,10 +244,11 @@ impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
         P: FieldPath<Source = E, Target = T>,
         T: Lit,
     {
+        let interact_ms = self.theme().interact_ms;
         self.transition_from(
             field,
             base,
-            Transition::ms(INTERACT_MS, T::mix)
+            Transition::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
         on_lit(self, entity, field, hover, press)

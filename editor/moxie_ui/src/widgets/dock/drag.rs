@@ -3,9 +3,6 @@
 
 use bevy::feathers::cursor::{EntityCursor, OverrideCursor};
 use bevy::prelude::*;
-
-/// What a drop target is tinted with while a drag is over it.
-const DROP_TINT: Color = Color::srgba(0.47, 0.86, 0.91, 0.18);
 use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
 
@@ -15,6 +12,7 @@ use super::registry::WindowRegistry;
 use super::tabs::DockTabRow;
 use super::tree::{DockTree, Edge as TreeEdge, TabId};
 use crate::layout::logical_rect;
+use crate::theme::EditorTheme;
 
 pub struct DockDragPlugin;
 
@@ -125,7 +123,12 @@ fn on_drag_move(
     parent_query: Query<&ChildOf>,
     ui_scale: Res<UiScale>,
     mut override_cursor: ResMut<OverrideCursor>,
+    theme: Res<EditorTheme>,
 ) {
+    // The accent, at low alpha - the same color a drop target ends up
+    // in a dock split with, tinted rather than solid so the panel
+    // underneath still reads through it.
+    let drop_tint = theme.accent.with_alpha(0.18);
     let drag_event = trigger.event();
     let cursor_pos_ui = Vec2::new(
         drag_event.pointer_location.position.x,
@@ -315,7 +318,7 @@ fn on_drag_move(
                             border_radius: BorderRadius::all(px(4)),
                             ..Default::default()
                         },
-                        BackgroundColor(DROP_TINT),
+                        BackgroundColor(drop_tint),
                         GlobalZIndex(150),
                     ))
                     .id();
@@ -357,7 +360,7 @@ fn on_drag_move(
                                     ),
                                     ..default()
                                 },
-                                BackgroundColor(DROP_TINT),
+                                BackgroundColor(drop_tint),
                                 GlobalZIndex(150),
                             ))
                             .id();
@@ -381,7 +384,7 @@ fn on_drag_move(
                                     ),
                                     ..default()
                                 },
-                                BackgroundColor(DROP_TINT),
+                                BackgroundColor(drop_tint),
                                 GlobalZIndex(150),
                             ))
                             .id();

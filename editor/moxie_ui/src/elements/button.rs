@@ -9,14 +9,8 @@ use fynix_mock::style::Style;
 use fynix_mock::ui::{Build, Patch};
 
 use super::{Icon, IconCursor, Label, LabelCursor};
-use crate::motion::{self, LitFrom as _};
+use crate::motion::LitFrom as _;
 use crate::theme::EditorTheme;
-
-/// The faint surface a filled button rests at.
-const FILL: Color = Color::srgba(1.0, 1.0, 1.0, 0.06);
-
-/// A tinted button's icon and label colour.
-const TINT: Color = crate::monokai::BLUE;
 
 /// What lights up under the cursor, and to what colour. A style has
 /// no node to wire this on, so it leaves the choice here for
@@ -105,34 +99,32 @@ impl Style for Button {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
-        button.fill = FILL;
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+        button.fill = theme.button_fill;
         button.width = px(26);
         button.height = px(26);
         button.radius = px(6);
-        button.hover = Hover::Fill(motion::HOVER);
+        button.hover = Hover::Fill(theme.hover_overlay);
     }
 }
 
 /// A button whose icon and label carry `tint` under the cursor - the
 /// accent, by default, for the one action in a group the eye should
 /// land on first.
+#[derive(Default)]
 pub struct TintButton {
-    pub tint: Color,
-}
-
-impl Default for TintButton {
-    fn default() -> Self {
-        Self { tint: TINT }
-    }
+    /// `None` takes the theme's own accent - a call site only ever
+    /// names its own color to depart from that.
+    pub tint: Option<Color>,
 }
 
 impl Style for TintButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
-        button.hover = Hover::IconLabel(self.tint);
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+        button.hover =
+            Hover::IconLabel(self.tint.unwrap_or(theme.accent));
     }
 }
 
@@ -145,12 +137,12 @@ impl Style for MenuButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.radius = Val::ZERO;
         button.height = percent(100);
         button.padding = UiRect::axes(px(10), Val::ZERO);
-        button.hover = Hover::Fill(motion::HOVER);
+        button.hover = Hover::Fill(theme.hover_overlay);
     }
 }
 
@@ -163,9 +155,9 @@ impl Style for GhostButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem, _theme: &EditorTheme) {
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
         button.fill = Color::NONE;
-        button.hover = Hover::Fill(motion::HOVER);
+        button.hover = Hover::Fill(theme.hover_overlay);
     }
 }
 

@@ -13,7 +13,7 @@ use moxie_ui::elements::{
     Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
     DropdownMenu, Frame, Label, MenuButton,
 };
-use moxie_ui::motion::{HOVER, MotionExt};
+use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{BevyHost, BevyUi};
 use moxie_ui::theme::EditorTheme;
 
@@ -128,7 +128,7 @@ fn item(
             color = Some(theme.text_primary)
         )
     ))
-    .lit(|item| item.fill(), HOVER, HOVER)
+    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(run);
     });

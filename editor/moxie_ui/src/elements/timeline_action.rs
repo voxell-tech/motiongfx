@@ -6,17 +6,6 @@ use bevy::window::SystemCursorIcon;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
-/// What a clip's fill brightens to under the cursor, and further
-/// while held - a saturated blue, deliberately not the editor's usual
-/// gray hover overlay: a clip is a colored timeline object in its own
-/// right, not chrome, so it lights up in its own family of color.
-///
-/// Public so a call site can pair it with [`MotionExt::lit`](
-/// crate::motion::MotionExt::lit): the element itself only owns its
-/// look, not its own interaction wiring.
-pub const HOVER_TINT: Color = Color::srgb(0.35, 0.70, 1.0);
-pub const PRESS_TINT: Color = Color::srgb(0.55, 0.82, 1.0);
-
 /// One action's clip on the timeline: a colored, absolutely
 /// positioned, bordered hit area.
 #[derive(Element)]

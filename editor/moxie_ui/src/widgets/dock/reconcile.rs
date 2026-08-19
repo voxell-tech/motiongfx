@@ -29,7 +29,7 @@ use crate::elements::dock::{
     SplitHandleCursor, SplitPanel, SplitPanelCursor, TabContent,
     TabContentCursor, handle_bar, handle_line,
 };
-use crate::motion::{HOVER, MotionExt};
+use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed, structure_changed};
 use crate::theme::EditorTheme;
 
@@ -132,6 +132,7 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
         .with(move |ui| {
             build_panel(id, split.a, true, a_visible, ui);
 
+            let hover = ui.theme.hover_overlay;
             ui.elem(elem!(
                 SplitHandle,
                 node = id,
@@ -142,8 +143,8 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
             ))
             .lit(
                 |handle| handle.bar().background(),
-                HOVER,
-                HOVER,
+                hover,
+                hover,
             );
 
             build_panel(id, split.b, false, b_visible, ui);

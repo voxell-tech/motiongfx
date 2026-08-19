@@ -34,7 +34,7 @@ use crate::inspector::{
     Field, InspectorFields, ReflectInspectable, Section,
     inspect_value, is_single_value,
 };
-use crate::motion::{HOVER, MotionExt};
+use crate::motion::MotionExt;
 use crate::reactive::{BevyHost, BevyUi, value_changed};
 use crate::theme::EditorTheme;
 
@@ -242,7 +242,7 @@ fn add_component_item(
             color = Some(theme.text_primary)
         )
     ))
-    .lit(|item| item.fill(), HOVER, HOVER)
+    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(move |world: &mut World| {
             add_component(world, entity, component);

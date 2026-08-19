@@ -19,9 +19,6 @@ use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed};
 use crate::theme::EditorTheme;
 
-/// What the close button's icon tints to under the cursor.
-const CLOSE_HOVER: Color = crate::monokai::RED;
-
 #[derive(Component)]
 pub struct DockTabRow;
 
@@ -76,7 +73,9 @@ fn build_tab(
 ) {
     let is_active = active_of(ui.world, leaf) == Some(tab_id);
     let lit = text_color(ui.world, leaf, tab_id);
-    let close_color = ui.world.resource::<EditorTheme>().text_muted;
+    let theme = ui.world.resource::<EditorTheme>();
+    let close_color = theme.text_muted;
+    let close_hover = theme.critical;
 
     let mut tab = ui.elem(elem!(
         Tab,
@@ -154,8 +153,8 @@ fn build_tab(
         tab.lit_entity(
             close,
             |tab| tab.close().icon().color(),
-            CLOSE_HOVER,
-            CLOSE_HOVER,
+            close_hover,
+            close_hover,
         );
     }
 }
