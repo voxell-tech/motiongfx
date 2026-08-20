@@ -10,7 +10,7 @@ use bevy::prelude::*;
 use crate::monokai;
 
 /// Raw Monokai Pro palette, as the fields the rest of the editor reads
-/// by name. [`palette`] carries the same colours as `const`s, for
+/// by name. [`monokai`] carries the same colours as `const`s, for
 /// wherever there is no [`EditorTheme`] resource to read this from.
 #[derive(Clone, Debug)]
 pub struct Palette {

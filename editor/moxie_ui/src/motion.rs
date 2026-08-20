@@ -52,7 +52,7 @@ impl Lit for Option<Color> {
 
 /// Lights a field under the cursor, reading its base out of the
 /// kernel's own table. Only [`ElementMut`] offers this, not
-/// [`Build`](fynix_mock::ui::Build): a node running its own
+/// [`Build`]: a node running its own
 /// `build_fields` has no entry there yet.
 pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
     LitFrom<E>
@@ -88,11 +88,10 @@ pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
 /// reading it out of the kernel's table, for
 /// [`build_fields`](fynix_mock::element::ElementVisual::build_fields)
 /// whose node has no entry there yet. Both [`ElementMut`] and
-/// [`Build`](fynix_mock::ui::Build) offer this.
+/// [`Build`] offer this.
 pub trait LitFrom<E: Element<Self::Host>> {
     type Host: Host;
 
-    /// As [`MotionExt::theme`].
     fn theme(&self) -> &EditorTheme;
 
     fn lit_from<P, T>(
