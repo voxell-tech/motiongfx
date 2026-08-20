@@ -3,7 +3,7 @@
 //! Nothing is spawned here beyond a camera and a light - `File > Open`
 //! is how a project actually gets its content.
 
-use bevy::prelude::*;
+use bevy::{prelude::*, window::WindowResolution};
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use moxie::MoxiePlugin;
 
@@ -12,10 +12,18 @@ fn main() {
         .add_plugins((
             // `../assets`: the editor crates share one asset folder
             // (`editor/assets`) rather than each carrying its own.
-            DefaultPlugins.set(AssetPlugin {
-                file_path: "../assets".into(),
-                ..default()
-            }),
+            DefaultPlugins
+                .set(AssetPlugin {
+                    file_path: "../assets".into(),
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: WindowResolution::new(1920, 1080),
+                        ..default()
+                    }),
+                    ..default()
+                }),
             BevyMotionGfxPlugin,
             MoxiePlugin,
         ))
