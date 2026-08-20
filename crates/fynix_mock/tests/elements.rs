@@ -146,7 +146,7 @@ fn path_into_a_child_is_patched_by_that_child() {
 
     // Write through the lens, then patch the field it walked to.
     let path = Button::cursor().label().text();
-    *(path.accessor().get_mut)(&mut button).unwrap() = "Saved".into();
+    *path.accessor().get_mut(&mut button).unwrap() = "Saved".into();
     button.patch(
         &mut world,
         node,
@@ -168,7 +168,7 @@ fn path_into_plain_data_is_finished_by_its_owner() {
     let node = button.build(&mut world, parent, &mut records, &());
 
     let path = Button::cursor().border().width();
-    *(path.accessor().get_mut)(&mut button).unwrap() = 2;
+    *path.accessor().get_mut(&mut button).unwrap() = 2;
     button.patch(
         &mut world,
         node,

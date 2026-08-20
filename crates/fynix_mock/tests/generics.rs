@@ -82,7 +82,7 @@ fn generic_element_patches_through_its_child() {
     let ids = path.hops();
     let label = records.store().get(node, ids[0]).unwrap();
 
-    *(path.accessor().get_mut)(&mut themed).unwrap() = "Saved".into();
+    *path.accessor().get_mut(&mut themed).unwrap() = "Saved".into();
     themed.patch(&mut world, node, &ids, records.store_mut(), &());
 
     assert_eq!(world.get(label).text, "Saved");

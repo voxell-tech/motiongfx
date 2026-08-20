@@ -21,7 +21,7 @@
 //!     },
 //! };
 //! let size = Card::cursor().header().badge().icon().size().accessor();
-//! assert_eq!((size.get)(&card), Some(&12));
+//! assert_eq!(size.get(&card), Some(&12));
 //! ```
 
 use alloc::vec::Vec;
@@ -187,8 +187,21 @@ impl<P> Copy for Cursor<P> {}
 /// `Copy`, no allocation.
 #[derive(Debug)]
 pub struct Accessor<S, T> {
-    pub get: fn(&S) -> Option<&T>,
-    pub get_mut: fn(&mut S) -> Option<&mut T>,
+    get: fn(&S) -> Option<&T>,
+    get_mut: fn(&mut S) -> Option<&mut T>,
+}
+
+impl<S, T> Accessor<S, T> {
+    pub fn get<'s>(&self, source: &'s S) -> Option<&'s T> {
+        (self.get)(source)
+    }
+
+    pub fn get_mut<'s>(
+        &self,
+        source: &'s mut S,
+    ) -> Option<&'s mut T> {
+        (self.get_mut)(source)
+    }
 }
 
 impl<S, T> Clone for Accessor<S, T> {

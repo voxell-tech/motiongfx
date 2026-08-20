@@ -80,7 +80,7 @@ where
         let Some(element) = elements.get_mut::<E>(&node) else {
             return false;
         };
-        let Some(base) = (self.accessor.get)(element) else {
+        let Some(base) = self.accessor.get(element) else {
             return false;
         };
 
@@ -115,14 +115,14 @@ where
 
         // Pushed even when unmoved, so a binding writing the base
         // this flush cannot win.
-        let Some(field) = (self.accessor.get_mut)(element) else {
+        let Some(field) = self.accessor.get_mut(element) else {
             return false;
         };
         let base = core::mem::replace(field, self.shown.clone());
 
         element.patch(world, node, &self.hops, store, theme);
 
-        if let Some(field) = (self.accessor.get_mut)(element) {
+        if let Some(field) = self.accessor.get_mut(element) {
             *field = base;
         }
         true

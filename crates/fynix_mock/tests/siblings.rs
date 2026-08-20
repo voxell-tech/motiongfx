@@ -80,7 +80,7 @@ fn patching_one_of_a_pair_leaves_the_other() {
         .unwrap();
 
     let path = Pair::cursor().bottom().text();
-    *(path.accessor().get_mut)(&mut pair).unwrap() = "DOWN".into();
+    *path.accessor().get_mut(&mut pair).unwrap() = "DOWN".into();
     pair.patch(
         &mut world,
         node,

@@ -347,7 +347,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             .records
             .elements
             .get::<E>(&self.node)
-            .and_then(|element| (accessor.get)(element))
+            .and_then(|element| accessor.get(element))
             .cloned();
         let Some(base) = base else {
             return self;
@@ -426,7 +426,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             let Some(element) = elements.get_mut::<E>(&node) else {
                 return;
             };
-            let Some(field) = (accessor.get_mut)(element) else {
+            let Some(field) = accessor.get_mut(element) else {
                 return;
             };
             *field = new;
