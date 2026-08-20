@@ -1,12 +1,10 @@
 //! The builder.
 //!
-//! [`Ui`] holds `&mut World` and builds as it goes, so a builder gets
-//! each element's node the moment it makes one, letting a binding
-//! refer to a sibling or parent by handle. The cost: a builder can't
-//! hold a world borrow across a build, so collect what you need first.
+//! [`Ui`] holds `&mut World` and builds as it goes, so a build gets
+//! each element's node the moment it makes one.
 //!
-//! Everything the kernel makes is an element. There is no way to spawn
-//! a bare node, because a node nothing owns could never be patched.
+//! Everything the kernel makes is an element. There is no way to
+//! spawn a bare node.
 
 use alloc::boxed::Box;
 use core::marker::PhantomData;
@@ -25,22 +23,16 @@ use crate::transition::Transition;
 
 /// Builds elements under a parent and records their reactivity.
 pub struct Ui<'a, H: Host> {
-    /// What the builders read and the applies write. Public, because
-    /// a host's own extensions need it and a build is the one place
-    /// holding it.
+    /// The backend's world.
     pub world: &'a mut H::World,
-    /// Borrowed from [`Fynix`](crate::Fynix)'s own field, never from
-    /// `world` - see [`Host::Theme`].
+    /// Borrowed from [`Fynix`](crate::Fynix)'s own field.
     pub theme: &'a H::Theme,
     parent: H::Node,
     records: &'a mut Records<H>,
 }
 
 impl<'a, H: Host> Ui<'a, H> {
-    /// Not for hand-written code: `#[derive(Element)]`'s own generated
-    /// `build` is what constructs the `Ui` a
-    /// [`build_fields`](crate::element::ElementVisual::build_fields)
-    /// is handed, from the world and records it already has in scope.
+    /// Not for hand-written code.
     #[doc(hidden)]
     pub fn new(
         world: &'a mut H::World,
@@ -56,16 +48,15 @@ impl<'a, H: Host> Ui<'a, H> {
         }
     }
 
-    /// The node these children are being built under - or, from
-    /// inside [`build_fields`](crate::element::ElementVisual::build_fields),
-    /// the element's own node.
+    /// The node these children are being built under, or the
+    /// element's own node from inside
+    /// [`build_fields`](crate::element::ElementVisual::build_fields).
     pub fn parent(&self) -> H::Node {
         self.parent
     }
 
-    /// The node a `#[elem(child)]` field of [`parent`](Self::parent) built,
-    /// however many hops the path takes to reach it. See
-    /// [`Store::child`].
+    /// The node a `#[elem(child)]` field of [`parent`](Self::parent)
+    /// built, however many hops the path takes to reach it.
     pub fn child<S, P>(
         &self,
         field: impl FnOnce(Cursor<Identity<S>>) -> Cursor<P>,
@@ -79,10 +70,8 @@ impl<'a, H: Host> Ui<'a, H> {
     /// Run a [`StyledElem`]'s cascade, then build what it left, and
     /// everything beneath it.
     ///
-    /// What [`elem!`](crate::elem!) is for: the macro says how the
-    /// element is described, and this says where it goes. The kernel
-    /// keeps the element, because patching a field later means reading
-    /// it back.
+    /// The kernel keeps the element, so a later patch can read it
+    /// back.
     pub fn elem<S, E>(
         &mut self,
         styled: S,
@@ -111,9 +100,7 @@ impl<'a, H: Host> Ui<'a, H> {
 
     /// Run a [`Composer`], and take back the root of what it built.
     ///
-    /// Unlike [`elem`](Self::elem), what goes in is never stored -
-    /// only what it built outlives the call. What comes back is the
-    /// same [`ElementMut`] an element would give.
+    /// What goes in is never stored, only what it built.
     pub fn compose<C>(
         &mut self,
         composer: C,
@@ -133,18 +120,11 @@ impl<'a, H: Host> Ui<'a, H> {
 }
 
 /// What [`build_fields`](crate::element::ElementVisual::build_fields)
-/// writes through: this element's own node, `world`, and `theme`,
-/// plus the two tables a look wired at build time reaches for again -
-/// [`child`](Self::child) and [`transition_from`](Self::transition_from).
+/// writes through: this element's own node, `world`, and `theme`.
 ///
-/// Deliberately not [`ElementMut`]: `bind`/`watch`/`with` declare what
-/// a node does once it exists, and a node running its own
-/// `build_fields` has not finished existing yet - calling any of them
-/// on itself, mid build, would not mean what it means anywhere else
-/// they're reached for. Nor is it [`Records`] itself, or even both its
-/// tables through one borrow of it: `#[elem(child)]`'s children keep
-/// [`Store`] straight, and a lane keeps [`Lanes`] straight, without
-/// `build_fields` ever seeing either name.
+/// Not [`ElementMut`]: a node running its own `build_fields` has not
+/// finished existing yet, so `bind`/`watch`/`with` would not mean
+/// what they mean anywhere else.
 pub struct Build<'a, H: Host, E: Element<H>> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
@@ -155,10 +135,7 @@ pub struct Build<'a, H: Host, E: Element<H>> {
 }
 
 impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
-    /// Not for hand-written code: `#[derive(Element)]`'s own generated
-    /// `build` is what constructs this, from the pieces of
-    /// [`Records`] it already has in scope - see
-    /// [`Records::build_parts`].
+    /// Not for hand-written code.
     #[doc(hidden)]
     pub fn new(
         world: &'a mut H::World,
@@ -196,9 +173,8 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
         self.store.child(self.node, field)
     }
 
-    /// As [`ElementMut::transition_from`]: a lane starting from `base`
-    /// rather than a base read out of the kernel's own table, which
-    /// this node has no entry in yet.
+    /// As [`ElementMut::transition_from`], starting from `base`: this
+    /// node has no entry in the kernel's table yet to read one from.
     pub fn transition_from<P>(
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
@@ -218,11 +194,10 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
 }
 
 /// What [`patch_fields`](crate::element::ElementVisual::patch_fields)
-/// writes through: the node a change already landed on, `world`, and
-/// `theme` - the same three [`Build`] gives `build_fields`, now for a
-/// write a later change makes rather than the one a build did. No
-/// [`Store`]/[`Lanes`] here: a patch writes an existing node's fields,
-/// never wires a child or a lane the way a build can.
+/// writes through: the node a change landed on, `world`, and `theme`.
+///
+/// No [`Store`]/[`Lanes`] here. A patch writes fields; it never wires
+/// a child or a lane.
 pub struct Patch<'a, H: Host> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
@@ -230,9 +205,7 @@ pub struct Patch<'a, H: Host> {
 }
 
 impl<'a, H: Host> Patch<'a, H> {
-    /// Not for hand-written code: `#[derive(Element)]`'s own generated
-    /// `patch` is what constructs this, once it has walked down to the
-    /// element that owns the field a change named.
+    /// Not for hand-written code.
     #[doc(hidden)]
     pub fn new(
         world: &'a mut H::World,
@@ -248,12 +221,11 @@ impl<'a, H: Host> Patch<'a, H> {
     }
 }
 
-/// A typed, [`Copy`] handle to a node: what names an element once
-/// there is no borrow of the [`Ui`] left to name it through.
+/// A typed, [`Copy`] handle to a node, for naming an element with no
+/// [`Ui`] borrow in hand.
 ///
 /// The tag is what a later walk is checked against. `fn() -> E` keeps
-/// the handle neutral on variance and auto traits while owning no
-/// `E`.
+/// the handle neutral on variance while owning no `E`.
 pub struct ElementHandle<H: Host, E> {
     node: H::Node,
     element: PhantomData<fn() -> E>,
@@ -299,8 +271,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         self.node
     }
 
-    /// This element as a handle, owning no borrow - what a
-    /// [`Composer`] hands back.
+    /// This element as a handle, owning no borrow.
     pub fn handle(&self) -> ElementHandle<H, E> {
         ElementHandle::new(self.node)
     }
@@ -325,11 +296,8 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
 
     /// The node an `#[elem(child)]` child took.
     ///
-    /// For what the child owns rather than the element does: an
-    /// observer on the button inside a tab fires for that button, and
-    /// nothing above it ever sees the click. `None` when the walk
-    /// names a field that is not an element, or an `Option` child that
-    /// is absent.
+    /// `None` when the walk names a field that is not an element, or
+    /// an `Option` child that is absent.
     pub fn child<P>(
         &self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
@@ -357,10 +325,9 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
 
     /// Let this field travel rather than snap.
     ///
-    /// Declares the lane and its curve; what it is *aimed* at is
-    /// [`Fynix::aim`](crate::Fynix::aim), and until something aims it
-    /// the base shows. The element is never written, so a target
-    /// arriving mid flight carries on from where it had got to.
+    /// Declares the lane and its curve.
+    /// [`Fynix::aim`](crate::Fynix::aim) points it; until then the
+    /// base shows.
     pub fn transition<P>(
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
@@ -398,14 +365,10 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         self
     }
 
-    /// As [`transition`](Self::transition), but for
+    /// As [`transition`](Self::transition), for
     /// [`build_fields`](crate::element::ElementVisual::build_fields):
-    /// this node's element has not reached the kernel's own table yet
-    /// (that only happens once `build` returns, and `build_fields`
-    /// runs inside it), so there is nothing there yet to read a base
-    /// from. `build_fields` already has `&self`, which is that same
-    /// base - `base` is it, passed straight through instead of
-    /// fetched.
+    /// the element has no entry in the kernel's table yet, so `base`
+    /// is passed in rather than read back.
     pub fn transition_from<P>(
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
@@ -430,11 +393,9 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     /// Write `value` into `cursor` whenever `changed` fires, then push
     /// that one field out to the backend.
     ///
-    /// The walk has to start at this element, so a binding cannot be
-    /// made against the wrong one. Both halves come from that single
-    /// walk, so the write and the patch cannot address different
-    /// fields, and an absent `Option` along the way skips both rather
-    /// than panicking.
+    /// Both halves come from the same walk, so the write and the
+    /// patch always address the same field. An absent `Option` along
+    /// the way skips both, no panic.
     pub fn bind<P>(
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
@@ -448,8 +409,6 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         P: FieldPath<Source = E>,
         P::Target: Send + Sync,
     {
-        // The walk starts here, so the caller never names the element
-        // again, and cannot name a different one.
         let cursor = field(Cursor::new());
 
         let accessor = cursor.accessor();

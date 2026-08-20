@@ -1,21 +1,13 @@
 //! What an element looks like before it is built, in three layers.
 //!
 //! An element starts at its own [`Default`], a [`Style`] writes over
-//! that, and the call site writes over the style. A style is a
-//! mutation rather than a set of values, so the order they run in is
-//! the precedence, and nothing has to remember where a field's value
-//! came from.
+//! that, then the call site writes over the style.
 //!
-//! [`StyledElem`] is what all three ways of asking for an element have
-//! in common, so a builder takes one argument rather than three
-//! overloads. [`elem!`](crate::elem!) writes the right one.
+//! [`StyledElem`] covers all three ways of asking for an element.
+//! [`elem!`](crate::elem!) picks the right one.
 //!
-//! A style writes fields, and nothing else: it never sees a node, so
-//! it cannot wire an observer or a lane. What a *node* does once it
-//! exists is the element's own business, in
-//! [`build_fields`](crate::element::ElementVisual::build_fields) - a
-//! style that wants to steer that leaves data behind for it to read,
-//! the same way any other field would.
+//! A style only writes fields. It never sees a node, so it cannot
+//! wire an observer or a lane.
 
 use core::marker::PhantomData;
 
@@ -23,10 +15,8 @@ use crate::host::Host;
 
 /// A look, as a mutation of an element that already has its defaults.
 ///
-/// Nothing here names a backend beyond [`Host::Theme`]: `apply` only
-/// writes fields (reading `theme` for whichever it wants to draw
-/// from), so one style serves every [`Host`] the element is drawn on.
-/// What it carries are the fields of the struct it is written on:
+/// One style serves every [`Host`] the element is drawn on. What it
+/// carries are the fields of the struct it is written on:
 ///
 /// ```
 /// use fynix_mock::style::{Style, StyledElem};

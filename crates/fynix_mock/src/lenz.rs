@@ -1,12 +1,8 @@
 //! Typed, composable paths to the fields of a struct.
 //!
-//! A path is a *type*, not a value: it is zero-sized, composes
-//! without allocating, and collapses to a pair of plain function
-//! pointers once you are done building it. Access is fallible, so a
-//! hop through an `Option` field is just another link rather than a
-//! separate kind of path.
-//!
-//! Nothing here is specific to UI, or to any one kind of struct.
+//! A path is a *type*, not a value. It is zero-sized and collapses to
+//! a pair of plain function pointers. A hop through an `Option` field
+//! is just another link, not a separate kind of path.
 //!
 //! ```
 //! use fynix_mock::lenz::Lenz;
@@ -36,20 +32,13 @@ pub use fynix_mock_macros::Lenz;
 
 /// What a path is called once the types are gone.
 ///
-/// A path is a type, so its `TypeId` already identifies it, with no
-/// string to build or compare. The wrapper keeps that an
-/// implementation detail: an id can only come from a path, so nothing
-/// can key a field on some unrelated type by accident.
+/// Wraps the path's own `TypeId`, so an id can only come from a real
+/// path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FieldId(TypeId);
 
 impl FieldId {
     /// The id naming `P`.
-    ///
-    /// Not public: an id is asked for by walking to the field, with
-    /// [`FieldPath::id`] or
-    /// [`Fields::field_id`](crate::element::Fields::field_id). Minting
-    /// one any other way would name a field nothing points at.
     pub(crate) fn of<P: FieldPath + ?Sized>() -> Self {
         Self(TypeId::of::<P>())
     }
@@ -70,9 +59,7 @@ pub trait FieldPath: 'static {
 
     /// Collapse this path into a pair of flat function pointers.
     ///
-    /// `get`/`get_mut` are already monomorphized, so the pointers
-    /// land on the field access directly once the `inline(always)`
-    /// hops fold away. Implementors should not override this.
+    /// Do not override this.
     fn erase() -> Accessor<Self::Source, Self::Target> {
         Accessor {
             get: Self::get,
@@ -80,18 +67,14 @@ pub trait FieldPath: 'static {
         }
     }
 
-    /// Names this path once the types are gone, for keying a patch or
-    /// a style entry.
+    /// Names this path once the types are gone.
     fn id() -> FieldId {
         FieldId::of::<Self>()
     }
 
     /// Appends the hops along this path, outermost first.
     ///
-    /// One id per hop, so a walk that crosses into a nested struct
-    /// says so: the owner recognises the first and hands the rest to
-    /// whoever owns the field. A single hop names a field of `Source`
-    /// itself.
+    /// One id per hop. A single hop names a field of `Source` itself.
     fn hops(out: &mut Vec<FieldId>) {
         out.push(Self::id());
     }
@@ -147,12 +130,11 @@ where
     }
 }
 
-/// Where the walk is standing. Carries the path so far as `P` and
-/// nothing at all at runtime.
+/// Where the walk is standing. Carries the path so far as `P`,
+/// nothing at runtime.
 ///
-/// One cursor serves every struct: the methods come from the
-/// `{Struct}Cursor` traits that `#[derive(Lenz)]` generates, so
-/// there is no per-struct cursor type to name.
+/// One cursor serves every struct. Its methods come from the
+/// `{Struct}Cursor` traits `#[derive(Lenz)]` generates.
 pub struct Cursor<P>(PhantomData<fn() -> P>);
 
 impl<P> Cursor<P> {
@@ -170,24 +152,15 @@ impl<P: FieldPath> Cursor<P> {
 
     /// Ends the walk, naming the whole of it at once.
     ///
-    /// However many hops it took, a walk is one type, so this is a
-    /// single id for the entire path, and two walks share it only if
-    /// they are the same walk. That is what a binding wants: it
-    /// distinguishes `top.text` from `bottom.text`, which no one hop
-    /// can.
-    ///
-    /// Not one of the [`hops`](Self::hops): a one hop walk is still a
-    /// [`Chain`] from [`Identity`], so its key is not the id of the
-    /// hop within it, and the two never belong in one map.
+    /// One id for the entire path, distinct from any single
+    /// [`hops`](Self::hops) id, so `top.text` and `bottom.text` key
+    /// separately.
     pub fn key(self) -> FieldId {
         P::id()
     }
 
-    /// Ends the walk, naming each hop it took.
-    ///
-    /// This is the route a patch follows, an id per element it passes
-    /// through. The same walk also reaches the value, with
-    /// [`accessor`](Self::accessor).
+    /// Ends the walk, naming each hop it took. The route a patch
+    /// follows.
     pub fn hops(self) -> Vec<FieldId> {
         let mut out = Vec::new();
         P::hops(&mut out);
@@ -201,8 +174,7 @@ impl<P> Default for Cursor<P> {
     }
 }
 
-// A walk is worth reusing: the same one gives both the accessor and
-// the ids. Nothing is stored, so copying it costs nothing.
+// Free to copy: nothing is stored.
 impl<P> Clone for Cursor<P> {
     fn clone(&self) -> Self {
         *self

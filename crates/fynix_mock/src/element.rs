@@ -1,13 +1,10 @@
 //! What a struct is as a piece of UI, in two halves.
 //!
-//! [`ElementVisual`] is the half you write, and it only ever sees the
-//! fields this element draws itself. [`Element`] is the half
-//! `#[derive(Element)]` writes: it owns the `#[elem(child)]` children, builds
-//! them before the element's own fields exist, and walks down to them
-//! when a change names one.
-//!
-//! So an impl never mentions a child, and a child's visuals are only
-//! ever described in one place, its own impl.
+//! [`ElementVisual`] is the half you write. It only sees the fields
+//! this element draws itself. [`Element`] is the half
+//! `#[derive(Element)]` writes. It owns the `#[elem(child)]`
+//! children, builds them first, and walks down to them when a change
+//! names one.
 
 use crate::host::Host;
 use crate::lenz::FieldId;
@@ -21,18 +18,12 @@ pub use fynix_mock_macros::Element;
 
 /// An element and the `#[elem(child)]` children beneath it.
 ///
-/// Written by `#[derive(Element)]`, once for every backend at a time:
-/// the owner never names a child's backend, and never says twice how
-/// a child is drawn.
+/// Written by `#[derive(Element)]`, once per backend.
 pub trait Element<H: Host>: ElementVisual<H> + Default {
     /// Build this element under `parent`, children and all.
     ///
-    /// Every child's node is recorded in `records`, which is what lets
-    /// [`patch`](Self::patch) find it again - and what
-    /// [`build_fields`](ElementVisual::build_fields) gets handed as a
-    /// [`Ui`] of its own, rooted on the node this returns. `theme` is
-    /// what that `Ui` carries too - the same borrow passed down to
-    /// each recursive build of a `#[elem(child)]`, never cloned.
+    /// Each child's node is recorded in `records`, so
+    /// [`patch`](Self::patch) can find it again.
     fn build(
         &self,
         world: &mut H::World,
@@ -44,11 +35,9 @@ pub trait Element<H: Host>: ElementVisual<H> + Default {
     /// Apply a change named by a path, as
     /// [`Cursor::hops`](crate::lenz::Cursor::hops) reports it.
     ///
-    /// A path naming a child is walked down, one hop per element,
-    /// until it reaches the one that owns it. Anything else is this
-    /// element's own field, and goes to
-    /// [`patch_fields`](ElementVisual::patch_fields). `theme` is
-    /// threaded through the same walk, never cloned.
+    /// Walks down one hop per element until it reaches the field's
+    /// owner, then calls
+    /// [`patch_fields`](ElementVisual::patch_fields).
     fn patch(
         &self,
         world: &mut H::World,
@@ -70,38 +59,31 @@ pub trait Element<H: Host>: ElementVisual<H> + Default {
 
 /// How an element draws its own fields on one backend.
 ///
-/// Implemented by hand, once per (struct, backend) pair. This is the
-/// only place that knows both what the data means and how the backend
-/// draws it, and it is not concerned with children.
+/// Implemented by hand, once per struct and backend pair.
 pub trait ElementVisual<H: Host>: Fields {
     /// Write this element's own fields onto `draw`'s own node.
     ///
-    /// The node already exists, and its `#[elem(child)]` fields are
-    /// already built under it - reach one with [`Build::child`].
-    /// Handed as `Self`'s own [`Build`] rather than a bare `Ui`, since a
-    /// node this method draws on always is one - there is no longer a
-    /// type to get wrong the way `ui.this::<Self>()` once let a caller
-    /// do.
+    /// The node already exists, with its `#[elem(child)]` fields
+    /// already built under it. Reach one with [`Build::child`].
     fn build_fields(&self, draw: &mut Build<H, Self>)
     where
         Self: Element<H> + Send + Sync;
 
     /// Push one changed field into visuals that already exist.
     ///
-    /// A field naming a plain struct is written whole. Only elements
-    /// are reached one hop at a time, and those never arrive here.
+    /// A plain struct field is written whole. Elements are reached
+    /// one hop at a time and never arrive here.
     fn patch_fields(&self, patch: &mut Patch<H>, field: Self::Field);
 }
 
 /// A struct whose own fields can be named one by one.
 ///
-/// [`FieldId`] is opaque, so code that receives one can only compare
-/// it. Recovering the enum instead gives a `match`, and a `match` the
-/// compiler checks: gain a field, and every place that dispatches on
-/// one stops compiling until it says what the new field means.
+/// [`FieldId`] is opaque and can only be compared. Recovering the
+/// enum instead gives a `match` the compiler checks against new
+/// fields.
 ///
-/// Fields marked `#[elem(child)]` are absent from the enum. They are
-/// elements themselves, and [`Element`] reaches them.
+/// Fields marked `#[elem(child)]` are absent from the enum.
+/// [`Element`] reaches those instead.
 pub trait Fields: 'static {
     type Field: Copy + 'static;
 
@@ -113,9 +95,9 @@ pub trait Fields: 'static {
 
     /// What `field` is called once the types are gone.
     ///
-    /// It hangs off the struct rather than the enum because a generic
-    /// struct has one path marker per set of arguments, so the id
-    /// cannot be read from the variant alone.
+    /// Hangs off the struct, not the enum: a generic struct has one
+    /// path marker per set of arguments, so the id cannot come from
+    /// the variant alone.
     fn field_id(field: Self::Field) -> FieldId
     where
         Self: Sized;

@@ -85,16 +85,11 @@ pub use fynix_mock_macros::OverrideDefault;
 pub struct Fynix<H: Host> {
     watchers: Vec<Watcher<H>>,
     records: Records<H>,
-    /// Its own field, not [`H::World`](Host::World), so a build can
-    /// borrow it for the whole flush alongside `&mut H::World`
-    /// without the two ever aliasing. Given at [`Self::new`], changed
-    /// through [`Self::theme_mut`] - never read back out of `World`.
+    /// Not read from `World`.
     theme: H::Theme,
-    /// Set by [`Self::theme_mut`], cleared by [`Self::flush`]: a
-    /// themed look is baked into every element a build touches, so a
-    /// theme change can't be reconciled the way a normal rebuild is -
-    /// the next flush rebuilds every watcher's root regardless of
-    /// whether its own `changed` fired.
+    /// Set by [`Self::theme_mut`], cleared by [`Self::flush`]. Forces
+    /// a full rebuild on the next flush, since every element already
+    /// built has the old theme baked in.
     theme_dirty: bool,
 }
 
@@ -114,11 +109,8 @@ impl<H: Host> Fynix<H> {
         &self.theme
     }
 
-    /// The theme, to edit in place. Every element carries the old
-    /// theme baked in, so any edit here means the whole tree gets
-    /// rebuilt on the next [`flush`](Self::flush) - there's no way to
-    /// tell afterward whether the caller actually changed anything,
-    /// so a call here is taken as one.
+    /// The theme, to edit in place. Any edit rebuilds the whole tree
+    /// on the next [`flush`](Self::flush).
     pub fn theme_mut(&mut self) -> &mut H::Theme {
         self.theme_dirty = true;
         &mut self.theme
@@ -126,8 +118,9 @@ impl<H: Host> Fynix<H> {
 
     /// Rebuild the subtree under `root` whenever `changed` fires.
     ///
-    /// The bootstrap: every other watcher is declared inside a build,
-    /// through [`ElementMut::watch`](crate::ui::ElementMut::watch).
+    /// This is the bootstrap watcher. Every other one is added
+    /// through [`ElementMut::watch`](crate::ui::ElementMut::watch)
+    /// inside a build.
     pub fn watch(
         &mut self,
         root: H::Node,
@@ -142,37 +135,24 @@ impl<H: Host> Fynix<H> {
     }
 
     /// How many watchers the kernel is holding.
-    ///
-    /// One per node it may rebuild, so this is what grows if a root
-    /// goes without its watcher going too.
     pub fn watcher_len(&self) -> usize {
         self.watchers.len()
     }
 
     /// How many elements the kernel is holding.
-    ///
-    /// Every one is a node it built and has not swept, so this is what
-    /// grows if a teardown ever misses.
     pub fn element_len(&self) -> usize {
         self.records.element_nodes.len()
     }
 
     /// The current value of `E` built on `node`, if the kernel still
-    /// has one.
-    ///
-    /// For an observer that wants to read what a field decided rather
-    /// than have it baked in at the moment the observer was
-    /// registered - the same value [`ElementMut::bind`](
-    /// crate::ui::ElementMut::bind) patches onto the node whenever it
-    /// changes, so reading it here always sees the latest.
+    /// has one. The same value
+    /// [`ElementMut::bind`](crate::ui::ElementMut::bind) patches on
+    /// change, so this always reads the latest.
     pub fn element<E: 'static>(&self, node: H::Node) -> Option<&E> {
         self.records.elements.get(&node)
     }
 
     /// How many bindings the kernel is holding.
-    ///
-    /// One per field bound to a live node, so this is what grows if a
-    /// rebuild ever leaves its old bindings behind.
     pub fn binding_len(&self) -> usize {
         self.records.bindings.len()
     }
@@ -184,16 +164,12 @@ impl<H: Host> Fynix<H> {
 
     /// Run every watcher and binding whose predicate fires.
     pub fn flush(&mut self, world: &mut H::World) {
-        // Taken, not just read: cleared now so a `theme_mut` from
-        // inside this flush's own builds (there isn't one today, but
-        // nothing stops it) still schedules another rebuild rather
-        // than being silently absorbed into the one already underway.
+        // Taken, not read, so a `theme_mut` call during this flush
+        // still schedules another rebuild.
         let retheme = core::mem::take(&mut self.theme_dirty);
 
-        // Split the borrow: a build writes into `records` while
-        // `watchers` is still borrowed by the loop. `theme` comes
-        // along the same way, so it borrows from `self`, never from
-        // `world` - the two can never alias.
+        // Split so `records` stays writable while `watchers` is
+        // borrowed by the loop below.
         let Self {
             watchers,
             records,
@@ -202,19 +178,15 @@ impl<H: Host> Fynix<H> {
         } = self;
 
         for watcher in watchers.iter_mut() {
-            // Per watcher, not once up front: an earlier rebuild in
-            // this same flush can despawn a later watcher's root.
+            // Checked per watcher: an earlier rebuild this flush can
+            // despawn a later watcher's root.
             if !H::exists(world, watcher.root) {
                 continue;
             }
-            // Called even when `retheme` will force the rebuild
-            // anyway: some `changed` closures are one-shot (the
-            // bootstrap watcher `watch_root` installs fires once,
-            // ever), and skipping the call here would leave that
-            // still armed for a flush that never asked for it.
+            // Called even when `retheme` forces the rebuild anyway.
+            // Some `changed` closures are one-shot; skipping the call
+            // would leave them armed for a later flush.
             let changed = (watcher.changed)(world, watcher.root);
-            // A theme change rebuilds every root regardless of its
-            // own `changed` - see `theme_dirty`'s own doc.
             if !retheme && !changed {
                 continue;
             }
@@ -227,19 +199,17 @@ impl<H: Host> Fynix<H> {
         watchers.append(&mut records.spawned);
         watchers.retain(|watcher| H::exists(world, watcher.root));
 
-        // Everything the kernel keeps is keyed on a node, and a node
-        // can go at any time: a rebuild above cleared one, or the app
-        // despawned another out from under us. One sweep covers both,
-        // and has to come before anything is applied to a dead handle.
+        // A node can die at any time: a rebuild above cleared one, or
+        // the app despawned another. Sweep both before touching any
+        // dead handle.
         records
             .bindings
             .retain(|(node, _), _| H::exists(world, *node));
         records.lanes.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
-        // The table is keyed by type as well as node, so it cannot be
-        // asked what it holds. `element_nodes` is the list to sweep,
-        // and dropping the row takes the element whatever type it is.
+        // `elements` is keyed by type as well as node, so it cannot
+        // say what it holds. `element_nodes` is the list to sweep.
         records.element_nodes.retain(|node| {
             let alive = H::exists(world, *node);
             if !alive {
@@ -273,10 +243,8 @@ impl<H: Host> Fynix<H> {
     }
 
     /// Point a transitioning field at `target`, or release it back to
-    /// its base with `None`.
-    ///
-    /// The primitive every trigger goes through, polled or fired.
-    /// Aiming a field with no lane does nothing.
+    /// its base with `None`. Aiming a field with no lane does
+    /// nothing.
     pub fn aim<E, P>(
         &mut self,
         node: H::Node,
@@ -301,11 +269,8 @@ impl<H: Host> Fynix<H> {
     }
 }
 
-/// Despawn the kernel's children of `root`.
-///
-/// The host takes each subtree with it, and the sweep in
-/// [`Fynix::flush`] drops whatever those nodes left in the records:
-/// the same job for a rebuild as for a node the app removed itself.
+/// Despawn the kernel's children of `root`. The sweep in
+/// [`Fynix::flush`] then drops whatever those nodes left behind.
 fn clear_children<H: Host>(world: &mut H::World, root: H::Node) {
     for child in H::children(world, root) {
         H::despawn(world, child);

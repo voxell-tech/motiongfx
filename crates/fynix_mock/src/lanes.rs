@@ -18,12 +18,12 @@ use crate::transition::Transition;
 /// A field on its way somewhere, kept beside the element rather than
 /// in it.
 ///
-/// The element keeps the value the cascade gave it, the *base*; a lane
-/// keeps what the backend is showing, and pushes it through the
-/// element's own patch by swapping it in for the length of one call.
+/// The element keeps the *base*, the cascade's own value. A lane
+/// keeps what the backend is showing, and swaps it into the element
+/// only for the length of one patch call.
 pub(crate) trait Lane<H: Host>: Send + Sync {
-    /// Point this lane somewhere new: a boxed `Option<T>`, `None` to
-    /// release back to the base. Another type is ignored.
+    /// Point this lane at a boxed `Option<T>`. `None` releases back
+    /// to the base. Any other type is ignored.
     fn aim(&mut self, target: &mut dyn Any);
 
     /// Advance by `dt` and push what it reached. `false` once it has
@@ -84,8 +84,8 @@ where
             return false;
         };
 
-        // The base moves under a running leg whenever a binding writes
-        // it, so where this is heading is worked out afresh each time.
+        // The base can move mid flight, so heading is recomputed here
+        // each time.
         let heading =
             self.target.clone().unwrap_or_else(|| base.clone());
 
@@ -96,7 +96,7 @@ where
         }
 
         if self.shown == self.heading {
-            // Released and arrived: the base already shows.
+            // Released and arrived. The base already shows.
             if self.target.is_none() {
                 return false;
             }
@@ -113,8 +113,8 @@ where
             };
         }
 
-        // Pushed even when it did not move, so that a binding writing
-        // the base this same flush cannot be the last word.
+        // Pushed even when unmoved, so a binding writing the base
+        // this flush cannot win.
         let Some(field) = (self.accessor.get_mut)(element) else {
             return false;
         };
@@ -129,14 +129,9 @@ where
     }
 }
 
-/// Every field currently travelling rather than snapped to its base,
-/// keyed like the bindings: one per field, so a second lane on the
-/// same one replaces rather than doubles.
-///
-/// Opaque on purpose: [`Lane`] is `pub(crate)`, so this is what a
-/// borrow of the table looks like to anything outside this crate -
-/// [`Build`](crate::ui::Build) holds one directly, the same way it holds
-/// a [`Store`], without either leaking what a lane actually is.
+/// Every field currently travelling rather than snapped to its base.
+/// One per field: a second lane on the same field replaces rather
+/// than doubles.
 pub struct Lanes<H: Host>(
     HashMap<(H::Node, FieldId), Box<dyn Lane<H>>>,
 );
@@ -187,9 +182,7 @@ impl<H: Host> Lanes<H> {
     }
 }
 
-/// What every lane starts from, whichever of `field`'s two callers
-/// already has an [`Accessor`] in hand and which only has a path to
-/// get one from.
+/// Creates a lane already holding an [`Accessor`].
 pub(crate) fn insert_travel<H, E, T>(
     lanes: &mut Lanes<H>,
     node: H::Node,
@@ -220,10 +213,8 @@ pub(crate) fn insert_travel<H, E, T>(
     );
 }
 
-/// The shared insides of
-/// [`ElementMut::transition_from`](crate::ui::ElementMut::transition_from)
-/// and [`Build::transition_from`](crate::ui::Build::transition_from) -
-/// only where the lane table comes from differs between them.
+/// Resolves a field path into an [`Accessor`], then builds a lane
+/// from it.
 pub(crate) fn insert_lane<H, E, P>(
     lanes: &mut Lanes<H>,
     node: H::Node,

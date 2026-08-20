@@ -1,10 +1,8 @@
 //! Where the `#[elem(child)]` children went.
 //!
-//! A parent builds its children and forgets them; the store remembers
-//! which node each one got, so a later patch can walk down to it. The
-//! key is the parent's node plus the field, which is enough on its
-//! own: nothing has to be threaded down from the root, and the same
-//! lookup works at any depth.
+//! The store remembers which node each child got, keyed by the
+//! parent's node plus the field. A patch can walk down to any depth
+//! without threading state from the root.
 
 use hashbrown::HashMap;
 
@@ -58,19 +56,15 @@ impl<H: Host> Store<H> {
 
     /// Drop entries whose nodes the backend no longer has.
     ///
-    /// A teardown through [`Element::despawn`](crate::element::Element::despawn)
-    /// clears its own entries as it goes. This is the sweep for what
-    /// the app despawned behind our back.
+    /// Catches whatever the app despawned on its own.
     pub fn prune(&mut self, world: &H::World) {
         self.children.retain(|(parent, _), child| {
             H::exists(world, *parent) && H::exists(world, *child)
         });
     }
 
-    /// The node a `#[elem(child)]` field built, however many hops the path
-    /// takes to reach it. What [`ElementMut::child`](
-    /// crate::ui::ElementMut::child) and
-    /// [`Ui::child`](crate::ui::Ui::child) both walk.
+    /// The node a `#[elem(child)]` field built, however many hops
+    /// the path takes to reach it.
     pub fn child<S, P>(
         &self,
         node: H::Node,
