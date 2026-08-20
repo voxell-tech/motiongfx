@@ -31,7 +31,6 @@ use crate::elem;
 /// #     fn children(_: &(), _: usize) -> Vec<usize> { Vec::new() }
 /// #     fn despawn(_: &mut (), _: usize) {}
 /// #     fn delta(_: &()) -> f32 { 0.0 }
-/// #     fn theme(_: &()) {}
 /// # }
 /// # fn built<S: StyledElem<Host = Backend>>(_: S) {}
 /// #[derive(Default)]

@@ -25,10 +25,6 @@ impl<Theme: Resource + Clone + Default> Host for BevyHost<Theme> {
             .unwrap_or_default()
     }
 
-    fn theme(world: &World) -> Theme {
-        world.resource::<Theme>().clone()
-    }
-
     fn spawn(world: &mut World, parent: Entity) -> Entity {
         // A layout [`Node`] up front, not [`Host::Node`], which is the
         // `Entity` itself. An entity in the UI tree without one is

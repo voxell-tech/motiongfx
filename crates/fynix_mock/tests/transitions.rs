@@ -32,7 +32,7 @@ fn only_child(world: &World, root: usize) -> usize {
 fn travelling() -> (World, usize, Fynix<Backend>, usize) {
     let (mut world, root) = World::with_root();
     world.delta = 0.25;
-    let mut kernel = Fynix::new();
+    let mut kernel = Fynix::new(());
 
     kernel.watch(root, once(), |ui| {
         ui.elem(elem!(Label, size = 0u32)).transition(
@@ -208,7 +208,7 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
 
     let (mut world, root) = World::with_root();
     world.delta = 0.5;
-    let mut kernel = Fynix::new();
+    let mut kernel = Fynix::new(());
 
     kernel.watch(root, once(), |ui| {
         ui.elem(elem!(!Grows, text = "Save"));

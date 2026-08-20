@@ -85,26 +85,43 @@ pub use fynix_mock_macros::OverrideDefault;
 pub struct Fynix<H: Host> {
     watchers: Vec<Watcher<H>>,
     records: Records<H>,
-    /// Refreshed once per [`flush`](Self::flush), from
-    /// [`Host::theme`] - its own field, not [`H::World`](Host::World),
-    /// so a build can borrow it for the whole flush alongside
-    /// `&mut H::World` without the two ever aliasing.
+    /// Its own field, not [`H::World`](Host::World), so a build can
+    /// borrow it for the whole flush alongside `&mut H::World`
+    /// without the two ever aliasing. Given at [`Self::new`], changed
+    /// through [`Self::theme_mut`] - never read back out of `World`.
     theme: H::Theme,
-}
-
-impl<H: Host> Default for Fynix<H> {
-    fn default() -> Self {
-        Self {
-            watchers: Vec::new(),
-            records: Records::default(),
-            theme: H::Theme::default(),
-        }
-    }
+    /// Set by [`Self::theme_mut`], cleared by [`Self::flush`]: a
+    /// themed look is baked into every element a build touches, so a
+    /// theme change can't be reconciled the way a normal rebuild is -
+    /// the next flush rebuilds every watcher's root regardless of
+    /// whether its own `changed` fired.
+    theme_dirty: bool,
 }
 
 impl<H: Host> Fynix<H> {
-    pub fn new() -> Self {
-        Self::default()
+    /// Starts empty, themed with `theme`.
+    pub fn new(theme: H::Theme) -> Self {
+        Self {
+            watchers: Vec::new(),
+            records: Records::default(),
+            theme,
+            theme_dirty: false,
+        }
+    }
+
+    /// The current theme.
+    pub fn theme(&self) -> &H::Theme {
+        &self.theme
+    }
+
+    /// The theme, to edit in place. Every element carries the old
+    /// theme baked in, so any edit here means the whole tree gets
+    /// rebuilt on the next [`flush`](Self::flush) - there's no way to
+    /// tell afterward whether the caller actually changed anything,
+    /// so a call here is taken as one.
+    pub fn theme_mut(&mut self) -> &mut H::Theme {
+        self.theme_dirty = true;
+        &mut self.theme
     }
 
     /// Rebuild the subtree under `root` whenever `changed` fires.
@@ -167,8 +184,11 @@ impl<H: Host> Fynix<H> {
 
     /// Run every watcher and binding whose predicate fires.
     pub fn flush(&mut self, world: &mut H::World) {
-        // Refreshed here and nowhere else - see `theme`'s own doc.
-        self.theme = H::theme(world);
+        // Taken, not just read: cleared now so a `theme_mut` from
+        // inside this flush's own builds (there isn't one today, but
+        // nothing stops it) still schedules another rebuild rather
+        // than being silently absorbed into the one already underway.
+        let retheme = core::mem::take(&mut self.theme_dirty);
 
         // Split the borrow: a build writes into `records` while
         // `watchers` is still borrowed by the loop. `theme` comes
@@ -178,6 +198,7 @@ impl<H: Host> Fynix<H> {
             watchers,
             records,
             theme,
+            ..
         } = self;
 
         for watcher in watchers.iter_mut() {
@@ -186,7 +207,15 @@ impl<H: Host> Fynix<H> {
             if !H::exists(world, watcher.root) {
                 continue;
             }
-            if !(watcher.changed)(world, watcher.root) {
+            // Called even when `retheme` will force the rebuild
+            // anyway: some `changed` closures are one-shot (the
+            // bootstrap watcher `watch_root` installs fires once,
+            // ever), and skipping the call here would leave that
+            // still armed for a flush that never asked for it.
+            let changed = (watcher.changed)(world, watcher.root);
+            // A theme change rebuilds every root regardless of its
+            // own `changed` - see `theme_dirty`'s own doc.
+            if !retheme && !changed {
                 continue;
             }
 

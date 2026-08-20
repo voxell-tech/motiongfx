@@ -37,11 +37,21 @@ impl<Theme: Resource + Clone + Default> Plugin
         // `Theme` is a `Resource` this crate takes on faith, not one
         // it defines - initializing it here (it's already bound
         // `Default`) is what lets an app that has no opinion on its
-        // own theme, and every test, add the plugin without a second
-        // `init_resource` of its own.
-        app.init_resource::<Theme>()
-            .init_resource::<BevyFynix<Theme>>()
-            .add_systems(Update, flush::<Theme>.in_set(FynixSet));
+        // own theme, and every test, add the plugin without setting
+        // one up first. The kernel takes its own copy at construction
+        // rather than reading `Theme` back out of `World` each flush
+        // - see [`fynix_mock::Host::Theme`] - so it's seeded here,
+        // once, from whatever `Theme` now holds.
+        app.init_resource::<Theme>();
+        let theme = app.world().resource::<Theme>().clone();
+
+        app.insert_resource(BevyFynix(Fynix::new(theme)))
+            .add_systems(
+                Update,
+                (sync_theme::<Theme>, flush::<Theme>)
+                    .chain()
+                    .in_set(FynixSet),
+            );
     }
 }
 
@@ -56,16 +66,24 @@ struct BevyFynix<Theme: Resource + Clone + Default>(
     Fynix<BevyHost<Theme>>,
 );
 
-impl<Theme: Resource + Clone + Default> Default for BevyFynix<Theme> {
-    fn default() -> Self {
-        Self(Fynix::new())
-    }
-}
-
 /// Order systems against the flush: whatever a build reads should be
 /// written before [`FynixSet`] runs.
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FynixSet;
+
+/// Pushes an edited `Theme` resource into the kernel, which is what
+/// actually schedules the full rebuild - see
+/// [`Fynix::theme_mut`](fynix_mock::Fynix::theme_mut). Ordered ahead
+/// of [`flush`] so the same frame's rebuild sees the new theme rather
+/// than lagging a frame behind it.
+fn sync_theme<Theme: Resource + Clone + Default>(
+    theme: Res<Theme>,
+    mut kernel: ResMut<BevyFynix<Theme>>,
+) {
+    if theme.is_changed() {
+        *kernel.0.theme_mut() = theme.clone();
+    }
+}
 
 /// Build `root` on the next flush, and never again.
 ///

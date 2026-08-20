@@ -2,7 +2,7 @@
 
 ## When to write one
 
-Write a comment only where the code doesn't already say it clearly -
+Write a comment only where the code doesn't already explain itself -
 a non-obvious reason, a public-facing function/struct/mod others will
 call without reading its body. Most code needs none.
 

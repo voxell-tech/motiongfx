@@ -207,7 +207,7 @@ fn what_the_cascade_left_is_what_gets_built() {
 #[test]
 fn the_builder_takes_a_styled_element_whole() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Fynix::new();
+    let mut kernel = Fynix::new(());
 
     kernel.watch(
         root,

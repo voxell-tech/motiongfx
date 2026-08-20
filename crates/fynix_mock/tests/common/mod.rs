@@ -184,8 +184,6 @@ impl Host for Backend {
         world.delta
     }
 
-    fn theme(_world: &World) {}
-
     fn spawn(world: &mut World, parent: usize) -> usize {
         world.insert(Node {
             parent: Some(parent),
