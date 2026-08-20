@@ -61,13 +61,10 @@ impl ElementVisual<BevyHost> for Panel {
         patch: &mut Patch<BevyHost>,
         field: PanelField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             PanelField::Scroll => {
                 if let Some(mut scroll) =
-                    world.get_mut::<ScrollPosition>(node)
+                    patch.entity_mut().get_mut::<ScrollPosition>()
                 {
                     scroll.0.y = self.scroll;
                 }
@@ -79,7 +76,7 @@ impl ElementVisual<BevyHost> for Panel {
             | PanelField::RowGap
             | PanelField::ColumnGap
             | PanelField::Scrolls => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

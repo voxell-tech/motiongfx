@@ -58,26 +58,19 @@ impl ElementVisual<BevyHost> for TimelineAction {
         patch: &mut Patch<BevyHost>,
         field: TimelineActionField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             TimelineActionField::Top
             | TimelineActionField::Left
             | TimelineActionField::Width
             | TimelineActionField::Height
             | TimelineActionField::Selected => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
             TimelineActionField::Fill => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.fill));
+                patch.insert(BackgroundColor(self.fill));
             }
             TimelineActionField::Border => {
-                world
-                    .entity_mut(node)
-                    .insert(BorderColor::all(self.border));
+                patch.insert(BorderColor::all(self.border));
             }
         }
     }

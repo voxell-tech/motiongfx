@@ -1,6 +1,6 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::EntityExt as _;
+use bevy_fynix::EntityExt;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -75,9 +75,7 @@ impl Frame {
 impl Frame {
     /// Written whole, so that a frame going back into its parent's
     /// stack loses the component rather than keeping a stale one.
-    fn stack(&self, world: &mut World, node: Entity) {
-        let mut entity = world.entity_mut(node);
-
+    fn stack(&self, entity: &mut impl EntityExt) {
         match self.z {
             Some(z) => entity.insert(GlobalZIndex(z)),
             None => entity.remove::<GlobalZIndex>(),
@@ -89,10 +87,7 @@ impl ElementVisual<BevyHost> for Frame {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
         build.insert((self.node(), BackgroundColor(self.background)));
 
-        let node = build.id();
-        let world = &mut *build.world;
-
-        self.stack(world, node);
+        self.stack(build);
     }
 
     fn patch_fields(
@@ -100,19 +95,14 @@ impl ElementVisual<BevyHost> for Frame {
         patch: &mut Patch<BevyHost>,
         field: FrameField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             FrameField::Background => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.background));
+                patch.insert(BackgroundColor(self.background));
             }
             // Every other field is one of `Node`'s, and writing the
             // node whole is one insert rather than eight arms that
             // each write a field of it.
-            FrameField::Z => self.stack(world, node),
+            FrameField::Z => self.stack(patch),
             FrameField::Width
             | FrameField::Height
             | FrameField::Position
@@ -127,7 +117,7 @@ impl ElementVisual<BevyHost> for Frame {
             | FrameField::ColumnGap
             | FrameField::Radius
             | FrameField::Display => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

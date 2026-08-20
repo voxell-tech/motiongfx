@@ -86,14 +86,9 @@ impl ElementVisual<BevyHost> for ScrollArea {
         patch: &mut Patch<BevyHost>,
         field: ScrollAreaField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             ScrollAreaField::Background => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.background));
+                patch.insert(BackgroundColor(self.background));
             }
             // Every other field is one of `Node`'s, and writing it
             // whole is one insert rather than an arm apiece.
@@ -109,7 +104,7 @@ impl ElementVisual<BevyHost> for ScrollArea {
             | ScrollAreaField::Radius
             | ScrollAreaField::ScrollX
             | ScrollAreaField::ScrollY => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

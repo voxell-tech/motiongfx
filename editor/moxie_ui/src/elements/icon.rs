@@ -49,35 +49,34 @@ impl ElementVisual<BevyHost> for Icon {
         patch: &mut Patch<BevyHost>,
         field: IconField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             IconField::Image => {
-                let image = world.load_asset(self.image.clone());
+                let image =
+                    patch.world.load_asset(self.image.clone());
 
                 if let Some(mut node) =
-                    world.get_mut::<ImageNode>(node)
+                    patch.entity_mut().get_mut::<ImageNode>()
                 {
                     node.image = image;
                 }
             }
             IconField::Color => {
                 if let Some(mut image) =
-                    world.get_mut::<ImageNode>(node)
+                    patch.entity_mut().get_mut::<ImageNode>()
                 {
                     image.color = self.color;
                 }
             }
             IconField::Size => {
-                if let Some(mut layout) = world.get_mut::<Node>(node)
+                if let Some(mut layout) =
+                    patch.entity_mut().get_mut::<Node>()
                 {
                     layout.width = self.size;
                     layout.height = self.size;
                 }
             }
             IconField::Rotation => {
-                world.entity_mut(node).insert(self.transform());
+                patch.insert(self.transform());
             }
         }
     }

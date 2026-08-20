@@ -46,14 +46,9 @@ impl ElementVisual<BevyHost> for TabBar {
         patch: &mut Patch<BevyHost>,
         field: TabBarField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             TabBarField::Background => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.background));
+                patch.insert(BackgroundColor(self.background));
             }
         }
     }
@@ -150,17 +145,12 @@ impl ElementVisual<BevyHost> for Tab {
         patch: &mut Patch<BevyHost>,
         field: TabField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut entity = world.entity_mut(node);
-
         match field {
             TabField::Active | TabField::Fill => {
-                entity.insert(self.background());
+                patch.insert(self.background());
             }
             TabField::WindowId | TabField::Tab => {
-                entity.insert(DockTab {
+                patch.insert(DockTab {
                     window_id: self.window_id.clone(),
                     tab_id: self.tab,
                 });

@@ -47,17 +47,12 @@ impl ElementVisual<BevyHost> for Overlay {
         patch: &mut Patch<BevyHost>,
         field: OverlayField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut entity = world.entity_mut(node);
-
         match field {
             OverlayField::Catches => {
-                entity.insert(self.pickable());
+                patch.insert(self.pickable());
             }
             OverlayField::Z => {
-                entity.insert(GlobalZIndex(self.z));
+                patch.insert(GlobalZIndex(self.z));
             }
         }
     }

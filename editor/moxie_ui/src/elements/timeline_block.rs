@@ -57,25 +57,18 @@ impl ElementVisual<BevyHost> for TimelineBlock {
         patch: &mut Patch<BevyHost>,
         field: TimelineBlockField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             TimelineBlockField::Top
             | TimelineBlockField::Left
             | TimelineBlockField::Width
             | TimelineBlockField::Height => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
             TimelineBlockField::Background => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.background));
+                patch.insert(BackgroundColor(self.background));
             }
             TimelineBlockField::Border => {
-                world
-                    .entity_mut(node)
-                    .insert(BorderColor::all(self.border));
+                patch.insert(BorderColor::all(self.border));
             }
         }
     }

@@ -64,27 +64,24 @@ impl ElementVisual<BevyHost> for Label {
         patch: &mut Patch<BevyHost>,
         field: LabelField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut node = world.entity_mut(node);
-
         match field {
             LabelField::Text => {
-                if let Some(mut text) = node.get_mut::<Text>() {
+                if let Some(mut text) =
+                    patch.entity_mut().get_mut::<Text>()
+                {
                     text.0.clone_from(&self.text);
                 }
             }
             LabelField::Size | LabelField::Bold => {
-                node.insert(self.font());
+                patch.insert(self.font());
             }
             LabelField::Wrap => {
-                node.insert(self.layout());
+                patch.insert(self.layout());
             }
             LabelField::Color => {
                 match self.color {
-                    Some(color) => node.insert(TextColor(color)),
-                    None => node.insert(ThemedText),
+                    Some(color) => patch.insert(TextColor(color)),
+                    None => patch.insert(ThemedText),
                 };
             }
         }

@@ -65,23 +65,16 @@ impl ElementVisual<BevyHost> for Divider {
         patch: &mut Patch<BevyHost>,
         field: DividerField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             // Either one changes both: the thickness lands on
             // whichever axis the orientation put it.
             DividerField::Thickness | DividerField::Orientation => {
                 let (layout, cursor) = self.shape();
 
-                world
-                    .entity_mut(node)
-                    .insert((layout, EntityCursor::System(cursor)));
+                patch.insert((layout, EntityCursor::System(cursor)));
             }
             DividerField::Color => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.color));
+                patch.insert(BackgroundColor(self.color));
             }
         }
     }

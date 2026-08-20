@@ -17,7 +17,7 @@ use bevy::ui_widgets::{
     ActivateOnPress, Button as ButtonBehavior, MenuButton, MenuItem,
 };
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt as _;
+use bevy_fynix::EntityExt;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -151,20 +151,15 @@ impl ElementVisual<BevyHost> for Dropdown {
         patch: &mut Patch<BevyHost>,
         field: DropdownField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut entity = world.entity_mut(node);
-
         match field {
             DropdownField::Fill => {
-                entity.insert(BackgroundColor(self.fill));
+                patch.insert(BackgroundColor(self.fill));
             }
             DropdownField::MinWidth
             | DropdownField::MaxWidth
             | DropdownField::Height
             | DropdownField::Radius => {
-                entity.insert(self.node());
+                patch.insert(self.node());
             }
         }
     }
@@ -190,8 +185,10 @@ impl DropdownList {
     /// Only the width and the corners. The rest of the node belongs to
     /// the popup scene, and writing it whole would undo the placement
     /// that came with it.
-    fn size(&self, world: &mut World, node: Entity) {
-        if let Some(mut layout) = world.get_mut::<Node>(node) {
+    fn size(&self, entity: &mut impl EntityExt) {
+        if let Some(mut layout) =
+            entity.entity_mut().get_mut::<Node>()
+        {
             layout.min_width = self.width;
             layout.border_radius = BorderRadius::all(self.radius);
         }
@@ -201,16 +198,16 @@ impl DropdownList {
 impl ElementVisual<BevyHost> for DropdownList {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
         let node = build.id();
-        let world = &mut *build.world;
 
-        if let Err(err) = world
+        if let Err(err) = build
+            .world
             .entity_mut(node)
             .apply_scene(bsn! { @FeathersMenuPopup })
         {
             error!("failed to build a dropdown list: {err}");
             return;
         }
-        self.size(world, node);
+        self.size(build);
     }
 
     fn patch_fields(
@@ -218,12 +215,9 @@ impl ElementVisual<BevyHost> for DropdownList {
         patch: &mut Patch<BevyHost>,
         field: DropdownListField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             DropdownListField::Width | DropdownListField::Radius => {
-                self.size(world, node)
+                self.size(patch)
             }
         }
     }
@@ -275,17 +269,12 @@ impl ElementVisual<BevyHost> for DropdownItem {
         patch: &mut Patch<BevyHost>,
         field: DropdownItemField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut entity = world.entity_mut(node);
-
         match field {
             DropdownItemField::Fill => {
-                entity.insert(BackgroundColor(self.fill));
+                patch.insert(BackgroundColor(self.fill));
             }
             DropdownItemField::Height | DropdownItemField::Radius => {
-                entity.insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

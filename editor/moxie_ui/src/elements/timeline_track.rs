@@ -35,12 +35,9 @@ impl ElementVisual<BevyHost> for TimelineTrack {
         patch: &mut Patch<BevyHost>,
         field: TimelineTrackField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             TimelineTrackField::Width => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

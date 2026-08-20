@@ -91,22 +91,17 @@ impl ElementVisual<BevyHost> for SplitGroup {
         patch: &mut Patch<BevyHost>,
         field: SplitGroupField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut entity = world.entity_mut(node);
-
         match field {
             SplitGroupField::Node => {
-                entity.insert(NodeBinding(self.node));
+                patch.insert(NodeBinding(self.node));
             }
             SplitGroupField::MinRatio => {
-                entity.insert(PanelGroup {
+                patch.insert(PanelGroup {
                     min_ratio: self.min_ratio,
                 });
             }
             SplitGroupField::Axis => {
-                entity.insert(filled(self.axis));
+                patch.insert(filled(self.axis));
             }
         }
     }
@@ -230,17 +225,12 @@ impl ElementVisual<BevyHost> for SplitHandle {
         patch: &mut Patch<BevyHost>,
         field: SplitHandleField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut entity = world.entity_mut(node);
-
         match field {
             SplitHandleField::Node => {
-                entity.insert(NodeBinding(self.node));
+                patch.insert(NodeBinding(self.node));
             }
             SplitHandleField::Axis | SplitHandleField::Visible => {
-                entity.insert(self.node());
+                patch.insert(self.node());
             }
         }
     }
@@ -283,17 +273,12 @@ impl ElementVisual<BevyHost> for SplitPanel {
         patch: &mut Patch<BevyHost>,
         field: SplitPanelField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut entity = world.entity_mut(node);
-
         match field {
             SplitPanelField::Ratio => {
-                entity.insert(Panel { ratio: self.ratio });
+                patch.insert(Panel { ratio: self.ratio });
             }
             SplitPanelField::Visible => {
-                entity.insert(self.node());
+                patch.insert(self.node());
             }
         }
     }
@@ -332,20 +317,15 @@ impl ElementVisual<BevyHost> for Area {
         patch: &mut Patch<BevyHost>,
         field: AreaField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut entity = world.entity_mut(node);
-
         match field {
             AreaField::Active => {
-                entity.insert(self.active.clone());
+                patch.insert(self.active.clone());
             }
             AreaField::Node => {
-                entity.insert(NodeBinding(self.node));
+                patch.insert(NodeBinding(self.node));
             }
             AreaField::Id | AreaField::Style => {
-                entity.insert(DockArea {
+                patch.insert(DockArea {
                     id: self.id.clone(),
                     style: self.style.clone(),
                 });
@@ -393,21 +373,19 @@ impl ElementVisual<BevyHost> for TabContent {
         patch: &mut Patch<BevyHost>,
         field: TabContentField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             // Only `display`: the content pane's own layout is its
             // business, and writing the whole `Node` would clobber
             // whatever it did to itself.
             TabContentField::Showing => {
-                if let Some(mut layout) = world.get_mut::<Node>(node)
+                if let Some(mut layout) =
+                    patch.entity_mut().get_mut::<Node>()
                 {
                     layout.display = display(self.showing);
                 }
             }
             TabContentField::WindowId | TabContentField::Tab => {
-                world.entity_mut(node).insert((
+                patch.insert((
                     DockWindow {
                         descriptor_id: self.window_id.clone(),
                         tab_id: self.tab,

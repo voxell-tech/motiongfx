@@ -218,14 +218,9 @@ impl ElementVisual<BevyHost> for ButtonElem {
         patch: &mut Patch<BevyHost>,
         field: ButtonElemField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        let mut entity = world.entity_mut(node);
-
         match field {
             ButtonElemField::Fill => {
-                entity.insert(self.background());
+                patch.insert(self.background());
             }
             // Every other field is one of `Node`'s, and writing it
             // whole is one insert either way.
@@ -237,7 +232,7 @@ impl ElementVisual<BevyHost> for ButtonElem {
             | ButtonElemField::ColumnGap
             | ButtonElemField::Padding
             | ButtonElemField::Radius => {
-                entity.insert(self.node());
+                patch.insert(self.node());
             }
         }
     }
