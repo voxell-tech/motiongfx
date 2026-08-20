@@ -68,6 +68,11 @@ The exception is when the contrast itself is the whole point of the
 comment (a deliberate departure from what a reader would otherwise
 assume), and even then the negative side stays short.
 
+## Open with a noun phrase, not a free relative
+
+No "what X does/wants" openers. Head the sentence with the thing
+itself.
+
 ## Where call-site behavior belongs
 
 Behavior that only applies to one call site, one branch, or one
