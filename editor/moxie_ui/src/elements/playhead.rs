@@ -1,13 +1,11 @@
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
-
-const PLAYHEAD_COLOR: Color = Color::srgb(0.95, 0.30, 0.35);
+use fynix_mock::ui::{Build, Patch};
 
 /// The playhead line, positioned by the editor's playhead system.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct PlayheadLine {
     pub left: f32,
 }
@@ -26,21 +24,25 @@ impl PlayheadLine {
 }
 
 impl ElementVisual<BevyHost> for PlayheadLine {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let color = build.theme.palette.orange;
+
+        build.insert((
             self.node(),
             ZIndex(10),
-            BackgroundColor(PLAYHEAD_COLOR),
+            BackgroundColor(color),
             Pickable::IGNORE,
         ));
     }
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: PlayheadLineField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             PlayheadLineField::Left => {
                 if let Some(mut node) = world.get_mut::<Node>(node) {

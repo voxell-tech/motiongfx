@@ -1,12 +1,12 @@
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 /// The sized, optionally filled container almost every other widget's
 /// root node turns out to be.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Frame {
     pub width: Val,
     pub height: Val,
@@ -75,9 +75,7 @@ impl Frame {
 impl Frame {
     /// Written whole, so that a frame going back into its parent's
     /// stack loses the component rather than keeping a stale one.
-    fn stack(&self, world: &mut World, node: Entity) {
-        let mut entity = world.entity_mut(node);
-
+    fn stack(&self, entity: &mut impl EntityExt) {
         match self.z {
             Some(z) => entity.insert(GlobalZIndex(z)),
             None => entity.remove::<GlobalZIndex>(),
@@ -86,29 +84,25 @@ impl Frame {
 }
 
 impl ElementVisual<BevyHost> for Frame {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world
-            .entity_mut(node)
-            .insert((self.node(), BackgroundColor(self.background)));
-        self.stack(world, node);
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((self.node(), BackgroundColor(self.background)));
+
+        self.stack(build);
     }
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: FrameField,
     ) {
         match field {
             FrameField::Background => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.background));
+                patch.insert(BackgroundColor(self.background));
             }
             // Every other field is one of `Node`'s, and writing the
             // node whole is one insert rather than eight arms that
             // each write a field of it.
-            FrameField::Z => self.stack(world, node),
+            FrameField::Z => self.stack(patch),
             FrameField::Width
             | FrameField::Height
             | FrameField::Position
@@ -123,7 +117,7 @@ impl ElementVisual<BevyHost> for Frame {
             | FrameField::ColumnGap
             | FrameField::Radius
             | FrameField::Display => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

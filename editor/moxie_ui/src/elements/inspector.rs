@@ -1,16 +1,13 @@
 //! Inspectors, as composers rather than elements.
 //!
-//! What an inspector is handed - an entity, a component's type, a
-//! resource's type - decides what its subtree *is*, not what a node
-//! looks like. An element's field reaches the backend by being
-//! patched onto a node that already exists, and there is no patch
-//! that means "build something else instead", so these read their
-//! inputs once, while building, which is exactly a
+//! What an inspector is handed (an entity, a component's type, a
+//! resource's type) decides what its subtree *is*, not what a node
+//! looks like. There is no patch for "build something else instead",
+//! so these read their input once, while building, exactly a
 //! [`Composer`]'s window.
 //!
-//! Each is empty when what it points at is not there. Missing is not
-//! an error worth a row of its own: an entity that lost a component
-//! and an inspector that was never pointed anywhere read the same.
+//! Each is empty when what it points at is not there. A missing
+//! component and an inspector pointed nowhere read the same.
 
 use std::any::TypeId;
 
@@ -19,9 +16,10 @@ use bevy::prelude::*;
 use bevy::reflect::std_traits::ReflectDefault;
 use bevy::ui_widgets::{Activate, ActivateOnPress, MenuButton};
 
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
-use fynix_mock::ui::{BuildFn, ChangedFn, ElementHandle};
+use fynix_mock::records::{BuildFn, ChangedFn};
+use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
 
 use super::{
@@ -33,7 +31,7 @@ use crate::inspector::{
     Field, InspectorFields, ReflectInspectable, Section,
     inspect_value, is_single_value,
 };
-use crate::motion::{HOVER, MotionExt};
+use crate::motion::MotionExt;
 use crate::reactive::{BevyHost, BevyUi, value_changed};
 use crate::theme::EditorTheme;
 
@@ -157,8 +155,8 @@ impl Composer<BevyHost> for EntityInspector {
 
 /// The menu that adds a component to `entity`.
 ///
-/// Rebuilt alongside the rest of [`EntityInspector`], on the same
-/// signal - the set it offers is exactly what changes on that signal.
+/// Rebuilt alongside [`EntityInspector`], on the same signal: what it
+/// offers is exactly what that signal tracks.
 struct AddComponent {
     entity: Entity,
 }
@@ -171,7 +169,7 @@ impl Composer<BevyHost> for AddComponent {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, DropdownMenu> {
         let entity = self.entity;
-        let theme = ui.world.resource::<EditorTheme>().clone();
+        let theme = ui.theme;
         let options = addable(ui.world, entity);
         let width = Dropdown::width_for(
             &options
@@ -184,7 +182,7 @@ impl Composer<BevyHost> for AddComponent {
         ui.elem(elem!(DropdownMenu))
             .with(move |ui| {
                 ui.elem(elem!(
-                    !TintButton,
+                    !TintButton::default(),
                     icon = val!(
                         Icon,
                         image = icons::PLUS,
@@ -196,8 +194,8 @@ impl Composer<BevyHost> for AddComponent {
                 ui.elem(elem!(DropdownList, width = width)).with(
                     move |ui| {
                         // A menu popup only opens with a focusable
-                        // child in it - an empty list has to say why
-                        // it's empty rather than showing nothing.
+                        // child, so an empty list says why it's
+                        // empty instead of showing nothing.
                         if options.is_empty() {
                             ui.elem(elem!(
                                 DropdownItem,
@@ -213,7 +211,7 @@ impl Composer<BevyHost> for AddComponent {
 
                         for (component, name) in options {
                             add_component_item(
-                                ui, &theme, entity, component, name,
+                                ui, theme, entity, component, name,
                             );
                         }
                     },
@@ -241,7 +239,7 @@ fn add_component_item(
             color = Some(theme.text_primary)
         )
     ))
-    .lit(|item| item.fill(), HOVER, HOVER)
+    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(move |world: &mut World| {
             add_component(world, entity, component);
@@ -249,11 +247,10 @@ fn add_component_item(
     });
 }
 
-/// What [`AddComponent`] offers: every [`register_inspectable`](
+/// Every [`register_inspectable`](
 /// crate::inspector::InspectAppExt::register_inspectable) type
-/// `entity` does not already carry, that also has a registered
-/// [`ReflectDefault`] to construct one with - a type with no `Default`
-/// has nothing this could insert.
+/// `entity` does not already carry, with a registered
+/// [`ReflectDefault`] to construct one with.
 ///
 /// Sorted by name, for the same reason [`inspectable`] is.
 fn addable(
@@ -291,10 +288,9 @@ fn addable(
     out
 }
 
-/// Inserts `component`'s default value onto `entity`. Does nothing if
-/// either has since stopped being possible - the entity despawned, or
-/// the component arrived by some other means between the menu opening
-/// and this running.
+/// Inserts `component`'s default value onto `entity`. Does nothing
+/// if the entity despawned or the component arrived some other way
+/// before this runs.
 fn add_component(
     world: &mut World,
     entity: Entity,
@@ -330,7 +326,6 @@ fn add_component(
 /// A whole component on one row, named where a group of fields would
 /// have been headed.
 fn single(ui: &mut BevyUi, name: &str, field: Field) {
-    let theme = ui.world.resource::<EditorTheme>().clone();
     let name = name.to_string();
 
     ui.elem(elem!(
@@ -346,7 +341,7 @@ fn single(ui: &mut BevyUi, name: &str, field: Field) {
         ui.elem(elem!(
             Label,
             text = name,
-            color = Some(theme.text_primary),
+            color = Some(ui.theme.text_primary),
             bold = true
         ));
         // Straight from the field: a `ComponentInspector` fills the
@@ -364,14 +359,12 @@ fn resource_entity(
     world.resource_entities().get(id)
 }
 
-/// Fires when the entity holding `resource` changes, and on the first
-/// poll.
+/// Fires when the entity holding `resource` changes, and on the
+/// first poll.
 ///
-/// It only moves when the resource is removed and re-inserted -
-/// `insert_resource` reuses the entity while one is mapped and spawns
-/// a fresh one otherwise - and that is a different value, which wants
-/// the subtree rebuilt around it rather than the old bindings quietly
-/// re-pointed.
+/// Only moves when the resource is removed and re-inserted: a
+/// different entity means the subtree should rebuild, not have its
+/// old bindings quietly re-pointed.
 fn entity_changed(
     resource: TypeId,
 ) -> impl FnMut(&World, Entity) -> bool {
@@ -381,9 +374,8 @@ fn entity_changed(
 /// Fires when `entity`'s set of inspectable components changes, and
 /// on the first poll.
 ///
-/// A component's *value* moves nothing here - that is each section's
-/// own business - so this only rebuilds when one is added, removed,
-/// or the entity itself goes.
+/// A component's *value* is each section's own business. This only
+/// rebuilds when one is added, removed, or the entity goes.
 fn components_changed(
     entity: Entity,
 ) -> impl FnMut(&World, Entity) -> bool {
@@ -403,9 +395,7 @@ fn inspectable(
     let Ok(components) = world.inspect_entity(entity) else {
         return Vec::new();
     };
-    // Collected before the registry is read. Both borrow the same
-    // world, so holding one across the other would only make the
-    // lifetimes harder to follow than the walk is worth.
+    // Collected before the registry is read: both borrow the world.
     let ids: Vec<TypeId> =
         components.filter_map(|info| info.type_id()).collect();
 
@@ -453,14 +443,11 @@ fn column(
     .handle()
 }
 
-/// Fires when whether `field`'s component is there at all flips, and
-/// on the first poll so the subtree starts out in step with the
-/// world.
+/// Fires when `field`'s component appears or disappears, and on the
+/// first poll.
 ///
-/// Presence only. What the component *holds* is
-/// [`InspectorFields`]' own business, and it keeps a watcher for
-/// that - rebuilding here on every shape change as well would only
-/// throw that work away.
+/// Presence only. What the component holds is
+/// [`InspectorFields`]' own business, with its own watcher for that.
 fn presence_changed(
     field: Field,
 ) -> impl FnMut(&World, Entity) -> bool {

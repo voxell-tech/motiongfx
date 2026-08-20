@@ -12,7 +12,7 @@ use bevy::picking::events::{
 use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
 use bevy::ui::UiScale;
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::{BevyFynix, EntityExt};
 use fynix_mock::element::Element;
 use fynix_mock::ui::ElementMut;
 use moxie_ui::elements::ButtonElem;
@@ -53,17 +53,17 @@ pub(crate) enum At {
 }
 
 /// Makes `header` a row that can be picked up, and dropped into.
-pub(super) fn rows<'u, 'a>(
-    header: ElementMut<'u, 'a, BevyHost, ButtonElem>,
+pub(super) fn rows<'r, 'u, 'a>(
+    header: &'r mut ElementMut<'u, 'a, BevyHost, ButtonElem>,
     subject: Entity,
-) -> ElementMut<'u, 'a, BevyHost, ButtonElem> {
-    let dropped_into = drops(header, subject, At::Into);
+) -> &'r mut ElementMut<'u, 'a, BevyHost, ButtonElem> {
+    drops(header, subject, At::Into);
 
-    dropped_into
+    header
         .observe(
             move |start: On<Pointer<DragStart>>,
                   names: Query<&Name>,
-                  theme: Res<EditorTheme>,
+                  kernel: Res<BevyFynix<EditorTheme>>,
                   scale: Res<UiScale>,
                   mut dragging: ResMut<Dragging>,
                   mut commands: Commands| {
@@ -79,7 +79,9 @@ pub(super) fn rows<'u, 'a>(
 
                 dragging.subject = Some(subject);
                 dragging.ghost = Some(
-                    commands.spawn(ghost(at, name, &theme)).id(),
+                    commands
+                        .spawn(ghost(at, name, kernel.theme()))
+                        .id(),
                 );
             },
         )
@@ -116,11 +118,11 @@ pub(super) fn rows<'u, 'a>(
 
 /// Makes `elem` somewhere a row can be dropped, landing it at `at`
 /// relative to `subject`.
-pub(super) fn drops<'u, 'a, E: Element<BevyHost>>(
-    elem: ElementMut<'u, 'a, BevyHost, E>,
+pub(super) fn drops<'r, 'u, 'a, E: Element<BevyHost>>(
+    elem: &'r mut ElementMut<'u, 'a, BevyHost, E>,
     subject: Entity,
     at: At,
-) -> ElementMut<'u, 'a, BevyHost, E> {
+) -> &'r mut ElementMut<'u, 'a, BevyHost, E> {
     elem.observe(
         move |over: On<Pointer<DragOver>>,
               mut dragging: ResMut<Dragging>| {
@@ -248,9 +250,9 @@ fn destination(
 /// `index` as the list will actually be when the entity is put back.
 ///
 /// Moving within one parent takes the entity out before putting it
-/// back, so every slot after it shifts left: a forward move overshoots
-/// by one, and asking for the end overshoots the shortened list
-/// entirely, which panics rather than clamps.
+/// back, so every slot after it shifts left. A forward move
+/// overshoots by one; asking for the end overshoots the shortened
+/// list entirely and panics instead of clamping.
 fn settle(
     world: &World,
     parent: Entity,

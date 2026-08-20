@@ -11,8 +11,8 @@ pub mod fold;
 pub mod icons;
 pub mod inspector;
 pub mod layout;
+pub mod monokai;
 pub mod motion;
-pub mod palette;
 pub mod reactive;
 pub mod theme;
 pub mod widgets;
@@ -24,7 +24,6 @@ use bevy::prelude::*;
 
 use inspector::InspectPlugin;
 use reactive::FynixPlugin;
-use theme::EditorTheme;
 use widgets::dock::DockPlugin;
 
 /// Everything a consumer needs to render a moxie UI: feathers theming,
@@ -42,11 +41,9 @@ impl Plugin for MoxieUiPlugin {
         app.add_plugins((
             FeathersPlugins,
             DockPlugin,
-            FynixPlugin,
+            FynixPlugin::default(),
             InspectPlugin,
         ))
-        // The colours every widget reads.
-        .init_resource::<EditorTheme>()
         // Seed the feathers palette (its default theme is empty).
         .insert_resource(UiTheme(create_dark_theme()));
     }

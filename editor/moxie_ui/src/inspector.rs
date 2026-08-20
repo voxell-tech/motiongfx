@@ -7,9 +7,9 @@
 //! away.
 //!
 //! A widget is handed a [`Source`] rather than a value, and never
-//! learns where that value actually lives. [`Field`] is the one the
-//! walk uses - a component of an entity - but anything else the
-//! editor keeps can serve the same widgets.
+//! learns where that value actually lives. [`Field`] (a component of
+//! an entity) is the one the walk uses, but anything else the editor
+//! keeps can serve the same widgets.
 
 mod enums;
 mod field;
@@ -81,7 +81,7 @@ pub trait InspectAppExt {
     ///
     /// Opt-in like [`register_inspect`](Self::register_inspect):
     /// `#[reflect(Component)]` lets the inspector reach a value, not
-    /// decide it's worth a row - Bevy reflects plenty nobody authors,
+    /// decide it's worth a row. Bevy reflects plenty nobody authors,
     /// like `GlobalTransform`.
     fn register_inspectable<
         T: Component + Reflect + TypePath + GetTypeRegistration,
@@ -108,9 +108,8 @@ impl InspectAppExt for App {
 
 /// Where a widget reads and writes the value it edits.
 ///
-/// Reflected rather than typed, so it can be handed to a widget the
-/// registry picked - which is the only way a caller with a value of
-/// unknown type can get the right one.
+/// Reflected rather than typed, so it can be handed to whichever
+/// widget the registry picked for an unknown type.
 pub trait Source: Send + Sync + 'static {
     fn get(&self, world: &World) -> Option<Box<dyn PartialReflect>>;
 
@@ -132,8 +131,8 @@ pub trait SourceExt: Source {
         T::from_reflect(&*self.get(world)?)
     }
 
-    /// Skips the write if `value` is what the source already holds -
-    /// a field commits on blur as well as on edit, and that would
+    /// Skips the write if `value` is what the source already holds.
+    /// A field commits on blur as well as on edit, which would
     /// otherwise bump the component's tick for nothing.
     fn write<T: PartialReflect>(&self, world: &mut World, value: T) {
         let unchanged = self.get(world).is_some_and(|current| {
@@ -220,9 +219,9 @@ pub fn inspect_value(ui: &mut BevyUi, source: &dyn Source) {
 
 /// Builds the editing widget for one reflected value.
 ///
-/// The value itself is not passed in. A widget is built once and then
-/// binds to its source, re-reading whenever that fires - which is what
-/// keeps a focused input alive across edits.
+/// The value itself is not passed in. A widget is built once, then
+/// binds to its source and re-reads whenever that fires, so a
+/// focused input survives an edit.
 pub trait Inspect:
     FromReflect + TypePath + GetTypeRegistration
 {

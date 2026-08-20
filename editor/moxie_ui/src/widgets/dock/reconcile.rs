@@ -29,9 +29,8 @@ use crate::elements::dock::{
     SplitHandleCursor, SplitPanel, SplitPanelCursor, TabContent,
     TabContentCursor, handle_bar, handle_line,
 };
-use crate::motion::{HOVER, MotionExt};
+use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed, structure_changed};
-use crate::theme::EditorTheme;
 
 pub struct ReconcilePlugin;
 
@@ -125,13 +124,13 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
     let a_visible = leaf_visible(ui.world, split.a);
     let b_visible = leaf_visible(ui.world, split.b);
     let handle_visible = a_visible && b_visible;
-    let line_color =
-        ui.world.resource::<EditorTheme>().palette.base[2];
+    let line_color = ui.theme.palette.base[2];
 
     ui.elem(elem!(SplitGroup, node = id, axis = flex_direction))
         .with(move |ui| {
             build_panel(id, split.a, true, a_visible, ui);
 
+            let hover = ui.theme.hover_overlay;
             ui.elem(elem!(
                 SplitHandle,
                 node = id,
@@ -142,8 +141,8 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
             ))
             .lit(
                 |handle| handle.bar().background(),
-                HOVER,
-                HOVER,
+                hover,
+                hover,
             );
 
             build_panel(id, split.b, false, b_visible, ui);
@@ -223,19 +222,18 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
     let show_bar = matches!(leaf.style, DockAreaStyle::TabBar);
     let active = active_of(ui.world, id);
 
-    let area = ui
-        .elem(elem!(
-            Area,
-            node = id,
-            id = area_id,
-            style = style,
-            active = ActiveDockWindow(active)
-        ))
-        .bind(
-            |area| area.active(),
-            resource_changed::<DockTree>(),
-            move |world, _| ActiveDockWindow(active_of(world, id)),
-        );
+    let mut area = ui.elem(elem!(
+        Area,
+        node = id,
+        id = area_id,
+        style = style,
+        active = ActiveDockWindow(active)
+    ));
+    area.bind(
+        |area| area.active(),
+        resource_changed::<DockTree>(),
+        move |world, _| ActiveDockWindow(active_of(world, id)),
+    );
 
     // The area's handle is in hand, so the tab bar gets it directly
     // rather than walking up for it.

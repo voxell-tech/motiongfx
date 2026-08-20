@@ -7,7 +7,7 @@
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::style::StyledElem;
 use fynix_mock::ui::{ElementHandle, ElementMut};
@@ -19,7 +19,6 @@ use crate::elements::{
 };
 use crate::icons;
 use crate::reactive::{BevyHost, BevyUi, component_changed_on};
-use crate::theme::EditorTheme;
 
 /// The chevron's rotation, clockwise from the asset's resting
 /// up-pointing orientation: right when shut, down when open.
@@ -109,10 +108,10 @@ where
             on_header,
             body,
         } = self;
-        let theme = ui.world.resource::<EditorTheme>().clone();
+        let muted = ui.theme.text_muted;
         let chevron = enabled && toggle == Toggle::Chevron;
 
-        let root = ui.elem(elem!(
+        let mut root = ui.elem(elem!(
             Frame,
             width = percent(100),
             direction = FlexDirection::Column,
@@ -131,8 +130,8 @@ where
             ))
             .with(move |ui| {
                 if chevron {
-                    let toggle = ui.elem(elem!(
-                        !TintButton,
+                    let mut toggle = ui.elem(elem!(
+                        !TintButton::default(),
                         width = px(TOGGLE),
                         height = px(TOGGLE),
                         radius = px(3),
@@ -140,11 +139,11 @@ where
                             Icon,
                             image = icons::CHEVRON,
                             size = px(8),
-                            color = theme.text_muted,
+                            color = muted,
                             rotation = CHEVRON_OPEN
                         )
                     ));
-                    folds(toggle, node);
+                    folds(&mut toggle, node);
                 }
 
                 // Takes the rest of the row, so a header asking for
@@ -153,7 +152,7 @@ where
                     move |ui| {
                         let mut header = ui.elem(header);
                         if enabled && !chevron {
-                            header = folds(header, node);
+                            folds(&mut header, node);
                         }
                         on_header(header);
                     },
@@ -186,13 +185,13 @@ where
                 },
             )
             .with(move |ui| {
-                // A rail beside the body, the way a tree view marks
-                // how deep a nested branch sits - stretched to the
-                // block's height rather than sized by hand.
+                // A rail beside the body, like a tree view's depth
+                // marker. Stretched to the block's height, not sized
+                // by hand.
                 ui.elem(elem!(
                     Frame,
                     width = px(1),
-                    background = theme.palette.base[2]
+                    background = ui.theme.palette.base[2]
                 ));
                 ui.elem(elem!(
                     Frame,
@@ -214,10 +213,10 @@ where
 
 /// Makes `button` the one that folds `node`, turning its chevron with
 /// the state.
-fn folds<'u, 'a>(
-    button: ElementMut<'u, 'a, BevyHost, ButtonElem>,
+fn folds(
+    button: &mut ElementMut<'_, '_, BevyHost, ButtonElem>,
     node: Entity,
-) -> ElementMut<'u, 'a, BevyHost, ButtonElem> {
+) {
     button
         .observe(move |_: On<Activate>, mut commands: Commands| {
             commands.queue(move |world: &mut World| {
@@ -234,5 +233,5 @@ fn folds<'u, 'a>(
                     CHEVRON_OPEN
                 }
             },
-        )
+        );
 }

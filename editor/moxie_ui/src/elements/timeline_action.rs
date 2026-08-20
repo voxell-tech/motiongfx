@@ -1,26 +1,15 @@
+use crate::reactive::BevyHost;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
-
-/// What a clip's fill brightens to under the cursor, and further
-/// while held - a saturated blue, deliberately not the editor's usual
-/// gray hover overlay: a clip is a colored timeline object in its own
-/// right, not chrome, so it lights up in its own family of color.
-///
-/// Public so a call site can pair it with [`MotionExt::lit`](
-/// crate::motion::MotionExt::lit): the element itself only owns its
-/// look, not its own interaction wiring.
-pub const HOVER_TINT: Color = Color::srgb(0.35, 0.70, 1.0);
-pub const PRESS_TINT: Color = Color::srgb(0.55, 0.82, 1.0);
+use fynix_mock::ui::{Build, Patch};
 
 /// One action's clip on the timeline: a colored, absolutely
 /// positioned, bordered hit area.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TimelineAction {
     pub top: f32,
     pub left: f32,
@@ -54,8 +43,8 @@ impl TimelineAction {
 }
 
 impl ElementVisual<BevyHost> for TimelineAction {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             self.node(),
             BackgroundColor(self.fill),
             BorderColor::all(self.border),
@@ -66,8 +55,7 @@ impl ElementVisual<BevyHost> for TimelineAction {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: TimelineActionField,
     ) {
         match field {
@@ -76,17 +64,13 @@ impl ElementVisual<BevyHost> for TimelineAction {
             | TimelineActionField::Width
             | TimelineActionField::Height
             | TimelineActionField::Selected => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
             TimelineActionField::Fill => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.fill));
+                patch.insert(BackgroundColor(self.fill));
             }
             TimelineActionField::Border => {
-                world
-                    .entity_mut(node)
-                    .insert(BorderColor::all(self.border));
+                patch.insert(BorderColor::all(self.border));
             }
         }
     }

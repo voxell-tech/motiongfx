@@ -16,13 +16,12 @@ use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tree::DockTree;
 use crate::layout::logical_rect;
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::{elem, val};
 
 use crate::elements::{Frame, GhostButton, Icon, Label, Overlay};
 use crate::icons;
 use crate::reactive::{BevyUi, component_changed};
-use crate::theme::EditorTheme;
 
 const POPUP_WIDTH: f32 = 150.0;
 
@@ -165,7 +164,7 @@ fn build_popup(ui: &mut BevyUi) {
 
 /// Windows are single-instance, so only closed ones are listed.
 fn build_rows(ui: &mut BevyUi, area: Entity) {
-    let text_color = ui.world.resource::<EditorTheme>().text_primary;
+    let text_color = ui.theme.text_primary;
     let tree = ui.world.resource::<DockTree>();
     let closed = ui
         .world
@@ -178,7 +177,7 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
     // Every window is already open, so the popup would be a blank
     // box: say why it is empty rather than showing nothing.
     if closed.is_empty() {
-        let muted = ui.world.resource::<EditorTheme>().text_muted;
+        let muted = ui.theme.text_muted;
 
         ui.elem(elem!(
             Label,

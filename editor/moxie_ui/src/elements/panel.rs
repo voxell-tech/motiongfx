@@ -1,12 +1,12 @@
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 /// What a docked window fills its area with: the whole of it, and
 /// scrolling if what it holds does not fit.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Panel {
     #[default(::Row)]
     pub direction: FlexDirection,
@@ -49,8 +49,8 @@ impl Panel {
 }
 
 impl ElementVisual<BevyHost> for Panel {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             self.node(),
             ScrollPosition(Vec2::new(0.0, self.scroll)),
         ));
@@ -58,14 +58,13 @@ impl ElementVisual<BevyHost> for Panel {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: PanelField,
     ) {
         match field {
             PanelField::Scroll => {
                 if let Some(mut scroll) =
-                    world.get_mut::<ScrollPosition>(node)
+                    patch.entity_mut().get_mut::<ScrollPosition>()
                 {
                     scroll.0.y = self.scroll;
                 }
@@ -77,7 +76,7 @@ impl ElementVisual<BevyHost> for Panel {
             | PanelField::RowGap
             | PanelField::ColumnGap
             | PanelField::Scrolls => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

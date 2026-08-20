@@ -1,10 +1,21 @@
 # Comment convention
 
-## When to write one
+## As less as possible
 
-Write a comment only where the code doesn't already say it clearly -
-a non-obvious reason, a public-facing function/struct/mod others will
-call without reading its body. Most code needs none.
+No comment if the code already explain itself.
+When writing one, be as concise and precise if possible, no paragraphs.
+Public facing APIs needs doc comments, but only to describe exactly what it is,
+do not talk about any abstract stuff.
+
+## If the LSP already shows it, skip it
+
+Hover, go-to-definition, and autocomplete already surface a signature,
+a return type, a trait bound, a visibility modifier. A comment that
+just restates one of those ("this returns an `H::Node`", "opaque
+outside this crate, since it's `pub(crate)`") is not explaining
+anything the reader can't already see one keystroke away. Write the
+comment for what tooling cannot show: intent, a non-obvious
+constraint, a reason.
 
 ## Keep it concise
 
@@ -14,7 +25,9 @@ changelog. Write it for a reader with no memory of that history: if
 understanding the comment depends on knowing what changed, it isn't
 self-contained yet.
 
-## ASCII only
+## Plain text
+
+Use plain English whenever possible. Use punctuations like :;- sparingly.
 
 No em dashes, smart quotes, or other non-ASCII punctuation. Plain
 hyphens (`-`), straight quotes, and the rest of ASCII cover every
@@ -32,6 +45,34 @@ a list like "`T=String` does X, `T=Name` does Y" goes stale the
 moment a new caller shows up, and nothing forces it to be kept in
 sync.
 
+## Don't enumerate usages
+
+Don't list the specific places a thing is set, read, or called from
+("set at `new`, changed through `theme_mut`"). That list is almost
+never exhaustive, nothing forces it to stay in sync, and it goes
+stale the moment another call site shows up. Describe what the thing
+is instead, and let readers find its callers themselves.
+
+A comment should be lightweight and cheap to keep correct. Prefer the
+version that stays true even after nearby code changes over the one
+that is more complete today.
+
+## State it one way
+
+Say what a thing is, not what it isn't. Skip the contrastive half:
+
+Not: "This is xyz instead of abc."
+Just: "This is xyz."
+
+The exception is when the contrast itself is the whole point of the
+comment (a deliberate departure from what a reader would otherwise
+assume), and even then the negative side stays short.
+
+## Open with a noun phrase, not a free relative
+
+No "what X does/wants" openers. Head the sentence with the thing
+itself.
+
 ## Where call-site behavior belongs
 
 Behavior that only applies to one call site, one branch, or one
@@ -39,32 +80,3 @@ specific interaction with another subsystem belongs as a `//` comment
 right at that code, not hoisted into the function's doc comment. If a
 comment only makes sense once you're looking at the line it explains,
 that's where it lives.
-
-### Example
-
-```rust
-/// A single-line text input.
-fn text_field<T: FromReflect>(...) { ... }
-```
-
-not
-
-```rust
-/// A single-line text input.
-///
-/// `T` is whatever the leaf actually is - `String` reads and writes
-/// through as-is, `Name` converts at the edges.
-fn text_field<T: FromReflect>(...) { ... }
-```
-
-and the reason one specific call listens for a particular event stays
-next to that call, not in the function doc above it:
-
-```rust
-fn text_field<T: FromReflect>(...) {
-    // ...
-    // `TextEditChange` also fires on a bare cursor move; `write` is
-    // what keeps that from writing back an unchanged value.
-    ui.world.entity_mut(text_input).observe(...);
-}
-```

@@ -25,6 +25,7 @@ use crate::elem;
 /// # impl Host for Backend {
 /// #     type Node = usize;
 /// #     type World = ();
+/// #     type Theme = ();
 /// #     fn spawn(_: &mut (), _: usize) -> usize { 0 }
 /// #     fn exists(_: &(), _: usize) -> bool { true }
 /// #     fn children(_: &(), _: usize) -> Vec<usize> { Vec::new() }
@@ -42,7 +43,7 @@ use crate::elem;
 /// impl Style for Title {
 ///     type Host = Backend;
 ///     type Element = Label;
-///     fn apply(self, label: &mut Label) { label.size = 10; }
+///     fn apply(self, label: &mut Label, _theme: &()) { label.size = 10; }
 /// }
 ///
 /// elem!(!Title);                      // a style
@@ -51,15 +52,12 @@ use crate::elem;
 /// elem!(!Title, text = "Save");       // converting as they land
 /// elem!(!Title, font = val!(Font, size = 32u32)); // a value of its own
 /// elem!(!Title, |l: &mut Label| { l.size += 2 }); // when it has to think
-/// // The host is the style's, and there is no style here, so these
-/// // two are the one case that has to be told: anywhere they are
-/// // built the host is already known.
+/// // No style here to carry the host, so `built` says it instead.
 /// built(elem!(Label));                // no style, this element
 /// built(elem!(Label, text = "Save")); // and its own fields
 ///
-/// // Whichever it was, it ends the same way, and the order it ran in
-/// // is the precedence.
-/// let label = elem!(!Title, text = "Save").create();
+/// // Same ending either way; run order is precedence.
+/// let label = elem!(!Title, text = "Save").create(&());
 ///
 /// assert_eq!(label.size, 10, "the style");
 /// assert_eq!(label.text, "Save", "the call site");
@@ -78,8 +76,8 @@ macro_rules! elem {
         })
     };
 
-    // An apply that is not a list of fields. Leading `|`, so it is a
-    // closure and not an element, and the element is what it takes.
+    // Leading `|` means a closure, not an element. The element is its
+    // argument.
     (|$($inline:tt)*) => {
         $crate::style::Inline::new(
             $crate::style::NoStyle::new(),
@@ -87,9 +85,8 @@ macro_rules! elem {
         )
     };
 
-    // No style: the element itself, which is the common case and so
-    // the unmarked one. The same cascade with nothing in the middle,
-    // so what is left out is the element's own default.
+    // No style: the common, unmarked case. Same cascade, nothing in
+    // the middle.
     ($elem:ty $(, $($field:tt)*)?) => {
         $crate::elem!(
             !$crate::style::NoStyle::<_, $elem>::new()
@@ -115,12 +112,13 @@ macro_rules! elem {
 /// ```
 #[macro_export]
 macro_rules! val {
-    // A style, marked `!` as in [`elem!`], run down to the element it
-    // makes. What it hangs on a node is lost: a nested value has no
-    // node of its own until its owner builds it.
+    // A style, marked `!` as in `elem!`, run down to the element. A
+    // nested value has no node and no `Ui`, so `apply` gets the
+    // host's default theme.
     (!$style:expr $(, $($field:tt)*)?) => {
         $crate::style::StyledElem::create(
-            $crate::elem!(!$style $(, $($field)*)?)
+            $crate::elem!(!$style $(, $($field)*)?),
+            &::core::default::Default::default(),
         )
     };
 

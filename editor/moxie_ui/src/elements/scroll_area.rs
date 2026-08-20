@@ -1,14 +1,14 @@
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollArea as ScrollAreaBehavior;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 /// A sized container with real, interactive scrolling - trackpad and
 /// mouse-wheel input actually move it (`ScrollAreaBehavior`), not just
 /// a clipped overflow a caller has to drive by hand.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct ScrollArea {
     pub width: Val,
     pub height: Val,
@@ -73,8 +73,8 @@ fn axis(scrolls: bool) -> OverflowAxis {
 }
 
 impl ElementVisual<BevyHost> for ScrollArea {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             self.node(),
             BackgroundColor(self.background),
             ScrollAreaBehavior,
@@ -83,15 +83,12 @@ impl ElementVisual<BevyHost> for ScrollArea {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: ScrollAreaField,
     ) {
         match field {
             ScrollAreaField::Background => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.background));
+                patch.insert(BackgroundColor(self.background));
             }
             // Every other field is one of `Node`'s, and writing it
             // whole is one insert rather than an arm apiece.
@@ -107,7 +104,7 @@ impl ElementVisual<BevyHost> for ScrollArea {
             | ScrollAreaField::Radius
             | ScrollAreaField::ScrollX
             | ScrollAreaField::ScrollY => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

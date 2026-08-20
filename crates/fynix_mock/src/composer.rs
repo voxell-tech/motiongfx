@@ -1,18 +1,12 @@
 //! Building a subtree from inputs, without becoming part of the tree.
 //!
-//! An [`Element`] is stored against the node it built, and a change to
-//! one of its fields is patched onto that node. A composer is neither:
-//! [`Ui::compose`] consumes it, so it may hold borrows an element
-//! never could.
+//! An [`Element`] is stored against the node it built, so a changed
+//! field can be patched. A composer is consumed by [`Ui::compose`]
+//! instead, so it can hold borrows an element never could.
 //!
-//! Which to reach for is decided by what the input means. A colour
-//! decides how a node looks, and patching it is what keeps the node
-//! alive across the change. "Which entity" decides what the subtree
-//! *is*, and there is no patch for that - so it is read once, while
-//! building.
-//!
-//! Unlike `fynix`'s, this carries no `Style`: there is no ambient
-//! style chain here to build one from.
+//! Use a composer when the input decides what the subtree *is*, not
+//! how it looks. There's no patch for that: it's read once, at
+//! build.
 
 use crate::element::Element;
 use crate::host::Host;

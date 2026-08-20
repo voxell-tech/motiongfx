@@ -23,7 +23,7 @@ fn text_field<T: FromReflect>(
         .map(to_shown)
         .unwrap_or_default();
 
-    let field =
+    let mut field =
         ui.elem(elem!(TextField, value = shown, width = px(110)));
     let node = field.id();
 

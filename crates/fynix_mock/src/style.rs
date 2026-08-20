@@ -1,26 +1,22 @@
 //! What an element looks like before it is built, in three layers.
 //!
 //! An element starts at its own [`Default`], a [`Style`] writes over
-//! that, and the call site writes over the style. A style is a
-//! mutation rather than a set of values, so the order they run in is
-//! the precedence, and nothing has to remember where a field's value
-//! came from.
+//! that, then the call site writes over the style.
 //!
-//! [`StyledElem`] is what all three ways of asking for an element have
-//! in common, so a builder takes one argument rather than three
-//! overloads. [`elem!`](crate::elem!) writes the right one.
+//! [`StyledElem`] covers all three ways of asking for an element.
+//! [`elem!`](crate::elem!) picks the right one.
+//!
+//! A style only writes fields. It never sees a node, so it cannot
+//! wire an observer or a lane.
 
 use core::marker::PhantomData;
 
-use crate::element::Element;
 use crate::host::Host;
-use crate::ui::ElementMut;
 
 /// A look, as a mutation of an element that already has its defaults.
 ///
-/// Nothing here names a backend: `apply` only writes fields, so one
-/// style serves every [`Host`] the element is drawn
-/// on. What it carries are the fields of the struct it is written on:
+/// One style serves every [`Host`] the element is drawn on. What it
+/// carries are the fields of the struct it is written on:
 ///
 /// ```
 /// use fynix_mock::style::{Style, StyledElem};
@@ -29,6 +25,7 @@ use crate::ui::ElementMut;
 /// # impl Host for Backend {
 /// #     type Node = usize;
 /// #     type World = ();
+/// #     type Theme = ();
 /// #     fn spawn(_: &mut (), _: usize) -> usize { 0 }
 /// #     fn exists(_: &(), _: usize) -> bool { true }
 /// #     fn children(_: &(), _: usize) -> Vec<usize> { Vec::new() }
@@ -45,7 +42,7 @@ use crate::ui::ElementMut;
 ///     type Host = Backend;
 ///     type Element = Label;
 ///
-///     fn apply(self, label: &mut Label) {
+///     fn apply(self, label: &mut Label, _theme: &()) {
 ///         label.size = 20 / self.level;
 ///
 ///         if self.level == 1 {
@@ -54,7 +51,7 @@ use crate::ui::ElementMut;
 ///     }
 /// }
 ///
-/// let label = Heading { level: 1 }.create();
+/// let label = Heading { level: 1 }.create(&());
 ///
 /// assert_eq!(label.size, 20);
 /// assert_eq!(label.weight, 700);
@@ -66,30 +63,20 @@ pub trait Style {
     type Host: Host;
     type Element: Default;
 
-    /// A style meant to be applied more than once is implemented for
-    /// `&Self`.
+    /// Called once, so it consumes rather than borrows: a style
+    /// meant to be applied more than once is implemented for `&Self`.
     ///
-    /// Nothing, by default, for a style that only moves; see
-    /// [`attach`](Self::attach).
-    fn apply(self, element: &mut Self::Element)
-    where
+    /// `theme` is [`Host::Theme`] - read from, never written: a style
+    /// decides its own look from it, but has no node yet to leave
+    /// anything reactive against it.
+    fn apply(
+        self,
+        element: &mut Self::Element,
+        theme: &<Self::Host as Host>::Theme,
+    ) where
         Self: Sized,
     {
-        let _ = element;
-    }
-
-    /// What this style hangs on the node once it exists: lanes, and
-    /// what aims them. Nothing, by default.
-    ///
-    /// [`apply`](Self::apply) is the look and this is how it moves.
-    /// Two methods, because one has an element and no node and the
-    /// other a node and no element.
-    fn attach(elem: ElementMut<Self::Host, Self::Element>)
-    where
-        Self: Sized,
-        Self::Element: Element<Self::Host>,
-    {
-        let _ = elem;
+        let _ = (element, theme);
     }
 }
 
@@ -99,17 +86,10 @@ pub trait StyledElem {
     type Element;
 
     /// Run the cascade, in order.
-    fn create(self) -> Self::Element;
-
-    /// What this hangs on the node once it exists, which for a
-    /// [`Style`] is [its own](Style::attach).
-    fn attach(elem: ElementMut<Self::Host, Self::Element>)
-    where
-        Self: Sized,
-        Self::Element: Element<Self::Host>,
-    {
-        let _ = elem;
-    }
+    fn create(
+        self,
+        theme: &<Self::Host as Host>::Theme,
+    ) -> Self::Element;
 }
 
 /// Default, then the style.
@@ -117,18 +97,11 @@ impl<S: Style> StyledElem for S {
     type Host = S::Host;
     type Element = S::Element;
 
-    fn create(self) -> S::Element {
+    fn create(self, theme: &<S::Host as Host>::Theme) -> S::Element {
         let mut elem = S::Element::default();
-        self.apply(&mut elem);
+        self.apply(&mut elem, theme);
 
         elem
-    }
-
-    fn attach(elem: ElementMut<Self::Host, Self::Element>)
-    where
-        Self::Element: Element<Self::Host>,
-    {
-        <S as Style>::attach(elem);
     }
 }
 
@@ -166,20 +139,11 @@ where
     type Host = S::Host;
     type Element = S::Element;
 
-    fn create(self) -> S::Element {
-        let mut elem = self.style.create();
+    fn create(self, theme: &<S::Host as Host>::Theme) -> S::Element {
+        let mut elem = self.style.create(theme);
         (self.inline)(&mut elem);
 
         elem
-    }
-
-    /// Whatever the style it wraps attaches: the call site writes
-    /// values, not motion.
-    fn attach(elem: ElementMut<Self::Host, Self::Element>)
-    where
-        Self::Element: Element<Self::Host>,
-    {
-        S::attach(elem);
     }
 }
 
@@ -201,7 +165,7 @@ impl<H: Host, E> StyledElem for Raw<H, E> {
     type Host = H;
     type Element = E;
 
-    fn create(self) -> E {
+    fn create(self, _theme: &H::Theme) -> E {
         self.0
     }
 }
@@ -225,6 +189,4 @@ impl<H, E> Default for NoStyle<H, E> {
 impl<H: Host, E: Default> Style for NoStyle<H, E> {
     type Host = H;
     type Element = E;
-
-    fn apply(self, _: &mut Self::Element) {}
 }

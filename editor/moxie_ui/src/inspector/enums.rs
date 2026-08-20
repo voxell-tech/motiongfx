@@ -26,7 +26,7 @@ use bevy::reflect::{
 };
 use bevy::ui_widgets::Activate;
 
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
@@ -37,7 +37,7 @@ use crate::elements::{
     DropdownList, DropdownMenu, Frame, Icon, Label, LabelCursor,
 };
 use crate::icons;
-use crate::motion::{HOVER, MotionExt};
+use crate::motion::MotionExt;
 use crate::reactive::{BevyHost, BevyUi};
 use crate::theme::EditorTheme;
 
@@ -173,7 +173,7 @@ impl Composer<BevyHost> for VariantPicker<'_> {
             pick,
         } = self;
 
-        let theme = ui.world.resource::<EditorTheme>().clone();
+        let theme = ui.theme;
         let current = active(source, ui.world)
             .unwrap_or_else(|| "-".to_string());
         let source = source.boxed();
@@ -184,13 +184,13 @@ impl Composer<BevyHost> for VariantPicker<'_> {
         ui.elem(elem!(Frame, align = AlignItems::Center))
             .with(move |ui| {
                 if !pick {
-                    name(ui, &*source, &theme, current);
+                    name(ui, &*source, theme, current);
                     return;
                 }
 
                 ui.elem(elem!(DropdownMenu)).with(move |ui| {
-                    control(ui, &*source, &theme, current, width);
-                    list(ui, &*source, &theme, variants, width);
+                    control(ui, &*source, theme, current, width);
+                    list(ui, &*source, theme, variants, width);
                 });
             })
             .handle()
@@ -247,7 +247,11 @@ fn control(
             rotation = 180.0f32
         )
     ))
-    .lit(|dropdown| dropdown.fill(), HOVER, HOVER)
+    .lit(
+        |dropdown| dropdown.fill(),
+        theme.hover_overlay,
+        theme.hover_overlay,
+    )
     .bind(
         |dropdown| dropdown.label().text(),
         when_changed(source),
@@ -264,11 +268,10 @@ fn list(
     width: Val,
 ) {
     let source = source.boxed();
-    let theme = theme.clone();
 
     ui.elem(elem!(DropdownList, width = width)).with(move |ui| {
         for variant in variants {
-            option(ui, &*source, &theme, variant);
+            option(ui, &*source, theme, variant);
         }
     });
 }
@@ -291,7 +294,7 @@ fn option(
             color = Some(theme.text_primary)
         )
     ))
-    .lit(|item| item.fill(), HOVER, HOVER)
+    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         let (source, variant) = (edited.boxed(), chosen.clone());
 

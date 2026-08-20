@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::{
     Activate, ActivateOnPress, MenuButton as MenuButtonBehavior,
 };
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
@@ -13,7 +13,7 @@ use moxie_ui::elements::{
     Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
     DropdownMenu, Frame, Label, MenuButton,
 };
-use moxie_ui::motion::{HOVER, MotionExt};
+use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{BevyHost, BevyUi};
 use moxie_ui::theme::EditorTheme;
 
@@ -61,7 +61,7 @@ impl Composer<BevyHost> for Menu {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, DropdownMenu> {
         let Self { name, entries } = self;
-        let theme = ui.world.resource::<EditorTheme>().clone();
+        let theme = ui.theme;
         // Sized to the longest entry, so the list clears its own text
         // whichever menu it belongs to.
         let width = Dropdown::width_for(
@@ -74,7 +74,7 @@ impl Composer<BevyHost> for Menu {
 
         ui.elem(elem!(DropdownMenu))
             .with(move |ui| {
-                title(ui, &theme, name);
+                title(ui, theme, name);
 
                 ui.elem(elem!(
                     DropdownList,
@@ -83,7 +83,7 @@ impl Composer<BevyHost> for Menu {
                 ))
                 .with(move |ui| {
                     for (entry, run) in entries {
-                        item(ui, &theme, entry, run);
+                        item(ui, theme, entry, run);
                     }
                 });
             })
@@ -128,7 +128,7 @@ fn item(
             color = Some(theme.text_primary)
         )
     ))
-    .lit(|item| item.fill(), HOVER, HOVER)
+    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(run);
     });

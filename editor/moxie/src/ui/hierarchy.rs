@@ -1,8 +1,8 @@
 //! Scene hierarchy browser: an indented list of the scene's subjects.
 //!
-//! What counts as one is an [`EntityUid`], which is the id a scene
-//! refers to its subjects by - so the panel lists exactly what the
-//! animation can address, and nothing the editor spawned for itself.
+//! What counts as one is an [`EntityUid`], the id a scene refers to
+//! its subjects by. The panel lists exactly what the animation can
+//! address, nothing the editor spawned for itself.
 //!
 //! Each subject watches only its own children, so adding one rebuilds
 //! that branch and not the panel. Depth is the nesting: a subtree
@@ -15,7 +15,7 @@ pub(crate) use drag::Dragging;
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use bevy_motiongfx::scene::id::EntityUid;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::{ElementHandle, ElementMut};
@@ -28,7 +28,6 @@ use moxie_ui::fold::{Foldable, Toggle};
 use moxie_ui::reactive::{
     BevyHost, BevyUi, component_changed_on, value_changed,
 };
-use moxie_ui::theme::EditorTheme;
 
 use super::PANEL_PADDING;
 use crate::{SceneRoot, SelectedEntity};
@@ -68,9 +67,9 @@ impl Composer<BevyHost> for HierarchyPanel {
     }
 }
 
-/// The one thing that acts on the list rather than on a row in it.
+/// The one thing that acts on the list, not on a row in it.
 ///
-/// Floated over the corner rather than given a strip of its own, so it
+/// Floated over the corner, not given a strip of its own, so it
 /// stays put however far the list is scrolled.
 struct AddButton;
 
@@ -93,7 +92,7 @@ impl Composer<BevyHost> for AddButton {
         ))
         .with(move |ui| {
             ui.elem(elem!(
-                !TintButton,
+                !TintButton::default(),
                 icon = val!(Icon, image = crate::icons::PLUS,)
             ))
             .observe(
@@ -116,9 +115,9 @@ impl Composer<BevyHost> for Roots {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, ScrollArea> {
-        // Roots only - a branch minds itself. The query is kept
-        // because this polls every flush; the build makes its own,
-        // and runs far less often.
+        // Roots only: a branch minds itself. The query is kept
+        // because this polls every flush, and the build (which
+        // makes its own) runs far less often.
         let mut query = None;
         let mut seen: Option<Vec<Entity>> = None;
 
@@ -197,11 +196,10 @@ fn build_roots(ui: &mut BevyUi) {
 
 /// One list of rows, with the gaps a drop can land between them.
 ///
-/// A gap above each row and one below the last: every place a row
-/// could go gets exactly one, rather than each row bringing its own
-/// pair and doubling them up in between.
+/// A gap above each row and one below the last, so every place a row
+/// could go gets exactly one, not a doubled-up pair between rows.
 fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
-    let accent = ui.world.resource::<EditorTheme>().accent;
+    let accent = ui.theme.accent;
 
     for &entity in &entities {
         gap(ui, entity, accent, drag::At::Before);
@@ -214,10 +212,10 @@ fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
 }
 
 /// Where a drop lands a row beside another, as a hit area wider than
-/// the line it commits to - the way a split's handle is wider than the
+/// the line it commits to, like a split's handle is wider than the
 /// seam it draws.
 fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
-    let marker = ui.elem(elem!(
+    let mut marker = ui.elem(elem!(
         Frame,
         width = percent(100),
         height = px(GAP_HIT),
@@ -225,7 +223,7 @@ fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
         direction = FlexDirection::Column
     ));
 
-    drag::drops(marker, entity, at).with(move |ui| {
+    drag::drops(&mut marker, entity, at).with(move |ui| {
         ui.elem(elem!(Frame, width = percent(100), height = px(GAP)))
             .bind(
                 |line| line.background(),
@@ -257,9 +255,9 @@ impl Composer<BevyHost> for Subtree {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
         let entity = self.entity;
-        let theme = ui.world.resource::<EditorTheme>().clone();
         let name = name_of(ui.world, entity);
-        let text = theme.text_primary;
+        let text = ui.theme.text_primary;
+        let accent = ui.theme.accent;
 
         ui.compose(Foldable {
             header: elem!(
@@ -280,13 +278,13 @@ impl Composer<BevyHost> for Subtree {
             // chevron beside it folds.
             toggle: Toggle::Chevron,
             enabled: has_children(ui.world, entity),
-            on_header: move |header: ElementMut<
+            on_header: move |mut header: ElementMut<
                 '_,
                 '_,
                 BevyHost,
                 ButtonElem,
             >| {
-                drag::rows(header, entity)
+                drag::rows(&mut header, entity)
                     .observe(
                         move |_: On<Activate>,
                               mut selected: ResMut<
@@ -301,7 +299,7 @@ impl Composer<BevyHost> for Subtree {
                         |button| button.fill(),
                         highlight_changed(entity),
                         move |world, _| {
-                            highlight(world, entity, &theme)
+                            highlight(world, entity, accent)
                         },
                     )
                     .bind(
@@ -330,18 +328,14 @@ impl Composer<BevyHost> for Subtree {
 
 /// What a row's own surface says: a drop landing inside it beats
 /// whether it is selected, and most rows are neither.
-fn highlight(
-    world: &World,
-    entity: Entity,
-    theme: &EditorTheme,
-) -> Color {
+fn highlight(world: &World, entity: Entity, accent: Color) -> Color {
     if world
         .resource::<drag::Dragging>()
         .shows(entity, drag::At::Into)
     {
-        theme.accent.with_alpha(0.35)
+        accent.with_alpha(0.35)
     } else if world.resource::<SelectedEntity>().0 == Some(entity) {
-        theme.accent.with_alpha(0.18)
+        accent.with_alpha(0.18)
     } else {
         Color::NONE
     }
@@ -401,7 +395,7 @@ fn children_of(world: &World, entity: Entity) -> Vec<Entity> {
 }
 
 /// Whether `entity` has any subject under it, without collecting
-/// them - a row only needs to know that there is something to fold.
+/// them. A row only needs to know there is something to fold.
 fn has_children(world: &World, entity: Entity) -> bool {
     world.get::<Children>(entity).is_some_and(|children| {
         children.iter().any(|child| is_subject(world, child))
@@ -412,8 +406,8 @@ fn is_subject(world: &World, entity: Entity) -> bool {
     world.get::<EntityUid>(entity).is_some()
 }
 
-/// Its [`Name`], or the head of its id - a whole uuid is unreadable,
-/// and the first characters tell two unnamed subjects apart.
+/// Its [`Name`], or the head of its id. A whole uuid is unreadable;
+/// the first characters tell two unnamed subjects apart.
 fn name_of(world: &World, entity: Entity) -> String {
     /// How much of an id a row shows.
     const HEAD: usize = 8;

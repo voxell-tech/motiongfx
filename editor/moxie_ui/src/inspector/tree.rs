@@ -11,7 +11,7 @@ use bevy::ecs::change_detection::Tick;
 use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::prelude::*;
 use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
@@ -21,7 +21,6 @@ use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
 use crate::fold::{CHEVRON_OPEN, Foldable, Toggle};
 use crate::icons;
 use crate::reactive::{BevyHost, BevyUi};
-use crate::theme::EditorTheme;
 
 /// One row the walk found.
 #[derive(Clone, PartialEq)]
@@ -169,17 +168,16 @@ fn join(prefix: &str, name: &str) -> String {
     }
 }
 
-/// The last path segment, which is what a row labels itself with -
-/// the group above it already said the rest.
+/// The last path segment, what a row labels itself with. The group
+/// above it already said the rest.
 fn leaf_name(path: &str) -> &str {
     path.rsplit('.').next().unwrap_or(path)
 }
 
 /// The entries under `field`, in walk order.
 ///
-/// Unlike a nested field, the root itself is never wrapped in a
-/// group: if it is a leaf type it is the one row shown, and otherwise
-/// its fields are listed directly rather than folded under a header
+/// The root is never wrapped in a group: a leaf type is the one row
+/// shown, and a struct's fields are listed directly, with no header
 /// for a group that was never named.
 fn entries(world: &World, field: &Field) -> Vec<Entry> {
     let mut out = Vec::new();
@@ -214,9 +212,8 @@ fn entries(world: &World, field: &Field) -> Vec<Entry> {
     out
 }
 
-/// Whether `field` holds one editable value rather than a set of
-/// fields, and so belongs on a row of its own: there is no group to
-/// fold, and no field name to head one with.
+/// Whether `field` holds one editable value, not a set of fields, so
+/// it belongs on a row of its own with no group to fold.
 pub(crate) fn is_single_value(world: &World, field: &Field) -> bool {
     match entries(world, field).as_slice() {
         [Entry::Leaf { .. }] => true,
@@ -225,13 +222,12 @@ pub(crate) fn is_single_value(world: &World, field: &Field) -> bool {
     }
 }
 
-/// Fires when the *shape* under `field` changes, meaning its set of
-/// entries, and not merely their values.
+/// Fires when the *shape* under `field` changes: its set of entries,
+/// not merely their values.
 ///
-/// Values ride on bindings rather than rebuilds, which is what lets a
-/// number input keep focus while the value changes underneath it: a
-/// rebuild would despawn the widget mid-edit. The tick is checked
-/// first so the reflection walk only runs when something actually
+/// Values ride on bindings, not rebuilds, so a focused number input
+/// survives a value change; a rebuild would despawn it mid-edit. The
+/// tick is checked first so the walk only runs when something
 /// touched the component.
 fn shape_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
     let mut seen_tick: Option<Tick> = None;
@@ -313,9 +309,9 @@ fn build_leaf(
     };
     let Some(drawer) = drawer else { return };
 
-    // Dimmer than the value it labels, the way most engine
-    // inspectors read: the field name is a caption, not the content.
-    let muted = ui.world.resource::<EditorTheme>().text_muted;
+    // Dimmer than the value it labels: the field name is a caption,
+    // not the content.
+    let muted = ui.theme.text_muted;
     let label = leaf_name(&path).to_string();
     let field = root.child(&path);
     ui.elem(elem!(
@@ -333,8 +329,8 @@ fn build_leaf(
     });
 }
 
-/// A variant picker, and - for an enum carrying data - the active
-/// variant's own fields folded underneath it.
+/// A variant picker, and the active variant's own fields folded
+/// underneath it, if the enum carries data.
 fn build_variant(
     ui: &mut BevyUi,
     root: &Field,
@@ -345,7 +341,7 @@ fn build_variant(
     children: Vec<Entry>,
 ) {
     let field = root.child(&path);
-    let muted = ui.world.resource::<EditorTheme>().text_muted;
+    let muted = ui.theme.text_muted;
 
     if children.is_empty() {
         let label = leaf_name(&path).to_string();
@@ -425,11 +421,10 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
         let Self { name, body } = self;
-        let theme = ui.world.resource::<EditorTheme>().clone();
 
         ui.compose(Foldable {
             header: elem!(
-                !TintButton,
+                !TintButton::default(),
                 width = percent(100),
                 height = auto(),
                 justify = JustifyContent::FlexStart,
@@ -438,13 +433,13 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
                 icon = val!(
                     Icon,
                     image = icons::CHEVRON,
-                    color = theme.text_muted,
+                    color = ui.theme.text_muted,
                     rotation = CHEVRON_OPEN
                 ),
                 label = val!(
                     Label,
                     text = name,
-                    color = Some(theme.text_primary),
+                    color = Some(ui.theme.text_primary),
                     bold = true
                 )
             ),

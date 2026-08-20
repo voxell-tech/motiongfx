@@ -1,16 +1,21 @@
 //! The ECS as a [`Host`].
 
+use core::marker::PhantomData;
+
 use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::prelude::*;
 use bevy_time::Time;
 use bevy_ui::Node;
 use fynix_mock::host::Host;
 
-pub struct BevyHost;
+/// Generic over `Theme`. This crate never names the app's concrete
+/// theme, only that it's a [`Resource`].
+pub struct BevyHost<Theme>(PhantomData<fn() -> Theme>);
 
-impl Host for BevyHost {
+impl<Theme: Send + Sync + 'static> Host for BevyHost<Theme> {
     type Node = Entity;
     type World = World;
+    type Theme = Theme;
 
     fn delta(world: &World) -> f32 {
         world
@@ -20,10 +25,9 @@ impl Host for BevyHost {
     }
 
     fn spawn(world: &mut World, parent: Entity) -> Entity {
-        // A layout [`Node`] up front, not [`Host::Node`], which is the
-        // `Entity` itself. An entity in the UI tree without one is
-        // always a mistake: bevy warns B0004 and skips its children's
-        // layout. An element that brings its own overwrites this.
+        // A layout `Node` up front. Without one, bevy warns B0004 and
+        // skips this entity's children in layout. An element that
+        // brings its own overwrites this.
         world.spawn((Node::default(), ChildOf(parent))).id()
     }
 

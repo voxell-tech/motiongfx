@@ -1,10 +1,10 @@
 //! Inspects whatever the timeline has selected: an action's own
 //! properties, or a block's.
 //!
-//! The reflect inspector cannot reach these - it addresses one
-//! component of one entity, and an action is scene data. So this
-//! edits the [`EditorScene`] directly, by the path the timeline
-//! selected the node with.
+//! The reflect inspector cannot reach these: it addresses one
+//! component of one entity, and an action is scene data. This edits
+//! the [`EditorScene`] directly, by the path the timeline selected
+//! the node with.
 
 use core::time::Duration;
 
@@ -52,8 +52,8 @@ impl Composer<BevyHost> for ActionPanel {
 
 /// One number in the selected node that an input writes back.
 ///
-/// Named rather than captured, because an input re-reads and rewrites
-/// it long after the panel was built.
+/// Named, not captured: an input re-reads and rewrites it long after
+/// the panel was built.
 #[derive(Clone, Copy, PartialEq)]
 enum Edit {
     /// How long the action runs for.
@@ -69,7 +69,7 @@ enum Edit {
 }
 
 /// Everything a rebuild depends on. The numbers are deliberately
-/// absent - they move without rebuilding anything.
+/// absent: they move without rebuilding anything.
 #[derive(PartialEq)]
 struct Shape {
     path: Option<Vec<usize>>,
@@ -112,21 +112,21 @@ fn shape(world: &World, _: Entity) -> Shape {
 }
 
 fn build(ui: &mut BevyUi) {
-    let theme = ui.world.resource::<EditorTheme>().clone();
+    let theme = ui.theme;
     let shape = shape(ui.world, ui.parent());
 
     let Some(path) = shape.path else {
-        note(ui, &theme, "Nothing selected");
+        note(ui, theme, "Nothing selected");
         return;
     };
     if shape.kind.is_empty() {
-        note(ui, &theme, "Selection is no longer in the scene");
+        note(ui, theme, "Selection is no longer in the scene");
         return;
     }
 
-    heading(ui, &theme, shape.kind);
+    heading(ui, theme, shape.kind);
     for (name, value) in shape.rows {
-        row(ui, &theme, &name, &value);
+        row(ui, theme, &name, &value);
     }
     for (name, edit) in shape.edits {
         let source = Property {
@@ -298,8 +298,8 @@ impl Source for Property {
         let node = node_at(&scene.0.animation, &self.path)?;
 
         match (self.edit, node) {
-            // `None` is the default curve, which is linear - so the
-            // picker shows that rather than a fourth "unset" state.
+            // `None` is the default curve, linear, so the picker
+            // shows that instead of a fourth "unset" state.
             (Edit::Ease, Node::Action { action, .. }) => Some(
                 Box::new(action.ease.unwrap_or(AnimEase::Linear)),
             ),

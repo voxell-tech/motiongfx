@@ -12,7 +12,7 @@ use common::{Backend, Label, World};
 use fynix_mock::Fynix;
 use fynix_mock::element::Element;
 use fynix_mock::host::Host;
-use fynix_mock::store::Store;
+use fynix_mock::records::Records;
 use fynix_mock::style::{Raw, Style, StyledElem};
 use fynix_mock::{elem, val};
 
@@ -20,7 +20,7 @@ use fynix_mock::{elem, val};
 /// `create` says nothing about a backend, but the type it is called on
 /// has to name one.
 fn create<S: StyledElem<Host = Backend>>(styled: S) -> S::Element {
-    styled.create()
+    styled.create(&())
 }
 
 /// A style with something to say, so a test can see it run.
@@ -30,7 +30,7 @@ impl Style for Title {
     type Host = Backend;
     type Element = Label;
 
-    fn apply(self, label: &mut Label) {
+    fn apply(self, label: &mut Label, _theme: &()) {
         label.size = 10;
     }
 }
@@ -66,7 +66,7 @@ fn the_style_can_be_any_expression() {
         type Host = Backend;
         type Element = Label;
 
-        fn apply(self, label: &mut Label) {
+        fn apply(self, label: &mut Label, _theme: &()) {
             label.size = self.0;
         }
     }
@@ -97,7 +97,7 @@ fn generic_elements_and_styles_both_carry_their_arguments() {
         type Host = Backend;
         type Element = Themed<L>;
 
-        fn apply(self, themed: &mut Themed<L>) {
+        fn apply(self, themed: &mut Themed<L>, _theme: &()) {
             themed.size = 10;
         }
     }
@@ -141,7 +141,7 @@ fn field_paths_reach_as_deep_as_they_go() {
         type Host = Backend;
         type Element = Card;
 
-        fn apply(self, card: &mut Card) {
+        fn apply(self, card: &mut Card, _theme: &()) {
             card.font.size = 1;
         }
     }
@@ -189,11 +189,15 @@ fn finished_element_passes_through_untouched() {
 #[test]
 fn what_the_cascade_left_is_what_gets_built() {
     let (mut world, parent) = World::with_root();
-    let mut store = Store::new();
+    let mut records = Records::default();
 
     let label = create(elem!(!Title, text = "Save"));
     let node = Element::<Backend>::build(
-        &label, &mut world, parent, &mut store,
+        &label,
+        &mut world,
+        parent,
+        &mut records,
+        &(),
     );
 
     assert_eq!(world.get(node).text, "Save");
@@ -203,7 +207,7 @@ fn what_the_cascade_left_is_what_gets_built() {
 #[test]
 fn the_builder_takes_a_styled_element_whole() {
     let (mut world, root) = World::with_root();
-    let mut kernel = Fynix::new();
+    let mut kernel = Fynix::new(());
 
     kernel.watch(
         root,

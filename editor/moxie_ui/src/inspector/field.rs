@@ -11,21 +11,17 @@ use super::Source;
 /// and the reflect path reaching a leaf inside it. The empty path is
 /// the component itself.
 ///
-/// A resource is a component too - bevy parks each one on an entity
-/// of its own, and `#[reflect(Resource)]` registers a
-/// [`ReflectComponent`] alongside - so which it was handed never
-/// comes up. *Which* entity that is gets settled once, by whoever
-/// built the field, rather than looked up on every read: it only
-/// moves when the resource is removed and re-inserted, and a value
-/// that has been replaced wants the subtree rebuilt, not its bindings
-/// quietly re-pointed at a new instance.
+/// A resource is a component too. Bevy parks each one on an entity
+/// of its own, so which it was handed never comes up. That entity is
+/// settled once, when the field is built, not looked up on every
+/// read.
 ///
-/// One [`Source`] a widget can be handed. It deliberately carries no
-/// value - a widget re-reads through the path whenever the component
-/// changes, so nothing goes stale behind a snapshot.
+/// A [`Source`] a widget can be handed. It carries no value: a widget
+/// re-reads through the path whenever the component changes, so
+/// nothing goes stale behind a snapshot.
 ///
-/// Holds a [`TypeId`] rather than a `ComponentId` so a field can be
-/// named before the world has registered the type.
+/// Holds a [`TypeId`], not a `ComponentId`, so a field can be named
+/// before the world has registered the type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Field {
     entity: Entity,

@@ -1,26 +1,26 @@
 //! A leaf's tab bar: the strip, the scrolling row, and one tab.
 
+use crate::reactive::BevyHost;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 use super::{ButtonElem, Icon, Label};
 use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
 
 /// The strip across the top of a leaf.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TabBar {
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.03))]
     pub background: Color,
 }
 
 impl ElementVisual<BevyHost> for TabBar {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             Node {
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
@@ -43,27 +43,24 @@ impl ElementVisual<BevyHost> for TabBar {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: TabBarField,
     ) {
         match field {
             TabBarField::Background => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.background));
+                patch.insert(BackgroundColor(self.background));
             }
         }
     }
 }
 
 /// What the tabs themselves sit in, which scrolls when they overflow.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TabRow;
 
 impl ElementVisual<BevyHost> for TabRow {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             DockTabRow,
             Node {
                 flex_direction: FlexDirection::Row,
@@ -81,8 +78,7 @@ impl ElementVisual<BevyHost> for TabRow {
 
     fn patch_fields(
         &self,
-        _world: &mut World,
-        _node: Entity,
+        _patch: &mut Patch<BevyHost>,
         field: TabRowField,
     ) {
         match field {}
@@ -94,13 +90,13 @@ impl ElementVisual<BevyHost> for TabRow {
 /// Which tab is active is a field rather than a rebuild, because
 /// switching tabs must not take the drag in progress or the row's
 /// scroll offset with it.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Tab {
-    #[elem]
+    #[elem(child)]
     pub icon: Option<Icon>,
-    #[elem]
+    #[elem(child)]
     pub label: Label,
-    #[elem]
+    #[elem(child)]
     pub close: Option<ButtonElem>,
     pub window_id: String,
     #[default(TabId(0))]
@@ -121,8 +117,8 @@ impl Tab {
 }
 
 impl ElementVisual<BevyHost> for Tab {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             DockTab {
                 window_id: self.window_id.clone(),
                 tab_id: self.tab,
@@ -146,18 +142,15 @@ impl ElementVisual<BevyHost> for Tab {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: TabField,
     ) {
-        let mut entity = world.entity_mut(node);
-
         match field {
             TabField::Active | TabField::Fill => {
-                entity.insert(self.background());
+                patch.insert(self.background());
             }
             TabField::WindowId | TabField::Tab => {
-                entity.insert(DockTab {
+                patch.insert(DockTab {
                     window_id: self.window_id.clone(),
                     tab_id: self.tab,
                 });
