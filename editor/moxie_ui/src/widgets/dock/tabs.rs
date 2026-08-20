@@ -6,7 +6,6 @@ use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::EntityExt;
-use bevy_fynix::theme;
 use fynix_mock::{elem, val};
 
 use super::area::DockTabAddButton;
@@ -18,7 +17,6 @@ use crate::elements::{
 use crate::icons;
 use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed};
-use crate::theme::EditorTheme;
 
 #[derive(Component)]
 pub struct DockTabRow;
@@ -73,9 +71,11 @@ fn build_tab(
     ui: &mut BevyUi,
 ) {
     let is_active = active_of(ui.world, leaf) == Some(tab_id);
-    let lit = text_color(ui.world, leaf, tab_id);
     let theme = ui.theme;
-    let close_color = theme.text_muted;
+    let primary = theme.text_primary;
+    let muted = theme.text_muted;
+    let lit = text_color(ui.world, leaf, tab_id, primary, muted);
+    let close_color = muted;
     let close_hover = theme.critical;
 
     let mut tab = ui.elem(elem!(
@@ -122,12 +122,16 @@ fn build_tab(
         .bind(
             |tab| tab.label().color(),
             resource_changed::<DockTree>(),
-            move |world, _| text_color(world, leaf, tab_id),
+            move |world, _| {
+                text_color(world, leaf, tab_id, primary, muted)
+            },
         )
         .bind(
             |tab| tab.icon().color(),
             resource_changed::<DockTree>(),
-            move |world, _| text_color(world, leaf, tab_id),
+            move |world, _| {
+                text_color(world, leaf, tab_id, primary, muted)
+            },
         )
         .observe(
             move |mut click: On<Pointer<Click>>,
@@ -162,13 +166,17 @@ fn build_tab(
 
 /// What a tab's text and icon are lit with: the active one reads
 /// bright, the rest recede.
-fn text_color(world: &World, leaf: NodeId, tab: TabId) -> Color {
-    let theme = theme::<EditorTheme>(world);
-
+fn text_color(
+    world: &World,
+    leaf: NodeId,
+    tab: TabId,
+    primary: Color,
+    muted: Color,
+) -> Color {
     if active_of(world, leaf) == Some(tab) {
-        theme.text_primary
+        primary
     } else {
-        theme.text_muted
+        muted
     }
 }
 
@@ -204,8 +212,8 @@ pub(super) fn spawn_ghost_tab(
     world: &mut World,
     wrapper: Entity,
     label: &str,
+    color: Color,
 ) {
-    let color = theme::<EditorTheme>(world).text_primary;
     let tile = world
         .spawn((
             tab_tile_node(),

@@ -7,8 +7,8 @@
 pub mod host;
 pub mod interact;
 
+use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
-use std::sync::Mutex;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -22,33 +22,21 @@ use crate::host::BevyHost;
 
 /// Runs [`Fynix::flush`] in [`FynixSet`], every [`Update`]. `Theme` is
 /// the app's own type - never a [`Resource`], never read back out of
-/// `World`; see [`theme`] and [`theme_mut`] for reaching it from
-/// outside a build.
-pub struct FynixPlugin<Theme>(Mutex<Option<Theme>>);
+/// `World`. Starts the kernel with `Theme::default()`; for anything
+/// else, edit it after the fact through [`theme_mut`].
+pub struct FynixPlugin<Theme>(PhantomData<fn() -> Theme>);
 
-impl<Theme> FynixPlugin<Theme> {
-    /// Starts the kernel themed with `theme`.
-    pub fn new(theme: Theme) -> Self {
-        Self(Mutex::new(Some(theme)))
-    }
-}
-
-impl<Theme: Default> Default for FynixPlugin<Theme> {
+impl<Theme> Default for FynixPlugin<Theme> {
     fn default() -> Self {
-        Self::new(Theme::default())
+        Self(PhantomData)
     }
 }
 
-impl<Theme: Send + Sync + 'static> Plugin for FynixPlugin<Theme> {
+impl<Theme: Default + Send + Sync + 'static> Plugin
+    for FynixPlugin<Theme>
+{
     fn build(&self, app: &mut App) {
-        let theme = self
-            .0
-            .lock()
-            .unwrap()
-            .take()
-            .expect("a plugin's own build runs once");
-
-        app.insert_resource(BevyFynix(Fynix::new(theme)))
+        app.insert_resource(BevyFynix(Fynix::new(Theme::default())))
             .add_systems(Update, flush::<Theme>.in_set(FynixSet));
     }
 }

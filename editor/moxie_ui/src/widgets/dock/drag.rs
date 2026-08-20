@@ -129,6 +129,7 @@ fn on_drag_move(
     // The accent, at low alpha, so the panel underneath still reads
     // through it.
     let drop_tint = kernel.theme().accent.with_alpha(0.18);
+    let text_primary = kernel.theme().text_primary;
     let drag_event = trigger.event();
     let cursor_pos_ui = Vec2::new(
         drag_event.pointer_location.position.x,
@@ -174,7 +175,12 @@ fn on_drag_move(
             commands.entity(source_tab).insert(Visibility::Hidden);
             let name = window_name.clone();
             commands.queue(move |world: &mut World| {
-                super::tabs::spawn_ghost_tab(world, ghost, &name);
+                super::tabs::spawn_ghost_tab(
+                    world,
+                    ghost,
+                    &name,
+                    text_primary,
+                );
             });
 
             *drag_state = DockDragState::Dragging {
