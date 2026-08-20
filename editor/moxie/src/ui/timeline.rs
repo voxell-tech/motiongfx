@@ -1,5 +1,5 @@
 //! The timeline panel: control bar (play/pause + time readout) and a
-//! scrubbable track viewport, edge to edge - no name gutter, since a
+//! scrubbable track viewport, edge to edge. No name gutter: a
 //! block's own header box already carries its label.
 
 use core::time::Duration;
@@ -39,10 +39,10 @@ struct TrackViewport;
 
 /// The timeline panel, as kernel nodes.
 ///
-/// Each reactive field binds at the node that owns it, which is why
-/// this is a composer rather than a `bsn!` tree: the play/pause icon,
-/// time label and friends have to be `NodeMut`s to carry their own
-/// binds.
+/// Each reactive field binds at the node that owns it, so the
+/// play/pause icon, time label and friends have to be `NodeMut`s to
+/// carry their own binds. That is why this is a composer, not a
+/// `bsn!` tree.
 pub(super) struct TimelinePanel;
 
 impl Composer<BevyHost> for TimelinePanel {
@@ -122,9 +122,9 @@ impl Composer<BevyHost> for ControlBar {
     }
 }
 
-/// The scrollable track viewport, filling the whole panel width, with
-/// the playhead floating over it as a sibling - not a descendant, so
-/// it's neither scrolled nor clipped by the [`ScrollArea`].
+/// The scrollable track viewport, filling the whole panel width. The
+/// playhead floats over it as a sibling, not a descendant, so the
+/// [`ScrollArea`] neither scrolls nor clips it.
 struct TrackArea;
 
 impl Composer<BevyHost> for TrackArea {
@@ -185,9 +185,9 @@ fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
         .unwrap_or_default()
 }
 
-/// The boxes plus which one (if any) is selected - the watcher's
-/// signal, so a box only needs rebuilding when a node is added,
-/// removed, re-timed, re-nested, or selection moves onto or off it.
+/// The boxes plus which one, if any, is selected. The watcher's
+/// signal: a box rebuilds only when a node is added, removed,
+/// re-timed, re-nested, or selection moves onto or off it.
 fn block_view(
     world: &World,
     node: Entity,
@@ -198,16 +198,16 @@ fn block_view(
     (block_placements(world, node), selected)
 }
 
-/// One box per placement: a block's header - a [`TimelineBlock`],
-/// which owns its own label - or an action leaf's own [`TimelineAction`],
-/// which lights up under the cursor and outlines in the theme's
-/// accent when [`SelectedAction`] names its path - clicking it writes
+/// One box per placement: a block's header ([`TimelineBlock`], which
+/// owns its own label), or an action leaf's own [`TimelineAction`].
+/// The action lights up under the cursor and outlines in the theme's
+/// accent when [`SelectedAction`] names its path; clicking it writes
 /// that path in.
 ///
-/// An `Any` block's box (and any ancestor whose visual extent it
-/// bleeds into) is already sized to its losing branch's full
-/// duration - see [`block_layout::layout`] - so nothing here needs to
-/// clip or fade anything to keep a slower action fully visible.
+/// An `Any` block's box, and any ancestor its visual extent bleeds
+/// into, is already sized to its losing branch's full duration (see
+/// [`block_layout::layout`]), so nothing here needs to clip or fade
+/// anything to keep a slower action visible.
 fn build_block_boxes(ui: &mut BevyUi) {
     let (placements, selected) = block_view(ui.world, ui.parent());
     let theme = ui.world.resource::<EditorTheme>();

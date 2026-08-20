@@ -2,7 +2,7 @@
 //!
 //! A `.mox` holds both halves of a project in one RON document: the
 //! entities, as a reflected [`DynamicWorld`], and the animation over
-//! them, as a [`Scene`]. Neither is much use alone - the animation
+//! them, as a [`Scene`]. Neither is much use alone: the animation
 //! addresses its subjects by [`EntityUid`], which only means anything
 //! once the entities carrying those ids are back in the world.
 
@@ -181,9 +181,9 @@ fn clear(world: &mut World) {
     world.insert_resource(SelectedAction(None));
 }
 
-/// What a subject is saved as. An allowlist rather than everything it
-/// happens to carry: the rest is the running editor's business, and a
-/// file that hoards it would not load into a different one.
+/// What a subject is saved as. An allowlist, not everything it
+/// happens to carry: the rest is the running editor's business, and
+/// a file that hoards it would not load into a different one.
 fn subject_components() -> WorldFilter {
     WorldFilter::deny_all()
         .allow::<SceneRoot>()

@@ -38,7 +38,7 @@ pub(crate) fn on_toggle_playback(
     mut q_players: Query<&mut RealtimePlayer>,
 ) {
     // One global target: invert the aggregate, not each player, so
-    // mixed states resolve to a single play/pause rather than a swap.
+    // mixed states resolve to a single play/pause, not a swap.
     let should_play = !q_players.iter().any(|p| p.is_playing);
     for mut player in &mut q_players {
         player.is_playing = should_play;
@@ -59,10 +59,9 @@ pub(crate) fn on_toggle_playback(
 
 /// Keep [`EditorState`] tracking the first timeline.
 ///
-/// A system rather than a binding: the write lands on a resource, so
-/// it belongs to no node, and hanging it off one purely for lifetime
-/// was always a fiction. It writes only when the answer moves, so a
-/// change detecting reader still sees one change per change.
+/// A system, not a binding: the write lands on a resource, which
+/// belongs to no node. It writes only when the answer moves, so a
+/// change-detecting reader still sees one change per change.
 pub(crate) fn track_first_timeline(
     timelines: Query<&TimelineId>,
     manager: Res<MotionGfxManager>,
@@ -134,9 +133,9 @@ fn scrub_to(
 /// [`Scrubbing`] so subsequent drags keep following the cursor.
 ///
 /// `press.entity` is already exactly the entity this observer is
-/// registered on - `bevy_picking`'s propagation rewrites a `Pointer`
-/// event's own `entity` field to match whichever ancestor's observer
-/// is currently running, so there's nothing here to filter on.
+/// registered on: `bevy_picking`'s propagation rewrites a `Pointer`
+/// event's `entity` field to match whichever ancestor's observer is
+/// running, so there's nothing here to filter on.
 pub(crate) fn on_track_press(
     mut press: On<Pointer<Press>>,
     state: Res<EditorState>,

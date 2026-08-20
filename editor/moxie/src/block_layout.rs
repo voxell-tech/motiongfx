@@ -1,13 +1,12 @@
-//! Lays a scene's [`Block`] tree out as nested boxes: a block is a
-//! bordered container spanning its time range, holding its children -
-//! actions as filled bars, nested blocks as containers of their own -
-//! rather than one flat row per node.
+//! Lays a scene's [`Block`] tree out as nested boxes, not one flat
+//! row per node. A block is a bordered container spanning its time
+//! range, holding its children as filled bars (actions) or nested
+//! containers (blocks).
 //!
 //! Horizontal position always comes straight from a node's resolved
-//! start time ([`crate::px_for`]); nesting only ever affects the
-//! *vertical* axis, so a block's box literally encloses its children's
-//! boxes instead of merely implying the relationship through
-//! indentation.
+//! start time ([`crate::px_for`]). Nesting only affects the vertical
+//! axis: a block's box literally encloses its children's boxes,
+//! rather than implying the relationship through indentation.
 
 use core::time::Duration;
 
@@ -38,9 +37,8 @@ pub(crate) struct Placed {
     pub(crate) path: Vec<usize>,
 }
 
-/// Every box in `animation`'s tree, depth-first - `animation` itself
-/// gets a box too (depth `0`), playing the role of the whole
-/// timeline's outer frame.
+/// Every box in `animation`'s tree, depth-first. `animation` itself
+/// gets a box too, at depth `0`, as the timeline's outer frame.
 pub(crate) fn layout(animation: &Block<Backend>) -> Vec<Placed> {
     let root = measure_block(animation, Duration::ZERO);
     let mut out = Vec::new();

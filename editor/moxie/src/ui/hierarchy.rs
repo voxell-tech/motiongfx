@@ -1,8 +1,8 @@
 //! Scene hierarchy browser: an indented list of the scene's subjects.
 //!
-//! What counts as one is an [`EntityUid`], which is the id a scene
-//! refers to its subjects by - so the panel lists exactly what the
-//! animation can address, and nothing the editor spawned for itself.
+//! What counts as one is an [`EntityUid`], the id a scene refers to
+//! its subjects by. The panel lists exactly what the animation can
+//! address, nothing the editor spawned for itself.
 //!
 //! Each subject watches only its own children, so adding one rebuilds
 //! that branch and not the panel. Depth is the nesting: a subtree
@@ -68,9 +68,9 @@ impl Composer<BevyHost> for HierarchyPanel {
     }
 }
 
-/// The one thing that acts on the list rather than on a row in it.
+/// The one thing that acts on the list, not on a row in it.
 ///
-/// Floated over the corner rather than given a strip of its own, so it
+/// Floated over the corner, not given a strip of its own, so it
 /// stays put however far the list is scrolled.
 struct AddButton;
 
@@ -116,9 +116,9 @@ impl Composer<BevyHost> for Roots {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, ScrollArea> {
-        // Roots only - a branch minds itself. The query is kept
-        // because this polls every flush; the build makes its own,
-        // and runs far less often.
+        // Roots only: a branch minds itself. The query is kept
+        // because this polls every flush, and the build (which
+        // makes its own) runs far less often.
         let mut query = None;
         let mut seen: Option<Vec<Entity>> = None;
 
@@ -197,9 +197,8 @@ fn build_roots(ui: &mut BevyUi) {
 
 /// One list of rows, with the gaps a drop can land between them.
 ///
-/// A gap above each row and one below the last: every place a row
-/// could go gets exactly one, rather than each row bringing its own
-/// pair and doubling them up in between.
+/// A gap above each row and one below the last, so every place a row
+/// could go gets exactly one, not a doubled-up pair between rows.
 fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
     let accent = ui.world.resource::<EditorTheme>().accent;
 
@@ -214,7 +213,7 @@ fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
 }
 
 /// Where a drop lands a row beside another, as a hit area wider than
-/// the line it commits to - the way a split's handle is wider than the
+/// the line it commits to, like a split's handle is wider than the
 /// seam it draws.
 fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
     let mut marker = ui.elem(elem!(
@@ -401,7 +400,7 @@ fn children_of(world: &World, entity: Entity) -> Vec<Entity> {
 }
 
 /// Whether `entity` has any subject under it, without collecting
-/// them - a row only needs to know that there is something to fold.
+/// them. A row only needs to know there is something to fold.
 fn has_children(world: &World, entity: Entity) -> bool {
     world.get::<Children>(entity).is_some_and(|children| {
         children.iter().any(|child| is_subject(world, child))
@@ -412,8 +411,8 @@ fn is_subject(world: &World, entity: Entity) -> bool {
     world.get::<EntityUid>(entity).is_some()
 }
 
-/// Its [`Name`], or the head of its id - a whole uuid is unreadable,
-/// and the first characters tell two unnamed subjects apart.
+/// Its [`Name`], or the head of its id. A whole uuid is unreadable;
+/// the first characters tell two unnamed subjects apart.
 fn name_of(world: &World, entity: Entity) -> String {
     /// How much of an id a row shows.
     const HEAD: usize = 8;

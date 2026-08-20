@@ -248,9 +248,9 @@ fn destination(
 /// `index` as the list will actually be when the entity is put back.
 ///
 /// Moving within one parent takes the entity out before putting it
-/// back, so every slot after it shifts left: a forward move overshoots
-/// by one, and asking for the end overshoots the shortened list
-/// entirely, which panics rather than clamps.
+/// back, so every slot after it shifts left. A forward move
+/// overshoots by one; asking for the end overshoots the shortened
+/// list entirely and panics instead of clamping.
 fn settle(
     world: &World,
     parent: Entity,

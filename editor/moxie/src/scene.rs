@@ -1,5 +1,5 @@
 //! [`EditorScene`]: the editor's authoritative `Scene<Backend>`. It is
-//! what gets edited (and, later, saved/loaded) - the `Timeline` in
+//! what gets edited (and, later, saved/loaded). The `Timeline` in
 //! [`MotionGfxManager`] is a compiled, disposable view of it,
 //! rebuilt by `recompile_dirty_scene` whenever it changes.
 
@@ -17,7 +17,7 @@ use motiongfx_scene::scene::{Scene, Stage};
 ///
 /// The action panel edits the tree, the timeline panel's row layout
 /// reads it, and `recompile_dirty_scene` turns it back into a
-/// timeline whenever it has changed - triggered by Bevy's own change
+/// timeline whenever it changes, triggered by Bevy's own change
 /// detection on this resource, not a flag of its own.
 ///
 /// Public (unlike most of this crate's state) because the example
@@ -62,9 +62,9 @@ impl Default for EditorScene {
 }
 
 /// Recompiles [`EditorScene`] into a fresh [`BevyTimeline`], replacing
-/// whichever timeline the (single) player entity was showing -
-/// preserving its playhead across the swap - or spawning that entity
-/// on the very first compile.
+/// whichever timeline the single player entity was showing while
+/// preserving its playhead, or spawning that entity on the first
+/// compile.
 ///
 /// Scheduled with `run_if(resource_changed::<EditorScene>)`, so this
 /// only runs when [`EditorScene::edit`] actually landed a write.
