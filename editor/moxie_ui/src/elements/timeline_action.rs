@@ -3,6 +3,7 @@ use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -43,10 +44,7 @@ impl TimelineAction {
 
 impl ElementVisual<BevyHost> for TimelineAction {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             self.node(),
             BackgroundColor(self.fill),
             BorderColor::all(self.border),

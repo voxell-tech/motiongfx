@@ -1,5 +1,6 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -26,10 +27,7 @@ impl TimelineTrack {
 
 impl ElementVisual<BevyHost> for TimelineTrack {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert(self.node());
+        build.insert(self.node());
     }
 
     fn patch_fields(

@@ -17,6 +17,7 @@ use bevy::ui_widgets::{
     ActivateOnPress, Button as ButtonBehavior, MenuButton, MenuItem,
 };
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -132,9 +133,7 @@ impl Dropdown {
 
 impl ElementVisual<BevyHost> for Dropdown {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-
-        build.world.entity_mut(node).insert((
+        build.insert((
             self.node(),
             BackgroundColor(self.fill),
             ButtonBehavior,
@@ -262,10 +261,7 @@ impl DropdownItem {
 
 impl ElementVisual<BevyHost> for DropdownItem {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             self.node(),
             BackgroundColor(self.fill),
             MenuItem,

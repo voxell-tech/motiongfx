@@ -1,5 +1,6 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -24,11 +25,9 @@ impl PlayheadLine {
 
 impl ElementVisual<BevyHost> for PlayheadLine {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
         let color = build.theme.palette.orange;
-        let world = &mut *build.world;
 
-        world.entity_mut(node).insert((
+        build.insert((
             self.node(),
             ZIndex(10),
             BackgroundColor(color),

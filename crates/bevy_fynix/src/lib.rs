@@ -15,7 +15,7 @@ use bevy_ecs::system::IntoObserverSystem;
 use fynix_mock::Fynix;
 use fynix_mock::element::Element;
 use fynix_mock::records::BuildFn;
-use fynix_mock::ui::{Build, ElementMut, Ui};
+use fynix_mock::ui::{Build, ElementMut, Patch, Ui};
 
 use crate::host::BevyHost;
 
@@ -109,23 +109,21 @@ pub(crate) fn with_kernel<Theme: Resource + Clone + Default>(
     );
 }
 
-/// What bevy wants on a node that the element itself has no say in.
-///
-/// `observe`/`insert`/`remove` are just `entity_mut()` plus whatever
-/// `bevy_ecs` offers. Only `entity_mut` differs between `ElementMut`
-/// and `Build`.
+/// Entity-level operations on whichever node `Build`, `Patch`, or
+/// `ElementMut` currently holds, built on [`Self::id`] and
+/// [`Self::world_mut`] plus whatever `bevy_ecs` offers on top.
 pub trait EntityExt {
+    /// This node's own handle.
+    fn id(&self) -> Entity;
+
+    /// The world this node lives in.
+    fn world_mut(&mut self) -> &mut World;
+
     /// This node itself, for whatever `bevy_ecs` offers with no
     /// shorthand here.
-    fn entity_mut(&mut self) -> EntityWorldMut<'_>;
-
-    /// Watch this node for `V`.
-    fn observe<V: EntityEvent, B: Bundle, M>(
-        &mut self,
-        observer: impl IntoObserverSystem<V, B, M>,
-    ) -> &mut Self {
-        self.entity_mut().observe(observer);
-        self
+    fn entity_mut(&mut self) -> EntityWorldMut<'_> {
+        let node = self.id();
+        self.world_mut().entity_mut(node)
     }
 
     /// Put `bundle` on this node, once, now.
@@ -139,6 +137,30 @@ pub trait EntityExt {
         self.entity_mut().remove::<B>();
         self
     }
+
+    /// Spawn `bundle` as a new child of this node, once, now.
+    fn with_child(&mut self, bundle: impl Bundle) -> &mut Self {
+        self.entity_mut().with_child(bundle);
+        self
+    }
+
+    /// Spawn each child `func` adds, on this node, once, now.
+    fn with_children(
+        &mut self,
+        func: impl FnOnce(&mut ChildSpawner),
+    ) -> &mut Self {
+        self.entity_mut().with_children(func);
+        self
+    }
+
+    /// Watch this node for `V`.
+    fn observe<V: EntityEvent, B: Bundle, M>(
+        &mut self,
+        observer: impl IntoObserverSystem<V, B, M>,
+    ) -> &mut Self {
+        self.entity_mut().observe(observer);
+        self
+    }
 }
 
 impl<E, T> EntityExt for ElementMut<'_, '_, BevyHost<T>, E>
@@ -146,9 +168,12 @@ where
     T: Resource + Clone + Default,
     E: Element<BevyHost<T>>,
 {
-    fn entity_mut(&mut self) -> EntityWorldMut<'_> {
-        let node = self.id();
-        self.ui.world.entity_mut(node)
+    fn id(&self) -> Entity {
+        ElementMut::id(self)
+    }
+
+    fn world_mut(&mut self) -> &mut World {
+        self.ui.world
     }
 }
 
@@ -157,8 +182,24 @@ where
     E: Element<BevyHost<T>>,
     T: Resource + Clone + Default,
 {
-    fn entity_mut(&mut self) -> EntityWorldMut<'_> {
-        let node = self.id();
-        self.world.entity_mut(node)
+    fn id(&self) -> Entity {
+        Build::id(self)
+    }
+
+    fn world_mut(&mut self) -> &mut World {
+        self.world
+    }
+}
+
+impl<T> EntityExt for Patch<'_, BevyHost<T>>
+where
+    T: Resource + Clone + Default,
+{
+    fn id(&self) -> Entity {
+        Patch::id(self)
+    }
+
+    fn world_mut(&mut self) -> &mut World {
+        self.world
     }
 }

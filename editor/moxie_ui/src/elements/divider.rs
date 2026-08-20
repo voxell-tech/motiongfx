@@ -3,6 +3,7 @@ use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -50,12 +51,9 @@ impl Divider {
 
 impl ElementVisual<BevyHost> for Divider {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
         let (layout, cursor) = self.shape();
 
-        world.entity_mut(node).insert((
+        build.insert((
             layout,
             BackgroundColor(self.color),
             EntityCursor::System(cursor),

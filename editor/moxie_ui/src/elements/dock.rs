@@ -8,6 +8,7 @@
 
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -43,10 +44,7 @@ pub struct DockHost;
 
 impl ElementVisual<BevyHost> for DockHost {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             DockTreeHost,
             Node {
                 width: percent(100),
@@ -79,10 +77,7 @@ pub struct SplitGroup {
 
 impl ElementVisual<BevyHost> for SplitGroup {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             NodeBinding(self.node),
             PanelGroup {
                 min_ratio: self.min_ratio,
@@ -220,10 +215,7 @@ pub fn handle_line(axis: FlexDirection, color: Color) -> Frame {
 
 impl ElementVisual<BevyHost> for SplitHandle {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             PanelHandle,
             NodeBinding(self.node),
             self.node(),
@@ -283,12 +275,7 @@ impl SplitPanel {
 
 impl ElementVisual<BevyHost> for SplitPanel {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world
-            .entity_mut(node)
-            .insert((Panel { ratio: self.ratio }, self.node()));
+        build.insert((Panel { ratio: self.ratio }, self.node()));
     }
 
     fn patch_fields(
@@ -329,10 +316,7 @@ pub struct Area {
 
 impl ElementVisual<BevyHost> for Area {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             DockArea {
                 id: self.id.clone(),
                 style: self.style.clone(),
@@ -383,10 +367,7 @@ pub struct TabContent {
 
 impl ElementVisual<BevyHost> for TabContent {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             DockWindow {
                 descriptor_id: self.window_id.clone(),
                 tab_id: self.tab,

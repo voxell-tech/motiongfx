@@ -1,5 +1,6 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -86,12 +87,11 @@ impl Frame {
 
 impl ElementVisual<BevyHost> for Frame {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((self.node(), BackgroundColor(self.background)));
+
         let node = build.id();
         let world = &mut *build.world;
 
-        world
-            .entity_mut(node)
-            .insert((self.node(), BackgroundColor(self.background)));
         self.stack(world, node);
     }
 

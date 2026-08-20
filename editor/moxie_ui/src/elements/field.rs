@@ -13,6 +13,7 @@ use bevy::text::EditableText;
 use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::EntityExt;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -32,14 +33,15 @@ pub struct CheckBox {
 struct CheckMark;
 
 impl CheckBox {
-    fn tick(&self, world: &mut World, node: Entity) {
-        let mut entity = world.entity_mut(node);
-
+    fn tick(&self, entity: &mut impl EntityExt) {
         if self.checked {
             entity.insert(Checked);
         } else {
             entity.remove::<Checked>();
         }
+
+        let node = entity.id();
+        let world = entity.world_mut();
 
         let Some(mark) = self.mark_node(world, node) else {
             return;
@@ -53,7 +55,10 @@ impl CheckBox {
         }
     }
 
-    fn paint(&self, world: &mut World, node: Entity) {
+    fn paint(&self, entity: &mut impl EntityExt) {
+        let node = entity.id();
+        let world = entity.world_mut();
+
         let Some(mark) = self.mark_node(world, node) else {
             return;
         };
@@ -77,25 +82,21 @@ impl CheckBox {
 
 impl ElementVisual<BevyHost> for CheckBox {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
-            CheckboxBehavior,
-            EntityCursor::System(SystemCursorIcon::Pointer),
-            Node {
-                width: px(16),
-                height: px(16),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                border_radius: BorderRadius::all(px(4)),
-                ..default()
-            },
-            BackgroundColor(self.fill),
-        ));
-
-        let mark = world
-            .spawn((
+        build
+            .insert((
+                CheckboxBehavior,
+                EntityCursor::System(SystemCursorIcon::Pointer),
+                Node {
+                    width: px(16),
+                    height: px(16),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    border_radius: BorderRadius::all(px(4)),
+                    ..default()
+                },
+                BackgroundColor(self.fill),
+            ))
+            .with_child((
                 CheckMark,
                 Node {
                     width: px(8),
@@ -105,11 +106,9 @@ impl ElementVisual<BevyHost> for CheckBox {
                     ..default()
                 },
                 BackgroundColor(self.mark),
-            ))
-            .id();
-        world.entity_mut(node).add_child(mark);
+            ));
 
-        self.tick(world, node);
+        self.tick(build);
     }
 
     fn patch_fields(
@@ -117,17 +116,12 @@ impl ElementVisual<BevyHost> for CheckBox {
         patch: &mut Patch<BevyHost>,
         field: CheckBoxField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
-            CheckBoxField::Checked => self.tick(world, node),
+            CheckBoxField::Checked => self.tick(patch),
             CheckBoxField::Fill => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.fill));
+                patch.insert(BackgroundColor(self.fill));
             }
-            CheckBoxField::Mark => self.paint(world, node),
+            CheckBoxField::Mark => self.paint(patch),
         }
     }
 }

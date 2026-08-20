@@ -4,6 +4,7 @@ use crate::reactive::BevyHost;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -19,10 +20,7 @@ pub struct TabBar {
 
 impl ElementVisual<BevyHost> for TabBar {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             Node {
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
@@ -67,10 +65,7 @@ pub struct TabRow;
 
 impl ElementVisual<BevyHost> for TabRow {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             DockTabRow,
             Node {
                 flex_direction: FlexDirection::Row,
@@ -128,10 +123,7 @@ impl Tab {
 
 impl ElementVisual<BevyHost> for Tab {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             DockTab {
                 window_id: self.window_id.clone(),
                 tab_id: self.tab,

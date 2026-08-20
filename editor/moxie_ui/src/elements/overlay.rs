@@ -1,6 +1,7 @@
 use crate::reactive::BevyHost;
 use bevy::picking::Pickable;
 use bevy::prelude::*;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -27,10 +28,7 @@ impl Overlay {
 
 impl ElementVisual<BevyHost> for Overlay {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert((
+        build.insert((
             Node {
                 position_type: PositionType::Absolute,
                 left: px(0),

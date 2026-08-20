@@ -1,6 +1,7 @@
 use crate::reactive::BevyHost;
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -45,12 +46,7 @@ impl Label {
 
 impl ElementVisual<BevyHost> for Label {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        let mut entity = world.entity_mut(node);
-
-        entity.insert((
+        build.insert((
             Text::new(self.text.clone()),
             self.font(),
             self.layout(),
@@ -58,8 +54,8 @@ impl ElementVisual<BevyHost> for Label {
 
         // A colour of its own opts out of the theme's.
         match self.color {
-            Some(color) => entity.insert(TextColor(color)),
-            None => entity.insert(ThemedText),
+            Some(color) => build.insert(TextColor(color)),
+            None => build.insert(ThemedText),
         };
     }
 

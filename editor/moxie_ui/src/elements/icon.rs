@@ -1,6 +1,7 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -26,12 +27,9 @@ impl Icon {
 
 impl ElementVisual<BevyHost> for Icon {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
+        let image = build.world.load_asset(self.image.clone());
 
-        let image = world.load_asset(self.image.clone());
-
-        world.entity_mut(node).insert((
+        build.insert((
             ImageNode {
                 image,
                 color: self.color,
