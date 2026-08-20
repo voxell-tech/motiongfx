@@ -6,6 +6,7 @@ use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::EntityExt;
+use bevy_fynix::theme;
 use fynix_mock::{elem, val};
 
 use super::area::DockTabAddButton;
@@ -49,7 +50,7 @@ pub(super) fn build_tab_bar(
 
 /// The "+" at the end of the bar, which opens the window list.
 fn build_add_button(area: Entity, ui: &mut BevyUi) {
-    let muted = ui.world.resource::<EditorTheme>().text_muted;
+    let muted = ui.theme.text_muted;
 
     ui.elem(elem!(
         !TintButton::default(),
@@ -73,7 +74,7 @@ fn build_tab(
 ) {
     let is_active = active_of(ui.world, leaf) == Some(tab_id);
     let lit = text_color(ui.world, leaf, tab_id);
-    let theme = ui.world.resource::<EditorTheme>();
+    let theme = ui.theme;
     let close_color = theme.text_muted;
     let close_hover = theme.critical;
 
@@ -162,7 +163,7 @@ fn build_tab(
 /// What a tab's text and icon are lit with: the active one reads
 /// bright, the rest recede.
 fn text_color(world: &World, leaf: NodeId, tab: TabId) -> Color {
-    let theme = world.resource::<EditorTheme>();
+    let theme = theme::<EditorTheme>(world);
 
     if active_of(world, leaf) == Some(tab) {
         theme.text_primary
@@ -204,7 +205,7 @@ pub(super) fn spawn_ghost_tab(
     wrapper: Entity,
     label: &str,
 ) {
-    let color = world.resource::<EditorTheme>().text_primary;
+    let color = theme::<EditorTheme>(world).text_primary;
     let tile = world
         .spawn((
             tab_tile_node(),

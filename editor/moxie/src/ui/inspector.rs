@@ -7,7 +7,6 @@ use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
 use moxie_ui::elements::{EntityInspector, Label, ScrollArea};
 use moxie_ui::reactive::{BevyHost, BevyUi, resource_changed};
-use moxie_ui::theme::EditorTheme;
 
 use super::PANEL_PADDING;
 use crate::SelectedEntity;
@@ -37,7 +36,7 @@ impl Composer<BevyHost> for InspectorPanel {
 
 fn build(ui: &mut BevyUi) {
     let Some(entity) = ui.world.resource::<SelectedEntity>().0 else {
-        let muted = ui.world.resource::<EditorTheme>().text_muted;
+        let muted = ui.theme.text_muted;
         ui.elem(elem!(
             Label,
             text = "Nothing selected",

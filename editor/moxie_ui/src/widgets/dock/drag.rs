@@ -5,6 +5,7 @@ use bevy::feathers::cursor::{EntityCursor, OverrideCursor};
 use bevy::prelude::*;
 use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::BevyFynix;
 
 use super::area::DockArea;
 use super::reconcile::NodeBinding;
@@ -123,11 +124,11 @@ fn on_drag_move(
     parent_query: Query<&ChildOf>,
     ui_scale: Res<UiScale>,
     mut override_cursor: ResMut<OverrideCursor>,
-    theme: Res<EditorTheme>,
+    kernel: Res<BevyFynix<EditorTheme>>,
 ) {
     // The accent, at low alpha, so the panel underneath still reads
     // through it.
-    let drop_tint = theme.accent.with_alpha(0.18);
+    let drop_tint = kernel.theme().accent.with_alpha(0.18);
     let drag_event = trigger.event();
     let cursor_pos_ui = Vec2::new(
         drag_event.pointer_location.position.x,

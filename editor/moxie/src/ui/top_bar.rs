@@ -61,7 +61,7 @@ impl Composer<BevyHost> for Menu {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, DropdownMenu> {
         let Self { name, entries } = self;
-        let theme = ui.world.resource::<EditorTheme>().clone();
+        let theme = ui.theme;
         // Sized to the longest entry, so the list clears its own text
         // whichever menu it belongs to.
         let width = Dropdown::width_for(
@@ -74,7 +74,7 @@ impl Composer<BevyHost> for Menu {
 
         ui.elem(elem!(DropdownMenu))
             .with(move |ui| {
-                title(ui, &theme, name);
+                title(ui, theme, name);
 
                 ui.elem(elem!(
                     DropdownList,
@@ -83,7 +83,7 @@ impl Composer<BevyHost> for Menu {
                 ))
                 .with(move |ui| {
                     for (entry, run) in entries {
-                        item(ui, &theme, entry, run);
+                        item(ui, theme, entry, run);
                     }
                 });
             })

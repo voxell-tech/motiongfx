@@ -19,7 +19,6 @@ use crate::elements::{
 };
 use crate::icons;
 use crate::reactive::{BevyHost, BevyUi, component_changed_on};
-use crate::theme::EditorTheme;
 
 /// The chevron's rotation, clockwise from the asset's resting
 /// up-pointing orientation: right when shut, down when open.
@@ -109,7 +108,7 @@ where
             on_header,
             body,
         } = self;
-        let theme = ui.world.resource::<EditorTheme>().clone();
+        let muted = ui.theme.text_muted;
         let chevron = enabled && toggle == Toggle::Chevron;
 
         let mut root = ui.elem(elem!(
@@ -140,7 +139,7 @@ where
                             Icon,
                             image = icons::CHEVRON,
                             size = px(8),
-                            color = theme.text_muted,
+                            color = muted,
                             rotation = CHEVRON_OPEN
                         )
                     ));
@@ -192,7 +191,7 @@ where
                 ui.elem(elem!(
                     Frame,
                     width = px(1),
-                    background = theme.palette.base[2]
+                    background = ui.theme.palette.base[2]
                 ));
                 ui.elem(elem!(
                     Frame,

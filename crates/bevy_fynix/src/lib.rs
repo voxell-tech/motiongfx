@@ -7,7 +7,8 @@
 pub mod host;
 pub mod interact;
 
-use core::marker::PhantomData;
+use core::ops::{Deref, DerefMut};
+use std::sync::Mutex;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
@@ -20,31 +21,35 @@ use fynix_mock::ui::{Build, ElementMut, Patch, Ui};
 use crate::host::BevyHost;
 
 /// Runs [`Fynix::flush`] in [`FynixSet`], every [`Update`]. `Theme` is
-/// the app's own [`Resource`]; this crate never names it.
-pub struct FynixPlugin<Theme>(PhantomData<fn() -> Theme>);
+/// the app's own type - never a [`Resource`], never read back out of
+/// `World`; see [`theme`] and [`theme_mut`] for reaching it from
+/// outside a build.
+pub struct FynixPlugin<Theme>(Mutex<Option<Theme>>);
 
-impl<Theme> Default for FynixPlugin<Theme> {
-    fn default() -> Self {
-        Self(PhantomData)
+impl<Theme> FynixPlugin<Theme> {
+    /// Starts the kernel themed with `theme`.
+    pub fn new(theme: Theme) -> Self {
+        Self(Mutex::new(Some(theme)))
     }
 }
 
-impl<Theme: Resource + Clone + Default> Plugin
-    for FynixPlugin<Theme>
-{
+impl<Theme: Default> Default for FynixPlugin<Theme> {
+    fn default() -> Self {
+        Self::new(Theme::default())
+    }
+}
+
+impl<Theme: Send + Sync + 'static> Plugin for FynixPlugin<Theme> {
     fn build(&self, app: &mut App) {
-        // Seeds the kernel with whatever `Theme` holds now. The
-        // kernel does not read `Theme` back out of `World` later.
-        app.init_resource::<Theme>();
-        let theme = app.world().resource::<Theme>().clone();
+        let theme = self
+            .0
+            .lock()
+            .unwrap()
+            .take()
+            .expect("a plugin's own build runs once");
 
         app.insert_resource(BevyFynix(Fynix::new(theme)))
-            .add_systems(
-                Update,
-                (sync_theme::<Theme>, flush::<Theme>)
-                    .chain()
-                    .in_set(FynixSet),
-            );
+            .add_systems(Update, flush::<Theme>.in_set(FynixSet));
     }
 }
 
@@ -52,59 +57,81 @@ impl<Theme: Resource + Clone + Default> Plugin
 pub type BevyUi<'a, Theme> = Ui<'a, BevyHost<Theme>>;
 
 /// A flush owns the kernel for as long as it runs, and anything it
-/// builds could otherwise borrow it again.
+/// builds could otherwise borrow it again. Transparent otherwise -
+/// [`Deref`]/[`DerefMut`] reach straight through to the [`Fynix`]
+/// underneath.
 #[derive(Resource)]
-struct BevyFynix<Theme: Resource + Clone + Default>(
+pub struct BevyFynix<Theme: Send + Sync + 'static>(
     Fynix<BevyHost<Theme>>,
 );
+
+impl<Theme: Send + Sync + 'static> Deref for BevyFynix<Theme> {
+    type Target = Fynix<BevyHost<Theme>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<Theme: Send + Sync + 'static> DerefMut for BevyFynix<Theme> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 /// Order systems against the flush: whatever a build reads should be
 /// written before [`FynixSet`] runs.
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FynixSet;
 
-/// Pushes an edited `Theme` resource into the kernel. Ordered ahead
-/// of [`flush`], so the same frame's rebuild sees the new theme.
-fn sync_theme<Theme: Resource + Clone + Default>(
-    theme: Res<Theme>,
-    mut kernel: ResMut<BevyFynix<Theme>>,
-) {
-    if theme.is_changed() {
-        *kernel.0.theme_mut() = theme.clone();
-    }
+/// The theme the kernel is currently building with.
+///
+/// Borrowed straight out of the kernel's own resource - `Theme` lives
+/// nowhere else in `World`.
+pub fn theme<Theme: Send + Sync + 'static>(world: &World) -> &Theme {
+    world.resource::<BevyFynix<Theme>>().theme()
+}
+
+/// The theme, to edit in place. Schedules a full rebuild for the
+/// next flush - see [`Fynix::theme_mut`].
+pub fn theme_mut<Theme: Send + Sync + 'static>(
+    world: &mut World,
+) -> &mut Theme {
+    let kernel = world.resource_mut::<BevyFynix<Theme>>();
+    kernel.into_inner().theme_mut()
 }
 
 /// Build `root` on the next flush, and never again.
 ///
 /// Everything reactive below it is declared inside `build`. Call it
 /// once per root, after spawning that root.
-pub fn watch_root<Theme: Resource + Clone + Default>(
+pub fn watch_root<Theme: Send + Sync + 'static>(
     world: &mut World,
     root: Entity,
     build: impl BuildFn<BevyHost<Theme>>,
 ) {
     let mut pending = true;
 
-    world.resource_mut::<BevyFynix<Theme>>().0.watch(
+    world.resource_mut::<BevyFynix<Theme>>().watch(
         root,
         move |_, _| core::mem::take(&mut pending),
         build,
     );
 }
 
-fn flush<Theme: Resource + Clone + Default>(world: &mut World) {
+fn flush<Theme: Send + Sync + 'static>(world: &mut World) {
     with_kernel::<Theme>(world, |kernel, world| kernel.flush(world));
 }
 
 /// Run `f` with the kernel taken out of the world. Not for anything
 /// a flush can reach.
-pub(crate) fn with_kernel<Theme: Resource + Clone + Default>(
+pub(crate) fn with_kernel<Theme: Send + Sync + 'static>(
     world: &mut World,
     f: impl FnOnce(&mut Fynix<BevyHost<Theme>>, &mut World),
 ) {
     world.resource_scope(
         |world, mut kernel: Mut<BevyFynix<Theme>>| {
-            f(&mut kernel.0, world);
+            f(&mut kernel, world);
         },
     );
 }
@@ -165,7 +192,7 @@ pub trait EntityExt {
 
 impl<E, T> EntityExt for ElementMut<'_, '_, BevyHost<T>, E>
 where
-    T: Resource + Clone + Default,
+    T: Send + Sync + 'static,
     E: Element<BevyHost<T>>,
 {
     fn id(&self) -> Entity {
@@ -180,7 +207,7 @@ where
 impl<E, T> EntityExt for Build<'_, BevyHost<T>, E>
 where
     E: Element<BevyHost<T>>,
-    T: Resource + Clone + Default,
+    T: Send + Sync + 'static,
 {
     fn id(&self) -> Entity {
         Build::id(self)
@@ -193,7 +220,7 @@ where
 
 impl<T> EntityExt for Patch<'_, BevyHost<T>>
 where
-    T: Resource + Clone + Default,
+    T: Send + Sync + 'static,
 {
     fn id(&self) -> Entity {
         Patch::id(self)

@@ -112,21 +112,21 @@ fn shape(world: &World, _: Entity) -> Shape {
 }
 
 fn build(ui: &mut BevyUi) {
-    let theme = ui.world.resource::<EditorTheme>().clone();
+    let theme = ui.theme;
     let shape = shape(ui.world, ui.parent());
 
     let Some(path) = shape.path else {
-        note(ui, &theme, "Nothing selected");
+        note(ui, theme, "Nothing selected");
         return;
     };
     if shape.kind.is_empty() {
-        note(ui, &theme, "Selection is no longer in the scene");
+        note(ui, theme, "Selection is no longer in the scene");
         return;
     }
 
-    heading(ui, &theme, shape.kind);
+    heading(ui, theme, shape.kind);
     for (name, value) in shape.rows {
-        row(ui, &theme, &name, &value);
+        row(ui, theme, &name, &value);
     }
     for (name, edit) in shape.edits {
         let source = Property {

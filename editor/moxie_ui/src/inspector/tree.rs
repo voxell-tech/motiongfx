@@ -21,7 +21,6 @@ use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
 use crate::fold::{CHEVRON_OPEN, Foldable, Toggle};
 use crate::icons;
 use crate::reactive::{BevyHost, BevyUi};
-use crate::theme::EditorTheme;
 
 /// One row the walk found.
 #[derive(Clone, PartialEq)]
@@ -312,7 +311,7 @@ fn build_leaf(
 
     // Dimmer than the value it labels: the field name is a caption,
     // not the content.
-    let muted = ui.world.resource::<EditorTheme>().text_muted;
+    let muted = ui.theme.text_muted;
     let label = leaf_name(&path).to_string();
     let field = root.child(&path);
     ui.elem(elem!(
@@ -342,7 +341,7 @@ fn build_variant(
     children: Vec<Entry>,
 ) {
     let field = root.child(&path);
-    let muted = ui.world.resource::<EditorTheme>().text_muted;
+    let muted = ui.theme.text_muted;
 
     if children.is_empty() {
         let label = leaf_name(&path).to_string();
@@ -422,7 +421,6 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
         let Self { name, body } = self;
-        let theme = ui.world.resource::<EditorTheme>().clone();
 
         ui.compose(Foldable {
             header: elem!(
@@ -435,13 +433,13 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
                 icon = val!(
                     Icon,
                     image = icons::CHEVRON,
-                    color = theme.text_muted,
+                    color = ui.theme.text_muted,
                     rotation = CHEVRON_OPEN
                 ),
                 label = val!(
                     Label,
                     text = name,
-                    color = Some(theme.text_primary),
+                    color = Some(ui.theme.text_primary),
                     bold = true
                 )
             ),

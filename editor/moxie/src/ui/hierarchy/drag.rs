@@ -12,7 +12,7 @@ use bevy::picking::events::{
 use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
 use bevy::ui::UiScale;
-use bevy_fynix::EntityExt;
+use bevy_fynix::{BevyFynix, EntityExt};
 use fynix_mock::element::Element;
 use fynix_mock::ui::ElementMut;
 use moxie_ui::elements::ButtonElem;
@@ -63,7 +63,7 @@ pub(super) fn rows<'r, 'u, 'a>(
         .observe(
             move |start: On<Pointer<DragStart>>,
                   names: Query<&Name>,
-                  theme: Res<EditorTheme>,
+                  kernel: Res<BevyFynix<EditorTheme>>,
                   scale: Res<UiScale>,
                   mut dragging: ResMut<Dragging>,
                   mut commands: Commands| {
@@ -79,7 +79,9 @@ pub(super) fn rows<'r, 'u, 'a>(
 
                 dragging.subject = Some(subject);
                 dragging.ghost = Some(
-                    commands.spawn(ghost(at, name, &theme)).id(),
+                    commands
+                        .spawn(ghost(at, name, kernel.theme()))
+                        .id(),
                 );
             },
         )

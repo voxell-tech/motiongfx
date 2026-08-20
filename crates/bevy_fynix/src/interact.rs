@@ -32,7 +32,7 @@ type Aim<Theme> =
 pub struct Aiming<
     'w,
     E: 'static,
-    Theme: Resource + Clone + Default,
+    Theme: Send + Sync + 'static,
     V: EntityEvent,
 > {
     aim: Entity,
@@ -42,7 +42,7 @@ pub struct Aiming<
     marker: PhantomData<fn() -> (E, V)>,
 }
 
-impl<E: 'static, Theme: Resource + Clone + Default, V: EntityEvent>
+impl<E: 'static, Theme: Send + Sync + 'static, V: EntityEvent>
     Aiming<'_, E, Theme, V>
 {
     /// Point `field` at `target` whenever the event this was opened
@@ -64,8 +64,8 @@ impl<E: 'static, Theme: Resource + Clone + Default, V: EntityEvent>
     }
 }
 
-impl<E: 'static, Theme: Resource + Clone + Default, V: EntityEvent>
-    Drop for Aiming<'_, E, Theme, V>
+impl<E: 'static, Theme: Send + Sync + 'static, V: EntityEvent> Drop
+    for Aiming<'_, E, Theme, V>
 {
     fn drop(&mut self) {
         let aims = core::mem::take(&mut self.aims);
@@ -92,7 +92,7 @@ impl<E: 'static, Theme: Resource + Clone + Default, V: EntityEvent>
 /// `on_entity` differs between `ElementMut` and `Build`.
 pub trait OnExt<
     E: Element<BevyHost<Theme>>,
-    Theme: Resource + Clone + Default,
+    Theme: Send + Sync + 'static,
 >
 {
     /// Open a group of aims that fire together whenever `V` happens to
@@ -113,7 +113,7 @@ pub trait OnExt<
     ) -> Aiming<'_, E, Theme, V>;
 }
 
-impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
+impl<Theme: Send + Sync + 'static, E: Element<BevyHost<Theme>>>
     OnExt<E, Theme> for ElementMut<'_, '_, BevyHost<Theme>, E>
 {
     fn id(&self) -> Entity {
@@ -134,7 +134,7 @@ impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
     }
 }
 
-impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
+impl<Theme: Send + Sync + 'static, E: Element<BevyHost<Theme>>>
     OnExt<E, Theme> for Build<'_, BevyHost<Theme>, E>
 {
     fn id(&self) -> Entity {
@@ -166,7 +166,7 @@ struct Watching<V>(Entity, PhantomData<fn() -> V>);
 ///
 /// Queued, not run immediately: a flush owns the kernel while it
 /// runs, and an observer cannot know it isn't inside one.
-fn watch<Theme: Resource + Clone + Default, V: EntityEvent>(
+fn watch<Theme: Send + Sync + 'static, V: EntityEvent>(
     world: &mut World,
     watch: Entity,
     aim_node: Entity,

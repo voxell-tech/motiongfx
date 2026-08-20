@@ -28,7 +28,6 @@ use moxie_ui::fold::{Foldable, Toggle};
 use moxie_ui::reactive::{
     BevyHost, BevyUi, component_changed_on, value_changed,
 };
-use moxie_ui::theme::EditorTheme;
 
 use super::PANEL_PADDING;
 use crate::{SceneRoot, SelectedEntity};
@@ -200,7 +199,7 @@ fn build_roots(ui: &mut BevyUi) {
 /// A gap above each row and one below the last, so every place a row
 /// could go gets exactly one, not a doubled-up pair between rows.
 fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
-    let accent = ui.world.resource::<EditorTheme>().accent;
+    let accent = ui.theme.accent;
 
     for &entity in &entities {
         gap(ui, entity, accent, drag::At::Before);
@@ -256,9 +255,9 @@ impl Composer<BevyHost> for Subtree {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
         let entity = self.entity;
-        let theme = ui.world.resource::<EditorTheme>().clone();
         let name = name_of(ui.world, entity);
-        let text = theme.text_primary;
+        let text = ui.theme.text_primary;
+        let accent = ui.theme.accent;
 
         ui.compose(Foldable {
             header: elem!(
@@ -300,7 +299,7 @@ impl Composer<BevyHost> for Subtree {
                         |button| button.fill(),
                         highlight_changed(entity),
                         move |world, _| {
-                            highlight(world, entity, &theme)
+                            highlight(world, entity, accent)
                         },
                     )
                     .bind(
@@ -329,18 +328,14 @@ impl Composer<BevyHost> for Subtree {
 
 /// What a row's own surface says: a drop landing inside it beats
 /// whether it is selected, and most rows are neither.
-fn highlight(
-    world: &World,
-    entity: Entity,
-    theme: &EditorTheme,
-) -> Color {
+fn highlight(world: &World, entity: Entity, accent: Color) -> Color {
     if world
         .resource::<drag::Dragging>()
         .shows(entity, drag::At::Into)
     {
-        theme.accent.with_alpha(0.35)
+        accent.with_alpha(0.35)
     } else if world.resource::<SelectedEntity>().0 == Some(entity) {
-        theme.accent.with_alpha(0.18)
+        accent.with_alpha(0.18)
     } else {
         Color::NONE
     }

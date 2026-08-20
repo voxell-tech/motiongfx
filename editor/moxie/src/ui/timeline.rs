@@ -29,7 +29,6 @@ use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{
     BevyHost, BevyUi, resource_changed, value_changed,
 };
-use moxie_ui::theme::EditorTheme;
 
 const CONTROL_BAR_HEIGHT: f32 = 40.0;
 
@@ -210,7 +209,7 @@ fn block_view(
 /// anything to keep a slower action visible.
 fn build_block_boxes(ui: &mut BevyUi) {
     let (placements, selected) = block_view(ui.world, ui.parent());
-    let theme = ui.world.resource::<EditorTheme>();
+    let theme = ui.theme;
     let action_fill = theme.palette.blue;
     let block_outline = theme.text_primary;
     let accent = theme.accent;

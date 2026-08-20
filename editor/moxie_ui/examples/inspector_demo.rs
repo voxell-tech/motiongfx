@@ -118,7 +118,7 @@ fn setup(mut commands: Commands) {
 }
 
 fn build_panels(ui: &mut BevyUi) {
-    let theme = ui.world.resource::<EditorTheme>().clone();
+    let theme = ui.theme;
     let subject = ui.world.resource::<Subject>().0;
 
     ui.elem(elem!(
@@ -128,10 +128,10 @@ fn build_panels(ui: &mut BevyUi) {
         column_gap = px(16)
     ))
     .with(move |ui| {
-        panel(ui, theme.clone(), "Resource", |ui| {
+        panel(ui, theme, "Resource", |ui| {
             ui.compose(ResourceInspector::of::<Showcase>());
         });
-        panel(ui, theme.clone(), "Component", move |ui| {
+        panel(ui, theme, "Component", move |ui| {
             ui.compose(ComponentInspector::of::<Transform>(subject));
         });
         panel(ui, theme, "Entity", move |ui| {
@@ -143,11 +143,12 @@ fn build_panels(ui: &mut BevyUi) {
 /// A titled card, which is all these three have in common.
 fn panel(
     ui: &mut BevyUi,
-    theme: EditorTheme,
+    theme: &EditorTheme,
     title: &str,
     body: impl FnOnce(&mut BevyUi),
 ) {
     let title = title.to_string();
+    let text_color = theme.text_primary;
 
     ui.elem(elem!(
         Frame,
@@ -163,7 +164,7 @@ fn panel(
             text = title,
             size = 14.0f32,
             bold = true,
-            color = Some(theme.text_primary)
+            color = Some(text_color)
         ));
         body(ui);
     });

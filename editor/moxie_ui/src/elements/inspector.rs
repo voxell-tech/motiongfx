@@ -169,7 +169,7 @@ impl Composer<BevyHost> for AddComponent {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, DropdownMenu> {
         let entity = self.entity;
-        let theme = ui.world.resource::<EditorTheme>().clone();
+        let theme = ui.theme;
         let options = addable(ui.world, entity);
         let width = Dropdown::width_for(
             &options
@@ -211,7 +211,7 @@ impl Composer<BevyHost> for AddComponent {
 
                         for (component, name) in options {
                             add_component_item(
-                                ui, &theme, entity, component, name,
+                                ui, theme, entity, component, name,
                             );
                         }
                     },
@@ -326,7 +326,6 @@ fn add_component(
 /// A whole component on one row, named where a group of fields would
 /// have been headed.
 fn single(ui: &mut BevyUi, name: &str, field: Field) {
-    let theme = ui.world.resource::<EditorTheme>().clone();
     let name = name.to_string();
 
     ui.elem(elem!(
@@ -342,7 +341,7 @@ fn single(ui: &mut BevyUi, name: &str, field: Field) {
         ui.elem(elem!(
             Label,
             text = name,
-            color = Some(theme.text_primary),
+            color = Some(ui.theme.text_primary),
             bold = true
         ));
         // Straight from the field: a `ComponentInspector` fills the

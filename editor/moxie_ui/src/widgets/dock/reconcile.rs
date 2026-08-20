@@ -31,7 +31,6 @@ use crate::elements::dock::{
 };
 use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed, structure_changed};
-use crate::theme::EditorTheme;
 
 pub struct ReconcilePlugin;
 
@@ -125,8 +124,7 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
     let a_visible = leaf_visible(ui.world, split.a);
     let b_visible = leaf_visible(ui.world, split.b);
     let handle_visible = a_visible && b_visible;
-    let line_color =
-        ui.world.resource::<EditorTheme>().palette.base[2];
+    let line_color = ui.theme.palette.base[2];
 
     ui.elem(elem!(SplitGroup, node = id, axis = flex_direction))
         .with(move |ui| {

@@ -39,7 +39,7 @@ impl Default for Palette {
 }
 
 /// Semantic colors read by the editor UI.
-#[derive(Resource, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct EditorTheme {
     pub palette: Palette,
     /// Primary (active) text.

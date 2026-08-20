@@ -173,7 +173,7 @@ impl Composer<BevyHost> for VariantPicker<'_> {
             pick,
         } = self;
 
-        let theme = ui.world.resource::<EditorTheme>().clone();
+        let theme = ui.theme;
         let current = active(source, ui.world)
             .unwrap_or_else(|| "-".to_string());
         let source = source.boxed();
@@ -184,13 +184,13 @@ impl Composer<BevyHost> for VariantPicker<'_> {
         ui.elem(elem!(Frame, align = AlignItems::Center))
             .with(move |ui| {
                 if !pick {
-                    name(ui, &*source, &theme, current);
+                    name(ui, &*source, theme, current);
                     return;
                 }
 
                 ui.elem(elem!(DropdownMenu)).with(move |ui| {
-                    control(ui, &*source, &theme, current, width);
-                    list(ui, &*source, &theme, variants, width);
+                    control(ui, &*source, theme, current, width);
+                    list(ui, &*source, theme, variants, width);
                 });
             })
             .handle()
@@ -268,11 +268,10 @@ fn list(
     width: Val,
 ) {
     let source = source.boxed();
-    let theme = theme.clone();
 
     ui.elem(elem!(DropdownList, width = width)).with(move |ui| {
         for variant in variants {
-            option(ui, &*source, &theme, variant);
+            option(ui, &*source, theme, variant);
         }
     });
 }

@@ -12,7 +12,7 @@ use fynix_mock::host::Host;
 /// theme, only that it's a [`Resource`].
 pub struct BevyHost<Theme>(PhantomData<fn() -> Theme>);
 
-impl<Theme: Resource + Clone + Default> Host for BevyHost<Theme> {
+impl<Theme: Send + Sync + 'static> Host for BevyHost<Theme> {
     type Node = Entity;
     type World = World;
     type Theme = Theme;

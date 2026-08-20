@@ -69,7 +69,6 @@ fn axes<T, V>(
     V: Clone + Send + Sync + 'static,
     ValueChange<V>: EntityEvent,
 {
-    let theme = ui.world.resource::<EditorTheme>().clone();
     let source = source.boxed();
 
     ui.elem(elem!(
@@ -83,7 +82,7 @@ fn axes<T, V>(
             ui.elem(elem!(
                 Label,
                 text = name.to_uppercase(),
-                color = Some(axis_color(&theme, name)),
+                color = Some(axis_color(ui.theme, name)),
                 bold = true
             ));
             axis::<T, V>(
