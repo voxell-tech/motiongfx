@@ -7,6 +7,16 @@ When writing one, be as concise and precise if possible, no paragraphs.
 Public facing APIs needs doc comments, but only to describe exactly what it is,
 do not talk about any abstract stuff.
 
+## If the LSP already shows it, skip it
+
+Hover, go-to-definition, and autocomplete already surface a signature,
+a return type, a trait bound, a visibility modifier. A comment that
+just restates one of those ("this returns an `H::Node`", "opaque
+outside this crate, since it's `pub(crate)`") is not explaining
+anything the reader can't already see one keystroke away. Write the
+comment for what tooling cannot show: intent, a non-obvious
+constraint, a reason.
+
 ## Keep it concise
 
 Exactly what needs explaining, nothing else. It describes the current

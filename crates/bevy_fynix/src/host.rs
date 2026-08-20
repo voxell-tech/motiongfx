@@ -8,9 +8,8 @@ use bevy_time::Time;
 use bevy_ui::Node;
 use fynix_mock::host::Host;
 
-/// Generic over `Theme`, so this crate never has to name whatever
-/// concrete theme an app built on it reads - only that it lives in
-/// `World` as a [`Resource`] and can be cloned out.
+/// Generic over `Theme`. This crate never names the app's concrete
+/// theme, only that it's a [`Resource`].
 pub struct BevyHost<Theme>(PhantomData<fn() -> Theme>);
 
 impl<Theme: Resource + Clone + Default> Host for BevyHost<Theme> {
@@ -26,10 +25,9 @@ impl<Theme: Resource + Clone + Default> Host for BevyHost<Theme> {
     }
 
     fn spawn(world: &mut World, parent: Entity) -> Entity {
-        // A layout [`Node`] up front, not [`Host::Node`], which is the
-        // `Entity` itself. An entity in the UI tree without one is
-        // always a mistake: bevy warns B0004 and skips its children's
-        // layout. An element that brings its own overwrites this.
+        // A layout `Node` up front. Without one, bevy warns B0004 and
+        // skips this entity's children in layout. An element that
+        // brings its own overwrites this.
         world.spawn((Node::default(), ChildOf(parent))).id()
     }
 

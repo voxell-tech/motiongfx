@@ -19,9 +19,8 @@ use fynix_mock::ui::{Build, ElementMut, Ui};
 
 use crate::host::BevyHost;
 
-/// Runs [`Fynix::flush`] in [`FynixSet`], every [`Update`]. `Theme`
-/// is whatever the app's own [`Resource`] is - this crate never
-/// names it, only that one exists.
+/// Runs [`Fynix::flush`] in [`FynixSet`], every [`Update`]. `Theme` is
+/// the app's own [`Resource`]; this crate never names it.
 pub struct FynixPlugin<Theme>(PhantomData<fn() -> Theme>);
 
 impl<Theme> Default for FynixPlugin<Theme> {
@@ -34,14 +33,8 @@ impl<Theme: Resource + Clone + Default> Plugin
     for FynixPlugin<Theme>
 {
     fn build(&self, app: &mut App) {
-        // `Theme` is a `Resource` this crate takes on faith, not one
-        // it defines - initializing it here (it's already bound
-        // `Default`) is what lets an app that has no opinion on its
-        // own theme, and every test, add the plugin without setting
-        // one up first. The kernel takes its own copy at construction
-        // rather than reading `Theme` back out of `World` each flush
-        // - see [`fynix_mock::Host::Theme`] - so it's seeded here,
-        // once, from whatever `Theme` now holds.
+        // Seeds the kernel with whatever `Theme` holds now. The
+        // kernel does not read `Theme` back out of `World` later.
         app.init_resource::<Theme>();
         let theme = app.world().resource::<Theme>().clone();
 
@@ -58,9 +51,8 @@ impl<Theme: Resource + Clone + Default> Plugin
 /// What a build takes.
 pub type BevyUi<'a, Theme> = Ui<'a, BevyHost<Theme>>;
 
-/// Private, because a flush owns the kernel for as long as it runs and
-/// anything it builds could otherwise borrow it again. Watchers are
-/// declared inside a build, and the first one through [`watch_root`].
+/// A flush owns the kernel for as long as it runs, and anything it
+/// builds could otherwise borrow it again.
 #[derive(Resource)]
 struct BevyFynix<Theme: Resource + Clone + Default>(
     Fynix<BevyHost<Theme>>,
@@ -71,11 +63,8 @@ struct BevyFynix<Theme: Resource + Clone + Default>(
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FynixSet;
 
-/// Pushes an edited `Theme` resource into the kernel, which is what
-/// actually schedules the full rebuild - see
-/// [`Fynix::theme_mut`](fynix_mock::Fynix::theme_mut). Ordered ahead
-/// of [`flush`] so the same frame's rebuild sees the new theme rather
-/// than lagging a frame behind it.
+/// Pushes an edited `Theme` resource into the kernel. Ordered ahead
+/// of [`flush`], so the same frame's rebuild sees the new theme.
 fn sync_theme<Theme: Resource + Clone + Default>(
     theme: Res<Theme>,
     mut kernel: ResMut<BevyFynix<Theme>>,
@@ -87,8 +76,8 @@ fn sync_theme<Theme: Resource + Clone + Default>(
 
 /// Build `root` on the next flush, and never again.
 ///
-/// The bootstrap: everything reactive below it is declared inside
-/// `build`. Call it once per root, after spawning that root.
+/// Everything reactive below it is declared inside `build`. Call it
+/// once per root, after spawning that root.
 pub fn watch_root<Theme: Resource + Clone + Default>(
     world: &mut World,
     root: Entity,
@@ -107,9 +96,8 @@ fn flush<Theme: Resource + Clone + Default>(world: &mut World) {
     with_kernel::<Theme>(world, |kernel, world| kernel.flush(world));
 }
 
-/// Run `f` with the kernel out of the world, which is the only way to
-/// have both. Not for anything a flush can reach: the kernel is gone
-/// from the world for as long as this runs.
+/// Run `f` with the kernel taken out of the world. Not for anything
+/// a flush can reach.
 pub(crate) fn with_kernel<Theme: Resource + Clone + Default>(
     world: &mut World,
     f: impl FnOnce(&mut Fynix<BevyHost<Theme>>, &mut World),
@@ -123,14 +111,12 @@ pub(crate) fn with_kernel<Theme: Resource + Clone + Default>(
 
 /// What bevy wants on a node that the element itself has no say in.
 ///
-/// `observe`/`insert`/`remove` are all just `entity_mut()` plus
-/// whatever `bevy_ecs` already offers - the one real difference
-/// between `ElementMut` and `Build` is how each reaches the world in
-/// the first place, so that is the only method either has to provide.
+/// `observe`/`insert`/`remove` are just `entity_mut()` plus whatever
+/// `bevy_ecs` offers. Only `entity_mut` differs between `ElementMut`
+/// and `Build`.
 pub trait EntityExt {
-    /// This node itself, for whatever `bevy_ecs` offers that has no
-    /// shorthand of its own here - `.entity_mut().insert(...)` rather
-    /// than reaching for the world and the node by hand.
+    /// This node itself, for whatever `bevy_ecs` offers with no
+    /// shorthand here.
     fn entity_mut(&mut self) -> EntityWorldMut<'_>;
 
     /// Watch this node for `V`.

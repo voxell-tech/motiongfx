@@ -1,9 +1,7 @@
-//! Wiring a lane to a pointer event, which is Bevy's own concern and
-//! not fynix's: [`Fynix::aim`] takes a node, a field, and a target,
-//! and nothing about when to call it. [`Aiming`] is what decides when,
-//! for whichever [`EntityEvent`] a call site names - there is no
-//! closed vocabulary of "interactions" here, only whatever event type
-//! is asked for.
+//! Wiring a lane to a pointer event, Bevy's own concern, not fynix's.
+//! [`Fynix::aim`] takes a node, a field, and a target, with no notion
+//! of when to call it. [`Aiming`] decides when, for whichever
+//! [`EntityEvent`] a call site names.
 
 use core::marker::PhantomData;
 use std::sync::Arc;
@@ -25,14 +23,12 @@ type Aim<Theme> =
 /// Aims queued for one event type on one node, until they are dropped
 /// onto a single observer.
 ///
-/// A statement's worth of `.aim(...)` calls, so
-/// `label.on::<V>().aim(a).aim(b);` registers one observer that runs
-/// both, rather than one observer per field.
+/// `label.on::<V>().aim(a).aim(b);` registers a single observer for
+/// both.
 ///
-/// `watch` and `aim` differ for a lane on a `#[elem(child)]` child: the event
-/// has to come from the child's own hit area, but the lane lives
-/// keyed on the owner, which is where every `.transition()` and
-/// `.bind()` on it puts things.
+/// `watch` and `aim` differ for a `#[elem(child)]` lane: the event
+/// comes from the child's own hit area, but the lane is keyed on the
+/// owner.
 pub struct Aiming<
     'w,
     E: 'static,
@@ -50,11 +46,8 @@ impl<E: 'static, Theme: Resource + Clone + Default, V: EntityEvent>
     Aiming<'_, E, Theme, V>
 {
     /// Point `field` at `target` whenever the event this was opened
-    /// for fires on this node, or release it with `None`.
-    ///
-    /// The trigger half of
-    /// [`ElementMut::transition`](fynix_mock::ui::ElementMut::transition):
-    /// aiming a field with no lane does nothing.
+    /// for fires on this node, or release it with `None`. Aiming a
+    /// field with no lane does nothing.
     pub fn aim<P>(
         mut self,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
@@ -95,10 +88,8 @@ impl<E: 'static, Theme: Resource + Clone + Default, V: EntityEvent>
 
 /// What Bevy wants on a node that the element itself has no say in.
 ///
-/// `on` is just `on_entity` aimed at this node's own id - the one
-/// real difference between `ElementMut` and `Build` is how each
-/// reaches the world `Aiming` needs, so `on_entity` is the only method
-/// either has to provide.
+/// `on` is just `on_entity` aimed at this node's own id. Only
+/// `on_entity` differs between `ElementMut` and `Build`.
 pub trait OnExt<
     E: Element<BevyHost<Theme>>,
     Theme: Resource + Clone + Default,
@@ -111,14 +102,11 @@ pub trait OnExt<
         self.on_entity(node)
     }
 
-    /// This element's own node. Every host `OnExt` is implemented for
-    /// already has one; named here so `on`'s default body can reach
-    /// it without knowing which.
+    /// This element's own node.
     fn id(&self) -> Entity;
 
-    /// The same, but watching `child` rather than this node, for a
-    /// lane on a `#[elem(child)]` field whose own hit area should be what
-    /// reacts, found with [`ElementMut::child`].
+    /// The same, but watching `child`: for a `#[elem(child)]` field
+    /// whose own hit area should react.
     fn on_entity<V: EntityEvent>(
         &mut self,
         child: Entity,
@@ -167,20 +155,17 @@ impl<Theme: Resource + Clone + Default, E: Element<BevyHost<Theme>>>
     }
 }
 
-/// The observer currently watching `V` on this node, so a rewire (a
-/// patch that runs `build_fields` again) can despawn it before
-/// spawning its replacement rather than stacking a second one
-/// alongside it - `EntityWorldMut::observe` always adds, never
-/// replaces.
+/// The observer currently watching `V` on this node. Lets a rewire
+/// despawn it before spawning a replacement, since
+/// `EntityWorldMut::observe` always adds, never replaces.
 #[derive(Component)]
 struct Watching<V>(Entity, PhantomData<fn() -> V>);
 
 /// Run `aim` whenever `V` fires on `watch`, naming `aim_node` as what
 /// it moves.
 ///
-/// Queued rather than run there and then, because a flush owns the
-/// kernel while it runs and an observer cannot know it isn't inside
-/// one.
+/// Queued, not run immediately: a flush owns the kernel while it
+/// runs, and an observer cannot know it isn't inside one.
 fn watch<Theme: Resource + Clone + Default, V: EntityEvent>(
     world: &mut World,
     watch: Entity,
@@ -192,9 +177,8 @@ fn watch<Theme: Resource + Clone + Default, V: EntityEvent>(
 ) {
     let aim = Arc::new(aim);
 
-    // Spawned directly rather than through `EntityWorldMut::observe`,
-    // which hands back the entity it watches rather than the
-    // observer it just made - there would be no way to find this one
+    // `EntityWorldMut::observe` hands back the entity it watches, not
+    // the observer it made, so there'd be no way to find this one
     // again to despawn it.
     if let Some(&Watching(old, _)) = world.get::<Watching<V>>(watch) {
         world.despawn(old);
