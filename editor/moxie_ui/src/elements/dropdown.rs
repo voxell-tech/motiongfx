@@ -1,11 +1,11 @@
 //! A dropdown, built on the menu `bevy_ui_widgets` already ships.
 //!
-//! Three elements rather than one, because that is the shape the
-//! behaviour expects: an anchor holding a control and a list, which
-//! is how the menu's own observer finds each of them. What comes with
-//! it is everything a hand-rolled popup gets wrong - placement that
-//! flips near the window edge, dismissal on focus loss, Escape, and
-//! arrow-key navigation.
+//! Three elements, the shape the behaviour expects: an anchor
+//! holding a control and a list, which is how the menu's own
+//! observer finds each of them. In exchange it gets everything a
+//! hand-rolled popup gets wrong: placement that flips near the
+//! window edge, dismissal on focus loss, Escape, and arrow-key
+//! navigation.
 
 use crate::reactive::BevyHost;
 use bevy::feathers::controls::{FeathersMenu, FeathersMenuPopup};
@@ -24,9 +24,9 @@ use super::{Icon, Label};
 
 /// What a [`Dropdown`] and its [`DropdownList`] hang from.
 ///
-/// Carries the observer that opens and closes the list, which reaches
-/// both by looking through this node's children - so the two must be
-/// built underneath it, in either order.
+/// Carries the observer that opens and closes the list, found by
+/// looking through this node's children. Both must be built
+/// underneath it, in either order.
 #[derive(Element)]
 pub struct DropdownMenu;
 

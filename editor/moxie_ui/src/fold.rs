@@ -186,9 +186,9 @@ where
                 },
             )
             .with(move |ui| {
-                // A rail beside the body, the way a tree view marks
-                // how deep a nested branch sits - stretched to the
-                // block's height rather than sized by hand.
+                // A rail beside the body, like a tree view's depth
+                // marker. Stretched to the block's height, not sized
+                // by hand.
                 ui.elem(elem!(
                     Frame,
                     width = px(1),

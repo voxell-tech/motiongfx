@@ -125,9 +125,8 @@ fn on_drag_move(
     mut override_cursor: ResMut<OverrideCursor>,
     theme: Res<EditorTheme>,
 ) {
-    // The accent, at low alpha - the same color a drop target ends up
-    // in a dock split with, tinted rather than solid so the panel
-    // underneath still reads through it.
+    // The accent, at low alpha, so the panel underneath still reads
+    // through it.
     let drop_tint = theme.accent.with_alpha(0.18);
     let drag_event = trigger.event();
     let cursor_pos_ui = Vec2::new(

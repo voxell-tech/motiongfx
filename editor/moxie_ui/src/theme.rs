@@ -1,11 +1,9 @@
 //! Editor theme: the raw Monokai Pro palette plus the semantic slots
-//! the UI actually reads (text, accent, glass tints).
+//! the UI actually reads (text, accent, interaction fades).
 //!
 //! Palette mirrors
 //! `examples/bevy_examples/assets/typst/monokai_pro.typ`
 //! so typst-rendered content and the editor chrome share one look.
-//! Swap the [`EditorTheme`] resource to re-theme; glass materials are
-//! rebuilt from it at plugin build time.
 
 use bevy::prelude::*;
 
@@ -62,10 +60,8 @@ pub struct EditorTheme {
     pub press_overlay: Color,
     /// How long a hover/press fade takes.
     pub interact_ms: u32,
-    /// What a timeline clip - a colored object in its own right, not
-    /// chrome - brightens to under the cursor, deliberately its own
-    /// family of color rather than [`Self::hover_overlay`]'s neutral
-    /// gray.
+    /// What a timeline clip brightens to under the cursor. Its own
+    /// family of color, not [`Self::hover_overlay`]'s neutral gray.
     pub clip_hover: Color,
     /// Same, further while held.
     pub clip_press: Color,

@@ -29,8 +29,8 @@ pub enum Hover {
 }
 
 /// A hit area holding an icon, a label, both, or whatever is built
-/// under it. Undressed: [`Button`] and [`GhostButton`] are the two
-/// looks the editor gives it.
+/// under it, with no look of its own. [`Button`] and [`GhostButton`]
+/// are two the editor gives it.
 #[derive(Element)]
 pub struct ButtonElem {
     /// A node of its own, so its image and colour can be bound
@@ -45,8 +45,8 @@ pub struct ButtonElem {
     #[default(px(6))]
     pub column_gap: Val,
     /// What the background shows. Nothing by default, which is a
-    /// [`GhostButton`]; [`Button`] rests at `FILL`, and interaction
-    /// lights either of them up.
+    /// [`GhostButton`]; [`Button`] rests at the theme's own fill, and
+    /// interaction lights either of them up.
     #[default(::NONE)]
     pub fill: Color,
     pub width: Val,
@@ -91,8 +91,7 @@ impl ButtonElem {
 }
 
 /// The editor's own button: a filled, rounded pill sized for a
-/// toolbar, which lights up under the cursor. A call site that holds a
-/// word rather than an icon says so by resizing it.
+/// toolbar, that lights up under the cursor.
 pub struct Button;
 
 impl Style for Button {
@@ -113,8 +112,7 @@ impl Style for Button {
 /// land on first.
 #[derive(Default)]
 pub struct TintButton {
-    /// `None` takes the theme's own accent - a call site only ever
-    /// names its own color to depart from that.
+    /// `None` takes the theme's own accent.
     pub tint: Option<Color>,
 }
 
@@ -128,9 +126,8 @@ impl Style for TintButton {
     }
 }
 
-/// A menu bar's own button: square, full height, and lighting up only
-/// under the cursor, so a row of them reads as one strip rather than a
-/// row of separate controls.
+/// A menu bar's own button: square, full height, lighting up only
+/// under the cursor, so a row of them reads as one strip.
 pub struct MenuButton;
 
 impl Style for MenuButton {
@@ -170,11 +167,10 @@ impl ElementVisual<BevyHost> for ButtonElem {
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
 
-        // What the style asked for, wired against a base this method
-        // already has as `&self` - the node has no entry in the
-        // kernel's own table yet for `.lit()` to read one from. Both
-        // stops light to the same colour: `Hover` carries one, not a
-        // separate hover and press shade.
+        // Wired against a base already in hand as `&self`: the node
+        // has no entry in the kernel's table yet for `.lit()` to read
+        // one from. Both stops light to the same colour: `Hover`
+        // carries one shade, not separate hover/press ones.
         let (fill, icon_label) = match self.hover {
             Hover::None => (None, None),
             Hover::Fill(color) => (Some(color), None),
@@ -191,10 +187,8 @@ impl ElementVisual<BevyHost> for ButtonElem {
         }
 
         if let Some(tint) = icon_label {
-            // Each read straight from `self`, not through the
-            // cursor: absent is skipped rather than defaulted, the
-            // way the field simply not lighting up would read if
-            // `icon`/`label` were never there to begin with.
+            // Read straight from `self`: an absent icon/label is
+            // skipped, same as if it were never lit at all.
             if let Some(icon) = &self.icon {
                 build.lit_from(
                     |button| button.icon().color(),
@@ -203,10 +197,9 @@ impl ElementVisual<BevyHost> for ButtonElem {
                     tint,
                 );
             }
-            // `label().color()` hops through an `Option`
-            // transparently, so its base is `Color`, not
-            // `Option<Color>` - and a label with no colour of its own
-            // has nowhere for that hop to land, same as before.
+            // `label().color()` hops through the `Option`
+            // transparently, so its base is `Color`. A label with no
+            // colour of its own has nowhere for that hop to land.
             if let Some(color) =
                 self.label.as_ref().and_then(|label| label.color)
             {

@@ -9,16 +9,13 @@ use bevy::ecs::change_detection::{ComponentTicks, Tick};
 use bevy::prelude::*;
 
 // `watch_root` stays generic over `Theme`, same as `bevy_fynix`
-// itself: whatever `build` is typed with (`BevyUi`, below, in every
-// real call site) already fixes `Theme` to `EditorTheme` for the
-// compiler to infer - a wrapper here would only repeat that.
+// itself: `build`'s own type already fixes `Theme` to `EditorTheme`
+// for the compiler to infer.
 pub use bevy_fynix::{FynixSet, watch_root};
 
 use crate::theme::EditorTheme;
 
-/// [`bevy_fynix::host::BevyHost`] is generic over its theme so that
-/// crate never has to name this editor's own - here, once, is where
-/// it does.
+/// Fixes [`bevy_fynix::host::BevyHost`]'s theme to [`EditorTheme`].
 pub type BevyHost = bevy_fynix::host::BevyHost<EditorTheme>;
 pub type BevyUi<'a> = bevy_fynix::BevyUi<'a, EditorTheme>;
 pub type FynixPlugin = bevy_fynix::FynixPlugin<EditorTheme>;
@@ -43,11 +40,10 @@ pub fn resource_changed<R: Resource>()
 /// Fires when a *projection* of `R` changes, ignoring every other
 /// mutation.
 ///
-/// This is what lets `watch` mean "structure" and `bind` mean "value".
 /// Watching a whole resource rebuilds on any field change: dragging a
-/// splitter nudges `DockTree`'s fractions every frame, which would
-/// rebuild the layout every frame. Project to the structural part and
-/// the drag fires nothing; a `bind` carries the ratio instead.
+/// splitter nudges `DockTree`'s fractions every frame. Projecting to
+/// the structural part skips that; a `bind` carries the ratio
+/// instead.
 pub fn structure_changed<R: Resource, K>(
     project: impl Fn(&R) -> K + Send + Sync + 'static,
 ) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static
@@ -68,11 +64,9 @@ where
 
 /// Fires when `read`'s value differs from the last poll.
 ///
-/// For signals that are entity state rather than a resource, where
-/// there is no tick to compare. `read` runs every flush, so it must be
-/// cheap: resolve entities *outside* the closure (a registering system
-/// has queries; a predicate only has `&World`, where finding an entity
-/// by component means scanning the whole world).
+/// For entity state, where there is no tick to compare. `read` runs
+/// every flush, so keep it cheap: resolve entities outside the
+/// closure, since a predicate only has `&World` to scan with.
 pub fn value_changed<T>(
     read: impl Fn(&World, Entity) -> T + Send + Sync + 'static,
 ) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static
@@ -91,10 +85,8 @@ where
 /// Fires when the node's `C` was written since the last poll, and on
 /// the first poll.
 ///
-/// State belonging to one widget instance lives on its own node
-/// rather than in a `Resource` every instance would share. Rides the
-/// tick, so [`value_changed`] is what to reach for when the value is
-/// what matters.
+/// Rides the tick. Reach for [`value_changed`] when the value itself
+/// is what matters.
 pub fn component_changed<C: Component>()
 -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
     let mut seen: Option<Option<Tick>> = None;
@@ -126,9 +118,7 @@ fn component_tick<C: Component>(
 }
 
 /// Fires when `read`'s tick differs from the last poll, and on the
-/// first poll. The core [`component_changed_on`] and
-/// [`Field::changed`](crate::inspector::Field) both build on: what
-/// varies between them is only how the tick is read.
+/// first poll.
 pub(crate) fn tick_changed(
     mut read: impl FnMut(&World) -> Option<Tick> + Send + Sync + 'static,
 ) -> impl FnMut(&World) -> bool + Send + Sync + 'static {

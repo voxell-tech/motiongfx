@@ -51,8 +51,7 @@ impl Lit for Option<Color> {
 }
 
 /// Lights a field under the cursor, reading its base out of the
-/// kernel's own table - only ever true once a node has finished
-/// building, so only [`ElementMut`] offers this, not
+/// kernel's own table. Only [`ElementMut`] offers this, not
 /// [`Build`](fynix_mock::ui::Build): a node running its own
 /// `build_fields` has no entry there yet.
 pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
@@ -71,8 +70,8 @@ pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
         P: FieldPath<Source = E, Target = T>,
         T: Lit;
 
-    /// Same as [`Self::lit()`] but watching a specific entity rather
-    /// than this node.
+    /// Same as [`Self::lit()`], but watches a specific entity, not
+    /// this node.
     fn lit_entity<P, T>(
         &mut self,
         entity: Entity,
@@ -85,12 +84,11 @@ pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
         T: Lit;
 }
 
-/// As [`MotionExt`], but given the base explicitly rather than
-/// reading it out of the kernel's table - what
+/// As [`MotionExt`], but given the base explicitly instead of
+/// reading it out of the kernel's table, for
 /// [`build_fields`](fynix_mock::element::ElementVisual::build_fields)
-/// reaches for, since `build_fields` already has it as `&self` and
-/// its own node has no entry there yet to read one from either way.
-/// Both [`ElementMut`] and [`Build`](fynix_mock::ui::Build) offer this.
+/// whose node has no entry there yet. Both [`ElementMut`] and
+/// [`Build`](fynix_mock::ui::Build) offer this.
 pub trait LitFrom<E: Element<Self::Host>> {
     type Host: Host;
 
@@ -108,8 +106,8 @@ pub trait LitFrom<E: Element<Self::Host>> {
         P: FieldPath<Source = E, Target = T>,
         T: Lit;
 
-    /// Same as [`Self::lit_from()`] but watching a specific entity
-    /// rather than this node.
+    /// Same as [`Self::lit_from()`], but watches a specific entity,
+    /// not this node.
     fn lit_entity_from<P, T>(
         &mut self,
         entity: Entity,
@@ -255,10 +253,8 @@ impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
     }
 }
 
-/// The pointer wiring [`MotionExt::lit_entity`] and
-/// [`LitFrom::lit_entity_from`] share - only how the lane's base is
-/// found differs between them, and both [`ElementMut`] and
-/// [`Build`](fynix_mock::ui::Build) offer [`OnExt`] the same way.
+/// The pointer wiring a lit field needs: lights on hover, lights
+/// harder on press, releases on out or cancel.
 fn on_lit<T, E, P, Target>(
     elem: &mut T,
     entity: Entity,
