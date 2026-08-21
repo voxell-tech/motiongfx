@@ -8,6 +8,7 @@ use fynix_mock::ui::{Build, Patch};
 /// scrolling if what it holds does not fit.
 #[derive(Element)]
 pub struct Panel {
+    #[default(::Column)]
     pub direction: FlexDirection,
     /// Stretch, by default, which is what fills a docked area.
     pub align: AlignItems,
