@@ -104,3 +104,221 @@ resources or entities with `node` as just an index (`text_color`,
       "mutate this node, maybe touch one child" - audit each first,
       since some `(&World, Node)` sites read other state through
       `node` as an index and shouldn't move.
+
+## `#[elem(flatten)]` for shared field groups
+
+`ButtonElem`, `Frame`, `ScrollArea`, `Panel`, and a few others each
+hand-roll the same `width`/`height`/`min_width`/`min_height`/
+`flex_grow`/`justify`/`padding` cluster and their own `node()`
+builder. Embedding `bevy::Node` itself was considered and turned
+down: `#[derive(Element)]` mints one enum variant, one `FieldId`, and
+one `lenz` accessor path per top-level field, which is what lets
+`elem!(Frame, width = ...)` work as flat sugar, `.bind(|frame|
+frame.width())` name a single projection, and `#[default(...)]`
+override one field at a time. Collapsing eight fields into a single
+`pub node: Node` would collapse all of that onto one opaque path, and
+still wouldn't absorb `radius`/`fill`/`hover`, which aren't part of
+`Node` at all.
+
+A flattened field group keeps the addressability: a small reusable
+struct (`Layout { width, height, min_width, min_height, flex_grow,
+justify, padding, ... }`) that `#[derive(Element)]` unpacks field by
+field into the same enum/path/lenz machinery it already generates for
+a direct field, rather than treating it as one opaque child.
+
+- [ ] Design `Layout` (or similarly-scoped groups) as a plain struct
+      other `Element`s embed.
+- [ ] Teach `fynix_mock_macros/src/element.rs` an `#[elem(flatten)]`
+      directive: for a flattened field, walk its own fields the same
+      way as a direct one instead of minting a single variant for the
+      whole struct.
+- [ ] Convert `ButtonElem`, `Frame`, `ScrollArea`, `Panel`, and
+      `field.rs`/`dropdown.rs`'s elements over once flattening lands.
+
+## `.watch()`'s first build waits a flush it doesn't need to
+
+`ElementMut::watch`/`Fynix::watch` only register a watcher; the first
+build happens later, whenever `flush()` first polls it. Every
+`fynix_mock` predicate (`component_changed_on`, `resource_changed`,
+`value_changed`, `shape_changed`) is written to always report changed
+on its first call, which is what stands in for an immediate build -
+but `flush()` only merges a watcher registered mid-build
+(`Records::spawned`) into the live list after that flush's loop
+finishes, so a `.watch()` reached from inside another one's build
+waits a whole flush before it gets its own first poll. Nested a few
+levels deep - a hierarchy row's body watching its own children, whose
+body watches its own - a full rebuild of an already-open subtree (a
+sibling reordered, a sibling added) visibly settles one level, one
+frame, at a time instead of appearing whole.
+
+Real fynix (`~/develop/projects/rust/fynix`) doesn't have this: its
+`ctx.watch()` (`crates/fynix/src/ctx.rs`) builds the subtree inline,
+synchronously, right there, and only arms the watcher for later
+changes afterward. Matching that without touching any of
+`fynix_mock`'s predicates - all of which lean on "always true on
+first call" and are used elsewhere too - means building synchronously
+in `watch()` itself, then polling the predicate once immediately to
+consume that free first-fire, so `flush()`'s own first real look at
+the watcher only fires on a change after the build that just
+happened, not the one it already did.
+
+- [ ] `ElementMut::watch` (`crates/fynix_mock/src/ui.rs`): build via
+      a fresh `Ui::new(self.ui.world, self.node, ...)` immediately,
+      then call `changed(self.ui.world, self.node)` once to prime it,
+      before pushing the `Watcher` into `records.spawned`:
+
+      ```rust
+      pub fn watch(
+          &mut self,
+          changed: impl ChangedFn<H>,
+          build: impl BuildFn<H>,
+      ) -> &mut Self {
+          let mut child = Ui::new(
+              self.ui.world,
+              self.node,
+              self.ui.records,
+              self.ui.theme,
+          );
+          build(&mut child);
+
+          let mut changed = changed;
+          // Consumes the "first call" `changed` always reports, so
+          // the flush loop's own first look at this watcher only
+          // fires on a real change after the build above, not the
+          // one that just happened.
+          changed(self.ui.world, self.node);
+
+          self.ui.records.spawned.push(Watcher {
+              root: self.node,
+              changed: Box::new(changed),
+              build: Box::new(build),
+          });
+          self
+      }
+      ```
+- [ ] `Fynix::watch` (`crates/fynix_mock/src/lib.rs`, the bootstrap/
+      root entry point) the same way, for consistency - it only
+      removes a one-frame blank window at startup, lower stakes than
+      the nested case but the same shape of fix. Needs `world: &mut
+      H::World` threaded in, which it doesn't take today; check
+      `reactive::watch_root`'s call site for the signature change:
+
+      ```rust
+      pub fn watch(
+          &mut self,
+          root: H::Node,
+          changed: impl ChangedFn<H>,
+          build: impl BuildFn<H>,
+          world: &mut H::World,
+      ) {
+          let mut ui = Ui::new(world, root, &mut self.records, &self.theme);
+          build(&mut ui);
+
+          let mut changed = changed;
+          changed(world, root);
+
+          self.watchers.push(Watcher {
+              root,
+              changed: Box::new(changed),
+              build: Box::new(build),
+          });
+      }
+      ```
+- [ ] Leave `flush()`'s loop, `Records::spawned`, the `Watcher`
+      struct, and every predicate in `reactive.rs` alone - all of it
+      stays exactly what it already does for a watcher after its
+      first poll.
+- [ ] Verify by expanding several nested hierarchy rows and asset
+      folders, then reordering or adding a sibling near the root: the
+      whole open subtree should reappear in one frame, not visibly
+      settle level by level.
+
+## Assigning and treating assets in the inspector
+
+`Handle<T>` fields (`MeshMaterial3d<StandardMaterial>`, `Mesh3d`, and
+anything else asset-bearing) fall through the reflect-tree inspector
+today as an opaque struct - there's no UI to assign one at all.
+`project.rs`'s `.mox` save/load already round-trips a `Handle<T>` as a
+path string, through bevy's own `world_serialization` (`WorldDeserializer`
++ `LoadFromPath`) - that's inherited plumbing, not something moxie
+built, and `Mesh3d`/`MeshMaterial3d<StandardMaterial>` are already
+allowlisted in `subject_components()` to go through it.
+`std_material_asset.rs`'s `.mat` loader is the existing precedent for a
+project-authored asset: a `StandardMaterial` reflected to RON, loaded
+through the normal `AssetServer`/`Handle` path like anything else -
+it just has no caller today besides a one-off codegen example.
+
+Modeled on Unity/Unreal rather than Blender/After Effects: one asset
+root per project (a folder next to, or named by, the `.mox`), external
+files imported into it on assignment rather than referenced in place
+from anywhere on disk. This sidesteps the path-root fragility already
+flagged above (`AssetPlugin::file_path` hardcoded to `"../assets"`,
+broken outside a dev build) without needing a GUID/redirector system -
+still plain path references, so a rename done outside the editor can
+still break one, same limitation Blender/AE's relative-path model has.
+
+Small project-authored assets (a material) get a second option:
+`mox://` as a scheme on the same `Handle<T>` path, backed by
+`bevy_asset::io::memory::{Dir, MemoryAssetReader}` (already built into
+bevy, not hand-rolled) so they travel embedded inside the `.mox` RON
+itself rather than as a separate file - closer to Lottie's per-asset
+embed-or-reference flag, or Rive's embed-by-default. Not Bevy's own
+`embedded://` - that id already names the compile-time
+`embedded_asset!` source; ours needs a different scheme.
+
+- [ ] Register the `mox://` [`AssetSource`](bevy_asset::io::source::AssetSourceBuilder)
+      before `DefaultPlugins` (asset sources build when `AssetPlugin`
+      does, not after) - one `Dir` for the process's lifetime, reused
+      across project loads, not rebuilt per load.
+- [ ] Stage a `.mox`'s embedded section into that `Dir` before
+      `WorldDeserializer` resolves any `mox://` handle against it -
+      resolution just reads whatever's there.
+- [ ] A project asset folder as the one root for imported/external
+      files; import (copy in) on assignment rather than reference in
+      place.
+- [ ] Wire `std_material_asset.rs`'s loader to an actual "save this
+      material as a new asset" action - today only
+      `examples/gen_default_material.rs` ever writes a `.mat`.
+- [ ] A `Handle<T>` branch in the reflect-tree inspector
+      (`inspector/tree.rs`'s reflect-kind dispatch): current asset name
+      plus a browse button, reusing the `rfd::` file dialog already in
+      `project.rs` (the only place it's used today).
+- [ ] Whatever loads a `mox://`/asset handle in this flow must store it
+      somewhere that outlives the load call (a component, typically) -
+      `AssetServer::load` hands back a strong handle, and the asset
+      lives only as long as one of those does; a local that goes out of
+      scope holds nothing.
+
+## A file browser panel, with bookmarked folders
+
+A dock panel for finding assets, not just picking one blind through a
+file dialog: the user adds folders from anywhere on disk as bookmarks -
+a shortcut into that folder, not a copy of it - and the panel lists a
+bookmark's contents (folders within folders too) for browsing.
+Recognized asset types can then be dragged straight from the panel
+onto an asset field in the inspector, instead of only the
+browse-button/file-dialog path above.
+
+The bookmark list belongs to the project, not the editor install: it's
+recorded in the `.mox` itself (a new field on `project.rs`'s
+`Document`, alongside `world`/`scene`), not `bevy_settings`. That
+settles the open question the panel raised for the assignment flow
+above in favor of reference-via-bookmark rather than import-and-copy -
+the bookmark travels with the project, so a dropped asset can stay
+where it already lives on disk and just be addressed through the
+bookmark that named it. The remaining caveat is the same one path
+references always have: reopening the `.mox` on a machine where that
+folder isn't at the same place still breaks the reference, same as any
+other external path.
+
+- [ ] A bookmarks field on `project.rs`'s `Document`, saved/loaded with
+      the rest of the `.mox`.
+- [ ] The panel: list a bookmark's contents, folders nested within
+      folders, as a dock window like the others.
+- [ ] A recognized-asset-type registry (extension - or asset kind -
+      to what `Handle<T>` it produces) so the panel knows what's
+      draggable and the inspector's asset field can validate what
+      lands on it.
+- [ ] Drag-and-drop from the panel onto an inspector asset field, as a
+      second way in alongside the browse-button dialog, addressing the
+      dropped file through its bookmark rather than copying it in.
