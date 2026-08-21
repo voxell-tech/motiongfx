@@ -38,7 +38,7 @@ impl Default for Palette {
     }
 }
 
-/// Semantic colors read by the editor UI.
+/// The editor UI's look: semantic colors, timing, and sizing.
 #[derive(Clone, Debug)]
 pub struct EditorTheme {
     pub palette: Palette,
@@ -65,6 +65,10 @@ pub struct EditorTheme {
     pub clip_hover: Color,
     /// Same, further while held.
     pub clip_press: Color,
+    /// A fold's chevron, sized to sit beside a row.
+    pub fold_toggle: f32,
+    /// How far a fold's rail sets its body in from the header.
+    pub fold_indent: f32,
 }
 
 impl Default for EditorTheme {
@@ -82,6 +86,8 @@ impl Default for EditorTheme {
             interact_ms: 120,
             clip_hover: Color::srgb(0.35, 0.70, 1.0),
             clip_press: Color::srgb(0.55, 0.82, 1.0),
+            fold_toggle: 14.0,
+            fold_indent: 9.0,
             palette,
         }
     }

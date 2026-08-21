@@ -9,18 +9,26 @@ use std::any::TypeId;
 
 use bevy::ecs::change_detection::Tick;
 use bevy::input_focus::tab_navigation::TabGroup;
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
 use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
+use fynix_mock::records::BuildFn;
 use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
 
 use super::{Field, ReflectInspect, enums};
 use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
-use crate::fold::{CHEVRON_OPEN, Foldable, Toggle};
+use crate::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use crate::icons;
 use crate::reactive::{BevyHost, BevyUi};
+
+/// Which of an inspected entity's sections were folded shut, keyed by
+/// component and path. A section absent here is open. Goes when the
+/// entity does.
+#[derive(Component, Default)]
+struct ClosedSections(HashSet<(TypeId, String)>);
 
 /// One row the walk found.
 #[derive(Clone, PartialEq)]
@@ -174,18 +182,17 @@ fn leaf_name(path: &str) -> &str {
     path.rsplit('.').next().unwrap_or(path)
 }
 
-/// The entries under `field`, in walk order.
+/// The entries at `field`, in walk order.
 ///
-/// The root is never wrapped in a group: a leaf type is the one row
-/// shown, and a struct's fields are listed directly, with no header
-/// for a group that was never named.
+/// `field` itself is never wrapped in a group: a leaf type is the one
+/// row shown, and a struct's fields are listed directly, with no
+/// header for a group that was never named.
 fn entries(world: &World, field: &Field) -> Vec<Entry> {
     let mut out = Vec::new();
-    field.read(world, |value| {
+    field.read_at(world, |value| {
         // Taken inside the read, where `Field` has already released
         // its own guard.
         let registry = world.resource::<AppTypeRegistry>().read();
-        let value = value.as_partial_reflect();
 
         if let Some(type_id) =
             value.get_represented_type_info().map(|i| i.type_id())
@@ -281,8 +288,8 @@ fn build_entries(ui: &mut BevyUi, root: &Field, entries: Vec<Entry>) {
             Entry::Leaf { path, type_id } => {
                 build_leaf(ui, root, path, type_id)
             }
-            Entry::Group { name, children, .. } => {
-                build_group(ui, root, name, children)
+            Entry::Group { path, name, .. } => {
+                build_group(ui, root, path, name)
             }
             Entry::Variant {
                 path,
@@ -365,7 +372,7 @@ fn build_variant(
         return;
     }
 
-    // The root has no name to head a group with - see `entries`.
+    // The root has no name to head a group with, see `entries`.
     if path.is_empty() {
         ui.compose(enums::VariantPicker {
             source: &field,
@@ -376,16 +383,29 @@ fn build_variant(
         return;
     }
 
-    let inner = root.clone();
     ui.compose(Section {
         name,
+        section: (root.entity(), root.component(), path),
+        // Re-walked from `field` on every open rather than carried
+        // in the closure, so a section reopened many times never
+        // clones stale data forward. `entries` never wraps `field`
+        // itself, so its one entry is always this same variant.
         body: move |ui: &mut BevyUi| {
+            let Some(Entry::Variant {
+                variants,
+                pick,
+                children,
+                ..
+            }) = entries(ui.world, &field).into_iter().next()
+            else {
+                return;
+            };
             ui.compose(enums::VariantPicker {
                 source: &field,
                 variants,
                 pick,
             });
-            build_entries(ui, &inner, children);
+            build_entries(ui, &field, children);
         },
     });
 }
@@ -393,15 +413,20 @@ fn build_variant(
 fn build_group(
     ui: &mut BevyUi,
     root: &Field,
+    path: String,
     name: String,
-    children: Vec<Entry>,
 ) {
-    let inner = root.clone();
+    let group_field = root.child(&path);
 
     ui.compose(Section {
         name,
+        section: (root.entity(), root.component(), path),
+        // Re-walked from `group_field` on every open rather than
+        // carried in the closure, so a section reopened many times
+        // never clones stale data forward.
         body: move |ui: &mut BevyUi| {
-            build_entries(ui, &inner, children);
+            let walked = entries(ui.world, &group_field);
+            build_entries(ui, &group_field, walked);
         },
     });
 }
@@ -411,16 +436,30 @@ fn build_group(
 pub struct Section<F> {
     pub name: String,
     pub body: F,
+    /// This section's place in [`ClosedSections`], as entity,
+    /// component, path.
+    pub section: (Entity, TypeId, String),
 }
 
-impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
+impl<F: BuildFn<BevyHost>> Composer<BevyHost> for Section<F> {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
-        let Self { name, body } = self;
+        let Self {
+            name,
+            body,
+            section,
+        } = self;
+        let (entity, component, path) = section;
+        let open = !ui
+            .world
+            .get::<ClosedSections>(entity)
+            .is_some_and(|sections| {
+                sections.0.contains(&(component, path.clone()))
+            });
 
         ui.compose(Foldable {
             header: elem!(
@@ -434,7 +473,7 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
                     Icon,
                     image = icons::CHEVRON,
                     color = ui.theme.text_muted,
-                    rotation = CHEVRON_OPEN
+                    rotation = CHEVRON_SHUT
                 ),
                 label = val!(
                     Label,
@@ -444,7 +483,7 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
                 )
             ),
             // Nothing else to mean: the whole header folds it.
-            toggle: Toggle::Header,
+            folds_on: FoldsOn::Header,
             enabled: true,
             on_header: |_: ElementMut<
                 '_,
@@ -453,6 +492,27 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for Section<F> {
                 ButtonElem,
             >| {},
             body,
+            open,
+            on_toggle: move |world: &mut World, open: bool| {
+                let Ok(mut entity) = world.get_entity_mut(entity)
+                else {
+                    return;
+                };
+                match entity.get_mut::<ClosedSections>() {
+                    Some(mut sections) if !open => {
+                        sections.0.insert((component, path.clone()));
+                    }
+                    Some(mut sections) => {
+                        sections.0.remove(&(component, path.clone()));
+                    }
+                    None if !open => {
+                        let mut sections = HashSet::default();
+                        sections.insert((component, path.clone()));
+                        entity.insert(ClosedSections(sections));
+                    }
+                    None => {}
+                }
+            },
         })
         .handle()
     }

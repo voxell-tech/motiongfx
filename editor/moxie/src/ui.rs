@@ -1,4 +1,5 @@
 mod action;
+mod assets;
 mod hierarchy;
 mod inspector;
 mod settings;
@@ -14,8 +15,8 @@ use bevy::ui::widget::ImageNode;
 use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 
 use crate::{
-    EditorSettings, EditorState, PreviewImage, SelectedAction,
-    SelectedEntity, playback, scene, view,
+    EditorSettings, EditorState, PreviewImage, ProjectBookmarks,
+    SelectedAction, SelectedEntity, playback, scene, view,
 };
 use bevy_fynix::EntityExt;
 use fynix_mock::elem;
@@ -37,6 +38,8 @@ impl Plugin for UiPlugin {
             .init_resource::<EditorState>()
             .init_resource::<SelectedAction>()
             .init_resource::<SelectedEntity>()
+            .init_resource::<ProjectBookmarks>()
+            .init_resource::<assets::AssetFoldState>()
             .init_resource::<hierarchy::Dragging>()
             .init_resource::<scene::EditorScene>()
             .add_systems(Startup, setup_editor_ui)
@@ -134,7 +137,14 @@ fn setup_editor_ui(
         tree.set_fraction(hsplit, 0.8);
     }
 
-    tree.split(viewport, Edge::Left, "hierarchy".into());
+    if let Some((sidebar, hierarchy_tab)) =
+        tree.split(viewport, Edge::Left, "hierarchy".into())
+    {
+        // `add_tab` activates what it just added; Hierarchy stays the
+        // one shown on a fresh layout.
+        tree.add_tab(sidebar, "assets");
+        tree.set_active(sidebar, hierarchy_tab);
+    }
     if let Some(hsplit) = tree.parent_of(viewport) {
         tree.set_fraction(hsplit, 0.2);
     }
@@ -278,6 +288,15 @@ fn register_windows(registry: &mut WindowRegistry) {
         icon: Some(crate::icons::SETTINGS.into()),
         build: |ui: &mut BevyUi| {
             ui.compose(settings::SettingsPanel);
+        },
+    });
+
+    registry.register(DockWindowDescriptor {
+        id: "assets".into(),
+        name: "Assets".into(),
+        icon: Some(crate::icons::ASSETS.into()),
+        build: |ui: &mut BevyUi| {
+            ui.compose(assets::AssetsPanel);
         },
     });
 }

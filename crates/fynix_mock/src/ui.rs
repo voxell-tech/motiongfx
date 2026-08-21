@@ -25,10 +25,9 @@ use crate::transition::Transition;
 pub struct Ui<'a, H: Host> {
     /// The backend's world.
     pub world: &'a mut H::World,
-    /// Borrowed from [`Fynix`](crate::Fynix)'s own field.
-    pub theme: &'a H::Theme,
     parent: H::Node,
     records: &'a mut Records<H>,
+    pub theme: &'a H::Theme,
 }
 
 impl<'a, H: Host> Ui<'a, H> {
@@ -42,9 +41,9 @@ impl<'a, H: Host> Ui<'a, H> {
     ) -> Self {
         Self {
             world,
-            theme,
             parent,
             records,
+            theme,
         }
     }
 

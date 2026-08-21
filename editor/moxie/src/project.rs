@@ -26,15 +26,19 @@ use serde::de::{DeserializeSeed, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserializer, Serialize, Serializer};
 
-use crate::{EditorScene, SceneRoot, SelectedAction, SelectedEntity};
+use crate::{
+    EditorScene, ProjectBookmarks, SceneRoot, SelectedAction,
+    SelectedEntity,
+};
 
 const EXTENSION: &str = "mox";
 
-// The name a project file is written and read under, and its two
-// fields. Shared so the reader and the writer cannot drift apart.
+// The name a project file is written and read under, and its fields.
+// Shared so the reader and the writer cannot drift apart.
 const PROJECT: &str = "Project";
 const WORLD: &str = "world";
 const SCENE: &str = "scene";
+const BOOKMARKS: &str = "bookmarks";
 
 /// Prompts for a path and writes the whole project to it.
 pub(crate) fn save_scene(world: &mut World) {
@@ -86,12 +90,14 @@ pub(crate) fn load_scene(world: &mut World) {
     world.insert_resource(EditorScene::new(MotionGfxScene(
         project.scene,
     )));
+    world.insert_resource(ProjectBookmarks(project.bookmarks));
 }
 
 /// Everything a project file holds, in hand.
 struct Project {
     world: DynamicWorld,
     scene: Scene<Backend>,
+    bookmarks: Vec<PathBuf>,
 }
 
 fn serialize(world: &mut World) -> Option<String> {
@@ -111,9 +117,11 @@ fn serialize(world: &mut World) -> Option<String> {
         .build();
 
     let scene = world.resource::<EditorScene>();
+    let bookmarks = world.resource::<ProjectBookmarks>();
     let document = Document {
         world: &dynamic,
         scene: &scene.scene().0,
+        bookmarks: &bookmarks.0,
         registry: &registry,
     };
 
@@ -179,6 +187,7 @@ fn clear(world: &mut World) {
 
     world.insert_resource(SelectedEntity(None));
     world.insert_resource(SelectedAction(None));
+    world.insert_resource(ProjectBookmarks::default());
 }
 
 /// What a subject is saved as. An allowlist, not everything it
@@ -243,6 +252,7 @@ fn pretty() -> ron::ser::PrettyConfig {
 struct Document<'a> {
     world: &'a DynamicWorld,
     scene: &'a Scene<Backend>,
+    bookmarks: &'a [PathBuf],
     registry: &'a TypeRegistry,
 }
 
@@ -251,12 +261,13 @@ impl Serialize for Document<'_> {
         &self,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let mut project = serializer.serialize_struct(PROJECT, 2)?;
+        let mut project = serializer.serialize_struct(PROJECT, 3)?;
         project.serialize_field(
             WORLD,
             &DynamicWorldSerializer::new(self.world, self.registry),
         )?;
         project.serialize_field(SCENE, self.scene)?;
+        project.serialize_field(BOOKMARKS, self.bookmarks)?;
         project.end()
     }
 }
@@ -278,7 +289,7 @@ impl<'de> DeserializeSeed<'de> for ProjectSeed<'_> {
     ) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_struct(
             PROJECT,
-            &[WORLD, SCENE],
+            &[WORLD, SCENE, BOOKMARKS],
             self,
         )
     }
@@ -300,6 +311,7 @@ impl<'de> Visitor<'de> for ProjectSeed<'_> {
     ) -> Result<Self::Value, A::Error> {
         let mut world = None;
         let mut scene = None;
+        let mut bookmarks = None;
 
         while let Some(key) = map.next_key::<String>()? {
             match key.as_str() {
@@ -312,6 +324,7 @@ impl<'de> Visitor<'de> for ProjectSeed<'_> {
                     )?);
                 }
                 SCENE => scene = Some(map.next_value()?),
+                BOOKMARKS => bookmarks = Some(map.next_value()?),
                 _ => {
                     map.next_value::<serde::de::IgnoredAny>()?;
                 }
@@ -325,6 +338,8 @@ impl<'de> Visitor<'de> for ProjectSeed<'_> {
             scene: scene.ok_or_else(|| {
                 serde::de::Error::missing_field(SCENE)
             })?,
+            // Absent in a project saved before bookmarks existed.
+            bookmarks: bookmarks.unwrap_or_default(),
         })
     }
 }

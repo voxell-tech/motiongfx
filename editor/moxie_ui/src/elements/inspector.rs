@@ -35,7 +35,7 @@ use crate::motion::MotionExt;
 use crate::reactive::{BevyHost, BevyUi, value_changed};
 use crate::theme::EditorTheme;
 
-/// One component of one entity.
+/// Inspector for a [`Component`].
 pub struct ComponentInspector {
     pub entity: Entity,
     pub component: TypeId,
@@ -72,11 +72,7 @@ impl Composer<BevyHost> for ComponentInspector {
     }
 }
 
-/// One resource.
-///
-/// Bevy parks each resource on an entity of its own, so once that
-/// entity is in hand this is a [`ComponentInspector`] and nothing
-/// below here knows the difference.
+/// Inspector for a [`Resource`].
 pub struct ResourceInspector {
     pub resource: TypeId,
 }
@@ -112,9 +108,7 @@ impl Composer<BevyHost> for ResourceInspector {
     }
 }
 
-/// Every component of one entity the inspector can read: those with
-/// fields under a collapsible header of their own, and those holding
-/// a single value on one row.
+/// Inspector for all of the [`Component`]s on an [`Entity`].
 pub struct EntityInspector {
     pub entity: Entity,
 }
@@ -145,6 +139,10 @@ impl Composer<BevyHost> for EntityInspector {
                             component,
                         });
                     },
+                    // The whole component, at the empty path. See
+                    // `entries` in `tree.rs`, which never wraps the
+                    // root in a group of its own either.
+                    section: (entity, component, String::new()),
                 });
             }
 
@@ -153,10 +151,7 @@ impl Composer<BevyHost> for EntityInspector {
     }
 }
 
-/// The menu that adds a component to `entity`.
-///
-/// Rebuilt alongside [`EntityInspector`], on the same signal: what it
-/// offers is exactly what that signal tracks.
+/// The menu that adds a component to [`Entity`].
 struct AddComponent {
     entity: Entity,
 }

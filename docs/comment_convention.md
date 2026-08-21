@@ -7,6 +7,28 @@ When writing one, be as concise and precise if possible, no paragraphs.
 Public facing APIs needs doc comments, but only to describe exactly what it is,
 do not talk about any abstract stuff.
 
+When it's a toss-up whether a comment earns its place, remove it.
+
+A simple type's doc comment names what it is, linking the real type
+it wraps or stands in for, and stops there. It does not explain why,
+even when the reason is true and non-obvious - that belongs inline,
+at the code that actually depends on it, not in the type's own doc.
+
+Not:
+```rust
+/// One resource.
+///
+/// Bevy parks each resource on an entity of its own, so once that
+/// entity is in hand this is a [`ComponentInspector`] and nothing
+/// below here knows the difference.
+pub struct ResourceInspector { ... }
+```
+Just:
+```rust
+/// Inspector for a [`Resource`].
+pub struct ResourceInspector { ... }
+```
+
 ## If the LSP already shows it, skip it
 
 Hover, go-to-definition, and autocomplete already surface a signature,

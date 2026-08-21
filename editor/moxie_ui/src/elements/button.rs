@@ -51,6 +51,9 @@ pub struct ButtonElem {
     pub fill: Color,
     pub width: Val,
     pub height: Val,
+    /// Share of a flex row's remaining space this button claims, for
+    /// one that should fill a row rather than size to its own content.
+    pub flex_grow: f32,
     #[default(px(18))]
     pub min_width: Val,
     #[default(px(18))]
@@ -74,6 +77,7 @@ impl ButtonElem {
             min_height: self.min_height,
             width: self.width,
             height: self.height,
+            flex_grow: self.flex_grow,
             justify_content: self.justify,
             align_items: AlignItems::Center,
             column_gap: self.column_gap,
@@ -155,6 +159,8 @@ impl Style for GhostButton {
     fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.hover = Hover::Fill(theme.hover_overlay);
+        button.padding = UiRect::axes(px(8), px(4));
+        button.radius = px(4);
     }
 }
 
@@ -228,6 +234,7 @@ impl ElementVisual<BevyHost> for ButtonElem {
             | ButtonElemField::MinHeight
             | ButtonElemField::Width
             | ButtonElemField::Height
+            | ButtonElemField::FlexGrow
             | ButtonElemField::Justify
             | ButtonElemField::ColumnGap
             | ButtonElemField::Padding

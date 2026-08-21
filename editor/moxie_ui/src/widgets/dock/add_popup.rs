@@ -201,8 +201,6 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
             width = percent(100),
             height = auto(),
             justify = JustifyContent::FlexStart,
-            padding = UiRect::axes(px(8), px(4)),
-            radius = px(4),
             icon = val!(
                 Icon,
                 image = image,

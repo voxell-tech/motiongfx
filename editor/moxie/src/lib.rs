@@ -23,6 +23,7 @@ mod ui;
 mod view;
 
 use core::time::Duration;
+use std::path::PathBuf;
 
 use bevy::ecs::reflect::AppTypeRegistry;
 use bevy::prelude::*;
@@ -121,6 +122,12 @@ pub(crate) struct SelectedAction(pub(crate) Option<Vec<usize>>);
 /// The entity currently selected in the hierarchy panel, if any.
 #[derive(Resource, Default, Clone, Copy, PartialEq)]
 pub(crate) struct SelectedEntity(pub(crate) Option<Entity>);
+
+/// Folders bookmarked for browsing in the asset panel. Saved and
+/// loaded with the project: a bookmark only means something alongside
+/// the assets it points at.
+#[derive(Resource, Default, Clone)]
+pub(crate) struct ProjectBookmarks(pub(crate) Vec<PathBuf>);
 
 #[derive(Debug, Resource, SettingsGroup, Reflect)]
 #[reflect(Resource, SettingsGroup, Default)]
