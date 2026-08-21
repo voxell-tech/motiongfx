@@ -28,6 +28,7 @@ use fynix_mock::elem;
 
 use crate::asset::AssetKindAppExt;
 use crate::elements::{Frame, Label};
+use crate::fold;
 use crate::reactive::BevyUi;
 pub use field::Field;
 pub(crate) use tree::single_value;
@@ -260,13 +261,26 @@ pub fn inspect_value(ui: &mut BevyUi, source: &dyn Source) {
 /// beside it. The split is proportional (40/60), not a fixed pixel
 /// width, so it scales with however wide the panel is docked - the
 /// same convention Unity, Godot, and Unreal's own inspectors use.
+///
+/// `depth` is how many [`Foldable`](crate::fold::Foldable) bodies
+/// this row sits under. Each one narrows the row by its own indent,
+/// which would otherwise pull the 40% mark inward with it; the label
+/// sheds that same width back so `value` starts at the same place
+/// no matter how deep its row is nested.
 pub(crate) fn field_row(
     ui: &mut BevyUi,
     label: String,
     color: Color,
     bold: bool,
+    depth: u32,
     value: impl FnOnce(&mut BevyUi),
 ) {
+    const VALUE_SHARE: f32 = 0.6;
+    const LABEL_SIZE: f32 = 12.0;
+    const EDGE_PADDING: f32 = 8.0;
+    let indent = ui.theme.fold_indent + fold::RAIL_WIDTH;
+    let shed = VALUE_SHARE * depth as f32 * indent;
+
     ui.elem(elem!(
         Frame,
         width = percent(100),
@@ -276,10 +290,18 @@ pub(crate) fn field_row(
         padding = UiRect::vertical(px(3))
     ))
     .with(move |ui| {
-        ui.elem(elem!(Frame, width = percent(40))).with(move |ui| {
+        ui.elem(elem!(
+            Frame,
+            width = percent(40),
+            margin = UiRect::right(px(-shed)),
+            overflow = Overflow::clip_x(),
+            padding = UiRect::right(px(EDGE_PADDING))
+        ))
+        .with(move |ui| {
             ui.elem(elem!(
                 Label,
                 text = label,
+                size = LABEL_SIZE,
                 color = Some(color),
                 bold = bold,
                 wrap = false

@@ -58,7 +58,6 @@ pub(super) fn number_field<T, V>(
     source: &dyn Source,
     ui: &mut BevyUi,
     format: NumberFormat,
-    width: Val,
     to_value: fn(V) -> T,
     to_input: fn(T) -> NumberInputValue,
 ) where
@@ -74,7 +73,6 @@ pub(super) fn number_field<T, V>(
     ui.elem(elem!(
         NumberField,
         format = format,
-        width = width,
         value = shown.unwrap_or(NumberInputValue::F32(0.0))
     ))
     .observe(
@@ -112,7 +110,6 @@ macro_rules! number_widget {
                     source,
                     ui,
                     NumberFormat::$format,
-                    px(110),
                     $to_field,
                     |value| NumberInputValue::$value($to_input(value)),
                 );

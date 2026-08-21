@@ -31,6 +31,9 @@ use crate::reactive::{BevyHost, BevyUi, component_changed_on};
 pub const CHEVRON_SHUT: f32 = 90.0;
 pub const CHEVRON_OPEN: f32 = 180.0;
 
+/// The rail's own width, one level of a body's indent.
+pub const RAIL_WIDTH: f32 = 1.0;
+
 /// On a [`Foldable`]'s own node while its body is hidden. Private to
 /// this row's own reactivity. A caller after something that survives
 /// this node being rebuilt wants [`Foldable::open`]/`on_toggle`
@@ -211,7 +214,7 @@ where
                 // sized by hand.
                 ui.elem(elem!(
                     Frame,
-                    width = px(1),
+                    width = px(RAIL_WIDTH),
                     background = ui.theme.palette.base[2]
                 ));
                 ui.elem(elem!(

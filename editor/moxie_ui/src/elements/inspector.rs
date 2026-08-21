@@ -41,6 +41,10 @@ use crate::theme::EditorTheme;
 pub struct ComponentInspector {
     pub entity: Entity,
     pub component: TypeId,
+    /// How many [`Foldable`](crate::fold::Foldable) bodies this sits
+    /// under, for [`field_row`] to keep its columns aligned. `0` for
+    /// a call site with none of its own.
+    pub depth: u32,
 }
 
 impl ComponentInspector {
@@ -50,6 +54,7 @@ impl ComponentInspector {
         Self {
             entity,
             component: TypeId::of::<T>(),
+            depth: 0,
         }
     }
 }
@@ -63,11 +68,13 @@ impl Composer<BevyHost> for ComponentInspector {
     ) -> ElementHandle<BevyHost, Frame> {
         let field = Field::new(self.entity, self.component);
         let built = field.clone();
+        let depth = self.depth;
 
         column(ui, px(4), presence_changed(field), move |ui| {
             if built.exists(ui.world) {
                 ui.compose(InspectorFields {
                     root: built.clone(),
+                    depth,
                 });
             }
         })
@@ -105,6 +112,7 @@ impl Composer<BevyHost> for ResourceInspector {
             };
             ui.compose(InspectorFields {
                 root: Field::new(entity, resource),
+                depth: 0,
             });
         })
     }
@@ -144,6 +152,7 @@ impl Composer<BevyHost> for EntityInspector {
                         ui.compose(ComponentInspector {
                             entity,
                             component,
+                            depth: 1,
                         });
                     },
                     // The whole component, at the empty path. See
@@ -325,7 +334,7 @@ fn single(ui: &mut BevyUi, name: &str, field: Field) {
     let name = name.to_string();
     let primary = ui.theme.text_primary;
 
-    field_row(ui, name, primary, true, move |ui| {
+    field_row(ui, name, primary, true, 0, move |ui| {
         inspect_value(ui, &field);
     });
 }

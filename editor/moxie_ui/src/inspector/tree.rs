@@ -267,6 +267,10 @@ fn shape_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
 /// whole component at the empty path.
 pub struct InspectorFields {
     pub root: Field,
+    /// How many [`Foldable`](crate::fold::Foldable) bodies this sits
+    /// under, for [`field_row`] to keep its columns aligned. `0` for
+    /// a call site with none of its own.
+    pub depth: u32,
 }
 
 impl Composer<BevyHost> for InspectorFields {
@@ -277,6 +281,7 @@ impl Composer<BevyHost> for InspectorFields {
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Frame> {
         let walked = self.root.clone();
+        let depth = self.depth;
 
         ui.elem(elem!(
             Frame,
@@ -286,20 +291,30 @@ impl Composer<BevyHost> for InspectorFields {
         ))
         .insert(TabGroup::new(0))
         .watch(shape_changed(self.root), move |ui| {
-            build_entries(ui, &walked, entries(ui.world, &walked));
+            build_entries(
+                ui,
+                &walked,
+                entries(ui.world, &walked),
+                depth,
+            );
         })
         .handle()
     }
 }
 
-fn build_entries(ui: &mut BevyUi, root: &Field, entries: Vec<Entry>) {
+fn build_entries(
+    ui: &mut BevyUi,
+    root: &Field,
+    entries: Vec<Entry>,
+    depth: u32,
+) {
     for entry in entries {
         match entry {
             Entry::Leaf { path, type_id } => {
-                build_leaf(ui, root, path, type_id)
+                build_leaf(ui, root, path, type_id, depth)
             }
             Entry::Group { path, name, .. } => {
-                build_group(ui, root, path, name)
+                build_group(ui, root, path, name, depth)
             }
             Entry::Variant {
                 path,
@@ -308,7 +323,7 @@ fn build_entries(ui: &mut BevyUi, root: &Field, entries: Vec<Entry>) {
                 pick,
                 children,
             } => build_variant(
-                ui, root, path, name, variants, pick, children,
+                ui, root, path, name, variants, pick, children, depth,
             ),
         }
     }
@@ -319,6 +334,7 @@ fn build_leaf(
     root: &Field,
     path: String,
     type_id: TypeId,
+    depth: u32,
 ) {
     let drawer = {
         let registry = ui.world.resource::<AppTypeRegistry>().read();
@@ -331,7 +347,7 @@ fn build_leaf(
     let muted = ui.theme.text_muted;
     let label = leaf_name(&path).to_string();
     let field = root.child(&path);
-    field_row(ui, label, muted, false, move |ui| {
+    field_row(ui, label, muted, false, depth, move |ui| {
         drawer.build(&field, ui);
     });
 }
@@ -346,13 +362,14 @@ fn build_variant(
     variants: Vec<String>,
     pick: bool,
     children: Vec<Entry>,
+    depth: u32,
 ) {
     let field = root.child(&path);
     let muted = ui.theme.text_muted;
 
     if children.is_empty() {
         let label = leaf_name(&path).to_string();
-        field_row(ui, label, muted, false, move |ui| {
+        field_row(ui, label, muted, false, depth, move |ui| {
             ui.compose(enums::VariantPicker {
                 source: &field,
                 variants,
@@ -369,7 +386,7 @@ fn build_variant(
             variants,
             pick,
         });
-        build_entries(ui, root, children);
+        build_entries(ui, root, children, depth);
         return;
     }
 
@@ -395,7 +412,7 @@ fn build_variant(
                 variants,
                 pick,
             });
-            build_entries(ui, &field, children);
+            build_entries(ui, &field, children, depth + 1);
         },
     });
 }
@@ -405,6 +422,7 @@ fn build_group(
     root: &Field,
     path: String,
     name: String,
+    depth: u32,
 ) {
     let group_field = root.child(&path);
 
@@ -416,7 +434,7 @@ fn build_group(
         // never clones stale data forward.
         body: move |ui: &mut BevyUi| {
             let walked = entries(ui.world, &group_field);
-            build_entries(ui, &group_field, walked);
+            build_entries(ui, &group_field, walked, depth + 1);
         },
     });
 }
