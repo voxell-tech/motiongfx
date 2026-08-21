@@ -18,7 +18,7 @@ use fynix_mock::records::BuildFn;
 use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
 
-use super::{Field, ReflectInspect, enums};
+use super::{Field, ReflectInspect, enums, field_row};
 use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
 use crate::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use crate::icons;
@@ -219,13 +219,23 @@ fn entries(world: &World, field: &Field) -> Vec<Entry> {
     out
 }
 
-/// Whether `field` holds one editable value, not a set of fields, so
-/// it belongs on a row of its own with no group to fold.
-pub(crate) fn is_single_value(world: &World, field: &Field) -> bool {
+/// The path to `field`'s one editable value, if it holds only that
+/// and not a set of fields to fold - the value's own leaf, which the
+/// walk may have found under `field` rather than at it, as
+/// `MeshMaterial3d<StandardMaterial>` does with the `Handle` it
+/// wraps.
+pub(crate) fn single_value(
+    world: &World,
+    field: &Field,
+) -> Option<String> {
     match entries(world, field).as_slice() {
-        [Entry::Leaf { .. }] => true,
-        [Entry::Variant { children, .. }] => children.is_empty(),
-        _ => false,
+        [Entry::Leaf { path, .. }] => Some(path.clone()),
+        [Entry::Variant { path, children, .. }]
+            if children.is_empty() =>
+        {
+            Some(path.clone())
+        }
+        _ => None,
     }
 }
 
@@ -321,17 +331,7 @@ fn build_leaf(
     let muted = ui.theme.text_muted;
     let label = leaf_name(&path).to_string();
     let field = root.child(&path);
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Row,
-        justify = JustifyContent::SpaceBetween,
-        align = AlignItems::Center,
-        column_gap = px(8),
-        padding = UiRect::vertical(px(3))
-    ))
-    .with(move |ui| {
-        ui.elem(elem!(Label, text = label, color = Some(muted)));
+    field_row(ui, label, muted, false, move |ui| {
         drawer.build(&field, ui);
     });
 }
@@ -352,17 +352,7 @@ fn build_variant(
 
     if children.is_empty() {
         let label = leaf_name(&path).to_string();
-        ui.elem(elem!(
-            Frame,
-            width = percent(100),
-            direction = FlexDirection::Row,
-            justify = JustifyContent::SpaceBetween,
-            align = AlignItems::Center,
-            column_gap = px(8),
-            padding = UiRect::vertical(px(3))
-        ))
-        .with(move |ui| {
-            ui.elem(elem!(Label, text = label, color = Some(muted)));
+        field_row(ui, label, muted, false, move |ui| {
             ui.compose(enums::VariantPicker {
                 source: &field,
                 variants,

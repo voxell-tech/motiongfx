@@ -6,20 +6,23 @@
 //! only the first time a row opens, since unlike an entity's children
 //! a folder's are a real filesystem read.
 //!
-//! Dragging an asset onto an inspector field is a later slice - see
-//! the backlog.
+//! A recognized file can be dragged onto an inspector's `Handle<T>`
+//! field; see `moxie_ui::asset`.
 
 use std::collections::BTreeSet;
 use std::fs;
 use std::ops::Bound;
 use std::path::{Path, PathBuf};
 
+use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
+use bevy::window::SystemCursorIcon;
 use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
+use moxie_ui::asset::{AssetKinds, draggable};
 use moxie_ui::elements::{
     ButtonElem, Frame, Icon, Label, Panel, ScrollArea, TintButton,
 };
@@ -49,7 +52,7 @@ impl Composer<BevyHost> for AssetsPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Panel> {
-        ui.elem(elem!(Panel, direction = FlexDirection::Column))
+        ui.elem(elem!(Panel))
             .with(|ui| {
                 ui.compose(Listing);
                 ui.compose(AddButton);
@@ -82,7 +85,7 @@ impl Composer<BevyHost> for AddButton {
         .with(move |ui| {
             ui.elem(elem!(
                 !TintButton::default(),
-                icon = val!(Icon, image = crate::icons::PLUS,)
+                icon = val!(Icon, image = crate::icons::PLUS)
             ))
             .observe(
                 |_: On<Activate>, mut commands: Commands| {
@@ -394,25 +397,38 @@ fn prune_fold_state(
     }
 }
 
-/// Not yet draggable onto an inspector field, see the backlog. Just
-/// shown, dimmer than a folder to read as inert for now.
+/// One file. A recognized asset type (see `AssetKinds`) can be
+/// dragged onto an inspector's `Handle<T>` field, reading at full
+/// brightness with a grab cursor to say so; anything else just shows,
+/// dimmer to read as inert.
 fn file_row(ui: &mut BevyUi, path: &Path) {
     let name = display_name(path);
-    let muted = ui.theme.text_muted;
+    let label = name.clone();
+    let kind = ui.world.resource::<AssetKinds>().kind_of(path);
+    let color = if kind.is_some() {
+        ui.theme.text_primary
+    } else {
+        ui.theme.text_muted
+    };
 
-    ui.elem(elem!(
+    let mut row = ui.elem(elem!(
         Frame,
         width = percent(100),
         padding = UiRect::vertical(px(3))
-    ))
-    .with(move |ui| {
+    ));
+    row.with(move |ui| {
         ui.elem(elem!(
             Label,
-            text = name.clone(),
-            color = Some(muted),
+            text = name,
+            color = Some(color),
             wrap = false
         ));
     });
+
+    if let Some(kind) = kind {
+        row.insert(EntityCursor::System(SystemCursorIcon::Grab));
+        draggable(&mut row, path.to_path_buf(), kind, label);
+    }
 }
 
 fn display_name(path: &Path) -> String {

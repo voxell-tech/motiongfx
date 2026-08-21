@@ -20,10 +20,16 @@ use crate::widgets::dock::{
 };
 
 /// Column that fills its parent, which most of the dock's nodes are.
+///
+/// `min_width`/`min_height` at `0`, not `Node`'s own default `Auto`,
+/// which floors a node at its content's size regardless of the `100%`
+/// above.
 fn filled(direction: FlexDirection) -> Node {
     Node {
         width: percent(100),
         height: percent(100),
+        min_width: px(0),
+        min_height: px(0),
         flex_direction: direction,
         overflow: Overflow::clip(),
         ..default()
@@ -49,6 +55,8 @@ impl ElementVisual<BevyHost> for DockHost {
             Node {
                 width: percent(100),
                 height: percent(100),
+                min_width: px(0),
+                min_height: px(0),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
@@ -359,6 +367,7 @@ impl ElementVisual<BevyHost> for TabContent {
             Node {
                 flex_grow: 1.0,
                 width: percent(100),
+                min_width: px(0),
                 min_height: px(0),
                 flex_direction: FlexDirection::Column,
                 overflow: Overflow::clip(),

@@ -58,7 +58,7 @@ impl Composer<BevyHost> for HierarchyPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Panel> {
-        ui.elem(elem!(Panel, direction = FlexDirection::Column))
+        ui.elem(elem!(Panel))
             .with(|ui| {
                 ui.compose(Roots);
                 ui.compose(AddButton);
@@ -93,7 +93,7 @@ impl Composer<BevyHost> for AddButton {
         .with(move |ui| {
             ui.elem(elem!(
                 !TintButton::default(),
-                icon = val!(Icon, image = crate::icons::PLUS,)
+                icon = val!(Icon, image = crate::icons::PLUS)
             ))
             .observe(
                 |_: On<Activate>, mut commands: Commands| {

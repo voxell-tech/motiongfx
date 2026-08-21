@@ -279,15 +279,17 @@ embed-or-reference flag, or Rive's embed-by-default. Not Bevy's own
 - [ ] Wire `std_material_asset.rs`'s loader to an actual "save this
       material as a new asset" action - today only
       `examples/gen_default_material.rs` ever writes a `.mat`.
-- [ ] A `Handle<T>` branch in the reflect-tree inspector
-      (`inspector/tree.rs`'s reflect-kind dispatch): current asset name
-      plus a browse button, reusing the `rfd::` file dialog already in
-      `project.rs` (the only place it's used today).
-- [ ] Whatever loads a `mox://`/asset handle in this flow must store it
-      somewhere that outlives the load call (a component, typically) -
-      `AssetServer::load` hands back a strong handle, and the asset
-      lives only as long as one of those does; a local that goes out of
-      scope holds nothing.
+- [x] A `Handle<T>` branch in the reflect-tree inspector: done as
+      `moxie_ui::inspector::handle`, `impl<T: Asset + TypePath>
+      Inspect for Handle<T>`, so it slots into the existing walk
+      rather than needing its own dispatch. Registered so far only for
+      `Handle<StandardMaterial>`; still needs a browse button beside
+      the drop target, reusing the `rfd::` dialog already in
+      `project.rs`.
+- [x] Storage that outlives the load call: `source.write` puts the
+      freshly loaded handle straight into the component field, so the
+      component itself is what holds it, not a local that would drop
+      it.
 
 ## A file browser panel, with bookmarked folders
 
@@ -311,14 +313,26 @@ references always have: reopening the `.mox` on a machine where that
 folder isn't at the same place still breaks the reference, same as any
 other external path.
 
-- [ ] A bookmarks field on `project.rs`'s `Document`, saved/loaded with
+- [x] A bookmarks field on `project.rs`'s `Document`, saved/loaded with
       the rest of the `.mox`.
-- [ ] The panel: list a bookmark's contents, folders nested within
-      folders, as a dock window like the others.
-- [ ] A recognized-asset-type registry (extension - or asset kind -
-      to what `Handle<T>` it produces) so the panel knows what's
-      draggable and the inspector's asset field can validate what
-      lands on it.
-- [ ] Drag-and-drop from the panel onto an inspector asset field, as a
-      second way in alongside the browse-button dialog, addressing the
-      dropped file through its bookmark rather than copying it in.
+- [x] The panel: `editor/moxie/src/ui/assets.rs`, folders nested
+      within folders via the shared `Foldable`.
+- [x] A recognized-asset-type registry: `moxie_ui::asset::AssetKinds`,
+      extension to a `TypeId`, registered per type with
+      `AssetKindAppExt::register_asset_kind`. Only `.mat` ->
+      `StandardMaterial` registered so far.
+- [x] Drag-and-drop from the panel onto an inspector `Handle<T>`
+      field: `moxie_ui::asset::draggable` (source, in `file_row`) and
+      the drop handling built into `Handle<T>`'s own `Inspect::build`.
+      Confirmed working end to end. Needed two things beyond the
+      widget itself: a second `AssetSource` rooted at `/`
+      (`moxie_ui::asset::ABSOLUTE_SOURCE`, registered before
+      `DefaultPlugins`) since a dragged path is absolute and may live
+      anywhere on disk, not under `AssetPlugin::file_path`'s own root;
+      and `AssetPlugin::unapproved_path_mode: Deny` plus
+      `LoadBuilder::override_unapproved()` on the drop's own load
+      call, since an absolute path is `is_unapproved` by Bevy's own
+      definition and the default (`Forbid`) has no override at all,
+      silently handing back a path-less placeholder handle instead of
+      loading, which is what "(unnamed)" traced back to. No hover
+      highlight on a valid drop target yet.

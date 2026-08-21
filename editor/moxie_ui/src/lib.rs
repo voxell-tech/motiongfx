@@ -6,6 +6,7 @@
     reason = "Inherent to Bevy ECS: systems take many params and query tuples."
 )]
 
+pub mod asset;
 pub mod elements;
 pub mod fold;
 pub mod icons;
@@ -22,6 +23,7 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
 
+use asset::{AssetDragging, AssetKinds};
 use inspector::InspectPlugin;
 use reactive::FynixPlugin;
 use widgets::dock::DockPlugin;
@@ -45,6 +47,8 @@ impl Plugin for MoxieUiPlugin {
             InspectPlugin,
         ))
         // Seed the feathers palette (its default theme is empty).
-        .insert_resource(UiTheme(create_dark_theme()));
+        .insert_resource(UiTheme(create_dark_theme()))
+        .init_resource::<AssetKinds>()
+        .init_resource::<AssetDragging>();
     }
 }
