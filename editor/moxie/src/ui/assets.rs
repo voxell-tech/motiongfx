@@ -398,15 +398,15 @@ fn prune_fold_state(
 }
 
 /// One file. A recognized asset type (see `AssetKinds`) can be
-/// dragged onto an inspector's `Handle<T>` field, reading at full
-/// brightness with a grab cursor to say so; anything else just shows,
-/// dimmer to read as inert.
+/// dragged onto an inspector's `Handle<T>` field, in the theme's
+/// accent with a grab cursor to say so. Anything else shows dimmer,
+/// to read as inert.
 fn file_row(ui: &mut BevyUi, path: &Path) {
     let name = display_name(path);
     let label = name.clone();
     let kind = ui.world.resource::<AssetKinds>().kind_of(path);
     let color = if kind.is_some() {
-        ui.theme.text_primary
+        ui.theme.palette.purple
     } else {
         ui.theme.text_muted
     };
