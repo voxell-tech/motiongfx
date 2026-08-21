@@ -129,6 +129,11 @@ pub(crate) struct SelectedEntity(pub(crate) Option<Entity>);
 #[derive(Resource, Default, Clone)]
 pub(crate) struct ProjectBookmarks(pub(crate) Vec<PathBuf>);
 
+/// Where the open project's own `.mox` was last loaded from or saved
+/// to. Its folder is the asset panel's own, permanent bookmark.
+#[derive(Resource, Default, Clone)]
+pub(crate) struct ProjectPath(pub(crate) Option<PathBuf>);
+
 #[derive(Debug, Resource, SettingsGroup, Reflect)]
 #[reflect(Resource, SettingsGroup, Default)]
 pub struct EditorSettings {
@@ -142,7 +147,7 @@ impl Default for EditorSettings {
             hdr: Default::default(),
             // Portrait 9:16 to match the current compositions; the
             // offscreen preview renders at this resolution.
-            physical_size: UVec2::new(1080, 1920),
+            physical_size: UVec2::new(1920, 1080),
         }
     }
 }

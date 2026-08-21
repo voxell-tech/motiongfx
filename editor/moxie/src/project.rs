@@ -27,8 +27,8 @@ use serde::ser::SerializeStruct;
 use serde::{Deserializer, Serialize, Serializer};
 
 use crate::{
-    EditorScene, ProjectBookmarks, SceneRoot, SelectedAction,
-    SelectedEntity,
+    EditorScene, ProjectBookmarks, ProjectPath, SceneRoot,
+    SelectedAction, SelectedEntity,
 };
 
 const EXTENSION: &str = "mox";
@@ -51,7 +51,9 @@ pub(crate) fn save_scene(world: &mut World) {
     };
     if let Err(err) = std::fs::write(&path, text) {
         error!("could not write {}: {err}", path.display());
+        return;
     }
+    world.insert_resource(ProjectPath(Some(path)));
 }
 
 /// Prompts for a path and replaces whatever is loaded with what it
@@ -91,6 +93,7 @@ pub(crate) fn load_scene(world: &mut World) {
         project.scene,
     )));
     world.insert_resource(ProjectBookmarks(project.bookmarks));
+    world.insert_resource(ProjectPath(Some(path)));
 }
 
 /// Everything a project file holds, in hand.

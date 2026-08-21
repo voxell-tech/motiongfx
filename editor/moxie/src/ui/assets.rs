@@ -30,7 +30,7 @@ use moxie_ui::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use moxie_ui::reactive::{BevyHost, BevyUi, resource_changed};
 
 use super::PANEL_PADDING;
-use crate::ProjectBookmarks;
+use crate::{ProjectBookmarks, ProjectPath};
 
 /// Room below the last row for the button that floats over it.
 const BUTTON_CLEARANCE: f32 = 34.0;
@@ -98,12 +98,23 @@ impl Composer<BevyHost> for AddButton {
 }
 
 /// Prompts for a folder and bookmarks it. Dropped silently if the
-/// dialog was dismissed.
+/// dialog was dismissed, or if it nests with a bookmark already
+/// there in either direction, since the row it would open into and
+/// the row already showing it would otherwise both list the same
+/// files.
 fn add_bookmark(world: &mut World) {
     let Some(folder) = rfd::FileDialog::new().pick_folder() else {
         return;
     };
-    world.resource_mut::<ProjectBookmarks>().0.push(folder);
+
+    let mut bookmarks = world.resource_mut::<ProjectBookmarks>();
+    let nests = bookmarks.0.iter().any(|existing| {
+        folder.starts_with(existing) || existing.starts_with(&folder)
+    });
+    if nests {
+        return;
+    }
+    bookmarks.0.push(folder);
 }
 
 struct Listing;
@@ -127,26 +138,50 @@ impl Composer<BevyHost> for Listing {
             ),
             scroll_x = false
         ))
-        .watch(
-            resource_changed::<ProjectBookmarks>(),
-            build_bookmarks,
-        )
+        .watch(bookmarks_or_project_changed(), build_bookmarks)
         .handle()
     }
 }
 
-fn build_bookmarks(ui: &mut BevyUi) {
-    let paths = ui.world.resource::<ProjectBookmarks>().0.clone();
+/// Fires on either resource, since [`build_bookmarks`] draws from
+/// both.
+fn bookmarks_or_project_changed()
+-> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+    let mut bookmarks = resource_changed::<ProjectBookmarks>();
+    let mut project = resource_changed::<ProjectPath>();
+    move |world, node| {
+        let a = bookmarks(world, node);
+        let b = project(world, node);
+        a || b
+    }
+}
 
+fn build_bookmarks(ui: &mut BevyUi) {
+    let project = ui
+        .world
+        .resource::<ProjectPath>()
+        .0
+        .as_deref()
+        .and_then(Path::parent)
+        .map(Path::to_path_buf);
+    if let Some(path) = project {
+        ui.compose(BookmarkRow { index: None, path });
+    }
+
+    let paths = ui.world.resource::<ProjectBookmarks>().0.clone();
     for (index, path) in paths.into_iter().enumerate() {
-        ui.compose(BookmarkRow { index, path });
+        ui.compose(BookmarkRow {
+            index: Some(index),
+            path,
+        });
     }
 }
 
 /// One bookmark: its folder name, expanding its contents in place,
-/// and a button to drop it.
+/// and, unless it's the open project's own folder, a button to drop
+/// it.
 struct BookmarkRow {
-    index: usize,
+    index: Option<usize>,
     path: PathBuf,
 }
 
@@ -171,6 +206,7 @@ impl Composer<BevyHost> for BookmarkRow {
             header: elem!(
                 !TintButton::default(),
                 width = percent(100),
+                justify = JustifyContent::FlexStart,
                 icon = val!(
                     Icon,
                     image = moxie_ui::icons::CHEVRON,
@@ -187,6 +223,11 @@ impl Composer<BevyHost> for BookmarkRow {
             folds_on: FoldsOn::Header,
             enabled,
             on_header: move |mut header: ElementMut<BevyHost, ButtonElem>| {
+                // Nothing to drop for the project's own folder.
+                let Some(index) = index else {
+                    return;
+                };
+
                 // A delete button beside the label, injected as an
                 // extra child rather than one of `ButtonElem`'s own
                 // icon/label slots. It takes its own click for
