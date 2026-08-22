@@ -23,8 +23,9 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
 
-use asset::{AssetDragging, AssetKinds};
+use asset::AssetDragging;
 use inspector::InspectPlugin;
+use moxie_asset::AssetKinds;
 use reactive::FynixPlugin;
 use widgets::dock::DockPlugin;
 

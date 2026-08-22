@@ -13,7 +13,7 @@ fn main() {
 
     // Before `DefaultPlugins`: asset sources build when `AssetPlugin`
     // does, not after.
-    moxie_ui::asset::register_absolute_source(&mut app);
+    moxie_asset::register_absolute_source(&mut app);
 
     app.add_plugins((
         // `../assets`: the editor crates share one asset folder

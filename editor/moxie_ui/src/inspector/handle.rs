@@ -2,7 +2,7 @@
 //!
 //! One row, showing whatever asset is currently assigned, and a drop
 //! target for a file dragged from the assets panel whose registered
-//! [`AssetKinds`] kind matches `T`.
+//! [`moxie_asset::AssetKinds`] kind matches `T`.
 
 use std::any::TypeId;
 
@@ -13,8 +13,9 @@ use bevy::prelude::*;
 
 use bevy_fynix::EntityExt;
 use fynix_mock::{elem, val};
+use moxie_asset::ABSOLUTE_SOURCE;
 
-use crate::asset::{ABSOLUTE_SOURCE, AssetDragging};
+use crate::asset::AssetDragging;
 use crate::elements::{
     ButtonElemCursor, GhostButton, Icon, Label, LabelCursor,
 };

@@ -3957,8 +3957,18 @@ dependencies = [
  "bevy_motiongfx",
  "fynix_mock",
  "motiongfx_scene",
+ "moxie_asset",
  "moxie_ui",
  "rfd",
+ "ron",
+ "serde",
+]
+
+[[package]]
+name = "moxie_asset"
+version = "0.3.0"
+dependencies = [
+ "bevy",
  "ron",
  "serde",
 ]
@@ -3971,6 +3981,7 @@ dependencies = [
  "bevy_fynix",
  "fynix_mock",
  "motiongfx_interp",
+ "moxie_asset",
 ]
 
 [[package]]

@@ -18,7 +18,6 @@ mod icons;
 mod playback;
 mod project;
 mod scene;
-pub mod std_material_asset;
 mod ui;
 mod view;
 
@@ -50,7 +49,7 @@ impl Plugin for MoxiePlugin {
         let registry =
             app.world().resource::<AppTypeRegistry>().clone();
         app.register_asset_loader(
-            std_material_asset::MaterialAssetLoader::new(&registry),
+            moxie_asset::StdMaterialAssetLoader::new(&registry),
         );
     }
 }

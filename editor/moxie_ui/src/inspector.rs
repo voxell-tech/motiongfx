@@ -25,8 +25,8 @@ use bevy::light::CascadeShadowConfig;
 use bevy::prelude::*;
 use bevy::reflect::{FromType, GetTypeRegistration, PartialReflect};
 use fynix_mock::elem;
+use moxie_asset::AssetKindAppExt;
 
-use crate::asset::AssetKindAppExt;
 use crate::elements::{Frame, Label};
 use crate::fold;
 use crate::reactive::BevyUi;

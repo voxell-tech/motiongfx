@@ -14,19 +14,19 @@ use bevy::reflect::{
 use serde::de::DeserializeSeed;
 
 #[derive(Default, TypePath)]
-pub(crate) struct MaterialAssetLoader {
+pub struct StdMaterialAssetLoader {
     registry: AppTypeRegistry,
 }
 
-impl MaterialAssetLoader {
-    pub(crate) fn new(registry: &AppTypeRegistry) -> Self {
+impl StdMaterialAssetLoader {
+    pub fn new(registry: &AppTypeRegistry) -> Self {
         Self {
             registry: registry.clone(),
         }
     }
 }
 
-impl AssetLoader for MaterialAssetLoader {
+impl AssetLoader for StdMaterialAssetLoader {
     type Asset = StandardMaterial;
     type Settings = ();
     type Error = BevyError;

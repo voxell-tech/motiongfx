@@ -22,7 +22,8 @@ use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
-use moxie_ui::asset::{AssetKinds, draggable};
+use moxie_asset::AssetKinds;
+use moxie_ui::asset::draggable;
 use moxie_ui::elements::{
     ButtonElem, Frame, Icon, Label, Panel, ScrollArea, TintButton,
 };
