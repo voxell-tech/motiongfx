@@ -24,7 +24,6 @@ mod view;
 use core::time::Duration;
 use std::path::PathBuf;
 
-use bevy::ecs::reflect::AppTypeRegistry;
 use bevy::prelude::*;
 use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
@@ -32,6 +31,7 @@ use bevy::settings::{
 use bevy_motiongfx::prelude::TimelineId;
 use bevy_motiongfx::scene::id::EntityUid;
 
+use moxie_asset::MoxieAssetPlugin;
 pub use scene::EditorScene;
 
 /// Plugin that renders a timeline editor UI for the first
@@ -40,17 +40,12 @@ pub struct MoxiePlugin;
 
 impl Plugin for MoxiePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SettingsPlugin::new(
-            "org.voxell.motiongfx.editor",
+        app.add_plugins((
+            SettingsPlugin::new("org.voxell.motiongfx.editor"),
+            MoxieAssetPlugin,
+            ui::UiPlugin,
         ))
-        .add_plugins(ui::UiPlugin)
         .add_systems(PreUpdate, ensure_scene_root);
-
-        let registry =
-            app.world().resource::<AppTypeRegistry>().clone();
-        app.register_asset_loader(
-            moxie_asset::StdMaterialAssetLoader::new(&registry),
-        );
     }
 }
 

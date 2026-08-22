@@ -2,24 +2,8 @@ use std::any::TypeId;
 use std::collections::HashMap;
 use std::path::Path;
 
-use bevy::asset::io::AssetSourceBuilder;
-use bevy::asset::{Asset, AssetApp};
+use bevy::asset::Asset;
 use bevy::prelude::*;
-
-/// The [`AssetSourceId`](bevy::asset::io::AssetSourceId) a dragged
-/// file loads through, rooted at `/` rather than wherever
-/// `AssetPlugin::file_path` put the editor's own configured root - a
-/// bookmark can point anywhere on disk, not just under that root.
-pub const ABSOLUTE_SOURCE: &str = "abs";
-
-/// Registers [`ABSOLUTE_SOURCE`]. Must run before `DefaultPlugins`:
-/// asset sources build when `AssetPlugin` does, not after.
-pub fn register_absolute_source(app: &mut App) {
-    app.register_asset_source(
-        ABSOLUTE_SOURCE,
-        AssetSourceBuilder::platform_default("/", None),
-    );
-}
 
 /// Which file extension loads as which [`Asset`], by that asset's
 /// own [`TypeId`].
