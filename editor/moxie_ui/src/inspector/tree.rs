@@ -267,9 +267,9 @@ fn shape_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
 /// whole component at the empty path.
 pub struct InspectorFields {
     pub root: Field,
-    /// How many [`Foldable`](crate::fold::Foldable) bodies this sits
-    /// under, for [`field_row`] to keep its columns aligned. `0` for
-    /// a call site with none of its own.
+    /// How many [`Foldable`] bodies this sits under, for `field_row`
+    /// to keep its columns aligned. `0` for a call site with none of
+    /// its own.
     pub depth: u32,
 }
 
@@ -444,7 +444,7 @@ fn build_group(
 pub struct Section<F> {
     pub name: String,
     pub body: F,
-    /// This section's place in [`ClosedSections`], as entity,
+    /// This section's place in `ClosedSections`, as entity,
     /// component, path.
     pub section: (Entity, TypeId, String),
 }

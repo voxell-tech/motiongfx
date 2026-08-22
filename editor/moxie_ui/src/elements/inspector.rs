@@ -42,7 +42,7 @@ pub struct ComponentInspector {
     pub entity: Entity,
     pub component: TypeId,
     /// How many [`Foldable`](crate::fold::Foldable) bodies this sits
-    /// under, for [`field_row`] to keep its columns aligned. `0` for
+    /// under, for `field_row` to keep its columns aligned. `0` for
     /// a call site with none of its own.
     pub depth: u32,
 }
