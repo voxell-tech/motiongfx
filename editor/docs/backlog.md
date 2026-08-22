@@ -243,10 +243,11 @@ path string, through bevy's own `world_serialization` (`WorldDeserializer`
 + `LoadFromPath`) - that's inherited plumbing, not something moxie
 built, and `Mesh3d`/`MeshMaterial3d<StandardMaterial>` are already
 allowlisted in `subject_components()` to go through it.
-`std_material_asset.rs`'s `.mat` loader is the existing precedent for a
-project-authored asset: a `StandardMaterial` reflected to RON, loaded
-through the normal `AssetServer`/`Handle` path like anything else -
-it just has no caller today besides a one-off codegen example.
+`moxie_asset`'s `StdMaterialAssetLoader` (the `.mat` loader) is the
+existing precedent for a project-authored asset: a `StandardMaterial`
+reflected to RON, loaded through the normal `AssetServer`/`Handle`
+path like anything else - it just has no caller today besides a
+one-off codegen example.
 
 Modeled on Unity/Unreal rather than Blender/After Effects: one asset
 root per project (a folder next to, or named by, the `.mox`), external
@@ -276,9 +277,10 @@ embed-or-reference flag, or Rive's embed-by-default. Not Bevy's own
 - [ ] A project asset folder as the one root for imported/external
       files; import (copy in) on assignment rather than reference in
       place.
-- [ ] Wire `std_material_asset.rs`'s loader to an actual "save this
-      material as a new asset" action - today only
-      `examples/gen_default_material.rs` ever writes a `.mat`.
+- [ ] Wire `StdMaterialAssetLoader`'s serializer to an actual "save
+      this material as a new asset" action - today only
+      `moxie_asset/examples/gen_default_material.rs` ever writes a
+      `.mat`.
 - [x] A `Handle<T>` branch in the reflect-tree inspector: done as
       `moxie_ui::inspector::handle`, `impl<T: Asset + TypePath>
       Inspect for Handle<T>`, so it slots into the existing walk
@@ -290,49 +292,5 @@ embed-or-reference flag, or Rive's embed-by-default. Not Bevy's own
       freshly loaded handle straight into the component field, so the
       component itself is what holds it, not a local that would drop
       it.
-
-## A file browser panel, with bookmarked folders
-
-A dock panel for finding assets, not just picking one blind through a
-file dialog: the user adds folders from anywhere on disk as bookmarks -
-a shortcut into that folder, not a copy of it - and the panel lists a
-bookmark's contents (folders within folders too) for browsing.
-Recognized asset types can then be dragged straight from the panel
-onto an asset field in the inspector, instead of only the
-browse-button/file-dialog path above.
-
-The bookmark list belongs to the project, not the editor install: it's
-recorded in the `.mox` itself (a new field on `project.rs`'s
-`Document`, alongside `world`/`scene`), not `bevy_settings`. That
-settles the open question the panel raised for the assignment flow
-above in favor of reference-via-bookmark rather than import-and-copy -
-the bookmark travels with the project, so a dropped asset can stay
-where it already lives on disk and just be addressed through the
-bookmark that named it. The remaining caveat is the same one path
-references always have: reopening the `.mox` on a machine where that
-folder isn't at the same place still breaks the reference, same as any
-other external path.
-
-- [x] A bookmarks field on `project.rs`'s `Document`, saved/loaded with
-      the rest of the `.mox`.
-- [x] The panel: `editor/moxie/src/ui/assets.rs`, folders nested
-      within folders via the shared `Foldable`.
-- [x] A recognized-asset-type registry: `moxie_ui::asset::AssetKinds`,
-      extension to a `TypeId`, registered per type with
-      `AssetKindAppExt::register_asset_kind`. Only `.mat` ->
-      `StandardMaterial` registered so far.
-- [x] Drag-and-drop from the panel onto an inspector `Handle<T>`
-      field: `moxie_ui::asset::draggable` (source, in `file_row`) and
-      the drop handling built into `Handle<T>`'s own `Inspect::build`.
-      Confirmed working end to end. Needed two things beyond the
-      widget itself: a second `AssetSource` rooted at `/`
-      (`moxie_ui::asset::ABSOLUTE_SOURCE`, registered before
-      `DefaultPlugins`) since a dragged path is absolute and may live
-      anywhere on disk, not under `AssetPlugin::file_path`'s own root;
-      and `AssetPlugin::unapproved_path_mode: Deny` plus
-      `LoadBuilder::override_unapproved()` on the drop's own load
-      call, since an absolute path is `is_unapproved` by Bevy's own
-      definition and the default (`Forbid`) has no override at all,
-      silently handing back a path-less placeholder handle instead of
-      loading, which is what "(unnamed)" traced back to. No hover
-      highlight on a valid drop target yet.
+- [ ] A preview panel beside the asset browser's own listing, showing
+      whatever asset is currently selected or hovered there.
