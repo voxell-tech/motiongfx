@@ -275,8 +275,9 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         ElementHandle::new(self.node)
     }
 
-    /// Rebuild this element's children whenever `changed` fires. First
-    /// runs on the next flush.
+    /// Rebuild this element's children whenever `changed` fires,
+    /// polled immediately so a `.watch()` reached from inside
+    /// another one's build gets its own first look right away.
     ///
     /// Use this *or* [`Self::with`], not both: a fire clears whatever
     /// children the node has.
@@ -285,6 +286,18 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         changed: impl ChangedFn<H>,
         build: impl BuildFn<H>,
     ) -> &mut Self {
+        let mut changed = changed;
+        if changed(self.ui.world, self.node) {
+            crate::clear_children::<H>(self.ui.world, self.node);
+            let mut child = Ui::new(
+                self.ui.world,
+                self.node,
+                self.ui.records,
+                self.ui.theme,
+            );
+            build(&mut child);
+        }
+
         self.ui.records.spawned.push(Watcher {
             root: self.node,
             changed: Box::new(changed),
