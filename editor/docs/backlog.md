@@ -135,53 +135,6 @@ a direct field, rather than treating it as one opaque child.
 - [ ] Convert `ButtonElem`, `Frame`, `ScrollArea`, `Panel`, and
       `field.rs`/`dropdown.rs`'s elements over once flattening lands.
 
-## `.watch()`'s first build waits a flush it doesn't need to
-
-`ElementMut::watch`/`Fynix::watch` only register a watcher; the first
-build happens later, whenever `flush()` first polls it. Every
-`fynix_mock` predicate (`component_changed_on`, `resource_changed`,
-`value_changed`, `shape_changed`) is written to always report changed
-on its first call, which is what stands in for an immediate build -
-but `flush()` only merges a watcher registered mid-build
-(`Records::spawned`) into the live list after that flush's loop
-finishes, so a `.watch()` reached from inside another one's build
-waits a whole flush before it gets its own first poll. Nested a few
-levels deep - a hierarchy row's body watching its own children, whose
-body watches its own - a full rebuild of an already-open subtree (a
-sibling reordered, a sibling added) visibly settles one level, one
-frame, at a time instead of appearing whole.
-
-Real fynix (`~/develop/projects/rust/fynix`) doesn't have this: its
-`ctx.watch()` (`crates/fynix/src/ctx.rs`) builds the subtree inline,
-synchronously, right there, and only arms the watcher for later
-changes afterward.
-
-- [x] `ElementMut::watch` and `Fynix::watch` now poll `changed` once
-      immediately and build right there if it fires, rather than only
-      registering for `flush()` to find later. Simpler than the fix
-      first sketched here: that one built unconditionally and called
-      `changed` a second time only to consume its guaranteed-true
-      first call; polling first and gating the build on the result
-      needs one call, not two, and also does the right thing for a
-      predicate that legitimately starts out false (nothing builds
-      until it actually fires) - `Fynix::watch` gained a `world: &mut
-      H::World` parameter for this, so `bevy_fynix::watch_root` now
-      reaches it through `World::resource_scope` rather than
-      `resource_mut`, the same way `with_kernel` already did.
-- [x] Both call `clear_children` before that immediate build, not
-      only `flush()`'s loop - missing from the first sketch, and
-      necessary: a node can already have children when `.watch()` is
-      called (`unwatch` then `watch` again, say), and skipping it
-      would build a second subtree alongside the first instead of
-      replacing it.
-- [x] `crates/fynix_mock/tests/kernel.rs`, `transitions.rs`,
-      `styles.rs` updated for the new signature and behavior; the
-      whole suite passes.
-- [ ] Verify in the running editor: expanding several nested hierarchy
-      rows and asset folders, then reordering or adding a sibling near
-      the root - the whole open subtree should reappear in one frame,
-      not visibly settle level by level.
-
 ## Assigning and treating assets in the inspector
 
 `Handle<T>` fields (`MeshMaterial3d<StandardMaterial>`, `Mesh3d`, and
