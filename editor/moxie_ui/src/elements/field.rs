@@ -135,7 +135,7 @@ pub struct NumberField {
     /// edit wins.
     #[default(NumberInputValue::F32(0.0))]
     pub value: NumberInputValue,
-    #[default(px(110))]
+    #[default(px(80))]
     pub width: Val,
 }
 

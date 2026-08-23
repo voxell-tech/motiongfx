@@ -13,18 +13,25 @@
 
 mod enums;
 mod field;
+mod handle;
 mod primitive;
 mod text;
 mod tree;
 mod vector;
 
+use std::any::TypeId;
+
 use bevy::light::CascadeShadowConfig;
 use bevy::prelude::*;
 use bevy::reflect::{FromType, GetTypeRegistration, PartialReflect};
+use fynix_mock::elem;
+use moxie_asset::AssetKindAppExt;
 
+use crate::elements::{Frame, Label};
+use crate::fold;
 use crate::reactive::BevyUi;
 pub use field::Field;
-pub(crate) use tree::is_single_value;
+pub(crate) use tree::single_value;
 pub use tree::{InspectorFields, Section};
 
 /// The widgets and the entity-inspector sections available out of
@@ -56,6 +63,8 @@ impl Plugin for InspectPlugin {
             .register_inspect::<Quat>()
             .register_inspect::<String>()
             .register_inspect::<Name>()
+            .register_inspect::<Handle<StandardMaterial>>()
+            .register_inspect::<Handle<Mesh>>()
             .register_inspectable::<Name>()
             .register_inspectable::<Visibility>()
             .register_inspectable::<Transform>()
@@ -66,8 +75,10 @@ impl Plugin for InspectPlugin {
             .register_inspectable::<RectLight>()
             .register_inspectable::<SpotLight>()
             .register_inspectable::<Mesh3d>()
-            .register_inspectable::<MeshMaterial3d<StandardMaterial>>(
-            );
+            .register_inspectable_as::<MeshMaterial3d<StandardMaterial>>(
+                "Standard Material",
+            )
+            .register_asset_kind::<StandardMaterial>(&["mat"]);
     }
 }
 
@@ -88,6 +99,16 @@ pub trait InspectAppExt {
     >(
         &mut self,
     ) -> &mut Self;
+
+    /// As [`register_inspectable`](Self::register_inspectable), with
+    /// `name` heading the section instead of `T`'s own name split
+    /// into words.
+    fn register_inspectable_as<
+        T: Component + Reflect + TypePath + GetTypeRegistration,
+    >(
+        &mut self,
+        name: &'static str,
+    ) -> &mut Self;
 }
 
 impl InspectAppExt for App {
@@ -103,6 +124,25 @@ impl InspectAppExt for App {
     ) -> &mut Self {
         self.register_type::<T>()
             .register_type_data::<T, ReflectInspectable>()
+    }
+
+    fn register_inspectable_as<
+        T: Component + Reflect + TypePath + GetTypeRegistration,
+    >(
+        &mut self,
+        name: &'static str,
+    ) -> &mut Self {
+        self.register_type::<T>();
+        let registry =
+            self.world().resource::<AppTypeRegistry>().clone();
+        let mut registry = registry.write();
+        if let Some(registration) =
+            registry.get_mut(TypeId::of::<T>())
+        {
+            registration
+                .insert(ReflectInspectable { name: Some(name) });
+        }
+        self
     }
 }
 
@@ -217,6 +257,60 @@ pub fn inspect_value(ui: &mut BevyUi, source: &dyn Source) {
     }
 }
 
+/// One field's row: a label column, then whatever `value` builds
+/// beside it. The split is proportional (40/60), not a fixed pixel
+/// width, so it scales with however wide the panel is docked - the
+/// same convention Unity, Godot, and Unreal's own inspectors use.
+///
+/// `depth` is how many [`Foldable`](crate::fold::Foldable) bodies
+/// this row sits under. Each one narrows the row by its own indent,
+/// which would otherwise pull the 40% mark inward with it; the label
+/// sheds that same width back so `value` starts at the same place
+/// no matter how deep its row is nested.
+pub(crate) fn field_row(
+    ui: &mut BevyUi,
+    label: String,
+    color: Color,
+    bold: bool,
+    depth: u32,
+    value: impl FnOnce(&mut BevyUi),
+) {
+    const VALUE_SHARE: f32 = 0.6;
+    const LABEL_SIZE: f32 = 12.0;
+    const EDGE_PADDING: f32 = 8.0;
+    let indent = ui.theme.fold_indent + fold::RAIL_WIDTH;
+    let shed = VALUE_SHARE * depth as f32 * indent;
+
+    ui.elem(elem!(
+        Frame,
+        width = percent(100),
+        direction = FlexDirection::Row,
+        align = AlignItems::Center,
+        column_gap = px(8),
+        padding = UiRect::vertical(px(3))
+    ))
+    .with(move |ui| {
+        ui.elem(elem!(
+            Frame,
+            width = percent(40),
+            margin = UiRect::right(px(-shed)),
+            overflow = Overflow::clip_x(),
+            padding = UiRect::right(px(EDGE_PADDING))
+        ))
+        .with(move |ui| {
+            ui.elem(elem!(
+                Label,
+                text = label,
+                size = LABEL_SIZE,
+                color = Some(color),
+                bold = bold,
+                wrap = false
+            ));
+        });
+        ui.elem(elem!(Frame, flex_grow = 1.0f32)).with(value);
+    });
+}
+
 /// Builds the editing widget for one reflected value.
 ///
 /// The value itself is not passed in. A widget is built once, then
@@ -253,10 +347,15 @@ impl<T: Inspect> FromType<T> for ReflectInspect {
 /// crate::elements::EntityInspector) shows. See
 /// [`InspectAppExt::register_inspectable`].
 #[derive(Clone)]
-pub struct ReflectInspectable;
+pub struct ReflectInspectable {
+    /// What the section is headed with instead of the type's own
+    /// name, split into words. See
+    /// [`InspectAppExt::register_inspectable_as`].
+    pub name: Option<&'static str>,
+}
 
 impl<T: Component + Reflect> FromType<T> for ReflectInspectable {
     fn from_type() -> Self {
-        Self
+        Self { name: None }
     }
 }

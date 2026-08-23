@@ -51,10 +51,18 @@ impl Composer<BevyHost> for TimelinePanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Panel> {
-        ui.elem(elem!(Panel, direction = FlexDirection::Column))
+        ui.elem(elem!(Panel))
             .with(|ui| {
-                ui.compose(ControlBar);
-                ui.compose(TrackArea);
+                ui.elem(elem!(
+                    Frame,
+                    width = percent(100),
+                    height = percent(100),
+                    direction = FlexDirection::Column
+                ))
+                .with(|ui| {
+                    ui.compose(ControlBar);
+                    ui.compose(TrackArea);
+                });
             })
             .handle()
     }

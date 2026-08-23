@@ -10,6 +10,12 @@ use fynix_mock::ui::{Build, Patch};
 pub struct Frame {
     pub width: Val,
     pub height: Val,
+    /// The floor `width`/`height` can shrink to. `Auto` floors a
+    /// flex item at its own content's size, which can fight a
+    /// percentage `width` above trying to shrink it further; `px(0)`
+    /// lifts that floor.
+    pub min_width: Val,
+    pub min_height: Val,
     /// Absolute for a frame that places itself, with [`inset`] saying
     /// where.
     ///
@@ -25,6 +31,8 @@ pub struct Frame {
     pub align: AlignItems,
     pub justify: JustifyContent,
     pub padding: UiRect,
+    pub margin: UiRect,
+    pub overflow: Overflow,
     /// Between rows, and between columns: a row of things wants the
     /// second, a column the first.
     #[default(Val::ZERO)]
@@ -52,6 +60,8 @@ impl Frame {
         Node {
             width: self.width,
             height: self.height,
+            min_width: self.min_width,
+            min_height: self.min_height,
             position_type: self.position,
             left: self.inset.left,
             right: self.inset.right,
@@ -63,6 +73,8 @@ impl Frame {
             align_items: self.align,
             justify_content: self.justify,
             padding: self.padding,
+            margin: self.margin,
+            overflow: self.overflow,
             row_gap: self.row_gap,
             column_gap: self.column_gap,
             border_radius: BorderRadius::all(self.radius),
@@ -105,6 +117,8 @@ impl ElementVisual<BevyHost> for Frame {
             FrameField::Z => self.stack(patch),
             FrameField::Width
             | FrameField::Height
+            | FrameField::MinWidth
+            | FrameField::MinHeight
             | FrameField::Position
             | FrameField::Inset
             | FrameField::FlexGrow
@@ -113,6 +127,8 @@ impl ElementVisual<BevyHost> for Frame {
             | FrameField::Align
             | FrameField::Justify
             | FrameField::Padding
+            | FrameField::Margin
+            | FrameField::Overflow
             | FrameField::RowGap
             | FrameField::ColumnGap
             | FrameField::Radius

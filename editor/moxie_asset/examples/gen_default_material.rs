@@ -1,13 +1,11 @@
 //! Generates a default material file at `editor/assets/materials/default.mat`.
-//!
-//! Run with `cargo run -p moxie --example gen_default_material`.
 
 use std::path::Path;
 
 use bevy::ecs::reflect::AppTypeRegistry;
 use bevy::pbr::StandardMaterial;
 use bevy::prelude::*;
-use moxie::std_material_asset::serialize_to_ron;
+use moxie_asset::serialize_to_ron;
 
 fn main() {
     let mut world = World::new();

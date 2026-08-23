@@ -100,6 +100,7 @@ fn build_tab(
             !GhostButton,
             width = px(14),
             height = px(14),
+            padding = UiRect::ZERO,
             radius = px(2),
             icon = val!(
                 Icon,

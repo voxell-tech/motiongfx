@@ -24,7 +24,7 @@ use moxie_ui::elements::{
     ButtonElem, ButtonElemCursor, Frame, FrameCursor, GhostButton,
     Icon, Label, LabelCursor, Panel, ScrollArea, TintButton,
 };
-use moxie_ui::fold::{Foldable, Toggle};
+use moxie_ui::fold::{Foldable, FoldsOn};
 use moxie_ui::reactive::{
     BevyHost, BevyUi, component_changed_on, value_changed,
 };
@@ -58,7 +58,7 @@ impl Composer<BevyHost> for HierarchyPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Panel> {
-        ui.elem(elem!(Panel, direction = FlexDirection::Column))
+        ui.elem(elem!(Panel))
             .with(|ui| {
                 ui.compose(Roots);
                 ui.compose(AddButton);
@@ -93,11 +93,11 @@ impl Composer<BevyHost> for AddButton {
         .with(move |ui| {
             ui.elem(elem!(
                 !TintButton::default(),
-                icon = val!(Icon, image = crate::icons::PLUS,)
+                icon = val!(Icon, image = crate::icons::PLUS)
             ))
             .observe(
                 |_: On<Activate>, mut commands: Commands| {
-                    commands.queue(create);
+                    commands.queue(spawn_new_entity);
                 },
             );
         })
@@ -161,7 +161,7 @@ impl Composer<BevyHost> for Roots {
 /// Nothing of the animation changes: a [`Stage`](motiongfx_scene::scene::Stage)
 /// seeds the fields an action drives, and a subject with no action on
 /// it keeps whatever it was spawned holding.
-fn create(world: &mut World) {
+fn spawn_new_entity(world: &mut World) {
     let Ok(root) = world
         .query_filtered::<Entity, With<SceneRoot>>()
         .single(world)
@@ -276,7 +276,7 @@ impl Composer<BevyHost> for Subtree {
             ),
             // The row is the subject's, to select; only the
             // chevron beside it folds.
-            toggle: Toggle::Chevron,
+            folds_on: FoldsOn::Chevron,
             enabled: has_children(ui.world, entity),
             on_header: move |mut header: ElementMut<
                 '_,
@@ -321,10 +321,34 @@ impl Composer<BevyHost> for Subtree {
                     },
                 );
             },
+            // Read off the subject's own entity, not this row's node.
+            // The row rebuilds fresh on a reorder or a sibling
+            // added, but the entity, and `Collapsed` on it, does not.
+            // Nothing to clean up when a subject is deleted either.
+            // `Collapsed` goes with it.
+            open: ui.world.get::<Collapsed>(entity).is_none(),
+            on_toggle: move |world: &mut World, open: bool| {
+                let Ok(mut entity) = world.get_entity_mut(entity)
+                else {
+                    return;
+                };
+                if open {
+                    entity.remove::<Collapsed>();
+                } else {
+                    entity.insert(Collapsed);
+                }
+            },
         })
         .handle()
     }
 }
+
+/// On a subject's own entity while its hierarchy row is collapsed.
+/// Nothing removes this when the row's own node is despawned and
+/// rebuilt, since it was never on that node. It goes when the
+/// subject itself does.
+#[derive(Component)]
+struct Collapsed;
 
 /// What a row's own surface says: a drop landing inside it beats
 /// whether it is selected, and most rows are neither.

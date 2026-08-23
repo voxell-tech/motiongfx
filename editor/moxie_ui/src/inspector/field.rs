@@ -103,6 +103,17 @@ impl Field {
         Some(read(value))
     }
 
+    /// As [`Self::read`], resolved to this field's own leaf rather
+    /// than the component root. Misses if the path no longer resolves.
+    pub fn read_at<R>(
+        &self,
+        world: &World,
+        read: impl FnOnce(&dyn PartialReflect) -> R,
+    ) -> Option<R> {
+        self.read(world, |value| self.resolve(value).map(read))
+            .flatten()
+    }
+
     /// Runs `write` against the whole component.
     pub fn write<R>(
         &self,

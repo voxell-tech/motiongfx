@@ -25,9 +25,6 @@ use crate::monokai;
 use crate::reactive::BevyUi;
 use crate::theme::EditorTheme;
 
-/// Narrower than a lone scalar's, so up to four still sit on one row.
-const AXIS_WIDTH: Val = Val::Px(52.0);
-
 /// A vector, by the axes an inspector edits it through.
 trait Axes: FromReflect + Send + Sync + 'static {
     /// What one axis holds.
@@ -112,7 +109,7 @@ fn axis<T, V>(
     ui.elem(elem!(
         NumberField,
         format = format,
-        width = AXIS_WIDTH,
+        width = px(40),
         value = initial
     ))
     .observe(

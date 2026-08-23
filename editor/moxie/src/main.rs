@@ -3,19 +3,37 @@
 //! Nothing is spawned here beyond a camera and a light - `File > Open`
 //! is how a project actually gets its content.
 
-use bevy::prelude::*;
+use bevy::asset::UnapprovedPathMode;
+use bevy::{prelude::*, window::WindowResolution};
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use moxie::MoxiePlugin;
+use moxie_asset::register_absolute_source;
 
 fn main() {
     App::new()
         .add_plugins((
+            // Before `DefaultPlugins`: its absolute asset source
+            // builds when `AssetPlugin` does, not after.
+            register_absolute_source,
             // `../assets`: the editor crates share one asset folder
             // (`editor/assets`) rather than each carrying its own.
-            DefaultPlugins.set(AssetPlugin {
-                file_path: "../assets".into(),
-                ..default()
-            }),
+            DefaultPlugins
+                .set(AssetPlugin {
+                    file_path: "../assets".into(),
+                    // A dragged file's own path is outside this root
+                    // by construction, so it needs the per-load
+                    // override `Deny` allows; the stricter default
+                    // (`Forbid`) has no such escape hatch.
+                    unapproved_path_mode: UnapprovedPathMode::Deny,
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: WindowResolution::new(1920, 1080),
+                        ..default()
+                    }),
+                    ..default()
+                }),
             BevyMotionGfxPlugin,
             MoxiePlugin,
         ))

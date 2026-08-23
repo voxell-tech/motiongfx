@@ -10,9 +10,11 @@
 //! component and an inspector pointed nowhere read the same.
 
 use std::any::TypeId;
+use std::borrow::Cow;
 
 use bevy::ecs::reflect::ReflectComponent;
 use bevy::prelude::*;
+use bevy::reflect::TypeRegistration;
 use bevy::reflect::std_traits::ReflectDefault;
 use bevy::ui_widgets::{Activate, ActivateOnPress, MenuButton};
 
@@ -28,17 +30,21 @@ use super::{
 };
 use crate::icons;
 use crate::inspector::{
-    Field, InspectorFields, ReflectInspectable, Section,
-    inspect_value, is_single_value,
+    Field, InspectorFields, ReflectInspectable, Section, field_row,
+    inspect_value, single_value,
 };
 use crate::motion::MotionExt;
 use crate::reactive::{BevyHost, BevyUi, value_changed};
 use crate::theme::EditorTheme;
 
-/// One component of one entity.
+/// Inspector for a [`Component`].
 pub struct ComponentInspector {
     pub entity: Entity,
     pub component: TypeId,
+    /// How many [`Foldable`](crate::fold::Foldable) bodies this sits
+    /// under, for `field_row` to keep its columns aligned. `0` for
+    /// a call site with none of its own.
+    pub depth: u32,
 }
 
 impl ComponentInspector {
@@ -48,6 +54,7 @@ impl ComponentInspector {
         Self {
             entity,
             component: TypeId::of::<T>(),
+            depth: 0,
         }
     }
 }
@@ -61,22 +68,20 @@ impl Composer<BevyHost> for ComponentInspector {
     ) -> ElementHandle<BevyHost, Frame> {
         let field = Field::new(self.entity, self.component);
         let built = field.clone();
+        let depth = self.depth;
 
         column(ui, px(4), presence_changed(field), move |ui| {
             if built.exists(ui.world) {
                 ui.compose(InspectorFields {
                     root: built.clone(),
+                    depth,
                 });
             }
         })
     }
 }
 
-/// One resource.
-///
-/// Bevy parks each resource on an entity of its own, so once that
-/// entity is in hand this is a [`ComponentInspector`] and nothing
-/// below here knows the difference.
+/// Inspector for a [`Resource`].
 pub struct ResourceInspector {
     pub resource: TypeId,
 }
@@ -107,14 +112,13 @@ impl Composer<BevyHost> for ResourceInspector {
             };
             ui.compose(InspectorFields {
                 root: Field::new(entity, resource),
+                depth: 0,
             });
         })
     }
 }
 
-/// Every component of one entity the inspector can read: those with
-/// fields under a collapsible header of their own, and those holding
-/// a single value on one row.
+/// Inspector for all of the [`Component`]s on an [`Entity`].
 pub struct EntityInspector {
     pub entity: Entity,
 }
@@ -132,8 +136,13 @@ impl Composer<BevyHost> for EntityInspector {
             for (component, name) in inspectable(ui.world, entity) {
                 let field = Field::new(entity, component);
 
-                if is_single_value(ui.world, &field) {
-                    single(ui, name, field);
+                if let Some(path) = single_value(ui.world, &field) {
+                    let leaf = if path.is_empty() {
+                        field
+                    } else {
+                        field.child(&path)
+                    };
+                    single(ui, &name, leaf);
                     continue;
                 }
 
@@ -143,8 +152,13 @@ impl Composer<BevyHost> for EntityInspector {
                         ui.compose(ComponentInspector {
                             entity,
                             component,
+                            depth: 1,
                         });
                     },
+                    // The whole component, at the empty path. See
+                    // `entries` in `tree.rs`, which never wraps the
+                    // root in a group of its own either.
+                    section: (entity, component, String::new()),
                 });
             }
 
@@ -153,10 +167,7 @@ impl Composer<BevyHost> for EntityInspector {
     }
 }
 
-/// The menu that adds a component to `entity`.
-///
-/// Rebuilt alongside [`EntityInspector`], on the same signal: what it
-/// offers is exactly what that signal tracks.
+/// The menu that adds a component to [`Entity`].
 struct AddComponent {
     entity: Entity,
 }
@@ -211,7 +222,7 @@ impl Composer<BevyHost> for AddComponent {
 
                         for (component, name) in options {
                             add_component_item(
-                                ui, theme, entity, component, name,
+                                ui, theme, entity, component, &name,
                             );
                         }
                     },
@@ -256,13 +267,13 @@ fn add_component_item(
 fn addable(
     world: &World,
     entity: Entity,
-) -> Vec<(TypeId, &'static str)> {
+) -> Vec<(TypeId, Cow<'static, str>)> {
     let Ok(entity_ref) = world.get_entity(entity) else {
         return Vec::new();
     };
 
     let registry = world.resource::<AppTypeRegistry>().read();
-    let mut out: Vec<(TypeId, &'static str)> = registry
+    let mut out: Vec<(TypeId, Cow<'static, str>)> = registry
         .iter()
         .filter(|registration| {
             registration.data::<ReflectInspectable>().is_some()
@@ -274,17 +285,11 @@ fn addable(
             if reflect_component.contains(entity_ref) {
                 return None;
             }
-            Some((
-                registration.type_id(),
-                registration
-                    .type_info()
-                    .type_path_table()
-                    .short_path(),
-            ))
+            Some((registration.type_id(), display_name(registration)))
         })
         .collect();
 
-    out.sort_by_key(|(_, name)| *name);
+    out.sort_by_key(|(_, name)| name.clone());
     out
 }
 
@@ -327,25 +332,9 @@ fn add_component(
 /// have been headed.
 fn single(ui: &mut BevyUi, name: &str, field: Field) {
     let name = name.to_string();
+    let primary = ui.theme.text_primary;
 
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Row,
-        justify = JustifyContent::SpaceBetween,
-        align = AlignItems::Center,
-        column_gap = px(8),
-        padding = UiRect::vertical(px(3))
-    ))
-    .with(move |ui| {
-        ui.elem(elem!(
-            Label,
-            text = name,
-            color = Some(ui.theme.text_primary),
-            bold = true
-        ));
-        // Straight from the field: a `ComponentInspector` fills the
-        // width it is given, leaving nothing for the name beside it.
+    field_row(ui, name, primary, true, 0, move |ui| {
         inspect_value(ui, &field);
     });
 }
@@ -383,7 +372,7 @@ fn components_changed(
 }
 
 /// Every component on `entity` the inspector can reach and shows, by
-/// type and the short name its section is headed with.
+/// type and the name its section is headed with.
 ///
 /// Sorted by that name: an archetype lists what it holds in whatever
 /// order it happens to, and a panel whose sections reshuffle when a
@@ -391,7 +380,7 @@ fn components_changed(
 fn inspectable(
     world: &World,
     entity: Entity,
-) -> Vec<(TypeId, &'static str)> {
+) -> Vec<(TypeId, Cow<'static, str>)> {
     let Ok(components) = world.inspect_entity(entity) else {
         return Vec::new();
     };
@@ -400,7 +389,7 @@ fn inspectable(
         components.filter_map(|info| info.type_id()).collect();
 
     let registry = world.resource::<AppTypeRegistry>().read();
-    let mut out: Vec<(TypeId, &'static str)> = ids
+    let mut out: Vec<(TypeId, Cow<'static, str>)> = ids
         .into_iter()
         .filter_map(|id| {
             let registration = registry.get(id)?;
@@ -409,17 +398,49 @@ fn inspectable(
             registration.data::<ReflectComponent>()?;
             // Opt-in - see InspectAppExt::register_inspectable.
             registration.data::<ReflectInspectable>()?;
-            Some((
-                id,
-                registration
-                    .type_info()
-                    .type_path_table()
-                    .short_path(),
-            ))
+            Some((id, display_name(registration)))
         })
         .collect();
 
-    out.sort_by_key(|(_, name)| *name);
+    out.sort_by_key(|(_, name)| name.clone());
+    out
+}
+
+/// What [`ReflectInspectable::name`] overrides to, or `T`'s own name
+/// split into words.
+fn display_name(
+    registration: &TypeRegistration,
+) -> Cow<'static, str> {
+    if let Some(name) = registration
+        .data::<ReflectInspectable>()
+        .and_then(|inspectable| inspectable.name)
+    {
+        return Cow::Borrowed(name);
+    }
+
+    Cow::Owned(humanize(
+        registration.type_info().type_path_table().short_path(),
+    ))
+}
+
+/// `name` split at each lowercase-to-uppercase or letter-to-digit
+/// boundary, so a type's own Rust-cased name reads as words.
+fn humanize(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut prev: Option<char> = None;
+
+    for ch in name.chars() {
+        let splits = prev.is_some_and(|prev| {
+            (prev.is_lowercase() && ch.is_uppercase())
+                || (prev.is_alphabetic() && ch.is_numeric())
+        });
+        if splits {
+            out.push(' ');
+        }
+        out.push(ch);
+        prev = Some(ch);
+    }
+
     out
 }
 

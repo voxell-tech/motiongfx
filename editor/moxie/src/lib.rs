@@ -18,13 +18,12 @@ mod icons;
 mod playback;
 mod project;
 mod scene;
-pub mod std_material_asset;
 mod ui;
 mod view;
 
 use core::time::Duration;
+use std::path::PathBuf;
 
-use bevy::ecs::reflect::AppTypeRegistry;
 use bevy::prelude::*;
 use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
@@ -32,6 +31,7 @@ use bevy::settings::{
 use bevy_motiongfx::prelude::TimelineId;
 use bevy_motiongfx::scene::id::EntityUid;
 
+use moxie_asset::MoxieAssetPlugin;
 pub use scene::EditorScene;
 
 /// Plugin that renders a timeline editor UI for the first
@@ -40,17 +40,12 @@ pub struct MoxiePlugin;
 
 impl Plugin for MoxiePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SettingsPlugin::new(
-            "org.voxell.motiongfx.editor",
+        app.add_plugins((
+            SettingsPlugin::new("org.voxell.motiongfx.editor"),
+            MoxieAssetPlugin,
+            ui::UiPlugin,
         ))
-        .add_plugins(ui::UiPlugin)
         .add_systems(PreUpdate, ensure_scene_root);
-
-        let registry =
-            app.world().resource::<AppTypeRegistry>().clone();
-        app.register_asset_loader(
-            std_material_asset::MaterialAssetLoader::new(&registry),
-        );
     }
 }
 
@@ -122,6 +117,17 @@ pub(crate) struct SelectedAction(pub(crate) Option<Vec<usize>>);
 #[derive(Resource, Default, Clone, Copy, PartialEq)]
 pub(crate) struct SelectedEntity(pub(crate) Option<Entity>);
 
+/// Folders bookmarked for browsing in the asset panel. Saved and
+/// loaded with the project: a bookmark only means something alongside
+/// the assets it points at.
+#[derive(Resource, Default, Clone)]
+pub(crate) struct ProjectBookmarks(pub(crate) Vec<PathBuf>);
+
+/// Where the open project's own `.mox` was last loaded from or saved
+/// to. Its folder is the asset panel's own, permanent bookmark.
+#[derive(Resource, Default, Clone)]
+pub(crate) struct ProjectPath(pub(crate) Option<PathBuf>);
+
 #[derive(Debug, Resource, SettingsGroup, Reflect)]
 #[reflect(Resource, SettingsGroup, Default)]
 pub struct EditorSettings {
@@ -135,7 +141,7 @@ impl Default for EditorSettings {
             hdr: Default::default(),
             // Portrait 9:16 to match the current compositions; the
             // offscreen preview renders at this resolution.
-            physical_size: UVec2::new(1080, 1920),
+            physical_size: UVec2::new(1920, 1080),
         }
     }
 }

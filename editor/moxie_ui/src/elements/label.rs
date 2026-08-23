@@ -14,7 +14,6 @@ pub struct Label {
     /// `None` leaves the colour to the theme.
     pub color: Option<Color>,
     pub bold: bool,
-    /// Off for a label in a row that must not reflow.
     #[default(true)]
     pub wrap: bool,
 }

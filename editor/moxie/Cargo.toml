@@ -12,6 +12,7 @@ bevy_motiongfx = { workspace = true, default-features = true, features = [
 ] }
 motiongfx_scene = { workspace = true, features = ["std"] }
 moxie_ui = { workspace = true }
+moxie_asset = { workspace = true }
 bevy_fynix = { workspace = true }
 fynix_mock = { workspace = true }
 bevy = { workspace = true, default-features = true, features = [

@@ -16,3 +16,6 @@ pub const PLUS: &str = "icons/general/plus.png";
 /// A group's fold toggle in the inspector. Points up; rotated per
 /// state rather than kept as separate up/down/right assets.
 pub const CHEVRON: &str = "icons/arrows/chevron-up.png";
+
+/// A `Handle<T>` field in the inspector.
+pub const ASSET: &str = "icons/files/file-04.png";

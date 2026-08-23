@@ -1,14 +1,20 @@
 //! Folding something away.
 //!
-//! The state is a marker on the node that heads the fold, so it is
-//! read and written right where it is used and nothing has to name
-//! it. It goes when that node does: rebuilding what surrounds a fold
-//! opens it again.
+//! The chevron and body key off a marker on the row's own node, but
+//! that node gets despawned and rebuilt on a list-level change. So
+//! [`Foldable::open`]/`on_toggle` let the caller keep that state
+//! somewhere that survives, such as a component on the entity a row
+//! stands for.
+//!
+//! The body builds lazily, only the first time a row opens, so a fold
+//! over something expensive (a filesystem read, say) never pays for
+//! what nobody has looked at.
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
+use fynix_mock::records::BuildFn;
 use fynix_mock::style::StyledElem;
 use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
@@ -21,25 +27,25 @@ use crate::icons;
 use crate::reactive::{BevyHost, BevyUi, component_changed_on};
 
 /// The chevron's rotation, clockwise from the asset's resting
-/// up-pointing orientation: right when shut, down when open.
+/// up-pointing orientation. Right when shut, down when open.
 pub const CHEVRON_SHUT: f32 = 90.0;
 pub const CHEVRON_OPEN: f32 = 180.0;
 
-/// A chevron of its own, sized to sit beside a row.
-const TOGGLE: f32 = 14.0;
+/// The rail's own width, one level of a body's indent.
+pub const RAIL_WIDTH: f32 = 1.0;
 
-/// How far the rail sets the body in from the header.
-const INDENT: f32 = 9.0;
-
-/// On a [`Foldable`]'s own node while its body is hidden.
+/// On a [`Foldable`]'s own node while its body is hidden. Private to
+/// this row's own reactivity. A caller after something that survives
+/// this node being rebuilt wants [`Foldable::open`]/`on_toggle`
+/// instead.
 #[derive(Component)]
-pub struct Folded;
+struct Folded;
 
-pub fn is_folded(world: &World, node: Entity) -> bool {
+fn is_folded(world: &World, node: Entity) -> bool {
     world.get::<Folded>(node).is_some()
 }
 
-pub fn toggle_folded(world: &mut World, node: Entity) {
+fn toggle_folded(world: &mut World, node: Entity) {
     let Ok(mut node) = world.get_entity_mut(node) else {
         return;
     };
@@ -53,9 +59,9 @@ pub fn toggle_folded(world: &mut World, node: Entity) {
 
 /// What a click has to land on to fold.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Toggle {
+pub enum FoldsOn {
     /// The header itself, turning the chevron already in its icon
-    /// slot - for a header that has nothing else to mean.
+    /// slot. For a header that has nothing else to mean.
     Header,
     /// A chevron of its own beside the header, leaving the header
     /// free to mean something else, like selecting the row.
@@ -66,34 +72,44 @@ pub enum Toggle {
 ///
 /// The header is passed in whole rather than described, so a section
 /// and a tree row can look nothing alike and still fold the same way.
-/// All this owns is the mechanism: the click that toggles, the
-/// chevron that turns, the body that goes, and the rail marking how
-/// deep that body sits.
+/// All this owns is the click that toggles, the chevron that turns,
+/// the body that goes, and the rail marking how deep that body sits.
 pub struct Foldable<
-    S,
-    B,
-    H = for<'u, 'a> fn(ElementMut<'u, 'a, BevyHost, ButtonElem>),
+    S: StyledElem<Host = BevyHost, Element = ButtonElem>,
+    B: BuildFn<BevyHost>,
+    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, BevyHost, ButtonElem>),
+    T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
 > {
-    /// Anything built on a [`ButtonElem`]. Under [`Toggle::Header`]
+    /// Anything built on a [`ButtonElem`]. Under [`FoldsOn::Header`]
     /// its icon slot is the chevron, so it has to carry one.
     pub header: S,
-    pub toggle: Toggle,
+    pub folds_on: FoldsOn,
     /// Whether there is anything to fold. A header with nothing under
     /// it neither turns nor toggles, and its chevron is left out
     /// rather than dimmed, since a hover would light it up again.
     pub enabled: bool,
     /// Run on the header once it's built, after folding is wired to
-    /// it under [`Toggle::Header`] - so a header that also means
+    /// it under [`FoldsOn::Header`], so a header that also means
     /// something of its own, like selecting a row, can still say so.
     pub on_header: H,
     pub body: B,
+    /// Whatever this row was last left as, from wherever the caller
+    /// keeps that. This row's own node carries nothing across a
+    /// rebuild of the list around it.
+    pub open: bool,
+    /// Mirrors a toggle into the caller's own store. Where that lives
+    /// is entirely the caller's call. A component on the entity a row
+    /// stands for cleans itself up when the entity does, and nothing
+    /// here needs to know either way.
+    pub on_toggle: T,
 }
 
-impl<S, B, H> Composer<BevyHost> for Foldable<S, B, H>
+impl<S, B, H, T> Composer<BevyHost> for Foldable<S, B, H, T>
 where
     S: StyledElem<Host = BevyHost, Element = ButtonElem>,
-    B: FnOnce(&mut BevyUi),
+    B: BuildFn<BevyHost>,
     H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, BevyHost, ButtonElem>),
+    T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
 {
     type Element = Frame;
 
@@ -103,13 +119,18 @@ where
     ) -> ElementHandle<BevyHost, Frame> {
         let Self {
             header,
-            toggle,
+            folds_on,
             enabled,
             on_header,
             body,
+            open,
+            on_toggle,
         } = self;
+
         let muted = ui.theme.text_muted;
-        let chevron = enabled && toggle == Toggle::Chevron;
+        let toggle_size = ui.theme.fold_toggle;
+        let indent = ui.theme.fold_indent;
+        let chevron = enabled && folds_on == FoldsOn::Chevron;
 
         let mut root = ui.elem(elem!(
             Frame,
@@ -118,8 +139,12 @@ where
             row_gap = px(2)
         ));
         // Every part reads the fold off this one node, so the chevron
-        // can turn and the body can go.
+        // can turn and the body can go. A fresh node takes whatever
+        // `open` says, not always closed.
         let node = root.id();
+        if !open {
+            root.insert(Folded);
+        }
 
         root.with(move |ui| {
             ui.elem(elem!(
@@ -132,8 +157,8 @@ where
                 if chevron {
                     let mut toggle = ui.elem(elem!(
                         !TintButton::default(),
-                        width = px(TOGGLE),
-                        height = px(TOGGLE),
+                        width = px(toggle_size),
+                        height = px(toggle_size),
                         radius = px(3),
                         icon = val!(
                             Icon,
@@ -143,7 +168,7 @@ where
                             rotation = CHEVRON_OPEN
                         )
                     ));
-                    folds(&mut toggle, node);
+                    folds(&mut toggle, node, on_toggle.clone());
                 }
 
                 // Takes the rest of the row, so a header asking for
@@ -152,7 +177,7 @@ where
                     move |ui| {
                         let mut header = ui.elem(header);
                         if enabled && !chevron {
-                            folds(&mut header, node);
+                            folds(&mut header, node, on_toggle);
                         }
                         on_header(header);
                     },
@@ -167,7 +192,7 @@ where
                 direction = FlexDirection::Row,
                 align = AlignItems::Stretch,
                 padding = UiRect::new(
-                    px(TOGGLE / 2.0),
+                    px(toggle_size / 2.0),
                     Val::ZERO,
                     Val::ZERO,
                     Val::ZERO
@@ -185,12 +210,11 @@ where
                 },
             )
             .with(move |ui| {
-                // A rail beside the body, like a tree view's depth
-                // marker. Stretched to the block's height, not sized
-                // by hand.
+                // The rail. Stretched to the block's height, not
+                // sized by hand.
                 ui.elem(elem!(
                     Frame,
-                    width = px(1),
+                    width = px(RAIL_WIDTH),
                     background = ui.theme.palette.base[2]
                 ));
                 ui.elem(elem!(
@@ -198,13 +222,23 @@ where
                     direction = FlexDirection::Column,
                     flex_grow = 1.0f32,
                     padding = UiRect::new(
-                        px(INDENT),
+                        px(indent),
                         Val::ZERO,
                         Val::ZERO,
                         Val::ZERO
                     )
                 ))
-                .with(body);
+                .watch(
+                    component_changed_on::<Folded>(node),
+                    move |ui| {
+                        // Stays empty while folded, rather than
+                        // building what nothing has opened yet.
+                        if is_folded(ui.world, node) {
+                            return;
+                        }
+                        body(ui);
+                    },
+                );
             });
         })
         .handle()
@@ -212,15 +246,20 @@ where
 }
 
 /// Makes `button` the one that folds `node`, turning its chevron with
-/// the state.
-fn folds(
-    button: &mut ElementMut<'_, '_, BevyHost, ButtonElem>,
+/// the state and mirroring the result through `on_toggle`.
+fn folds<T>(
+    button: &mut ElementMut<BevyHost, ButtonElem>,
     node: Entity,
-) {
+    on_toggle: T,
+) where
+    T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
+{
     button
         .observe(move |_: On<Activate>, mut commands: Commands| {
+            let on_toggle = on_toggle.clone();
             commands.queue(move |world: &mut World| {
                 toggle_folded(world, node);
+                on_toggle(world, !is_folded(world, node));
             });
         })
         .bind(

@@ -37,7 +37,6 @@ impl Composer<BevyHost> for ActionPanel {
     ) -> ElementHandle<BevyHost, ScrollArea> {
         ui.elem(elem!(
             ScrollArea,
-            width = percent(100),
             flex_grow = 1.0f32,
             row_gap = px(8),
             padding = px(PANEL_PADDING),
