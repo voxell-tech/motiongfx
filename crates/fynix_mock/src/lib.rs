@@ -110,23 +110,32 @@ impl<H: Host> Fynix<H> {
     }
 
     /// The theme, to edit in place. Any edit rebuilds the whole tree
-    /// on the next [`flush`](Self::flush).
+    /// on the next [`Self::flush`].
     pub fn theme_mut(&mut self) -> &mut H::Theme {
         self.theme_dirty = true;
         &mut self.theme
     }
 
     /// Rebuild the subtree under `root` whenever `changed` fires.
+    /// Mirrors [`ElementMut::watch`](crate::ui::ElementMut::watch).
     ///
     /// This is the bootstrap watcher. Every other one is added
-    /// through [`ElementMut::watch`](crate::ui::ElementMut::watch)
-    /// inside a build.
+    /// through `ElementMut::watch` inside a build.
     pub fn watch(
         &mut self,
         root: H::Node,
         changed: impl ChangedFn<H>,
         build: impl BuildFn<H>,
+        world: &mut H::World,
     ) {
+        let mut changed = changed;
+        if changed(world, root) {
+            clear_children::<H>(world, root);
+            let mut ui =
+                Ui::new(world, root, &mut self.records, &self.theme);
+            build(&mut ui);
+        }
+
         self.watchers.push(Watcher {
             root,
             changed: Box::new(changed),
@@ -271,7 +280,10 @@ impl<H: Host> Fynix<H> {
 
 /// Despawn the kernel's children of `root`. The sweep in
 /// [`Fynix::flush`] then drops whatever those nodes left behind.
-fn clear_children<H: Host>(world: &mut H::World, root: H::Node) {
+pub(crate) fn clear_children<H: Host>(
+    world: &mut H::World,
+    root: H::Node,
+) {
     for child in H::children(world, root) {
         H::despawn(world, child);
     }

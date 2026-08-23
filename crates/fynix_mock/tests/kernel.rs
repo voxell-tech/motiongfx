@@ -8,7 +8,7 @@ use fynix_mock::Fynix;
 use fynix_mock::elem;
 use fynix_mock::host::Host;
 
-/// Fires on the first flush and never again, the way a bootstrap
+/// Fires on the first call and never again, the way a bootstrap
 /// build does. A stateful predicate consumes its own signal.
 fn once() -> impl FnMut(&World, usize) -> bool + Send + Sync + 'static
 {
@@ -24,25 +24,31 @@ fn only_child(world: &World, root: usize) -> usize {
 }
 
 #[test]
-fn flush_builds_what_a_watcher_declares() {
+fn watch_builds_immediately_when_its_predicate_fires() {
     let (mut world, root) = World::with_root();
     let mut kernel = Fynix::new(());
 
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(Label));
-    });
-
-    assert!(Backend::children(&world, root).is_empty());
-
-    kernel.flush(&mut world);
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label));
+        },
+        &mut world,
+    );
 
     let label = only_child(&world, root);
     assert_eq!(world.get(label).text, "Label");
     assert_eq!(world.get(label).size, 13);
+
+    // `once()`'s first call already happened above, so a flush right
+    // after does not rebuild.
+    kernel.flush(&mut world);
+    assert_eq!(only_child(&world, root), label, "not rebuilt");
 }
 
 #[test]
-fn flush_builds_nothing_when_no_predicate_fires() {
+fn watch_builds_nothing_when_its_predicate_never_fires() {
     let (mut world, root) = World::with_root();
     let mut kernel = Fynix::new(());
 
@@ -52,7 +58,10 @@ fn flush_builds_nothing_when_no_predicate_fires() {
         |ui| {
             ui.elem(elem!(Label));
         },
+        &mut world,
     );
+
+    assert!(Backend::children(&world, root).is_empty());
 
     kernel.flush(&mut world);
 
@@ -64,17 +73,21 @@ fn binding_writes_and_patches_one_field() {
     let (mut world, root) = World::with_root();
     let mut kernel = Fynix::new(());
 
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(Label)).bind(
-            |label| label.text(),
-            |world, _| world.source.changed,
-            |world, _| world.source.text.clone(),
-        );
-    });
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label)).bind(
+                |label| label.text(),
+                |world, _| world.source.changed,
+                |world, _| world.source.text.clone(),
+            );
+        },
+        &mut world,
+    );
 
-    // Builds, but the binding's predicate has not fired, so the
-    // element still holds what it was built with.
-    kernel.flush(&mut world);
+    // Built immediately; the binding's own predicate has not fired,
+    // so the element still holds what it was built with.
     let label = only_child(&world, root);
     assert_eq!(world.get(label).text, "Label");
 
@@ -94,15 +107,19 @@ fn binding_stays_quiet_until_its_predicate_fires() {
     let (mut world, root) = World::with_root();
     let mut kernel = Fynix::new(());
 
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(Label)).bind(
-            |label| label.text(),
-            |world, _| world.source.changed,
-            |world, _| world.source.text.clone(),
-        );
-    });
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label)).bind(
+                |label| label.text(),
+                |world, _| world.source.changed,
+                |world, _| world.source.text.clone(),
+            );
+        },
+        &mut world,
+    );
 
-    kernel.flush(&mut world);
     let label = only_child(&world, root);
 
     // A new value, but nothing says so.
@@ -117,13 +134,17 @@ fn rebuild_replaces_the_children() {
     let (mut world, root) = World::with_root();
     let mut kernel = Fynix::new(());
 
+    // False at registration, so nothing builds until `changed` is
+    // set below.
     kernel.watch(
         root,
         |world: &World, _| world.source.changed,
         |ui| {
             ui.elem(elem!(Label));
         },
+        &mut world,
     );
+    assert!(Backend::children(&world, root).is_empty());
 
     world.source.changed = true;
     kernel.flush(&mut world);
@@ -144,15 +165,19 @@ fn dead_node_is_not_patched() {
     let (mut world, root) = World::with_root();
     let mut kernel = Fynix::new(());
 
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(Label)).bind(
-            |label| label.text(),
-            |world, _| world.source.changed,
-            |world, _| world.source.text.clone(),
-        );
-    });
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label)).bind(
+                |label| label.text(),
+                |world, _| world.source.changed,
+                |world, _| world.source.text.clone(),
+            );
+        },
+        &mut world,
+    );
 
-    kernel.flush(&mut world);
     let label = only_child(&world, root);
 
     // Despawned behind the kernel's back. A binding kept against a
@@ -172,12 +197,15 @@ fn swept_node_takes_its_element_with_it() {
     let (mut world, root) = World::with_root();
     let mut kernel = Fynix::new(());
 
+    // False at registration, so nothing builds until `changed` is
+    // set below.
     kernel.watch(
         root,
         |world: &World, _| world.source.changed,
         |ui| {
             ui.elem(elem!(Label));
         },
+        &mut world,
     );
 
     world.source.changed = true;
@@ -209,9 +237,14 @@ fn dead_root_takes_its_watcher_with_it() {
     // without taking the whole world with it.
     let branch = Backend::spawn(&mut world, root);
 
-    kernel.watch(branch, once(), |ui| {
-        ui.elem(elem!(Label));
-    });
+    kernel.watch(
+        branch,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label));
+        },
+        &mut world,
+    );
     assert_eq!(kernel.watcher_len(), 1);
 
     kernel.flush(&mut world);
@@ -228,15 +261,19 @@ fn dead_node_takes_its_bindings_with_it() {
     let (mut world, root) = World::with_root();
     let mut kernel = Fynix::new(());
 
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(Label)).bind(
-            |label| label.text(),
-            |world, _| world.source.changed,
-            |world, _| world.source.text.clone(),
-        );
-    });
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label)).bind(
+                |label| label.text(),
+                |world, _| world.source.changed,
+                |world, _| world.source.text.clone(),
+            );
+        },
+        &mut world,
+    );
 
-    kernel.flush(&mut world);
     let label = only_child(&world, root);
     assert_eq!(kernel.binding_len(), 1);
 

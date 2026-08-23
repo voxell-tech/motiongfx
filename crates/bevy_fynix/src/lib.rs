@@ -89,7 +89,7 @@ pub fn theme_mut<Theme: Send + Sync + 'static>(
     kernel.into_inner().theme_mut()
 }
 
-/// Build `root` on the next flush, and never again.
+/// Build `root` immediately, and never again.
 ///
 /// Everything reactive below it is declared inside `build`. Call it
 /// once per root, after spawning that root.
@@ -100,10 +100,15 @@ pub fn watch_root<Theme: Send + Sync + 'static>(
 ) {
     let mut pending = true;
 
-    world.resource_mut::<BevyFynix<Theme>>().watch(
-        root,
-        move |_, _| core::mem::take(&mut pending),
-        build,
+    world.resource_scope::<BevyFynix<Theme>, _>(
+        |world, mut kernel| {
+            kernel.watch(
+                root,
+                move |_, _| core::mem::take(&mut pending),
+                build,
+                world,
+            );
+        },
     );
 }
 

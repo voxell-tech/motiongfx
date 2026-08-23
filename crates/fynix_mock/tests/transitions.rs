@@ -34,13 +34,21 @@ fn travelling() -> (World, usize, Fynix<Backend>, usize) {
     world.delta = 0.25;
     let mut kernel = Fynix::new(());
 
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(Label, size = 0u32)).transition(
-            |label| label.size(),
-            Transition::secs(1.0, <u32 as Interpolation<()>>::interp)
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label, size = 0u32)).transition(
+                |label| label.size(),
+                Transition::secs(
+                    1.0,
+                    <u32 as Interpolation<()>>::interp,
+                )
                 .ease(ease::linear),
-        );
-    });
+            );
+        },
+        &mut world,
+    );
     kernel.flush(&mut world);
 
     let label = only_child(&world, root);
@@ -120,9 +128,14 @@ fn element_keeps_the_base_while_a_lane_is_in_flight() {
     // Whatever the lane shows, the element is still what the cascade
     // left: a rebuild starts from the base, not from mid flight.
     kernel.unwatch(root);
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(Label, size = 0u32));
-    });
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label, size = 0u32));
+        },
+        &mut world,
+    );
     kernel.flush(&mut world);
 
     let rebuilt = only_child(&world, root);
@@ -210,9 +223,14 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
     world.delta = 0.5;
     let mut kernel = Fynix::new(());
 
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(!Grows, text = "Save"));
-    });
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(!Grows, text = "Save"));
+        },
+        &mut world,
+    );
     kernel.flush(&mut world);
 
     let label = only_child(&world, root);

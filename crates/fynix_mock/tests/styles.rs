@@ -215,9 +215,8 @@ fn the_builder_takes_a_styled_element_whole() {
         |ui| {
             ui.elem(elem!(!Title, text = "Save"));
         },
+        &mut world,
     );
-
-    kernel.flush(&mut world);
 
     let children = Backend::children(&world, root);
     assert_eq!(world.get(children[0]).text, "Save");
