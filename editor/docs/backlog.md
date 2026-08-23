@@ -183,16 +183,5 @@ embed-or-reference flag, or Rive's embed-by-default. Not Bevy's own
       this material as a new asset" action - today only
       `moxie_asset/examples/gen_default_material.rs` ever writes a
       `.mat`.
-- [x] A `Handle<T>` branch in the reflect-tree inspector: done as
-      `moxie_ui::inspector::handle`, `impl<T: Asset + TypePath>
-      Inspect for Handle<T>`, so it slots into the existing walk
-      rather than needing its own dispatch. Registered so far only for
-      `Handle<StandardMaterial>`; still needs a browse button beside
-      the drop target, reusing the `rfd::` dialog already in
-      `project.rs`.
-- [x] Storage that outlives the load call: `source.write` puts the
-      freshly loaded handle straight into the component field, so the
-      component itself is what holds it, not a local that would drop
-      it.
 - [ ] A preview panel beside the asset browser's own listing, showing
       whatever asset is currently selected or hovered there.
