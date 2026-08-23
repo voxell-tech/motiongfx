@@ -8,6 +8,20 @@ use crate::common::{
 };
 
 pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
+    // `Element`'s own dispatch names a field by the id `Lenz` gives
+    // it, and almost always wants `#[default(...)]` for its own
+    // fields - the two have never once been derived apart from
+    // `Element` across this workspace, so `Element` derives them
+    // itself rather than asking a caller to remember both.
+    //
+    // `#[elem(ignore)]` is left out of the cursor too: `Default`
+    // still needs to see the field, which is why it stays in for
+    // `override_default`, but nothing should be able to name a path
+    // to it once it can't be patched.
+    let lenz =
+        crate::lenz::expand_filtered(ast, |field| !ignore(field))?;
+    let default = crate::override_default::expand(ast)?;
+
     let root = crate_path();
     let name = &ast.ident;
     let fields = named_fields(ast, "Element")?;
@@ -36,9 +50,9 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         let marker = quote!(#path_mod::#field_name #ty);
         let id = quote!(<#marker as #root::lenz::FieldPath>::id());
 
-        // A field marked `#[elem]` is an element in its own right. It
-        // is absent from the enum, because naming it there would
-        // offer a second, redundant way in.
+        // A field marked `#[elem(child)]` is an element in its own
+        // right. It is absent from the enum, because naming it there
+        // would offer a second, redundant way in.
         if is_elem(field) {
             // `Option<T>` builds nothing when absent, so the store
             // simply has no entry and the walk stops there.
@@ -62,9 +76,10 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
 
             builds.push(quote! {
                 if let ::core::option::Option::Some(elem) = #elem {
-                    let child =
-                        #as_elem::build(elem, world, node, store);
-                    store.insert(node, #id, child);
+                    let child = #as_elem::build(
+                        elem, world, node, records, theme,
+                    );
+                    records.store_mut().insert(node, #id, child);
                 }
             });
 
@@ -76,7 +91,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                     ) = (#elem, store.get(node, *head))
                     {
                         #as_elem::patch(
-                            elem, world, child, rest, store,
+                            elem, world, child, rest, store, theme,
                         );
                     }
                     return;
@@ -96,6 +111,18 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             continue;
         }
 
+        // A field marked `#[elem(ignore)]` only ever changes at
+        // build. Leaving it out of the enum the same way `child`
+        // does makes that true rather than merely asked for: nothing
+        // can name it to walk a path there, so a stray `.bind()`
+        // writes the field and has no way to tell the backend. It is
+        // left out of the cursor entirely too (see the call to
+        // `lenz::expand_filtered` above), so there is no `.field()`
+        // to even reach for one in the first place.
+        if ignore(field) {
+            continue;
+        }
+
         let variant = format_ident!("{}", pascal_case(field_name));
 
         variants.push(quote!(#variant,));
@@ -110,6 +137,9 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     }
 
     Ok(quote! {
+        #lenz
+        #default
+
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum #field_enum {
             #(#variants)*
@@ -135,7 +165,9 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         impl<H, #decl> #root::element::Element<H> for #name #ty
         where
             H: #root::host::Host,
-            Self: #root::element::ElementVisual<H>,
+            Self: #root::element::ElementVisual<H>
+                + ::core::marker::Send
+                + ::core::marker::Sync,
             #(#elem_bounds,)*
             #predicates
         {
@@ -143,7 +175,8 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 &self,
                 world: &mut H::World,
                 parent: H::Node,
-                store: &mut #root::store::Store<H>,
+                records: &mut #root::records::Records<H>,
+                theme: &H::Theme,
             ) -> H::Node {
                 let node = <H as #root::host::Host>::spawn(
                     world, parent,
@@ -151,8 +184,12 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
 
                 #(#builds)*
 
+                let (lanes, store) = records.build_parts();
+                let mut draw = #root::ui::Build::new(
+                    world, node, lanes, store, theme,
+                );
                 <Self as #root::element::ElementVisual<H>>
-                    ::build_fields(self, world, node);
+                    ::build_fields(self, &mut draw);
                 node
             }
 
@@ -162,6 +199,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 node: H::Node,
                 path: &[#root::lenz::FieldId],
                 store: &mut #root::store::Store<H>,
+                theme: &H::Theme,
             ) {
                 let ::core::option::Option::Some((head, rest)) =
                     path.split_first()
@@ -178,8 +216,10 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 if let ::core::option::Option::Some(field) =
                     <Self as #root::element::Fields>::field(*head)
                 {
+                    let mut patch =
+                        #root::ui::Patch::new(world, node, theme);
                     <Self as #root::element::ElementVisual<H>>
-                        ::patch_fields(self, world, node, field);
+                        ::patch_fields(self, &mut patch, field);
                 }
             }
 
@@ -196,7 +236,31 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     })
 }
 
-/// Whether the field carries `#[elem]`.
+/// What `#[elem(...)]` says about this field, if it carries one.
+///
+/// One attribute, one directive: `elem(child)` for a field that is an
+/// element in its own right, `elem(ignore)` for one that only ever
+/// changes at build. Nothing else names it, so there is nothing to
+/// disambiguate between the two forms.
+fn elem_directive(field: &Field) -> Option<syn::Ident> {
+    let attr = field
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("elem"))?;
+    attr.parse_args::<syn::Ident>().ok()
+}
+
+/// Whether the field carries `#[elem(child)]`.
 fn is_elem(field: &Field) -> bool {
-    field.attrs.iter().any(|attr| attr.path().is_ident("elem"))
+    elem_directive(field)
+        .is_some_and(|directive| directive == "child")
+}
+
+/// Whether the field carries `#[elem(ignore)]`: a regular field that
+/// only ever changes at build (in `build_fields`), so it has nothing
+/// to reach through the field/patch system, and no cursor to name a
+/// path to it with either.
+fn ignore(field: &Field) -> bool {
+    elem_directive(field)
+        .is_some_and(|directive| directive == "ignore")
 }

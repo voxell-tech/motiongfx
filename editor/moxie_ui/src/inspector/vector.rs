@@ -16,17 +16,14 @@ use bevy::feathers::controls::{NumberFormat, NumberInputValue};
 use bevy::prelude::*;
 use bevy::ui_widgets::ValueChange;
 
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::elem;
 
 use super::{Inspect, Source, SourceExt, when_changed};
 use crate::elements::{Frame, Label, NumberField, NumberFieldCursor};
-use crate::palette;
+use crate::monokai;
 use crate::reactive::BevyUi;
 use crate::theme::EditorTheme;
-
-/// Narrower than a lone scalar's, so up to four still sit on one row.
-const AXIS_WIDTH: Val = Val::Px(52.0);
 
 /// A vector, by the axes an inspector edits it through.
 trait Axes: FromReflect + Send + Sync + 'static {
@@ -44,9 +41,9 @@ trait Axes: FromReflect + Send + Sync + 'static {
 /// Y green, Z blue.
 fn axis_color(theme: &EditorTheme, name: &str) -> Color {
     match name {
-        "x" => palette::RED,
-        "y" => palette::GREEN,
-        "z" => palette::BLUE,
+        "x" => monokai::RED,
+        "y" => monokai::GREEN,
+        "z" => monokai::BLUE,
         _ => theme.text_muted,
     }
 }
@@ -69,7 +66,6 @@ fn axes<T, V>(
     V: Clone + Send + Sync + 'static,
     ValueChange<V>: EntityEvent,
 {
-    let theme = ui.world.resource::<EditorTheme>().clone();
     let source = source.boxed();
 
     ui.elem(elem!(
@@ -83,7 +79,7 @@ fn axes<T, V>(
             ui.elem(elem!(
                 Label,
                 text = name.to_uppercase(),
-                color = Some(axis_color(&theme, name)),
+                color = Some(axis_color(ui.theme, name)),
                 bold = true
             ));
             axis::<T, V>(
@@ -113,7 +109,7 @@ fn axis<T, V>(
     ui.elem(elem!(
         NumberField,
         format = format,
-        width = AXIS_WIDTH,
+        width = px(40),
         value = initial
     ))
     .observe(

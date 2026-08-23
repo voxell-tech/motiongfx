@@ -30,7 +30,7 @@ mod timeline_track;
 // it, and the walk is what those provide.
 pub use button::{
     Button, ButtonElem, ButtonElemCursor, ButtonElemField,
-    GhostButton, TintButton,
+    GhostButton, MenuButton, TintButton,
 };
 pub use divider::{Divider, DividerCursor, DividerField};
 pub use dropdown::{
@@ -40,7 +40,8 @@ pub use dropdown::{
 };
 pub use field::{
     CheckBox, CheckBoxCursor, CheckBoxField, NumberField,
-    NumberFieldCursor, NumberFieldField,
+    NumberFieldCursor, NumberFieldField, TextField, TextFieldCursor,
+    TextFieldField,
 };
 pub use frame::{Frame, FrameCursor, FrameField};
 pub use icon::{Icon, IconCursor, IconField};

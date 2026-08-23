@@ -2,7 +2,7 @@
 //!
 //! Paths are not about UI: nothing here is an element, and there is no
 //! backend. A walk is built from types, costs nothing at runtime, and
-//! ends in one of three ways — reach the value, name the whole walk,
+//! ends in one of three ways: reach the value, name the whole walk,
 //! or list the hops it took.
 
 use fynix_mock::OverrideDefault;
@@ -49,9 +49,9 @@ fn reaching_the_value() {
     let size = Card::cursor().header().badge().icon().size();
 
     println!("\nreaching the value");
-    println!("  size {:?}", (size.accessor().get)(&card));
+    println!("  size {:?}", size.accessor().get(&card));
 
-    assert_eq!((size.accessor().get)(&card), Some(&12));
+    assert_eq!(size.accessor().get(&card), Some(&12));
 }
 
 /// The walk is `Copy` and zero sized, so the same one reads and
@@ -60,12 +60,12 @@ fn writing_through_the_same_walk() {
     let mut card = Card::default();
     let size = Card::cursor().header().badge().icon().size();
 
-    *(size.accessor().get_mut)(&mut card).unwrap() = 24;
+    *size.accessor().get_mut(&mut card).unwrap() = 24;
 
     println!("\nwriting through the same walk");
-    println!("  size {:?}", (size.accessor().get)(&card));
+    println!("  size {:?}", size.accessor().get(&card));
 
-    assert_eq!((size.accessor().get)(&card), Some(&24));
+    assert_eq!(size.accessor().get(&card), Some(&24));
 }
 
 /// An `Option` field is just another hop. When it is empty the walk
@@ -78,9 +78,9 @@ fn absent_link_stops_the_walk() {
     let size = Card::cursor().header().badge().icon().size();
 
     println!("\nan absent link stops the walk");
-    println!("  size {:?}", (size.accessor().get)(&card));
+    println!("  size {:?}", size.accessor().get(&card));
 
-    assert_eq!((size.accessor().get)(&card), None);
+    assert_eq!(size.accessor().get(&card), None);
 }
 
 /// One id per hop, outermost first. This is the route a patch takes:

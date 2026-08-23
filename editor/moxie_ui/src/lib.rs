@@ -6,11 +6,14 @@
     reason = "Inherent to Bevy ECS: systems take many params and query tuples."
 )]
 
+pub mod asset;
 pub mod elements;
+pub mod fold;
 pub mod icons;
 pub mod inspector;
+pub mod layout;
+pub mod monokai;
 pub mod motion;
-pub mod palette;
 pub mod reactive;
 pub mod theme;
 pub mod widgets;
@@ -20,16 +23,17 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;
 use bevy::prelude::*;
 
+use asset::AssetDragging;
 use inspector::InspectPlugin;
+use moxie_asset::AssetKinds;
 use reactive::FynixPlugin;
-use theme::EditorTheme;
 use widgets::dock::DockPlugin;
 
 /// Everything a consumer needs to render a moxie UI: feathers theming,
 /// the dock engine, the
 /// default reflect-inspector widgets, and the kernel.
 ///
-/// Doesn't build a root itself — spawn one and call
+/// Doesn't build a root itself; spawn one and call
 /// [`reactive::watch_root`] wherever the app does its own `Startup`
 /// setup.
 #[derive(Default)]
@@ -40,12 +44,12 @@ impl Plugin for MoxieUiPlugin {
         app.add_plugins((
             FeathersPlugins,
             DockPlugin,
-            FynixPlugin,
+            FynixPlugin::default(),
             InspectPlugin,
         ))
-        // The colours every widget reads.
-        .init_resource::<EditorTheme>()
         // Seed the feathers palette (its default theme is empty).
-        .insert_resource(UiTheme(create_dark_theme()));
+        .insert_resource(UiTheme(create_dark_theme()))
+        .init_resource::<AssetKinds>()
+        .init_resource::<AssetDragging>();
     }
 }

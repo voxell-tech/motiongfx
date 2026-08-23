@@ -11,21 +11,17 @@ use super::Source;
 /// and the reflect path reaching a leaf inside it. The empty path is
 /// the component itself.
 ///
-/// A resource is a component too - bevy parks each one on an entity
-/// of its own, and `#[reflect(Resource)]` registers a
-/// [`ReflectComponent`] alongside - so which it was handed never
-/// comes up. *Which* entity that is gets settled once, by whoever
-/// built the field, rather than looked up on every read: it only
-/// moves when the resource is removed and re-inserted, and a value
-/// that has been replaced wants the subtree rebuilt, not its bindings
-/// quietly re-pointed at a new instance.
+/// A resource is a component too. Bevy parks each one on an entity
+/// of its own, so which it was handed never comes up. That entity is
+/// settled once, when the field is built, not looked up on every
+/// read.
 ///
-/// One [`Source`] a widget can be handed. It deliberately carries no
-/// value - a widget re-reads through the path whenever the component
-/// changes, so nothing goes stale behind a snapshot.
+/// A [`Source`] a widget can be handed. It carries no value: a widget
+/// re-reads through the path whenever the component changes, so
+/// nothing goes stale behind a snapshot.
 ///
-/// Holds a [`TypeId`] rather than a `ComponentId` so a field can be
-/// named before the world has registered the type.
+/// Holds a [`TypeId`], not a `ComponentId`, so a field can be named
+/// before the world has registered the type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Field {
     entity: Entity,
@@ -105,6 +101,17 @@ impl Field {
         let value =
             component.reflect(world.get_entity(self.entity).ok()?)?;
         Some(read(value))
+    }
+
+    /// As [`Self::read`], resolved to this field's own leaf rather
+    /// than the component root. Misses if the path no longer resolves.
+    pub fn read_at<R>(
+        &self,
+        world: &World,
+        read: impl FnOnce(&dyn PartialReflect) -> R,
+    ) -> Option<R> {
+        self.read(world, |value| self.resolve(value).map(read))
+            .flatten()
     }
 
     /// Runs `write` against the whole component.
@@ -194,16 +201,9 @@ impl Source for Field {
         &self,
     ) -> Box<dyn FnMut(&World) -> bool + Send + Sync> {
         let field = self.clone();
-        let mut seen: Option<Tick> = None;
-        let mut polled = false;
-
-        Box::new(move |world| {
-            let current = field.changed_tick(world);
-            let fired = !polled || seen != current;
-            seen = current;
-            polled = true;
-            fired
-        })
+        Box::new(crate::reactive::tick_changed(move |world| {
+            field.changed_tick(world)
+        }))
     }
 
     fn boxed(&self) -> Box<dyn Source> {

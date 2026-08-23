@@ -1,67 +1,54 @@
-//! Scene hierarchy browser: an indented list of the scene's entities.
+//! Scene hierarchy browser: an indented list of the scene's subjects.
 //!
-//! Only *scene* entities are listed (anything with a [`Transform`] that
-//! isn't editor UI), so the panel shows the composition's objects, not
-//! the editor chrome.
+//! What counts as one is an [`EntityUid`], the id a scene refers to
+//! its subjects by. The panel lists exactly what the animation can
+//! address, nothing the editor spawned for itself.
+//!
+//! Each subject watches only its own children, so adding one rebuilds
+//! that branch and not the panel. Depth is the nesting: a subtree
+//! indents what it holds.
 
-use std::sync::{Arc, Mutex};
+mod drag;
+
+pub(crate) use drag::Dragging;
 
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
+use bevy::ui_widgets::Activate;
+use bevy_fynix::EntityExt;
+use bevy_motiongfx::scene::id::EntityUid;
 use fynix_mock::composer::Composer;
-use fynix_mock::elem;
-use fynix_mock::ui::ElementHandle;
-use moxie_ui::elements::{Frame, Label, Panel};
-use moxie_ui::reactive::{BevyHost, BevyUi};
-use moxie_ui::theme::EditorTheme;
+use fynix_mock::ui::{ElementHandle, ElementMut};
+use fynix_mock::{elem, val};
+use moxie_ui::elements::{
+    ButtonElem, ButtonElemCursor, Frame, FrameCursor, GhostButton,
+    Icon, Label, LabelCursor, Panel, ScrollArea, TintButton,
+};
+use moxie_ui::fold::{Foldable, FoldsOn};
+use moxie_ui::reactive::{
+    BevyHost, BevyUi, component_changed_on, value_changed,
+};
 
-use super::{PANEL_PADDING, TrackViewportCamera};
+use super::PANEL_PADDING;
+use crate::{SceneRoot, SelectedEntity};
 
-/// Indent per hierarchy level.
-const INDENT: f32 = 12.0;
+/// The line marking where a drop would land a row.
+const GAP: f32 = 2.0;
 
-/// One row: an entity's depth and display name.
-#[derive(Clone, PartialEq)]
-struct Row {
-    depth: usize,
-    name: String,
-}
+/// What that line answers to. Twice its own thickness, so aiming
+/// between two rows does not ask for the pixels the line is drawn in -
+/// the way a split's handle is wider than the seam it draws.
+///
+/// It holds that space whether or not a drag is happening, which is
+/// also what separates one row from the next: a line that appeared
+/// only when aimed at would shift every row below it as it did.
+const GAP_HIT: f32 = GAP * 2.0;
 
-/// Scene entities: transform-bearing and not editor UI.
-type SceneEntity =
-    (With<Transform>, Without<Node>, Without<TrackViewportCamera>);
+/// Room below the last row for the button that floats over it.
+const BUTTON_CLEARANCE: f32 = 34.0;
 
-/// The queries the predicate drives.
-struct HierarchyQueries {
-    scene:
-        QueryState<(Entity, Option<&'static Children>), SceneEntity>,
-    names: QueryState<&'static Name>,
-    parents: QueryState<&'static ChildOf>,
-}
-
-impl HierarchyQueries {
-    /// `try_new` rather than `new`: a builder only ever holds
-    /// `&World`. Returns `None` until every component is registered.
-    fn try_new(world: &World) -> Option<Self> {
-        Some(Self {
-            scene: QueryState::try_new(world)?,
-            names: QueryState::try_new(world)?,
-            parents: QueryState::try_new(world)?,
-        })
-    }
-
-    fn update(&mut self, world: &World) {
-        self.scene.update_archetypes(world);
-        self.names.update_archetypes(world);
-        self.parents.update_archetypes(world);
-    }
-
-    fn is_scene(&self, world: &World, entity: Entity) -> bool {
-        self.scene.get_manual(world, entity).is_ok()
-    }
-}
-
-/// The hierarchy panel, as kernel nodes.
+/// Every scene subject, as nested rows, under what acts on the list
+/// as a whole.
 pub(super) struct HierarchyPanel;
 
 impl Composer<BevyHost> for HierarchyPanel {
@@ -71,116 +58,390 @@ impl Composer<BevyHost> for HierarchyPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Panel> {
-        // The rows the predicate found, handed to the build that
-        // follows it: collecting them twice would walk the whole
-        // scene twice per change.
-        let rows: Arc<Mutex<Vec<Row>>> = Arc::default();
-        let seen = rows.clone();
-        let mut queries: Option<HierarchyQueries> = None;
+        ui.elem(elem!(Panel))
+            .with(|ui| {
+                ui.compose(Roots);
+                ui.compose(AddButton);
+            })
+            .handle()
+    }
+}
+
+/// The one thing that acts on the list, not on a row in it.
+///
+/// Floated over the corner, not given a strip of its own, so it
+/// stays put however far the list is scrolled.
+struct AddButton;
+
+impl Composer<BevyHost> for AddButton {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        ui.elem(elem!(
+            Frame,
+            position = PositionType::Absolute,
+            inset = UiRect::new(
+                auto(),
+                px(PANEL_PADDING),
+                auto(),
+                px(PANEL_PADDING)
+            )
+        ))
+        .with(move |ui| {
+            ui.elem(elem!(
+                !TintButton::default(),
+                icon = val!(Icon, image = crate::icons::PLUS)
+            ))
+            .observe(
+                |_: On<Activate>, mut commands: Commands| {
+                    commands.queue(spawn_new_entity);
+                },
+            );
+        })
+        .handle()
+    }
+}
+
+/// The subjects themselves, scrolling under the button.
+struct Roots;
+
+impl Composer<BevyHost> for Roots {
+    type Element = ScrollArea;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, ScrollArea> {
+        // Roots only: a branch minds itself. The query is kept
+        // because this polls every flush, and the build (which
+        // makes its own) runs far less often.
+        let mut query = None;
+        let mut seen: Option<Vec<Entity>> = None;
 
         ui.elem(elem!(
-            Panel,
-            direction = FlexDirection::Column,
-            row_gap = px(2),
-            padding = UiRect::all(px(PANEL_PADDING)),
-            scrolls = true
+            ScrollArea,
+            width = percent(100),
+            flex_grow = 1.0f32,
+            padding = UiRect::new(
+                px(PANEL_PADDING),
+                px(PANEL_PADDING),
+                px(PANEL_PADDING),
+                px(BUTTON_CLEARANCE)
+            ),
+            scroll_x = false
         ))
         .watch(
             move |world, _| {
-                let queries = match &mut queries {
-                    Some(queries) => queries,
-                    slot => match HierarchyQueries::try_new(world) {
-                        Some(queries) => slot.insert(queries),
+                let query = match &mut query {
+                    Some(query) => query,
+                    slot => match QueryState::try_new(world) {
+                        Some(query) => slot.insert(query),
                         None => return false,
                     },
                 };
-                let current = collect_rows(world, queries);
-                let mut seen = seen.lock().unwrap();
-                let changed = *seen != current;
-                *seen = current;
+                query.update_archetypes(world);
+
+                let current = roots(world, query);
+                let changed = seen.as_ref() != Some(&current);
+                seen = Some(current);
                 changed
             },
-            move |ui| {
-                let rows = rows.lock().unwrap();
-                build_rows(ui, &rows);
-            },
+            build_roots,
         )
         .handle()
     }
 }
 
-/// Roots first (a scene entity whose parent isn't itself a scene
-/// entity), then depth-first so children follow their parent.
-fn collect_rows(
-    world: &World,
-    queries: &mut HierarchyQueries,
-) -> Vec<Row> {
-    queries.update(world);
-
-    let mut roots = queries
-        .scene
-        .iter_manual(world)
-        .map(|(entity, _)| entity)
-        .filter(|&entity| {
-            !queries.parents.get_manual(world, entity).is_ok_and(
-                |parent| queries.is_scene(world, parent.parent()),
-            )
-        })
-        .collect::<Vec<_>>();
-    roots.sort_unstable();
-
-    let mut rows = Vec::new();
-    for root in roots {
-        push_subtree(world, queries, root, 0, &mut rows);
-    }
-    rows
-}
-
-/// Depth-first append `entity` and its scene descendants.
-fn push_subtree(
-    world: &World,
-    queries: &HierarchyQueries,
-    entity: Entity,
-    depth: usize,
-    out: &mut Vec<Row>,
-) {
-    let Ok((_, children)) = queries.scene.get_manual(world, entity)
+/// Spawns a subject at the top level, and selects it so the inspector
+/// is already pointed at what was just made.
+///
+/// Nothing of the animation changes: a [`Stage`](motiongfx_scene::scene::Stage)
+/// seeds the fields an action drives, and a subject with no action on
+/// it keeps whatever it was spawned holding.
+fn spawn_new_entity(world: &mut World) {
+    let Ok(root) = world
+        .query_filtered::<Entity, With<SceneRoot>>()
+        .single(world)
     else {
+        error!("Scene root does not exist!");
         return;
     };
-    let name = queries
-        .names
-        .get_manual(world, entity)
-        .map(|name| name.as_str().to_string())
-        .unwrap_or_else(|_| format!("Entity {}", entity.index()));
-    out.push(Row { depth, name });
 
-    let children = children
-        .map(|children| children.to_vec())
-        .unwrap_or_default();
-    for child in children {
-        push_subtree(world, queries, child, depth + 1, out);
+    let entity = world
+        .spawn((
+            EntityUid::new(),
+            Name::new("Entity"),
+            Transform::default(),
+            Visibility::default(),
+            ChildOf(root),
+        ))
+        .id();
+
+    world.insert_resource(SelectedEntity(Some(entity)));
+}
+
+fn build_roots(ui: &mut BevyUi) {
+    let roots = {
+        let Some(mut query) = QueryState::try_new(ui.world) else {
+            return;
+        };
+        roots(ui.world, &mut query)
+    };
+
+    listing(ui, roots);
+}
+
+/// One list of rows, with the gaps a drop can land between them.
+///
+/// A gap above each row and one below the last, so every place a row
+/// could go gets exactly one, not a doubled-up pair between rows.
+fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
+    let accent = ui.theme.accent;
+
+    for &entity in &entities {
+        gap(ui, entity, accent, drag::At::Before);
+        ui.compose(Subtree { entity });
+    }
+
+    if let Some(&last) = entities.last() {
+        gap(ui, last, accent, drag::At::After);
     }
 }
 
-fn build_rows(ui: &mut BevyUi, rows: &[Row]) {
-    let text_color = ui.world.resource::<EditorTheme>().text_primary;
+/// Where a drop lands a row beside another, as a hit area wider than
+/// the line it commits to, like a split's handle is wider than the
+/// seam it draws.
+fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
+    let mut marker = ui.elem(elem!(
+        Frame,
+        width = percent(100),
+        height = px(GAP_HIT),
+        justify = JustifyContent::Center,
+        direction = FlexDirection::Column
+    ));
 
-    for row in rows {
-        let indent = row.depth as f32 * INDENT;
-        let name = row.name.clone();
-        ui.elem(elem!(
-            Frame,
-            width = percent(100),
-            align = AlignItems::Center,
-            padding = UiRect::left(px(indent))
-        ))
-        .with(move |ui| {
-            ui.elem(elem!(
-                Label,
-                text = name,
-                color = Some(text_color)
-            ));
-        });
+    drag::drops(&mut marker, entity, at).with(move |ui| {
+        ui.elem(elem!(Frame, width = percent(100), height = px(GAP)))
+            .bind(
+                |line| line.background(),
+                drop_changed(entity, at),
+                move |world, _| {
+                    if world
+                        .resource::<drag::Dragging>()
+                        .shows(entity, at)
+                    {
+                        accent
+                    } else {
+                        Color::NONE
+                    }
+                },
+            );
+    });
+}
+
+/// One subject, and everything under it.
+struct Subtree {
+    entity: Entity,
+}
+
+impl Composer<BevyHost> for Subtree {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        let entity = self.entity;
+        let name = name_of(ui.world, entity);
+        let text = ui.theme.text_primary;
+        let accent = ui.theme.accent;
+
+        ui.compose(Foldable {
+            header: elem!(
+                !GhostButton,
+                width = percent(100),
+                height = px(18),
+                justify = JustifyContent::FlexStart,
+                padding = UiRect::axes(px(4), Val::ZERO),
+                radius = px(3),
+                label = val!(
+                    Label,
+                    text = name,
+                    wrap = false,
+                    color = Some(text)
+                )
+            ),
+            // The row is the subject's, to select; only the
+            // chevron beside it folds.
+            folds_on: FoldsOn::Chevron,
+            enabled: has_children(ui.world, entity),
+            on_header: move |mut header: ElementMut<
+                '_,
+                '_,
+                BevyHost,
+                ButtonElem,
+            >| {
+                drag::rows(&mut header, entity)
+                    .observe(
+                        move |_: On<Activate>,
+                              mut selected: ResMut<
+                            SelectedEntity,
+                        >| {
+                            selected.0 = Some(entity);
+                        },
+                    )
+                    // One bind, not two: a second on the same
+                    // field would fight this one every flush.
+                    .bind(
+                        |button| button.fill(),
+                        highlight_changed(entity),
+                        move |world, _| {
+                            highlight(world, entity, accent)
+                        },
+                    )
+                    .bind(
+                        |button| button.label().text(),
+                        component_changed_on::<Name>(entity),
+                        move |world, _| name_of(world, entity),
+                    );
+            },
+            body: move |ui: &mut BevyUi| {
+                ui.elem(elem!(
+                    Frame,
+                    width = percent(100),
+                    direction = FlexDirection::Column
+                ))
+                .watch(
+                    component_changed_on::<Children>(entity),
+                    move |ui| {
+                        listing(ui, children_of(ui.world, entity));
+                    },
+                );
+            },
+            // Read off the subject's own entity, not this row's node.
+            // The row rebuilds fresh on a reorder or a sibling
+            // added, but the entity, and `Collapsed` on it, does not.
+            // Nothing to clean up when a subject is deleted either.
+            // `Collapsed` goes with it.
+            open: ui.world.get::<Collapsed>(entity).is_none(),
+            on_toggle: move |world: &mut World, open: bool| {
+                let Ok(mut entity) = world.get_entity_mut(entity)
+                else {
+                    return;
+                };
+                if open {
+                    entity.remove::<Collapsed>();
+                } else {
+                    entity.insert(Collapsed);
+                }
+            },
+        })
+        .handle()
+    }
+}
+
+/// On a subject's own entity while its hierarchy row is collapsed.
+/// Nothing removes this when the row's own node is despawned and
+/// rebuilt, since it was never on that node. It goes when the
+/// subject itself does.
+#[derive(Component)]
+struct Collapsed;
+
+/// What a row's own surface says: a drop landing inside it beats
+/// whether it is selected, and most rows are neither.
+fn highlight(world: &World, entity: Entity, accent: Color) -> Color {
+    if world
+        .resource::<drag::Dragging>()
+        .shows(entity, drag::At::Into)
+    {
+        accent.with_alpha(0.35)
+    } else if world.resource::<SelectedEntity>().0 == Some(entity) {
+        accent.with_alpha(0.18)
+    } else {
+        Color::NONE
+    }
+}
+
+/// Fires when either half of what [`highlight`] reads moves.
+fn highlight_changed(
+    entity: Entity,
+) -> impl FnMut(&World, Entity) -> bool {
+    value_changed(move |world, _| {
+        (
+            world.resource::<SelectedEntity>().0 == Some(entity),
+            world
+                .resource::<drag::Dragging>()
+                .shows(entity, drag::At::Into),
+        )
+    })
+}
+
+/// Fires when whether a drop would land at `at` beside `entity` moves.
+fn drop_changed(
+    entity: Entity,
+    at: drag::At,
+) -> impl FnMut(&World, Entity) -> bool {
+    value_changed(move |world, _| {
+        world.resource::<drag::Dragging>().shows(entity, at)
+    })
+}
+
+/// The top-level subjects, in the order [`SceneRoot`] holds them.
+///
+/// The root itself is never a row: it exists to give the top level an
+/// order, not to be seen.
+fn roots(
+    world: &World,
+    query: &mut QueryState<Entity, With<SceneRoot>>,
+) -> Vec<Entity> {
+    query
+        .iter_manual(world)
+        .next()
+        .map(|root| children_of(world, root))
+        .unwrap_or_default()
+}
+
+/// The subjects directly under `entity`; anything else it parents is
+/// not the scene's to show.
+fn children_of(world: &World, entity: Entity) -> Vec<Entity> {
+    world
+        .get::<Children>(entity)
+        .map(|children| {
+            children
+                .iter()
+                .filter(|&child| is_subject(world, child))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Whether `entity` has any subject under it, without collecting
+/// them. A row only needs to know there is something to fold.
+fn has_children(world: &World, entity: Entity) -> bool {
+    world.get::<Children>(entity).is_some_and(|children| {
+        children.iter().any(|child| is_subject(world, child))
+    })
+}
+
+fn is_subject(world: &World, entity: Entity) -> bool {
+    world.get::<EntityUid>(entity).is_some()
+}
+
+/// Its [`Name`], or the head of its id. A whole uuid is unreadable;
+/// the first characters tell two unnamed subjects apart.
+fn name_of(world: &World, entity: Entity) -> String {
+    /// How much of an id a row shows.
+    const HEAD: usize = 8;
+
+    if let Some(name) = world.get::<Name>(entity) {
+        return name.as_str().to_string();
+    }
+
+    match world.get::<EntityUid>(entity) {
+        Some(uid) => uid.to_string().chars().take(HEAD).collect(),
+        None => "?".to_string(),
     }
 }

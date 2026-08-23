@@ -1,16 +1,16 @@
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 use super::Label;
 
 /// A time reading on the time axis, placing above the mark it reads
 /// for.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TimeLabel {
-    #[elem]
+    #[elem(child)]
     pub label: Label,
     /// Pixels from the time axis's left edge.
     pub x: f32,
@@ -43,21 +43,18 @@ impl TimeLabel {
 }
 
 impl ElementVisual<BevyHost> for TimeLabel {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world
-            .entity_mut(node)
-            .insert((self.node(), Pickable::IGNORE));
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((self.node(), Pickable::IGNORE));
     }
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: TimeLabelField,
     ) {
         match field {
             TimeLabelField::X => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

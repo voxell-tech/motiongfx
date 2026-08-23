@@ -1,22 +1,21 @@
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 /// An image at a size of its own, which is what a [`Button`] shows.
 ///
 /// [`Button`]: super::Button
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Icon {
     /// Asset path.
     pub image: String,
     pub color: Color,
     #[default(px(11))]
     pub size: Val,
-    /// Clockwise, in degrees - how a chevron reused for more than one
-    /// direction gets there without a second asset.
+    /// Clockwise, in degrees.
     pub rotation: f32,
 }
 
@@ -27,10 +26,10 @@ impl Icon {
 }
 
 impl ElementVisual<BevyHost> for Icon {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        let image = world.load_asset(self.image.clone());
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let image = build.world.load_asset(self.image.clone());
 
-        world.entity_mut(node).insert((
+        build.insert((
             ImageNode {
                 image,
                 color: self.color,
@@ -47,36 +46,37 @@ impl ElementVisual<BevyHost> for Icon {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: IconField,
     ) {
         match field {
             IconField::Image => {
-                let image = world.load_asset(self.image.clone());
+                let image =
+                    patch.world.load_asset(self.image.clone());
 
                 if let Some(mut node) =
-                    world.get_mut::<ImageNode>(node)
+                    patch.entity_mut().get_mut::<ImageNode>()
                 {
                     node.image = image;
                 }
             }
             IconField::Color => {
                 if let Some(mut image) =
-                    world.get_mut::<ImageNode>(node)
+                    patch.entity_mut().get_mut::<ImageNode>()
                 {
                     image.color = self.color;
                 }
             }
             IconField::Size => {
-                if let Some(mut layout) = world.get_mut::<Node>(node)
+                if let Some(mut layout) =
+                    patch.entity_mut().get_mut::<Node>()
                 {
                     layout.width = self.size;
                     layout.height = self.size;
                 }
             }
             IconField::Rotation => {
-                world.entity_mut(node).insert(self.transform());
+                patch.insert(self.transform());
             }
         }
     }

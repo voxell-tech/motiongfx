@@ -1,16 +1,16 @@
+use crate::reactive::BevyHost;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 const DIVIDER_WIDTH: f32 = 6.0;
 
 /// The draggable line between two panes.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Divider {
     #[default(px(DIVIDER_WIDTH))]
     pub thickness: Val,
@@ -50,10 +50,10 @@ impl Divider {
 }
 
 impl ElementVisual<BevyHost> for Divider {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
         let (layout, cursor) = self.shape();
 
-        world.entity_mut(node).insert((
+        build.insert((
             layout,
             BackgroundColor(self.color),
             EntityCursor::System(cursor),
@@ -62,8 +62,7 @@ impl ElementVisual<BevyHost> for Divider {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: DividerField,
     ) {
         match field {
@@ -72,14 +71,10 @@ impl ElementVisual<BevyHost> for Divider {
             DividerField::Thickness | DividerField::Orientation => {
                 let (layout, cursor) = self.shape();
 
-                world
-                    .entity_mut(node)
-                    .insert((layout, EntityCursor::System(cursor)));
+                patch.insert((layout, EntityCursor::System(cursor)));
             }
             DividerField::Color => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.color));
+                patch.insert(BackgroundColor(self.color));
             }
         }
     }

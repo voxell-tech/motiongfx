@@ -1,11 +1,11 @@
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 /// One mark on the time axis.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TimeTick {
     /// Pixels from the time axis's left edge.
     pub x: f32,
@@ -31,8 +31,8 @@ impl TimeTick {
 }
 
 impl ElementVisual<BevyHost> for TimeTick {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             self.node(),
             BackgroundColor(self.color),
             Pickable::IGNORE,
@@ -41,18 +41,15 @@ impl ElementVisual<BevyHost> for TimeTick {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: TimeTickField,
     ) {
         match field {
             TimeTickField::Color => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.color));
+                patch.insert(BackgroundColor(self.color));
             }
             TimeTickField::X | TimeTickField::Height => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

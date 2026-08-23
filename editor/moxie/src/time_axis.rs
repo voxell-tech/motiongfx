@@ -141,12 +141,12 @@ mod tests {
                 "scale {scale} stops short"
             );
 
-            let labelled: Vec<usize> = marks
+            let labelled = marks
                 .iter()
                 .enumerate()
                 .filter(|(_, mark)| mark.label.is_some())
                 .map(|(i, _)| i)
-                .collect();
+                .collect::<Vec<_>>();
 
             assert!(labelled.len() >= 2, "too few labels at {scale}");
             let stride = labelled[1];

@@ -5,7 +5,7 @@ use bevy::feathers::constants::icons as feathers_icons;
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::{elem, val};
 
 use super::area::DockTabAddButton;
@@ -17,10 +17,6 @@ use crate::elements::{
 use crate::icons;
 use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed};
-use crate::theme::EditorTheme;
-
-/// What the close button's icon tints to under the cursor.
-const CLOSE_HOVER: Color = crate::palette::RED;
 
 #[derive(Component)]
 pub struct DockTabRow;
@@ -52,10 +48,10 @@ pub(super) fn build_tab_bar(
 
 /// The "+" at the end of the bar, which opens the window list.
 fn build_add_button(area: Entity, ui: &mut BevyUi) {
-    let muted = ui.world.resource::<EditorTheme>().text_muted;
+    let muted = ui.theme.text_muted;
 
     ui.elem(elem!(
-        !TintButton,
+        !TintButton::default(),
         icon = val!(Icon, image = icons::PLUS, color = muted)
     ))
     .insert(DockTabAddButton { area_entity: area })
@@ -75,41 +71,46 @@ fn build_tab(
     ui: &mut BevyUi,
 ) {
     let is_active = active_of(ui.world, leaf) == Some(tab_id);
-    let lit = text_color(ui.world, leaf, tab_id);
-    let close_color = ui.world.resource::<EditorTheme>().text_muted;
+    let theme = ui.theme;
+    let primary = theme.text_primary;
+    let muted = theme.text_muted;
+    let lit = text_color(ui.world, leaf, tab_id, primary, muted);
+    let close_color = muted;
+    let close_hover = theme.critical;
 
-    let tab = ui
-        .elem(elem!(
-            Tab,
-            window_id = window_id,
-            tab = tab_id,
-            active = is_active,
-            icon = icon.map(|image| val!(
+    let mut tab = ui.elem(elem!(
+        Tab,
+        window_id = window_id,
+        tab = tab_id,
+        active = is_active,
+        icon = icon.map(|image| val!(
+            Icon,
+            image = image,
+            color = lit,
+            size = px(12)
+        )),
+        label = val!(
+            Label,
+            text = label,
+            color = Some(lit),
+            bold = true,
+            wrap = false
+        ),
+        close = val!(
+            !GhostButton,
+            width = px(14),
+            height = px(14),
+            padding = UiRect::ZERO,
+            radius = px(2),
+            icon = val!(
                 Icon,
-                image = image,
-                color = lit,
-                size = px(12)
-            )),
-            label = val!(
-                Label,
-                text = label,
-                color = Some(lit),
-                bold = true,
-                wrap = false
-            ),
-            close = val!(
-                !GhostButton,
-                width = px(14),
-                height = px(14),
-                radius = px(2),
-                icon = val!(
-                    Icon,
-                    image = feathers_icons::X,
-                    color = close_color,
-                    size = px(10)
-                )
+                image = feathers_icons::X,
+                color = close_color,
+                size = px(10)
             )
-        ))
+        )
+    ));
+    tab
         // Which tab is active follows the tree, and must not rebuild the
         // tab: a drag in progress would go with it.
         .bind(
@@ -122,12 +123,16 @@ fn build_tab(
         .bind(
             |tab| tab.label().color(),
             resource_changed::<DockTree>(),
-            move |world, _| text_color(world, leaf, tab_id),
+            move |world, _| {
+                text_color(world, leaf, tab_id, primary, muted)
+            },
         )
         .bind(
             |tab| tab.icon().color(),
             resource_changed::<DockTree>(),
-            move |world, _| text_color(world, leaf, tab_id),
+            move |world, _| {
+                text_color(world, leaf, tab_id, primary, muted)
+            },
         )
         .observe(
             move |mut click: On<Pointer<Click>>,
@@ -154,21 +159,25 @@ fn build_tab(
         tab.lit_entity(
             close,
             |tab| tab.close().icon().color(),
-            CLOSE_HOVER,
-            CLOSE_HOVER,
+            close_hover,
+            close_hover,
         );
     }
 }
 
 /// What a tab's text and icon are lit with: the active one reads
 /// bright, the rest recede.
-fn text_color(world: &World, leaf: NodeId, tab: TabId) -> Color {
-    let theme = world.resource::<EditorTheme>();
-
+fn text_color(
+    world: &World,
+    leaf: NodeId,
+    tab: TabId,
+    primary: Color,
+    muted: Color,
+) -> Color {
     if active_of(world, leaf) == Some(tab) {
-        theme.text_primary
+        primary
     } else {
-        theme.text_muted
+        muted
     }
 }
 
@@ -204,8 +213,8 @@ pub(super) fn spawn_ghost_tab(
     world: &mut World,
     wrapper: Entity,
     label: &str,
+    color: Color,
 ) {
-    let color = world.resource::<EditorTheme>().text_primary;
     let tile = world
         .spawn((
             tab_tile_node(),

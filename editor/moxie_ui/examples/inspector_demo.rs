@@ -20,6 +20,7 @@ use moxie_ui::elements::{
     ComponentInspector, EntityInspector, Frame, Label,
     ResourceInspector,
 };
+use moxie_ui::inspector::InspectAppExt;
 use moxie_ui::reactive::BevyUi;
 use moxie_ui::theme::EditorTheme;
 
@@ -36,7 +37,7 @@ fn main() {
         ))
         .register_type::<Showcase>()
         .register_type::<LocalTransform>()
-        .register_type::<Orbit>()
+        .register_inspectable::<Orbit>()
         .insert_resource(Showcase::default())
         .add_systems(Startup, setup)
         .run();
@@ -82,9 +83,9 @@ struct Subject(Entity);
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
 
-    // `Transform` drags `GlobalTransform` in with it, so the entity
-    // inspector has a third section to find without being told about
-    // any of them.
+    // `Transform` also drags `GlobalTransform` in, but the entity
+    // inspector only shows what's registered `register_inspectable` -
+    // `GlobalTransform` is reflected, never opted in, so it stays out.
     let subject = commands
         .spawn((
             Transform::from_xyz(1.0, 2.0, 3.0),
@@ -117,7 +118,7 @@ fn setup(mut commands: Commands) {
 }
 
 fn build_panels(ui: &mut BevyUi) {
-    let theme = ui.world.resource::<EditorTheme>().clone();
+    let theme = ui.theme;
     let subject = ui.world.resource::<Subject>().0;
 
     ui.elem(elem!(
@@ -127,10 +128,10 @@ fn build_panels(ui: &mut BevyUi) {
         column_gap = px(16)
     ))
     .with(move |ui| {
-        panel(ui, theme.clone(), "Resource", |ui| {
+        panel(ui, theme, "Resource", |ui| {
             ui.compose(ResourceInspector::of::<Showcase>());
         });
-        panel(ui, theme.clone(), "Component", move |ui| {
+        panel(ui, theme, "Component", move |ui| {
             ui.compose(ComponentInspector::of::<Transform>(subject));
         });
         panel(ui, theme, "Entity", move |ui| {
@@ -142,15 +143,15 @@ fn build_panels(ui: &mut BevyUi) {
 /// A titled card, which is all these three have in common.
 fn panel(
     ui: &mut BevyUi,
-    theme: EditorTheme,
+    theme: &EditorTheme,
     title: &str,
     body: impl FnOnce(&mut BevyUi),
 ) {
     let title = title.to_string();
+    let text_color = theme.text_primary;
 
     ui.elem(elem!(
         Frame,
-        // width = px(320),
         direction = FlexDirection::Column,
         row_gap = px(12),
         padding = UiRect::all(px(12)),
@@ -163,7 +164,7 @@ fn panel(
             text = title,
             size = 14.0f32,
             bold = true,
-            color = Some(theme.text_primary)
+            color = Some(text_color)
         ));
         body(ui);
     });

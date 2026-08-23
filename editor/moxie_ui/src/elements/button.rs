@@ -1,46 +1,59 @@
+use crate::reactive::BevyHost;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
 use fynix_mock::style::Style;
-use fynix_mock::ui::ElementMut;
+use fynix_mock::ui::{Build, Patch};
 
 use super::{Icon, IconCursor, Label, LabelCursor};
-use crate::motion::{self, MotionExt};
+use crate::motion::LitFrom as _;
+use crate::theme::EditorTheme;
 
-/// The faint surface a filled button rests at.
-const FILL: Color = Color::srgba(1.0, 1.0, 1.0, 0.06);
-
-/// A tinted button's icon and label colour.
-const TINT: Color = crate::palette::BLUE;
+/// What lights up under the cursor, and to what colour. A style has
+/// no node to wire this on, so it leaves the choice here for
+/// [`build_fields`](ElementVisual::build_fields) to read once the
+/// node exists.
+#[derive(Clone, Copy, PartialEq, Default)]
+pub enum Hover {
+    /// Nothing lights up.
+    #[default]
+    None,
+    /// [`Button`], [`GhostButton`], [`MenuButton`]: the surface
+    /// itself.
+    Fill(Color),
+    /// [`TintButton`]: the icon and label, not the surface.
+    IconLabel(Color),
+}
 
 /// A hit area holding an icon, a label, both, or whatever is built
-/// under it. Undressed: [`Button`] and [`GhostButton`] are the two
-/// looks the editor gives it.
-#[derive(Element, OverrideDefault, Lenz)]
+/// under it, with no look of its own. [`Button`] and [`GhostButton`]
+/// are two the editor gives it.
+#[derive(Element)]
 pub struct ButtonElem {
     /// A node of its own, so its image and colour can be bound
     /// without touching the button.
-    #[elem]
+    #[elem(child)]
     pub icon: Option<Icon>,
     /// A node of its own, so its text can be bound without touching
     /// the button.
-    #[elem]
+    #[elem(child)]
     pub label: Option<Label>,
     /// Between the icon and the label, when both are there.
     #[default(px(6))]
     pub column_gap: Val,
     /// What the background shows. Nothing by default, which is a
-    /// [`GhostButton`]; [`Button`] rests at `FILL`, and interaction
-    /// lights either of them up.
+    /// [`GhostButton`]; [`Button`] rests at the theme's own fill, and
+    /// interaction lights either of them up.
     #[default(::NONE)]
     pub fill: Color,
     pub width: Val,
     pub height: Val,
+    /// Share of a flex row's remaining space this button claims, for
+    /// one that should fill a row rather than size to its own content.
+    pub flex_grow: f32,
     #[default(px(18))]
     pub min_width: Val,
     #[default(px(18))]
@@ -51,6 +64,10 @@ pub struct ButtonElem {
     pub padding: UiRect,
     #[default(::ZERO)]
     pub radius: Val,
+    /// Set by whichever [`Style`] built this - see [`Hover`]. Never
+    /// patched: read once, in `build_fields`.
+    #[elem(ignore)]
+    hover: Hover,
 }
 
 impl ButtonElem {
@@ -60,6 +77,7 @@ impl ButtonElem {
             min_height: self.min_height,
             width: self.width,
             height: self.height,
+            flex_grow: self.flex_grow,
             justify_content: self.justify,
             align_items: AlignItems::Center,
             column_gap: self.column_gap,
@@ -77,40 +95,55 @@ impl ButtonElem {
 }
 
 /// The editor's own button: a filled, rounded pill sized for a
-/// toolbar, which lights up under the cursor. A call site that holds a
-/// word rather than an icon says so by resizing it.
+/// toolbar, that lights up under the cursor.
 pub struct Button;
 
 impl Style for Button {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem) {
-        button.fill = FILL;
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+        button.fill = theme.button_fill;
         button.width = px(26);
         button.height = px(26);
         button.radius = px(6);
-    }
-
-    fn attach(elem: ElementMut<BevyHost, ButtonElem>) {
-        lit(elem);
+        button.hover = Hover::Fill(theme.hover_overlay);
     }
 }
 
-/// A button whose icon and label carry the accent under the cursor,
-/// for the one action in a group the eye should land on first.
-pub struct TintButton;
+/// A button whose icon and label carry `tint` under the cursor - the
+/// accent, by default, for the one action in a group the eye should
+/// land on first.
+#[derive(Default)]
+pub struct TintButton {
+    /// `None` takes the theme's own accent.
+    pub tint: Option<Color>,
+}
 
 impl Style for TintButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn attach(elem: ElementMut<BevyHost, ButtonElem>) {
-        elem.lit(|button| button.icon().color(), TINT, TINT).lit(
-            |button| button.label().color(),
-            TINT,
-            TINT,
-        );
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+        button.hover =
+            Hover::IconLabel(self.tint.unwrap_or(theme.accent));
+    }
+}
+
+/// A menu bar's own button: square, full height, lighting up only
+/// under the cursor, so a row of them reads as one strip.
+pub struct MenuButton;
+
+impl Style for MenuButton {
+    type Host = BevyHost;
+    type Element = ButtonElem;
+
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+        button.fill = Color::NONE;
+        button.radius = Val::ZERO;
+        button.height = percent(100);
+        button.padding = UiRect::axes(px(10), Val::ZERO);
+        button.hover = Hover::Fill(theme.hover_overlay);
     }
 }
 
@@ -123,45 +156,77 @@ impl Style for GhostButton {
     type Host = BevyHost;
     type Element = ButtonElem;
 
-    fn apply(self, button: &mut ButtonElem) {
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
         button.fill = Color::NONE;
+        button.hover = Hover::Fill(theme.hover_overlay);
+        button.padding = UiRect::axes(px(8), px(4));
+        button.radius = px(4);
     }
-
-    fn attach(elem: ElementMut<BevyHost, ButtonElem>) {
-        lit(elem);
-    }
-}
-
-/// Every look lights up the same way.
-fn lit<'u, 'a>(
-    elem: ElementMut<'u, 'a, BevyHost, ButtonElem>,
-) -> ElementMut<'u, 'a, BevyHost, ButtonElem> {
-    elem.lit(|button| button.fill(), motion::HOVER, motion::PRESS)
 }
 
 impl ElementVisual<BevyHost> for ButtonElem {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        let mut entity = world.entity_mut(node);
-
-        entity.insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             self.node(),
             self.background(),
             ButtonBehavior,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
+
+        // Wired against a base already in hand as `&self`: the node
+        // has no entry in the kernel's table yet for `.lit()` to read
+        // one from. Both stops light to the same colour: `Hover`
+        // carries one shade, not separate hover/press ones.
+        let (fill, icon_label) = match self.hover {
+            Hover::None => (None, None),
+            Hover::Fill(color) => (Some(color), None),
+            Hover::IconLabel(color) => (None, Some(color)),
+        };
+
+        if let Some(color) = fill {
+            build.lit_from(
+                |button| button.fill(),
+                self.fill,
+                color,
+                color,
+            );
+        }
+
+        if let Some(tint) = icon_label {
+            // Read straight from `self`: an absent icon/label is
+            // skipped, same as if it were never lit at all.
+            if let Some(icon) = &self.icon {
+                build.lit_from(
+                    |button| button.icon().color(),
+                    icon.color,
+                    tint,
+                    tint,
+                );
+            }
+            // `label().color()` hops through the `Option`
+            // transparently, so its base is `Color`. A label with no
+            // colour of its own has nowhere for that hop to land.
+            if let Some(color) =
+                self.label.as_ref().and_then(|label| label.color)
+            {
+                build.lit_from(
+                    |button| button.label().color(),
+                    color,
+                    tint,
+                    tint,
+                );
+            }
+        }
     }
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: ButtonElemField,
     ) {
-        let mut entity = world.entity_mut(node);
-
         match field {
             ButtonElemField::Fill => {
-                entity.insert(self.background());
+                patch.insert(self.background());
             }
             // Every other field is one of `Node`'s, and writing it
             // whole is one insert either way.
@@ -169,11 +234,12 @@ impl ElementVisual<BevyHost> for ButtonElem {
             | ButtonElemField::MinHeight
             | ButtonElemField::Width
             | ButtonElemField::Height
+            | ButtonElemField::FlexGrow
             | ButtonElemField::Justify
             | ButtonElemField::ColumnGap
             | ButtonElemField::Padding
             | ButtonElemField::Radius => {
-                entity.insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

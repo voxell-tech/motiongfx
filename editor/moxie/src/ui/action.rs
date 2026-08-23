@@ -1,10 +1,10 @@
 //! Inspects whatever the timeline has selected: an action's own
 //! properties, or a block's.
 //!
-//! The reflect inspector cannot reach these - it addresses one
-//! component of one entity, and an action is scene data. So this
-//! edits the [`EditorScene`] directly, by the path the timeline
-//! selected the node with.
+//! The reflect inspector cannot reach these: it addresses one
+//! component of one entity, and an action is scene data. This edits
+//! the [`EditorScene`] directly, by the path the timeline selected
+//! the node with.
 
 use core::time::Duration;
 
@@ -17,8 +17,8 @@ use fynix_mock::composer::Composer;
 use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
-use moxie_ui::elements::{Frame, Label, Panel};
-use moxie_ui::inspector::{Source, inspect_value};
+use moxie_ui::elements::{Frame, Label, ScrollArea};
+use moxie_ui::inspector::{Source, inspect_value, reflect_changed};
 use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
 use moxie_ui::theme::EditorTheme;
 
@@ -29,18 +29,18 @@ use crate::{EditorScene, SelectedAction};
 pub(super) struct ActionPanel;
 
 impl Composer<BevyHost> for ActionPanel {
-    type Element = Panel;
+    type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Panel> {
+    ) -> ElementHandle<BevyHost, ScrollArea> {
         ui.elem(elem!(
-            Panel,
-            direction = FlexDirection::Column,
+            ScrollArea,
+            flex_grow = 1.0f32,
             row_gap = px(8),
             padding = px(PANEL_PADDING),
-            scrolls = true
+            scroll_x = false
         ))
         // The shape only: each input binds its own value, so typing
         // into one never rebuilds the panel out from under it.
@@ -51,8 +51,8 @@ impl Composer<BevyHost> for ActionPanel {
 
 /// One number in the selected node that an input writes back.
 ///
-/// Named rather than captured, because an input re-reads and rewrites
-/// it long after the panel was built.
+/// Named, not captured: an input re-reads and rewrites it long after
+/// the panel was built.
 #[derive(Clone, Copy, PartialEq)]
 enum Edit {
     /// How long the action runs for.
@@ -68,7 +68,7 @@ enum Edit {
 }
 
 /// Everything a rebuild depends on. The numbers are deliberately
-/// absent - they move without rebuilding anything.
+/// absent: they move without rebuilding anything.
 #[derive(PartialEq)]
 struct Shape {
     path: Option<Vec<usize>>,
@@ -111,21 +111,21 @@ fn shape(world: &World, _: Entity) -> Shape {
 }
 
 fn build(ui: &mut BevyUi) {
-    let theme = ui.world.resource::<EditorTheme>().clone();
+    let theme = ui.theme;
     let shape = shape(ui.world, ui.parent());
 
     let Some(path) = shape.path else {
-        note(ui, &theme, "Nothing selected");
+        note(ui, theme, "Nothing selected");
         return;
     };
     if shape.kind.is_empty() {
-        note(ui, &theme, "Selection is no longer in the scene");
+        note(ui, theme, "Selection is no longer in the scene");
         return;
     }
 
-    heading(ui, &theme, shape.kind);
+    heading(ui, theme, shape.kind);
     for (name, value) in shape.rows {
-        row(ui, &theme, &name, &value);
+        row(ui, theme, &name, &value);
     }
     for (name, edit) in shape.edits {
         let source = Property {
@@ -167,7 +167,8 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
                 rows: vec![
                     (
                         "Combinator".into(),
-                        combinator_name(&block.combinator),
+                        combinator_name(&block.combinator)
+                            .to_string(),
                     ),
                     (
                         "Children".into(),
@@ -281,22 +282,7 @@ impl Source for Pooled {
         &self,
     ) -> Box<dyn FnMut(&World) -> bool + Send + Sync> {
         let pooled = *self;
-        let mut seen: Option<Option<Box<dyn PartialReflect>>> = None;
-
-        Box::new(move |world| {
-            let current = pooled.get(world);
-            let fired = !seen.as_ref().is_some_and(|last| {
-                match (last, &current) {
-                    (Some(last), Some(current)) => last
-                        .reflect_partial_eq(&**current)
-                        .unwrap_or(false),
-                    (None, None) => true,
-                    _ => false,
-                }
-            });
-            seen = Some(current);
-            fired
-        })
+        Box::new(reflect_changed(move |world| pooled.get(world)))
     }
 
     fn boxed(&self) -> Box<dyn Source> {
@@ -311,8 +297,8 @@ impl Source for Property {
         let node = node_at(&scene.0.animation, &self.path)?;
 
         match (self.edit, node) {
-            // `None` is the default curve, which is linear - so the
-            // picker shows that rather than a fourth "unset" state.
+            // `None` is the default curve, linear, so the picker
+            // shows that instead of a fourth "unset" state.
             (Edit::Ease, Node::Action { action, .. }) => Some(
                 Box::new(action.ease.unwrap_or(AnimEase::Linear)),
             ),
@@ -355,22 +341,7 @@ impl Source for Property {
         &self,
     ) -> Box<dyn FnMut(&World) -> bool + Send + Sync> {
         let property = self.clone();
-        let mut seen: Option<Option<Box<dyn PartialReflect>>> = None;
-
-        Box::new(move |world| {
-            let current = property.get(world);
-            let fired = !seen.as_ref().is_some_and(|last| {
-                match (last, &current) {
-                    (Some(last), Some(current)) => last
-                        .reflect_partial_eq(&**current)
-                        .unwrap_or(false),
-                    (None, None) => true,
-                    _ => false,
-                }
-            });
-            seen = Some(current);
-            fired
-        })
+        Box::new(reflect_changed(move |world| property.get(world)))
     }
 
     fn boxed(&self) -> Box<dyn Source> {
@@ -423,13 +394,13 @@ fn subject_name(action: &ActionCmd<Backend>) -> String {
     format!("{uid}")
 }
 
-fn combinator_name(combinator: &Combinator) -> String {
+fn combinator_name(combinator: &Combinator) -> &'static str {
     match combinator {
-        Combinator::Chain => "Chain".to_string(),
-        Combinator::All => "All".to_string(),
-        Combinator::Any => "Any".to_string(),
+        Combinator::Chain => "Chain",
+        Combinator::All => "All",
+        Combinator::Any => "Any",
         // Its stagger is editable, so the row above only names it.
-        Combinator::Flow(_) => "Flow".to_string(),
+        Combinator::Flow(_) => "Flow",
     }
 }
 

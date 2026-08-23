@@ -1,5 +1,5 @@
 //! The timeline panel: control bar (play/pause + time readout) and a
-//! scrubbable track viewport, edge to edge - no name gutter, since a
+//! scrubbable track viewport, edge to edge. No name gutter: a
 //! block's own header box already carries its label.
 
 use core::time::Duration;
@@ -19,19 +19,20 @@ use crate::{
     EditorScene, EditorState, PIXELS_PER_SECOND, SelectedAction,
     time_axis,
 };
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
 use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
     LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
-    TimeLabel, TimeTick, TimelineAction, TimelineBlock,
+    TimeLabel, TimeTick, TimelineAction, TimelineActionCursor,
+    TimelineBlock,
 };
+use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{
     BevyHost, BevyUi, resource_changed, value_changed,
 };
-use moxie_ui::theme::EditorTheme;
 
 const CONTROL_BAR_HEIGHT: f32 = 40.0;
 const TIME_AXIS_HEIGHT: f32 = 24.0;
@@ -45,10 +46,10 @@ struct TrackViewport;
 
 /// The timeline panel, as kernel nodes.
 ///
-/// Each reactive field binds at the node that owns it, which is why
-/// this is a composer rather than a `bsn!` tree: the play/pause icon,
-/// time label and friends have to be `NodeMut`s to carry their own
-/// binds.
+/// Each reactive field binds at the node that owns it, so the
+/// play/pause icon, time label and friends have to be `NodeMut`s to
+/// carry their own binds. That is why this is a composer, not a
+/// `bsn!` tree.
 pub(super) struct TimelinePanel;
 
 impl Composer<BevyHost> for TimelinePanel {
@@ -58,10 +59,18 @@ impl Composer<BevyHost> for TimelinePanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<BevyHost, Panel> {
-        ui.elem(elem!(Panel, direction = FlexDirection::Column))
+        ui.elem(elem!(Panel))
             .with(|ui| {
-                ui.compose(ControlBar);
-                ui.compose(TrackArea);
+                ui.elem(elem!(
+                    Frame,
+                    width = percent(100),
+                    height = percent(100),
+                    direction = FlexDirection::Column
+                ))
+                .with(|ui| {
+                    ui.compose(ControlBar);
+                    ui.compose(TrackArea);
+                });
             })
             .handle()
     }
@@ -148,7 +157,8 @@ impl Composer<BevyHost> for TimeAxis {
     }
 }
 
-/// How wide the time axis ruler is drawn.
+/// Time axis's width, rounded so sub-pixel jitter cannot
+/// retrigger the watch.
 fn axis_width(world: &World, node: Entity) -> u32 {
     world
         .get::<ComputedNode>(node)
@@ -161,7 +171,7 @@ fn axis_width(world: &World, node: Entity) -> u32 {
 
 fn build_ticks(ui: &mut BevyUi) {
     let width = axis_width(ui.world, ui.parent()) as f32;
-    let color = ui.world.resource::<EditorTheme>().text_muted;
+    let color = ui.theme.text_muted;
     let marks = time_axis::ticks(PIXELS_PER_SECOND, 0.0, width);
 
     for tick in marks {
@@ -189,9 +199,9 @@ fn build_ticks(ui: &mut BevyUi) {
     }
 }
 
-/// The scrollable track viewport, filling the whole panel width, with
-/// the playhead floating over it as a sibling - not a descendant, so
-/// it's neither scrolled nor clipped by the [`ScrollArea`].
+/// The scrollable track viewport, filling the whole panel width. The
+/// playhead floats over it as a sibling, not a descendant, so the
+/// [`ScrollArea`] neither scrolls nor clips it.
 struct TrackArea;
 
 impl Composer<BevyHost> for TrackArea {
@@ -260,9 +270,9 @@ fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
         .unwrap_or_default()
 }
 
-/// The boxes plus which one (if any) is selected - the watcher's
-/// signal, so a box only needs rebuilding when a node is added,
-/// removed, re-timed, re-nested, or selection moves onto or off it.
+/// The boxes plus which one, if any, is selected. The watcher's
+/// signal: a box rebuilds only when a node is added, removed,
+/// re-timed, re-nested, or selection moves onto or off it.
 fn block_view(
     world: &World,
     node: Entity,
@@ -273,22 +283,24 @@ fn block_view(
     (block_placements(world, node), selected)
 }
 
-/// One box per placement: a block's header - a [`TimelineBlock`],
-/// which owns its own label - or an action leaf's own [`TimelineAction`],
-/// which lights up under the cursor and outlines in the theme's
-/// accent when [`SelectedAction`] names its path - clicking it writes
+/// One box per placement: a block's header ([`TimelineBlock`], which
+/// owns its own label), or an action leaf's own [`TimelineAction`].
+/// The action lights up under the cursor and outlines in the theme's
+/// accent when [`SelectedAction`] names its path; clicking it writes
 /// that path in.
 ///
-/// An `Any` block's box (and any ancestor whose visual extent it
-/// bleeds into) is already sized to its losing branch's full
-/// duration - see [`block_layout::layout`] - so nothing here needs to
-/// clip or fade anything to keep a slower action fully visible.
+/// An `Any` block's box, and any ancestor its visual extent bleeds
+/// into, is already sized to its losing branch's full duration (see
+/// [`block_layout::layout`]), so nothing here needs to clip or fade
+/// anything to keep a slower action visible.
 fn build_block_boxes(ui: &mut BevyUi) {
     let (placements, selected) = block_view(ui.world, ui.parent());
-    let theme = ui.world.resource::<EditorTheme>();
+    let theme = ui.theme;
     let action_fill = theme.palette.blue;
     let block_outline = theme.text_primary;
     let accent = theme.accent;
+    let hover_tint = theme.clip_hover;
+    let press_tint = theme.clip_press;
 
     for placed in placements {
         let is_selected = selected.as_ref() == Some(&placed.path);
@@ -330,6 +342,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     },
                     selected = is_selected
                 ))
+                .lit(|action| action.fill(), hover_tint, press_tint)
                 .observe(
                     move |_: On<Activate>,
                           mut selected: ResMut<SelectedAction>| {

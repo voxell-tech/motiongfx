@@ -1,0 +1,1005 @@
+(
+  world: (
+    resources: {},
+    entities: {
+      4294966551: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::Children": ([
+            4294966552,
+            4294966556,
+          ]),
+          "bevy_transform::components::transform::Transform": (
+            translation: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (1.0, 1.0, 1.0),
+          ),
+          "moxie::SceneRoot": (),
+        },
+      ),
+      4294966552: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966551),
+          "bevy_ecs::hierarchy::Children": ([
+            4294966553,
+            4294966554,
+            4294966555,
+          ]),
+          "bevy_ecs::name::Name": "Solids",
+          "bevy_motiongfx::scene::id::EntityUid": ("59af9736-3ea8-49ad-adb2-88703abbf39d"),
+          "bevy_transform::components::transform::Transform": (
+            translation: (0.0, 1.2, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (1.0, 1.0, 1.0),
+          ),
+        },
+      ),
+      4294966553: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966552),
+          "bevy_ecs::name::Name": "Solids 0",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/cube.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("90d72875-f1d4-4af4-bf0e-d19913343106"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (-2.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (0.0, 0.0, 0.0),
+          ),
+        },
+      ),
+      4294966554: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966552),
+          "bevy_ecs::name::Name": "Solids 1",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/sphere.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (0.0, 0.0, 0.0),
+          ),
+        },
+      ),
+      4294966555: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966552),
+          "bevy_ecs::name::Name": "Solids 2",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/monkey.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("15860121-b882-4dd0-94d5-6f8563c80178"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (2.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (0.0, 0.0, 0.0),
+          ),
+        },
+      ),
+      4294966556: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966551),
+          "bevy_ecs::hierarchy::Children": ([
+            4294966557,
+            4294966558,
+            4294966559,
+          ]),
+          "bevy_ecs::name::Name": "Flats",
+          "bevy_motiongfx::scene::id::EntityUid": ("908e820e-55ce-42d0-9980-1251fe0de724"),
+          "bevy_transform::components::transform::Transform": (
+            translation: (0.0, -1.2, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (1.0, 1.0, 1.0),
+          ),
+        },
+      ),
+      4294966557: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966556),
+          "bevy_ecs::name::Name": "Flats 0",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/plane.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("a2ec0ac9-1cf4-4234-a11e-32bc673db0b4"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (-2.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (0.0, 0.0, 0.0),
+          ),
+        },
+      ),
+      4294966558: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966556),
+          "bevy_ecs::name::Name": "Flats 1",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/sphere_flat.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("f13cccc6-fe99-4b08-83ea-8e2047a3081e"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (0.0, 0.0, 0.0),
+          ),
+        },
+      ),
+      4294966559: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966556),
+          "bevy_ecs::name::Name": "Flats 2",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/cylinder_flat.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("b8d1ffdc-abaa-4695-9f3a-e018e054bbb4"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (2.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (0.0, 0.0, 0.0),
+          ),
+        },
+      ),
+    },
+  ),
+  scene: (
+    stage: (
+      subjects: [
+        (
+          id: Entity("90d72875-f1d4-4af4-bf0e-d19913343106"),
+          fields: [
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::translation",
+              ),
+              value: "b76b47e5-b453-415a-b625-7e716351014a",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::rotation",
+              ),
+              value: "ab67a8d5-11eb-4217-9d54-d23af77a7851",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::scale",
+              ),
+              value: "96185f6f-8fde-4e7d-9bee-b5f318e5dcc3",
+            ),
+          ],
+        ),
+        (
+          id: Entity("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
+          fields: [
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::translation",
+              ),
+              value: "449c5bc3-4b7f-46bd-bcdb-cbe8d65370e1",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::rotation",
+              ),
+              value: "91b1896a-6219-4f49-ab1b-019e1a77843c",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::scale",
+              ),
+              value: "cffb8728-ac3b-4bde-a8e9-b9de0a7a6f53",
+            ),
+          ],
+        ),
+        (
+          id: Entity("15860121-b882-4dd0-94d5-6f8563c80178"),
+          fields: [
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::translation",
+              ),
+              value: "80cfd503-84ba-4302-9b82-341544e50b73",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::rotation",
+              ),
+              value: "d90dbed5-6511-43a5-a2ed-955e13eb7673",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::scale",
+              ),
+              value: "c2895299-2585-41a1-a1c6-318d5431f2d3",
+            ),
+          ],
+        ),
+        (
+          id: Entity("a2ec0ac9-1cf4-4234-a11e-32bc673db0b4"),
+          fields: [
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::translation",
+              ),
+              value: "be6be5cf-b99b-4652-9685-ee5e847fc167",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::rotation",
+              ),
+              value: "5d8e39d0-6a4e-497d-b582-36ef5cbf7dfe",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::scale",
+              ),
+              value: "0e1e0091-3489-4689-95ce-af05f494da6a",
+            ),
+          ],
+        ),
+        (
+          id: Entity("f13cccc6-fe99-4b08-83ea-8e2047a3081e"),
+          fields: [
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::translation",
+              ),
+              value: "a9acb23b-ac77-44cc-b9b1-8a8e5aa84c24",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::rotation",
+              ),
+              value: "ee4ed4a3-eaad-41fe-9919-8edd8ee77971",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::scale",
+              ),
+              value: "084e8e00-15e0-4e06-a4a7-95c9d5b26607",
+            ),
+          ],
+        ),
+        (
+          id: Entity("b8d1ffdc-abaa-4695-9f3a-e018e054bbb4"),
+          fields: [
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::translation",
+              ),
+              value: "26654bff-afb8-4a27-9570-0519faf2cc40",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::rotation",
+              ),
+              value: "e6c3e776-6b05-4ea8-80e5-c0c454594b52",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::scale",
+              ),
+              value: "989fc380-eecc-4798-b2d0-9b449231275f",
+            ),
+          ],
+        ),
+        (
+          id: Entity("59af9736-3ea8-49ad-adb2-88703abbf39d"),
+          fields: [
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::translation",
+              ),
+              value: "504e8aa2-da84-4c76-8dc8-548f4256d5bc",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::rotation",
+              ),
+              value: "f421033c-1fae-4b46-9e05-fab4aa3f446d",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::scale",
+              ),
+              value: "c9bc633c-e4b6-4d25-beae-4a66c83889be",
+            ),
+          ],
+        ),
+        (
+          id: Entity("908e820e-55ce-42d0-9980-1251fe0de724"),
+          fields: [
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::translation",
+              ),
+              value: "4a574fad-fcc7-44cc-be8e-7b3d03e00287",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::rotation",
+              ),
+              value: "2f7010a1-38bc-4b70-bfa9-06dec56521a3",
+            ),
+            (
+              field: (
+                type_name: "bevy_transform::components::transform::Transform",
+                path: "::scale",
+              ),
+              value: "2cb2aba2-6dff-422f-9161-cc3abcaa6dce",
+            ),
+          ],
+        ),
+      ],
+    ),
+    animation: (
+      combinator: Chain,
+      children: [
+        Block(
+          block: (
+            combinator: All,
+            children: [
+              Action(
+                action: (
+                  subject: Entity("90d72875-f1d4-4af4-bf0e-d19913343106"),
+                  field: (
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::scale",
+                  ),
+                  op: To,
+                  value: "9f6b2211-8502-4a50-9df6-56d2246a5334",
+                  duration: (
+                    secs: 0,
+                    nanos: 400000000,
+                  ),
+                  ease: Some(CubicEaseInOut),
+                  interp: Some(Linear),
+                ),
+              ),
+              Action(
+                action: (
+                  subject: Entity("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
+                  field: (
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::scale",
+                  ),
+                  op: To,
+                  value: "dff0ba54-8c91-426a-8f3d-15ae47c51b67",
+                  duration: (
+                    secs: 0,
+                    nanos: 400000000,
+                  ),
+                  ease: Some(CubicEaseInOut),
+                  interp: Some(Linear),
+                ),
+              ),
+              Action(
+                action: (
+                  subject: Entity("15860121-b882-4dd0-94d5-6f8563c80178"),
+                  field: (
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::scale",
+                  ),
+                  op: To,
+                  value: "6588e39c-a2cd-4d8c-813a-2b3b826a84fd",
+                  duration: (
+                    secs: 0,
+                    nanos: 400000000,
+                  ),
+                  ease: Some(CubicEaseInOut),
+                  interp: Some(Linear),
+                ),
+              ),
+              Action(
+                action: (
+                  subject: Entity("a2ec0ac9-1cf4-4234-a11e-32bc673db0b4"),
+                  field: (
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::scale",
+                  ),
+                  op: To,
+                  value: "8ed88d10-048a-4a70-8a50-741ecde0cdde",
+                  duration: (
+                    secs: 0,
+                    nanos: 400000000,
+                  ),
+                  ease: Some(CubicEaseInOut),
+                  interp: Some(Linear),
+                ),
+              ),
+              Action(
+                action: (
+                  subject: Entity("f13cccc6-fe99-4b08-83ea-8e2047a3081e"),
+                  field: (
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::scale",
+                  ),
+                  op: To,
+                  value: "8360c445-7d14-4bbf-83a5-2608254a39b1",
+                  duration: (
+                    secs: 0,
+                    nanos: 400000000,
+                  ),
+                  ease: Some(CubicEaseInOut),
+                  interp: Some(Linear),
+                ),
+              ),
+              Action(
+                action: (
+                  subject: Entity("b8d1ffdc-abaa-4695-9f3a-e018e054bbb4"),
+                  field: (
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::scale",
+                  ),
+                  op: To,
+                  value: "e2736f6b-098c-4a4d-b2b0-0dfbbb39a5f0",
+                  duration: (
+                    secs: 0,
+                    nanos: 400000000,
+                  ),
+                  ease: Some(CubicEaseInOut),
+                  interp: Some(Linear),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Block(
+          block: (
+            combinator: Flow((
+              secs: 0,
+              nanos: 250000000,
+            )),
+            children: [
+              Block(
+                block: (
+                  combinator: All,
+                  children: [
+                    Action(
+                      action: (
+                        subject: Entity("90d72875-f1d4-4af4-bf0e-d19913343106"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "588914d6-c8ec-457b-8423-f3d8a081a87a",
+                        duration: (
+                          secs: 1,
+                          nanos: 0,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "fd7708c0-9e00-41c0-8e85-cb65fde537cf",
+                        duration: (
+                          secs: 1,
+                          nanos: 0,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Block(
+                block: (
+                  combinator: All,
+                  children: [
+                    Action(
+                      action: (
+                        subject: Entity("15860121-b882-4dd0-94d5-6f8563c80178"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "4a06ccdf-9783-45af-8b69-202e993f6ace",
+                        duration: (
+                          secs: 1,
+                          nanos: 0,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("a2ec0ac9-1cf4-4234-a11e-32bc673db0b4"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "c86f2379-8bec-4b1c-8e1a-f984a2bd9c0c",
+                        duration: (
+                          secs: 1,
+                          nanos: 0,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Block(
+                block: (
+                  combinator: All,
+                  children: [
+                    Action(
+                      action: (
+                        subject: Entity("f13cccc6-fe99-4b08-83ea-8e2047a3081e"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "51fec7c2-2372-417c-8b3a-846015883bad",
+                        duration: (
+                          secs: 1,
+                          nanos: 0,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("b8d1ffdc-abaa-4695-9f3a-e018e054bbb4"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "4b5e0bee-146f-4718-98ce-502abdbca3a4",
+                        duration: (
+                          secs: 1,
+                          nanos: 0,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Block(
+          block: (
+            combinator: Any,
+            children: [
+              Action(
+                action: (
+                  subject: Entity("90d72875-f1d4-4af4-bf0e-d19913343106"),
+                  field: (
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::translation",
+                  ),
+                  op: To,
+                  value: "65353b85-fd37-4ccf-96b4-6b283da7fbe2",
+                  duration: (
+                    secs: 2,
+                    nanos: 0,
+                  ),
+                  ease: Some(CubicEaseInOut),
+                  interp: Some(Linear),
+                ),
+              ),
+              Block(
+                block: (
+                  combinator: Chain,
+                  children: [
+                    Action(
+                      action: (
+                        subject: Entity("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::translation",
+                        ),
+                        op: To,
+                        value: "f5f957e1-26f0-4873-a2ec-36c263b13a95",
+                        duration: (
+                          secs: 0,
+                          nanos: 500000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::translation",
+                        ),
+                        op: To,
+                        value: "35d37d5b-3df9-44ac-99b5-91cd573eb7e6",
+                        duration: (
+                          secs: 0,
+                          nanos: 500000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Block(
+          block: (
+            combinator: All,
+            children: [
+              Action(
+                action: (
+                  subject: Entity("59af9736-3ea8-49ad-adb2-88703abbf39d"),
+                  field: (
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::translation",
+                  ),
+                  op: To,
+                  value: "a91fd327-cbea-4474-a88f-a40e8b18cf47",
+                  duration: (
+                    secs: 0,
+                    nanos: 600000000,
+                  ),
+                  ease: Some(CubicEaseInOut),
+                  interp: Some(Linear),
+                ),
+              ),
+              Action(
+                action: (
+                  subject: Entity("908e820e-55ce-42d0-9980-1251fe0de724"),
+                  field: (
+                    type_name: "bevy_transform::components::transform::Transform",
+                    path: "::translation",
+                  ),
+                  op: To,
+                  value: "2a87bcb2-e824-4026-adf3-addc64782c7f",
+                  duration: (
+                    secs: 0,
+                    nanos: 600000000,
+                  ),
+                  ease: Some(CubicEaseInOut),
+                  interp: Some(Linear),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Block(
+          block: (
+            combinator: Chain,
+            children: [
+              Block(
+                block: (
+                  combinator: All,
+                  children: [
+                    Action(
+                      action: (
+                        subject: Entity("90d72875-f1d4-4af4-bf0e-d19913343106"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::scale",
+                        ),
+                        op: To,
+                        value: "280ba916-898a-4092-bd33-46c456808239",
+                        duration: (
+                          secs: 0,
+                          nanos: 300000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::scale",
+                        ),
+                        op: To,
+                        value: "8823bcd7-b47a-49e9-8997-8f741d8ff440",
+                        duration: (
+                          secs: 0,
+                          nanos: 300000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("15860121-b882-4dd0-94d5-6f8563c80178"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::scale",
+                        ),
+                        op: To,
+                        value: "8c9e026c-6d67-4d35-91cc-2064b62792e2",
+                        duration: (
+                          secs: 0,
+                          nanos: 300000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("a2ec0ac9-1cf4-4234-a11e-32bc673db0b4"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::scale",
+                        ),
+                        op: To,
+                        value: "94bc6795-f15b-429d-af18-c9048b3389ee",
+                        duration: (
+                          secs: 0,
+                          nanos: 300000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("f13cccc6-fe99-4b08-83ea-8e2047a3081e"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::scale",
+                        ),
+                        op: To,
+                        value: "38dc037f-7f44-41d4-93be-ef245dd139cc",
+                        duration: (
+                          secs: 0,
+                          nanos: 300000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("b8d1ffdc-abaa-4695-9f3a-e018e054bbb4"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::scale",
+                        ),
+                        op: To,
+                        value: "e7acb844-625a-4058-bd5a-0e667703ecbd",
+                        duration: (
+                          secs: 0,
+                          nanos: 300000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Block(
+                block: (
+                  combinator: Flow((
+                    secs: 0,
+                    nanos: 80000000,
+                  )),
+                  children: [
+                    Action(
+                      action: (
+                        subject: Entity("90d72875-f1d4-4af4-bf0e-d19913343106"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "b277d204-9814-43c4-a526-372c7e94b372",
+                        duration: (
+                          secs: 0,
+                          nanos: 400000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "520542ba-7be7-4f33-9336-917f71b3cfc8",
+                        duration: (
+                          secs: 0,
+                          nanos: 400000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("15860121-b882-4dd0-94d5-6f8563c80178"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "0094d10d-6449-4c54-b249-de9dc56bede9",
+                        duration: (
+                          secs: 0,
+                          nanos: 400000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("a2ec0ac9-1cf4-4234-a11e-32bc673db0b4"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "01e563c6-edbf-4c61-84de-6b2239c55b1a",
+                        duration: (
+                          secs: 0,
+                          nanos: 400000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("f13cccc6-fe99-4b08-83ea-8e2047a3081e"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "b93b691e-c727-4181-ae5d-bf0e29b6bae8",
+                        duration: (
+                          secs: 0,
+                          nanos: 400000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                    Action(
+                      action: (
+                        subject: Entity("b8d1ffdc-abaa-4695-9f3a-e018e054bbb4"),
+                        field: (
+                          type_name: "bevy_transform::components::transform::Transform",
+                          path: "::rotation",
+                        ),
+                        op: To,
+                        value: "3a7d4b1d-c452-4177-bb14-f8d72ea6598d",
+                        duration: (
+                          secs: 0,
+                          nanos: 400000000,
+                        ),
+                        ease: Some(CubicEaseInOut),
+                        interp: Some(Linear),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+    values: (
+      vec3: {
+        "9f6b2211-8502-4a50-9df6-56d2246a5334": (1.0, 1.0, 1.0),
+        "dff0ba54-8c91-426a-8f3d-15ae47c51b67": (1.0, 1.0, 1.0),
+        "6588e39c-a2cd-4d8c-813a-2b3b826a84fd": (1.0, 1.0, 1.0),
+        "8ed88d10-048a-4a70-8a50-741ecde0cdde": (1.0, 1.0, 1.0),
+        "8360c445-7d14-4bbf-83a5-2608254a39b1": (1.0, 1.0, 1.0),
+        "e2736f6b-098c-4a4d-b2b0-0dfbbb39a5f0": (1.0, 1.0, 1.0),
+        "65353b85-fd37-4ccf-96b4-6b283da7fbe2": (-2.0, 1.5, 0.0),
+        "f5f957e1-26f0-4873-a2ec-36c263b13a95": (0.0, 1.0, 0.0),
+        "35d37d5b-3df9-44ac-99b5-91cd573eb7e6": (0.0, 0.0, 0.0),
+        "a91fd327-cbea-4474-a88f-a40e8b18cf47": (0.0, 1.8000001, 0.0),
+        "2a87bcb2-e824-4026-adf3-addc64782c7f": (0.0, -1.8000001, 0.0),
+        "280ba916-898a-4092-bd33-46c456808239": (0.7, 0.7, 0.7),
+        "8823bcd7-b47a-49e9-8997-8f741d8ff440": (0.7, 0.7, 0.7),
+        "8c9e026c-6d67-4d35-91cc-2064b62792e2": (0.7, 0.7, 0.7),
+        "94bc6795-f15b-429d-af18-c9048b3389ee": (0.7, 0.7, 0.7),
+        "38dc037f-7f44-41d4-93be-ef245dd139cc": (0.7, 0.7, 0.7),
+        "e7acb844-625a-4058-bd5a-0e667703ecbd": (0.7, 0.7, 0.7),
+        "b76b47e5-b453-415a-b625-7e716351014a": (-2.0, 0.0, 0.0),
+        "96185f6f-8fde-4e7d-9bee-b5f318e5dcc3": (0.0, 0.0, 0.0),
+        "449c5bc3-4b7f-46bd-bcdb-cbe8d65370e1": (0.0, 0.0, 0.0),
+        "cffb8728-ac3b-4bde-a8e9-b9de0a7a6f53": (0.0, 0.0, 0.0),
+        "80cfd503-84ba-4302-9b82-341544e50b73": (2.0, 0.0, 0.0),
+        "c2895299-2585-41a1-a1c6-318d5431f2d3": (0.0, 0.0, 0.0),
+        "be6be5cf-b99b-4652-9685-ee5e847fc167": (-2.0, 0.0, 0.0),
+        "0e1e0091-3489-4689-95ce-af05f494da6a": (0.0, 0.0, 0.0),
+        "a9acb23b-ac77-44cc-b9b1-8a8e5aa84c24": (0.0, 0.0, 0.0),
+        "084e8e00-15e0-4e06-a4a7-95c9d5b26607": (0.0, 0.0, 0.0),
+        "26654bff-afb8-4a27-9570-0519faf2cc40": (2.0, 0.0, 0.0),
+        "989fc380-eecc-4798-b2d0-9b449231275f": (0.0, 0.0, 0.0),
+        "504e8aa2-da84-4c76-8dc8-548f4256d5bc": (0.0, 1.2, 0.0),
+        "c9bc633c-e4b6-4d25-beae-4a66c83889be": (1.0, 1.0, 1.0),
+        "4a574fad-fcc7-44cc-be8e-7b3d03e00287": (0.0, -1.2, 0.0),
+        "2cb2aba2-6dff-422f-9161-cc3abcaa6dce": (1.0, 1.0, 1.0),
+      },
+      quat: {
+        "588914d6-c8ec-457b-8423-f3d8a081a87a": (0.0, 1.0, 0.0, -0.00000004371139),
+        "fd7708c0-9e00-41c0-8e85-cb65fde537cf": (0.0, 1.0, 0.0, -0.00000004371139),
+        "4a06ccdf-9783-45af-8b69-202e993f6ace": (0.0, 1.0, 0.0, -0.00000004371139),
+        "c86f2379-8bec-4b1c-8e1a-f984a2bd9c0c": (0.0, 1.0, 0.0, -0.00000004371139),
+        "51fec7c2-2372-417c-8b3a-846015883bad": (0.0, 1.0, 0.0, -0.00000004371139),
+        "4b5e0bee-146f-4718-98ce-502abdbca3a4": (0.0, 1.0, 0.0, -0.00000004371139),
+        "b277d204-9814-43c4-a526-372c7e94b372": (0.0, 0.0, 0.0, 1.0),
+        "520542ba-7be7-4f33-9336-917f71b3cfc8": (0.0, 0.0, 0.0, 1.0),
+        "0094d10d-6449-4c54-b249-de9dc56bede9": (0.0, 0.0, 0.0, 1.0),
+        "01e563c6-edbf-4c61-84de-6b2239c55b1a": (0.0, 0.0, 0.0, 1.0),
+        "b93b691e-c727-4181-ae5d-bf0e29b6bae8": (0.0, 0.0, 0.0, 1.0),
+        "3a7d4b1d-c452-4177-bb14-f8d72ea6598d": (0.0, 0.0, 0.0, 1.0),
+        "ab67a8d5-11eb-4217-9d54-d23af77a7851": (0.0, 0.0, 0.0, 1.0),
+        "91b1896a-6219-4f49-ab1b-019e1a77843c": (0.0, 0.0, 0.0, 1.0),
+        "d90dbed5-6511-43a5-a2ed-955e13eb7673": (0.0, 0.0, 0.0, 1.0),
+        "5d8e39d0-6a4e-497d-b582-36ef5cbf7dfe": (0.0, 0.0, 0.0, 1.0),
+        "ee4ed4a3-eaad-41fe-9919-8edd8ee77971": (0.0, 0.0, 0.0, 1.0),
+        "e6c3e776-6b05-4ea8-80e5-c0c454594b52": (0.0, 0.0, 0.0, 1.0),
+        "f421033c-1fae-4b46-9e05-fab4aa3f446d": (0.0, 0.0, 0.0, 1.0),
+        "2f7010a1-38bc-4b70-bfa9-06dec56521a3": (0.0, 0.0, 0.0, 1.0),
+      },
+    ),
+  ),
+  bookmarks: [
+    "/Users/nixon/develop/projects/rust/motiongfx/editor/assets",
+  ],
+)

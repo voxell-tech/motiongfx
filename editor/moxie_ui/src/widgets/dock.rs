@@ -25,8 +25,8 @@ pub use registry::{
     DockWindowBuildFn, DockWindowDescriptor, WindowRegistry,
 };
 pub use split::{
-    Panel, PanelGroup, PanelHandle, SplitPanelPlugin, panel,
-    panel_group, panel_handle,
+    HANDLE_SIZE, Panel, PanelGroup, PanelHandle, SplitPanelPlugin,
+    panel, panel_group, panel_handle,
 };
 pub use tabs::DockTabRow;
 pub use tree::{
@@ -50,9 +50,6 @@ impl Plugin for DockPlugin {
         .init_resource::<registry::WindowRegistry>();
     }
 }
-
-// Backgrounds come from the glass materials (`crate::glass`)
-// and colors from the theme (`crate::theme`); only metrics live here.
 
 /// Tab-bar height, in px.
 pub(crate) const TAB_HEIGHT: f32 = 24.0;

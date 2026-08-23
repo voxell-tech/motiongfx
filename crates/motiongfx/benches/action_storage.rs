@@ -6,13 +6,13 @@
 //! delta is attributable purely to the action-storage backend.
 //!
 //! Three phases of the animation loop are measured separately:
-//!   * `build`  — construct + compile a timeline (insertion into store)
-//!   * `bake`   — recompute all segments from subject start values
-//!   * `scrub`  — full-playback queue+sample sweep (the per-frame path)
+//!   * `build`: construct + compile a timeline (insertion into store)
+//!   * `bake`: recompute all segments from subject start values
+//!   * `scrub`: full-playback queue+sample sweep (the per-frame path)
 //!
 //! Each phase runs twice: a single-type scene (`f32`, one pipeline) and
 //! a `mixed_*` scene (four distinct value types, four pipelines) that
-//! stresses per-type dispatch and — in bevy ECS — archetype width.
+//! stresses per-type dispatch and (in bevy ECS) archetype width.
 //!
 //! Run (see the module docs / your notes for baseline comparison):
 //!   cargo bench -p motiongfx
@@ -179,7 +179,7 @@ fn bench_scrub(c: &mut Criterion) {
 // Mixed-type scene.
 //
 // The benches above use a single value type (`f32`), i.e. one pipeline
-// and one column set — the best case for ECS (a single archetype). Real
+// and one column set, the best case for ECS (a single archetype). Real
 // scenes animate many value types. `Widget` carries four distinct types
 // animated concurrently, producing four pipelines / four heterogeneous
 // column sets in typarena and a four-wide archetype in bevy ECS, which
@@ -261,7 +261,7 @@ fn make_mixed_world(n: u64) -> MixedWorld {
 }
 
 /// Build a timeline with `n` widgets, each animating all four typed
-/// fields over a 1s clip — `4 * n` actions across four pipelines.
+/// fields over a 1s clip, `4 * n` actions across four pipelines.
 fn build_mixed(
     registry: &mut Registry,
     n: u64,

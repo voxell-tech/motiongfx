@@ -7,25 +7,32 @@
 //!
 //! [`Timeline`]: bevy_motiongfx::prelude::BevyTimeline
 
-// Inherent to Bevy ECS: systems take many params and query tuples.
-#![allow(clippy::type_complexity, clippy::too_many_arguments)]
+#![allow(
+    clippy::type_complexity,
+    clippy::too_many_arguments,
+    reason = "Inherent to Bevy ECS: systems take many params and query tuples."
+)]
 
 mod block_layout;
 mod icons;
 mod playback;
+mod project;
 mod scene;
 mod time_axis;
 mod ui;
 mod view;
 
 use core::time::Duration;
+use std::path::PathBuf;
 
 use bevy::prelude::*;
 use bevy::settings::{
     ReflectSettingsGroup, SettingsGroup, SettingsPlugin,
 };
 use bevy_motiongfx::prelude::TimelineId;
+use bevy_motiongfx::scene::id::EntityUid;
 
+use moxie_asset::MoxieAssetPlugin;
 pub use scene::EditorScene;
 
 /// Plugin that renders a timeline editor UI for the first
@@ -34,12 +41,44 @@ pub struct MoxiePlugin;
 
 impl Plugin for MoxiePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SettingsPlugin::new(
-            "org.voxell.motiongfx.editor",
+        app.add_plugins((
+            SettingsPlugin::new("org.voxell.motiongfx.editor"),
+            MoxieAssetPlugin,
+            ui::UiPlugin,
         ))
-        .add_plugins(ui::UiPlugin);
+        .add_systems(PreUpdate, ensure_scene_root);
     }
 }
+
+/// Ensures an [`Entity`] with [`SceneRoot`] exists.
+pub(crate) fn ensure_scene_root(
+    mut commands: Commands,
+    roots: Query<Entity, With<SceneRoot>>,
+    root_subjects: Query<Entity, (With<EntityUid>, Without<ChildOf>)>,
+) {
+    let root_count = roots.count();
+    if root_count > 1 {
+        error!("There are more than one root in the scene!");
+    } else if root_count == 0 {
+        let root = commands
+            .spawn((
+                SceneRoot,
+                Transform::IDENTITY,
+                Visibility::Inherited,
+            ))
+            .id();
+
+        for subject in &root_subjects {
+            commands.entity(root).add_child(subject);
+        }
+    }
+}
+
+/// Marker component for the root [`Entity`] of the scene.
+/// All subjects with [`EntityUid`] lives under this.
+#[derive(Component, Reflect, Default, Clone)]
+#[reflect(Component, Default, Clone)]
+pub struct SceneRoot;
 
 /// Pixels per second of animation (horizontal zoom).
 pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
@@ -75,6 +114,21 @@ pub(crate) struct EditorState {
 #[derive(Resource, Default, Clone, PartialEq)]
 pub(crate) struct SelectedAction(pub(crate) Option<Vec<usize>>);
 
+/// The entity currently selected in the hierarchy panel, if any.
+#[derive(Resource, Default, Clone, Copy, PartialEq)]
+pub(crate) struct SelectedEntity(pub(crate) Option<Entity>);
+
+/// Folders bookmarked for browsing in the asset panel. Saved and
+/// loaded with the project: a bookmark only means something alongside
+/// the assets it points at.
+#[derive(Resource, Default, Clone)]
+pub(crate) struct ProjectBookmarks(pub(crate) Vec<PathBuf>);
+
+/// Where the open project's own `.mox` was last loaded from or saved
+/// to. Its folder is the asset panel's own, permanent bookmark.
+#[derive(Resource, Default, Clone)]
+pub(crate) struct ProjectPath(pub(crate) Option<PathBuf>);
+
 #[derive(Debug, Resource, SettingsGroup, Reflect)]
 #[reflect(Resource, SettingsGroup, Default)]
 pub struct EditorSettings {
@@ -88,7 +142,7 @@ impl Default for EditorSettings {
             hdr: Default::default(),
             // Portrait 9:16 to match the current compositions; the
             // offscreen preview renders at this resolution.
-            physical_size: UVec2::new(1080, 1920),
+            physical_size: UVec2::new(1920, 1080),
         }
     }
 }

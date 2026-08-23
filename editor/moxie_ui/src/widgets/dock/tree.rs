@@ -3,7 +3,7 @@
 //! A binary tree: every split has exactly two children, and multi-way
 //! layouts are nested binary splits. There is exactly one tree per
 //! host, rooted at a single `Leaf` (one tabbed area) or `Split`.
-//! No Bevy UI imports — the reconciler owns the data→UI direction.
+//! No Bevy UI imports: the reconciler owns the data→UI direction.
 
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;

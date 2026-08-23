@@ -8,8 +8,17 @@
 use bevy::ecs::change_detection::{ComponentTicks, Tick};
 use bevy::prelude::*;
 
-pub use bevy_fynix::host::BevyHost;
-pub use bevy_fynix::{BevyUi, FynixPlugin, FynixSet, watch_root};
+// `watch_root` stays generic over `Theme`, same as `bevy_fynix`
+// itself: `build`'s own type already fixes `Theme` to `EditorTheme`
+// for the compiler to infer.
+pub use bevy_fynix::{FynixSet, watch_root};
+
+use crate::theme::EditorTheme;
+
+/// Fixes [`bevy_fynix::host::BevyHost`]'s theme to [`EditorTheme`].
+pub type BevyHost = bevy_fynix::host::BevyHost<EditorTheme>;
+pub type BevyUi<'a> = bevy_fynix::BevyUi<'a, EditorTheme>;
+pub type FynixPlugin = bevy_fynix::FynixPlugin<EditorTheme>;
 
 /// Fires when `R` changed since the last poll. Also fires on the first
 /// poll, so a binding starts out in sync with the world.
@@ -31,11 +40,10 @@ pub fn resource_changed<R: Resource>()
 /// Fires when a *projection* of `R` changes, ignoring every other
 /// mutation.
 ///
-/// This is what lets `watch` mean "structure" and `bind` mean "value".
 /// Watching a whole resource rebuilds on any field change: dragging a
-/// splitter nudges `DockTree`'s fractions every frame, which would
-/// rebuild the layout every frame. Project to the structural part and
-/// the drag fires nothing; a `bind` carries the ratio instead.
+/// splitter nudges `DockTree`'s fractions every frame. Projecting to
+/// the structural part skips that; a `bind` carries the ratio
+/// instead.
 pub fn structure_changed<R: Resource, K>(
     project: impl Fn(&R) -> K + Send + Sync + 'static,
 ) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static
@@ -56,11 +64,9 @@ where
 
 /// Fires when `read`'s value differs from the last poll.
 ///
-/// For signals that are entity state rather than a resource, where
-/// there is no tick to compare. `read` runs every flush, so it must be
-/// cheap: resolve entities *outside* the closure (a registering system
-/// has queries; a predicate only has `&World`, where finding an entity
-/// by component means scanning the whole world).
+/// For entity state, where there is no tick to compare. `read` runs
+/// every flush, so keep it cheap: resolve entities outside the
+/// closure, since a predicate only has `&World` to scan with.
 pub fn value_changed<T>(
     read: impl Fn(&World, Entity) -> T + Send + Sync + 'static,
 ) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static
@@ -76,17 +82,53 @@ where
     }
 }
 
-/// Fires when the watched node's `C` differs from the last poll.
+/// Fires when the node's `C` was written since the last poll, and on
+/// the first poll.
 ///
-/// The entity-local counterpart to [`resource_changed`]: state for a
-/// single widget instance (a popup's open/closed, a field's edit
-/// buffer) belongs on that widget's own node, not in a global
-/// `Resource` that every instance of the widget would have to share.
-/// `C` absent reads as unchanged, not a rebuild — a node that hasn't
-/// had its state inserted yet is not yet ready to build.
-pub fn component_changed<C: Component + Clone + PartialEq>()
+/// Rides the tick. Reach for [`value_changed`] when the value itself
+/// is what matters.
+pub fn component_changed<C: Component>()
 -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
-    value_changed(|world, node| world.get::<C>(node).cloned())
+    let mut seen: Option<Option<Tick>> = None;
+    move |world, node| {
+        let current = component_tick::<C>(world, node);
+        let fired = seen != Some(current);
+        seen = Some(current);
+        fired
+    }
+}
+
+/// Same, for `C` on some other entity than the node.
+pub fn component_changed_on<C: Component>(
+    entity: Entity,
+) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+    let mut changed =
+        tick_changed(move |world| component_tick::<C>(world, entity));
+    move |world, _| changed(world)
+}
+
+/// When `C` on `entity` was last written.
+fn component_tick<C: Component>(
+    world: &World,
+    entity: Entity,
+) -> Option<Tick> {
+    let ComponentTicks { changed, .. } =
+        world.get_entity(entity).ok()?.get_change_ticks::<C>()?;
+    Some(changed)
+}
+
+/// Fires when `read`'s tick differs from the last poll, and on the
+/// first poll.
+pub(crate) fn tick_changed(
+    mut read: impl FnMut(&World) -> Option<Tick> + Send + Sync + 'static,
+) -> impl FnMut(&World) -> bool + Send + Sync + 'static {
+    let mut seen: Option<Option<Tick>> = None;
+    move |world| {
+        let current = read(world);
+        let fired = seen != Some(current);
+        seen = Some(current);
+        fired
+    }
 }
 
 /// Fires when the current `S` differs from the last poll.

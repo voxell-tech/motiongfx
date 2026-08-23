@@ -1,32 +1,33 @@
-//! The editor's dockable windows (viewport, timeline, hierarchy,
-//! action, settings) and the startup system that spawns them against
-//! a dedicated UI camera.
-
 mod action;
+mod assets;
 mod hierarchy;
+mod inspector;
 mod settings;
 mod timeline;
+mod top_bar;
 
 use bevy::camera::Hdr;
 use bevy::camera::visibility::RenderLayers;
+use bevy::ecs::schedule::common_conditions::resource_changed;
 use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
 use bevy::ui::widget::ImageNode;
 use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 
 use crate::{
-    EditorSettings, EditorState, PreviewImage, SelectedAction,
-    playback, scene, view,
+    EditorSettings, EditorState, PreviewImage, ProjectBookmarks,
+    ProjectPath, SelectedAction, SelectedEntity, playback, scene,
+    view,
 };
-use bevy_fynix::ElementMutExt;
+use bevy_fynix::EntityExt;
 use fynix_mock::elem;
-use moxie_ui::MoxieUiPlugin;
 use moxie_ui::elements::{Frame, FrameCursor, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
     DockWindowDescriptor, Edge, WindowRegistry, dock,
 };
+use moxie_ui::{MoxieUiPlugin, monokai};
 
 /// Wires feathers theming, the editor UI tree, and the per-frame
 /// timeline/playback/preview systems.
@@ -37,11 +38,19 @@ impl Plugin for UiPlugin {
         app.add_plugins(MoxieUiPlugin)
             .init_resource::<EditorState>()
             .init_resource::<SelectedAction>()
+            .init_resource::<SelectedEntity>()
+            .init_resource::<ProjectBookmarks>()
+            .init_resource::<ProjectPath>()
+            .init_resource::<assets::AssetFoldState>()
+            .init_resource::<hierarchy::Dragging>()
+            .init_resource::<scene::EditorScene>()
             .add_systems(Startup, setup_editor_ui)
             .add_systems(
                 Update,
                 (
-                    scene::recompile_dirty_scene,
+                    scene::recompile_dirty_scene.run_if(
+                        resource_changed::<scene::EditorScene>,
+                    ),
                     playback::track_first_timeline,
                     playback::play_pause_hotkey,
                     playback::stop_at_track_end,
@@ -89,7 +98,7 @@ fn setup_editor_ui(
             Camera2d
             Camera {
                 order: 10,
-                clear_color: Color::BLACK,
+                clear_color: { monokai::BASE[0] },
             }
             TrackViewportCamera
         ])
@@ -102,25 +111,44 @@ fn setup_editor_ui(
 
     register_windows(&mut registry);
 
-    // Layout: viewport (+ its sibling tabs) on top, timeline below.
-    // Leaves are not persistent: emptied areas collapse
-    // automatically.
+    //
+    // The dock layout.
+    //
     let viewport = tree.set_root_leaf(
         DockLeaf::new("viewport", DockAreaStyle::TabBar)
-            .with_windows(vec![
-                "viewport".into(),
-                "hierarchy".into(),
-                "action".into(),
-                "settings".into(),
-            ]),
+            .with_windows(vec!["viewport".into()]),
     );
+
     tree.split(viewport, Edge::Bottom, "timeline".into());
-    let split = tree.root.expect("root split exists");
-    tree.set_fraction(split, 0.7);
-    if let Some(timeline) = tree.find_leaf_with_window("timeline")
-        && let Some(DockNode::Leaf(leaf)) = tree.get_mut(timeline)
-    {
+    let vsplit = tree.root.expect("root split exists");
+    tree.set_fraction(vsplit, 0.7);
+    let timeline = tree
+        .find_leaf_with_window("timeline")
+        .expect("just split in a timeline leaf");
+    if let Some(DockNode::Leaf(leaf)) = tree.get_mut(timeline) {
         leaf.area_id = "timeline".into();
+    }
+
+    tree.split(timeline, Edge::Right, "action".into());
+    if let Some(hsplit) = tree.parent_of(timeline) {
+        tree.set_fraction(hsplit, 0.8);
+    }
+
+    tree.split(viewport, Edge::Right, "inspector".into());
+    if let Some(hsplit) = tree.parent_of(viewport) {
+        tree.set_fraction(hsplit, 0.8);
+    }
+
+    if let Some((sidebar, hierarchy_tab)) =
+        tree.split(viewport, Edge::Left, "hierarchy".into())
+    {
+        // `add_tab` activates what it just added; Hierarchy stays the
+        // one shown on a fresh layout.
+        tree.add_tab(sidebar, "assets");
+        tree.set_active(sidebar, hierarchy_tab);
+    }
+    if let Some(hsplit) = tree.parent_of(viewport) {
+        tree.set_fraction(hsplit, 0.2);
     }
 
     // The kernel builds the whole tree under this root. `Commands`
@@ -147,6 +175,7 @@ fn setup_editor_ui(
 fn build_editor_ui(ui: &mut BevyUi) {
     // Non-visual binds live at the root: they hang off a node only for
     // lifetime, and write to resources or assets.
+    ui.compose(top_bar::TopBar);
     dock(ui);
 }
 
@@ -245,6 +274,15 @@ fn register_windows(registry: &mut WindowRegistry) {
         },
     });
 
+    registry.register(DockWindowDescriptor {
+        id: "inspector".into(),
+        name: "Inspector".into(),
+        icon: Some(crate::icons::INSPECTOR.into()),
+        build: |ui: &mut BevyUi| {
+            ui.compose(inspector::InspectorPanel);
+        },
+    });
+
     // Settings: a reflect inspector over `EditorSettings` + Save.
     registry.register(DockWindowDescriptor {
         id: "settings".into(),
@@ -252,6 +290,15 @@ fn register_windows(registry: &mut WindowRegistry) {
         icon: Some(crate::icons::SETTINGS.into()),
         build: |ui: &mut BevyUi| {
             ui.compose(settings::SettingsPanel);
+        },
+    });
+
+    registry.register(DockWindowDescriptor {
+        id: "assets".into(),
+        name: "Assets".into(),
+        icon: Some(crate::icons::ASSETS.into()),
+        build: |ui: &mut BevyUi| {
+            ui.compose(assets::AssetsPanel);
         },
     });
 }

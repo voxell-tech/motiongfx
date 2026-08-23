@@ -6,33 +6,46 @@ use bevy_ecs::prelude::*;
 use bevy_fynix::host::BevyHost;
 use bevy_fynix::{FynixPlugin, watch_root};
 use bevy_ui::Node;
-use fynix_mock::OverrideDefault;
 use fynix_mock::elem;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
+
+/// Nothing in these tests reads a theme - a host still needs one.
+#[derive(Resource, Clone, Default)]
+struct NoTheme;
+
+type Host = BevyHost<NoTheme>;
 
 /// What the element writes. A real one would write `bevy_ui`
 /// components; this only has to be visible from a test.
 #[derive(Component, Debug, PartialEq)]
 struct Caption(String);
 
-#[derive(OverrideDefault, Lenz, Element)]
+#[derive(Element)]
 pub struct Label {
     #[default(String::from("Label"))]
     pub text: String,
 }
 
-impl ElementVisual<BevyHost> for Label {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+impl ElementVisual<Host> for Label {
+    fn build_fields(
+        &self,
+        build: &mut Build<BevyHost<NoTheme>, Self>,
+    ) {
+        let node = build.id();
+        let world = &mut *build.world;
+
         world.entity_mut(node).insert(Caption(self.text.clone()));
     }
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost<NoTheme>>,
         field: LabelField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             LabelField::Text => {
                 world
@@ -52,7 +65,7 @@ fn only_child(world: &World, root: Entity) -> Entity {
 
 fn app_with_root() -> (App, Entity) {
     let mut app = App::new();
-    app.add_plugins(FynixPlugin);
+    app.add_plugins(FynixPlugin::<NoTheme>::default());
 
     let root = app.world_mut().spawn(Node::default()).id();
     (app, root)
@@ -62,7 +75,7 @@ fn app_with_root() -> (App, Entity) {
 fn flush_builds_what_a_root_declares() {
     let (mut app, root) = app_with_root();
 
-    watch_root(app.world_mut(), root, |ui| {
+    watch_root::<NoTheme>(app.world_mut(), root, |ui| {
         ui.elem(elem!(Label, text = "Save"));
     });
 

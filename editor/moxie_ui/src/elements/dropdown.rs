@@ -1,39 +1,41 @@
 //! A dropdown, built on the menu `bevy_ui_widgets` already ships.
 //!
-//! Three elements rather than one, because that is the shape the
-//! behaviour expects: an anchor holding a control and a list, which
-//! is how the menu's own observer finds each of them. What comes with
-//! it is everything a hand-rolled popup gets wrong - placement that
-//! flips near the window edge, dismissal on focus loss, Escape, and
-//! arrow-key navigation.
+//! Three elements, the shape the behaviour expects: an anchor
+//! holding a control and a list, which is how the menu's own
+//! observer finds each of them. In exchange it gets everything a
+//! hand-rolled popup gets wrong: placement that flips near the
+//! window edge, dismissal on focus loss, Escape, and arrow-key
+//! navigation.
 
+use crate::reactive::BevyHost;
 use bevy::feathers::controls::{FeathersMenu, FeathersMenuPopup};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::input_focus::tab_navigation::TabIndex;
 use bevy::prelude::*;
 use bevy::scene::EntityWorldMutSceneExt;
-use bevy::ui::widget::ImageNode;
 use bevy::ui_widgets::{
     ActivateOnPress, Button as ButtonBehavior, MenuButton, MenuItem,
 };
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 use super::{Icon, Label};
 
 /// What a [`Dropdown`] and its [`DropdownList`] hang from.
 ///
-/// Carries the observer that opens and closes the list, which reaches
-/// both by looking through this node's children - so the two must be
-/// built underneath it, in either order.
-#[derive(Element, OverrideDefault, Lenz)]
+/// Carries the observer that opens and closes the list, found by
+/// looking through this node's children. Both must be built
+/// underneath it, in either order.
+#[derive(Element)]
 pub struct DropdownMenu;
 
 impl ElementVisual<BevyHost> for DropdownMenu {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
+
         if let Err(err) =
             world.entity_mut(node).apply_scene(bsn! { @FeathersMenu })
         {
@@ -43,8 +45,7 @@ impl ElementVisual<BevyHost> for DropdownMenu {
 
     fn patch_fields(
         &self,
-        _world: &mut World,
-        _node: Entity,
+        _patch: &mut Patch<BevyHost>,
         field: DropdownMenuField,
     ) {
         match field {}
@@ -52,13 +53,13 @@ impl ElementVisual<BevyHost> for DropdownMenu {
 }
 
 /// The shut control: what is chosen now, and a chevron.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Dropdown {
     /// A node of its own, so the choice showing can be bound without
     /// the control being rebuilt.
-    #[elem]
+    #[elem(child)]
     pub label: Label,
-    #[elem]
+    #[elem(child)]
     pub chevron: Icon,
     /// Wide enough to stay readable when the choice is a short word.
     #[default(px(72))]
@@ -117,30 +118,22 @@ impl Dropdown {
     }
 
     /// Keeps the chevron its own size while the label gives way.
-    ///
-    /// Found by its image rather than by position: the chevron is the
-    /// only child that draws one, and nothing here should depend on
-    /// which order the fields happen to be in.
-    fn hold_chevron(world: &mut World, node: Entity) {
-        let Some(children) =
-            world.get::<Children>(node).map(|c| c.to_vec())
+    fn hold_chevron(build: &mut Build<BevyHost, Self>) {
+        let Some(chevron) = build.child(DropdownCursor::chevron)
         else {
             return;
         };
 
-        for child in children {
-            if world.get::<ImageNode>(child).is_some()
-                && let Some(mut layout) = world.get_mut::<Node>(child)
-            {
-                layout.flex_shrink = 0.0;
-            }
+        if let Some(mut layout) = build.world.get_mut::<Node>(chevron)
+        {
+            layout.flex_shrink = 0.0;
         }
     }
 }
 
 impl ElementVisual<BevyHost> for Dropdown {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             self.node(),
             BackgroundColor(self.fill),
             ButtonBehavior,
@@ -150,26 +143,23 @@ impl ElementVisual<BevyHost> for Dropdown {
             MenuButton,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
-        Self::hold_chevron(world, node);
+        Self::hold_chevron(build);
     }
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: DropdownField,
     ) {
-        let mut entity = world.entity_mut(node);
-
         match field {
             DropdownField::Fill => {
-                entity.insert(BackgroundColor(self.fill));
+                patch.insert(BackgroundColor(self.fill));
             }
             DropdownField::MinWidth
             | DropdownField::MaxWidth
             | DropdownField::Height
             | DropdownField::Radius => {
-                entity.insert(self.node());
+                patch.insert(self.node());
             }
         }
     }
@@ -180,44 +170,55 @@ impl ElementVisual<BevyHost> for Dropdown {
 /// Placed by the popup scene it is built from, so it flips above the
 /// control rather than off the bottom of the window, and is not
 /// clipped by whatever it was opened inside.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct DropdownList {
     /// Matched to the control's, so the two line up.
     #[default(px(160))]
     pub width: Val,
+    /// What the popup scene rounds its own corners to, so leaving this
+    /// alone keeps the look feathers gave it.
+    #[default(px(4))]
+    pub radius: Val,
 }
 
 impl DropdownList {
-    /// Only the width. The rest of the node belongs to the popup
-    /// scene, and writing it whole would undo the placement that came
-    /// with it.
-    fn size(&self, world: &mut World, node: Entity) {
-        if let Some(mut layout) = world.get_mut::<Node>(node) {
+    /// Only the width and the corners. The rest of the node belongs to
+    /// the popup scene, and writing it whole would undo the placement
+    /// that came with it.
+    fn size(&self, entity: &mut impl EntityExt) {
+        if let Some(mut layout) =
+            entity.entity_mut().get_mut::<Node>()
+        {
             layout.min_width = self.width;
+            layout.border_radius = BorderRadius::all(self.radius);
         }
     }
 }
 
 impl ElementVisual<BevyHost> for DropdownList {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        if let Err(err) = world
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+
+        if let Err(err) = build
+            .world
             .entity_mut(node)
             .apply_scene(bsn! { @FeathersMenuPopup })
         {
             error!("failed to build a dropdown list: {err}");
             return;
         }
-        self.size(world, node);
+        self.size(build);
     }
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: DropdownListField,
     ) {
         match field {
-            DropdownListField::Width => self.size(world, node),
+            DropdownListField::Width | DropdownListField::Radius => {
+                self.size(patch)
+            }
         }
     }
 }
@@ -226,9 +227,9 @@ impl ElementVisual<BevyHost> for DropdownList {
 ///
 /// Picking one closes the list. It also has to be focusable, because
 /// focus is what keeps the list open at all.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct DropdownItem {
-    #[elem]
+    #[elem(child)]
     pub label: Label,
     #[default(px(20))]
     pub height: Val,
@@ -253,8 +254,8 @@ impl DropdownItem {
 }
 
 impl ElementVisual<BevyHost> for DropdownItem {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             self.node(),
             BackgroundColor(self.fill),
             MenuItem,
@@ -265,18 +266,15 @@ impl ElementVisual<BevyHost> for DropdownItem {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: DropdownItemField,
     ) {
-        let mut entity = world.entity_mut(node);
-
         match field {
             DropdownItemField::Fill => {
-                entity.insert(BackgroundColor(self.fill));
+                patch.insert(BackgroundColor(self.fill));
             }
             DropdownItemField::Height | DropdownItemField::Radius => {
-                entity.insert(self.node());
+                patch.insert(self.node());
             }
         }
     }

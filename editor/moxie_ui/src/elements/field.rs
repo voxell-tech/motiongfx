@@ -1,26 +1,24 @@
 //! What an inspector row is edited with.
 
+use crate::reactive::BevyHost;
 use bevy::feathers::controls::{
-    FeathersNumberInput, NumberFormat, NumberInputValue,
+    FeathersNumberInput, FeathersTextInput,
+    FeathersTextInputContainer, NumberFormat, NumberInputValue,
     UpdateNumberInput,
 };
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::scene::EntityWorldMutSceneExt;
+use bevy::text::EditableText;
 use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 /// A box that is ticked or not.
-///
-/// `checked` is a field rather than something written from outside,
-/// so the value it shows follows whatever the world says: bevy tracks
-/// it as the presence of a marker, and this turns that into data.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct CheckBox {
     pub checked: bool,
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.08))]
@@ -35,14 +33,15 @@ pub struct CheckBox {
 struct CheckMark;
 
 impl CheckBox {
-    fn tick(&self, world: &mut World, node: Entity) {
-        let mut entity = world.entity_mut(node);
-
+    fn tick(&self, entity: &mut impl EntityExt) {
         if self.checked {
             entity.insert(Checked);
         } else {
             entity.remove::<Checked>();
         }
+
+        let node = entity.id();
+        let world = entity.world_mut();
 
         let Some(mark) = self.mark_node(world, node) else {
             return;
@@ -56,7 +55,10 @@ impl CheckBox {
         }
     }
 
-    fn paint(&self, world: &mut World, node: Entity) {
+    fn paint(&self, entity: &mut impl EntityExt) {
+        let node = entity.id();
+        let world = entity.world_mut();
+
         let Some(mark) = self.mark_node(world, node) else {
             return;
         };
@@ -79,23 +81,22 @@ impl CheckBox {
 }
 
 impl ElementVisual<BevyHost> for CheckBox {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
-            CheckboxBehavior,
-            EntityCursor::System(SystemCursorIcon::Pointer),
-            Node {
-                width: px(16),
-                height: px(16),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                border_radius: BorderRadius::all(px(4)),
-                ..default()
-            },
-            BackgroundColor(self.fill),
-        ));
-
-        let mark = world
-            .spawn((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build
+            .insert((
+                CheckboxBehavior,
+                EntityCursor::System(SystemCursorIcon::Pointer),
+                Node {
+                    width: px(16),
+                    height: px(16),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    border_radius: BorderRadius::all(px(4)),
+                    ..default()
+                },
+                BackgroundColor(self.fill),
+            ))
+            .with_child((
                 CheckMark,
                 Node {
                     width: px(8),
@@ -105,33 +106,28 @@ impl ElementVisual<BevyHost> for CheckBox {
                     ..default()
                 },
                 BackgroundColor(self.mark),
-            ))
-            .id();
-        world.entity_mut(node).add_child(mark);
+            ));
 
-        self.tick(world, node);
+        self.tick(build);
     }
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: CheckBoxField,
     ) {
         match field {
-            CheckBoxField::Checked => self.tick(world, node),
+            CheckBoxField::Checked => self.tick(patch),
             CheckBoxField::Fill => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.fill));
+                patch.insert(BackgroundColor(self.fill));
             }
-            CheckBoxField::Mark => self.paint(world, node),
+            CheckBoxField::Mark => self.paint(patch),
         }
     }
 }
 
 /// A number, typed or dragged.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct NumberField {
     pub format: NumberFormat,
     /// What it shows. Pushed as an event rather than written as a
@@ -139,7 +135,7 @@ pub struct NumberField {
     /// edit wins.
     #[default(NumberInputValue::F32(0.0))]
     pub value: NumberInputValue,
-    #[default(px(110))]
+    #[default(px(80))]
     pub width: Val,
 }
 
@@ -167,16 +163,21 @@ impl NumberField {
 }
 
 impl ElementVisual<BevyHost> for NumberField {
-    fn build_fields(&self, world: &mut World, node: Entity) {
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
+
         self.scene(world, node);
     }
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: NumberFieldField,
     ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
         match field {
             NumberFieldField::Format => self.scene(world, node),
             NumberFieldField::Value => {
@@ -186,6 +187,92 @@ impl ElementVisual<BevyHost> for NumberField {
                 });
             }
             NumberFieldField::Width => {
+                if let Some(mut layout) = world.get_mut::<Node>(node)
+                {
+                    layout.width = self.width;
+                }
+            }
+        }
+    }
+}
+
+/// A single-line string, edited in place.
+#[derive(Element)]
+pub struct TextField {
+    pub value: String,
+    #[default(px(110))]
+    pub width: Val,
+}
+
+impl TextField {
+    /// Feathers wants its own child entity for the editable text -
+    /// see the type's own docs - so this node is the container, and
+    /// the widget beneath it what actually holds [`EditableText`].
+    fn scene(&self, world: &mut World, node: Entity) {
+        let scene = bsn! {
+            @FeathersTextInputContainer
+            Children [
+                ( @FeathersTextInput )
+            ]
+        };
+
+        if let Err(err) = world.entity_mut(node).apply_scene(scene) {
+            error!("failed to build a text field: {err}");
+        }
+
+        if let Some(mut layout) = world.get_mut::<Node>(node) {
+            layout.width = self.width;
+            layout.flex_grow = 0.0;
+        }
+
+        self.show(world, node);
+    }
+
+    /// Writes `self.value` into the child [`EditableText`].
+    fn show(&self, world: &mut World, node: Entity) {
+        let Some(text_input) = Self::text_input(world, node) else {
+            return;
+        };
+        if let Some(mut text) =
+            world.get_mut::<EditableText>(text_input)
+        {
+            text.editor_mut().set_text(&self.value);
+        }
+    }
+
+    /// The child entity actually holding [`EditableText`], found by
+    /// marker rather than position - the container may end up with
+    /// other children later (an icon, say), and nothing here should
+    /// depend on which one comes first. What a caller reaching past
+    /// this element's own fields (to wire an observer directly, say)
+    /// needs too.
+    pub fn text_input(world: &World, node: Entity) -> Option<Entity> {
+        world
+            .get::<Children>(node)?
+            .iter()
+            .find(|&child| world.get::<EditableText>(child).is_some())
+    }
+}
+
+impl ElementVisual<BevyHost> for TextField {
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        let node = build.id();
+        let world = &mut *build.world;
+
+        self.scene(world, node);
+    }
+
+    fn patch_fields(
+        &self,
+        patch: &mut Patch<BevyHost>,
+        field: TextFieldField,
+    ) {
+        let node = patch.id();
+        let world = &mut *patch.world;
+
+        match field {
+            TextFieldField::Value => self.show(world, node),
+            TextFieldField::Width => {
                 if let Some(mut layout) = world.get_mut::<Node>(node)
                 {
                     layout.width = self.width;

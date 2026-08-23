@@ -1,8 +1,8 @@
+use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 use super::Label;
 
@@ -11,9 +11,9 @@ use super::Label;
 /// `Node::Block` in a scene's animation tree gets one of these -
 /// an action leaf has no children and so no label, and stays a plain
 /// `Frame` instead.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct TimelineBlock {
-    #[elem]
+    #[elem(child)]
     pub label: Label,
     pub top: f32,
     pub left: f32,
@@ -38,15 +38,14 @@ impl TimelineBlock {
             // corner.
             padding: UiRect::new(px(4), Val::ZERO, px(2), Val::ZERO),
             border: UiRect::all(px(1)),
-            // border_radius: BorderRadius::all(px(3)),
             ..default()
         }
     }
 }
 
 impl ElementVisual<BevyHost> for TimelineBlock {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             self.node(),
             BackgroundColor(self.background),
             BorderColor::all(self.border),
@@ -55,8 +54,7 @@ impl ElementVisual<BevyHost> for TimelineBlock {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: TimelineBlockField,
     ) {
         match field {
@@ -64,17 +62,13 @@ impl ElementVisual<BevyHost> for TimelineBlock {
             | TimelineBlockField::Left
             | TimelineBlockField::Width
             | TimelineBlockField::Height => {
-                world.entity_mut(node).insert(self.node());
+                patch.insert(self.node());
             }
             TimelineBlockField::Background => {
-                world
-                    .entity_mut(node)
-                    .insert(BackgroundColor(self.background));
+                patch.insert(BackgroundColor(self.background));
             }
             TimelineBlockField::Border => {
-                world
-                    .entity_mut(node)
-                    .insert(BorderColor::all(self.border));
+                patch.insert(BorderColor::all(self.border));
             }
         }
     }

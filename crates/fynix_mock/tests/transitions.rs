@@ -5,12 +5,12 @@
 mod common;
 
 use common::{Backend, Interact, Label, LabelCursor, TestAim, World};
-use fynix_mock::Fynix;
-use fynix_mock::elem;
+use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::host::Host;
 use fynix_mock::style::Style;
 use fynix_mock::transition::Transition;
-use fynix_mock::ui::ElementMut;
+use fynix_mock::ui::{Build, Patch};
+use fynix_mock::{Fynix, elem};
 use motiongfx_interp::ease;
 use motiongfx_interp::interpolation::Interpolation;
 
@@ -32,15 +32,23 @@ fn only_child(world: &World, root: usize) -> usize {
 fn travelling() -> (World, usize, Fynix<Backend>, usize) {
     let (mut world, root) = World::with_root();
     world.delta = 0.25;
-    let mut kernel = Fynix::new();
+    let mut kernel = Fynix::new(());
 
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(Label, size = 0u32)).transition(
-            |label| label.size(),
-            Transition::secs(1.0, <u32 as Interpolation<()>>::interp)
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label, size = 0u32)).transition(
+                |label| label.size(),
+                Transition::secs(
+                    1.0,
+                    <u32 as Interpolation<()>>::interp,
+                )
                 .ease(ease::linear),
-        );
-    });
+            );
+        },
+        &mut world,
+    );
     kernel.flush(&mut world);
 
     let label = only_child(&world, root);
@@ -120,9 +128,14 @@ fn element_keeps_the_base_while_a_lane_is_in_flight() {
     // Whatever the lane shows, the element is still what the cascade
     // left: a rebuild starts from the base, not from mid flight.
     kernel.unwatch(root);
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(Label, size = 0u32));
-    });
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Label, size = 0u32));
+        },
+        &mut world,
+    );
     kernel.flush(&mut world);
 
     let rebuilt = only_child(&world, root);
@@ -131,42 +144,93 @@ fn element_keeps_the_base_while_a_lane_is_in_flight() {
 
 #[test]
 fn style_carries_what_moves_as_well_as_what_it_looks_like() {
+    /// A style has no node to wire a lane onto, so what moves is the
+    /// element's own business - `Grower` leaves a slot for a style to
+    /// fill, and wires the lane itself once it has a node to put it
+    /// on.
+    #[derive(Element)]
+    pub struct Grower {
+        #[default(String::from("Label"))]
+        pub text: String,
+        #[default(13)]
+        pub size: u32,
+        /// What a style asks this to grow to under the pointer, if
+        /// anything.
+        pub grows_to: Option<u32>,
+    }
+
+    impl ElementVisual<Backend> for Grower {
+        fn build_fields(&self, build: &mut Build<Backend, Self>) {
+            let node = build.id();
+            build.world.node(node).text = self.text.clone();
+            build.world.node(node).size = self.size;
+
+            if let Some(target) = self.grows_to {
+                build
+                    .transition_from(
+                        |g| g.size(),
+                        self.size,
+                        Transition::secs(
+                            1.0,
+                            <u32 as Interpolation<()>>::interp,
+                        ),
+                    )
+                    .aim_on(
+                        Interact::Enter,
+                        |g| g.size(),
+                        Some(target),
+                    )
+                    .aim_on(Interact::Leave, |g| g.size(), None);
+            }
+        }
+
+        fn patch_fields(
+            &self,
+            patch: &mut Patch<Backend>,
+            field: GrowerField,
+        ) {
+            let node = patch.id();
+            let world = &mut *patch.world;
+
+            match field {
+                GrowerField::Text => {
+                    world.node(node).text = self.text.clone()
+                }
+                GrowerField::Size => {
+                    world.node(node).size = self.size
+                }
+                // Read once, at build - see build_fields.
+                GrowerField::GrowsTo => {}
+            }
+        }
+    }
+
     /// Both halves of a look: a size, and the size it goes to under
     /// the pointer.
     struct Grows;
 
     impl Style for Grows {
         type Host = Backend;
-        type Element = Label;
+        type Element = Grower;
 
-        fn apply(self, label: &mut Label) {
-            label.size = 10;
-        }
-
-        fn attach(elem: ElementMut<Backend, Label>) {
-            elem.transition(
-                |label| label.size(),
-                Transition::secs(
-                    1.0,
-                    <u32 as Interpolation<()>>::interp,
-                ),
-            )
-            .aim_on(Interact::Enter, |label| label.size(), Some(20))
-            .aim_on(
-                Interact::Leave,
-                |label| label.size(),
-                None,
-            );
+        fn apply(self, grower: &mut Grower, _theme: &()) {
+            grower.size = 10;
+            grower.grows_to = Some(20);
         }
     }
 
     let (mut world, root) = World::with_root();
     world.delta = 0.5;
-    let mut kernel = Fynix::new();
+    let mut kernel = Fynix::new(());
 
-    kernel.watch(root, once(), |ui| {
-        ui.elem(elem!(!Grows, text = "Save"));
-    });
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(!Grows, text = "Save"));
+        },
+        &mut world,
+    );
     kernel.flush(&mut world);
 
     let label = only_child(&world, root);

@@ -7,100 +7,219 @@
 pub mod host;
 pub mod interact;
 
+use core::marker::PhantomData;
+use core::ops::{Deref, DerefMut};
+
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::IntoObserverSystem;
 use fynix_mock::Fynix;
 use fynix_mock::element::Element;
-use fynix_mock::ui::{BuildFn, ElementMut, Ui};
+use fynix_mock::records::BuildFn;
+use fynix_mock::ui::{Build, ElementMut, Patch, Ui};
 
 use crate::host::BevyHost;
 
-/// Runs [`Fynix::flush`] in [`FynixSet`], every [`Update`].
-pub struct FynixPlugin;
+/// Runs [`Fynix::flush`] in [`FynixSet`], every [`Update`]. `Theme` is
+/// the app's own type - never a [`Resource`], never read back out of
+/// `World`. Starts the kernel with `Theme::default()`; for anything
+/// else, edit it after the fact through [`theme_mut`].
+pub struct FynixPlugin<Theme>(PhantomData<fn() -> Theme>);
 
-impl Plugin for FynixPlugin {
+impl<Theme> Default for FynixPlugin<Theme> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<Theme: Default + Send + Sync + 'static> Plugin
+    for FynixPlugin<Theme>
+{
     fn build(&self, app: &mut App) {
-        app.init_resource::<BevyFynix>()
-            .add_systems(Update, flush.in_set(FynixSet));
+        app.insert_resource(BevyFynix(Fynix::new(Theme::default())))
+            .add_systems(Update, flush::<Theme>.in_set(FynixSet));
     }
 }
 
 /// What a build takes.
-pub type BevyUi<'a> = Ui<'a, BevyHost>;
+pub type BevyUi<'a, Theme> = Ui<'a, BevyHost<Theme>>;
 
-/// Private, because a flush owns the kernel for as long as it runs and
-/// anything it builds could otherwise borrow it again. Watchers are
-/// declared inside a build, and the first one through [`watch_root`].
-#[derive(Resource, Default)]
-struct BevyFynix(Fynix<BevyHost>);
+/// A flush owns the kernel for as long as it runs, and anything it
+/// builds could otherwise borrow it again. Transparent otherwise -
+/// [`Deref`]/[`DerefMut`] reach straight through to the [`Fynix`]
+/// underneath.
+#[derive(Resource)]
+pub struct BevyFynix<Theme: Send + Sync + 'static>(
+    Fynix<BevyHost<Theme>>,
+);
+
+impl<Theme: Send + Sync + 'static> Deref for BevyFynix<Theme> {
+    type Target = Fynix<BevyHost<Theme>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<Theme: Send + Sync + 'static> DerefMut for BevyFynix<Theme> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 /// Order systems against the flush: whatever a build reads should be
 /// written before [`FynixSet`] runs.
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FynixSet;
 
-/// Build `root` on the next flush, and never again.
+/// The theme the kernel is currently building with.
 ///
-/// The bootstrap: everything reactive below it is declared inside
-/// `build`. Call it once per root, after spawning that root.
-pub fn watch_root(
+/// Borrowed straight out of the kernel's own resource - `Theme` lives
+/// nowhere else in `World`.
+pub fn theme<Theme: Send + Sync + 'static>(world: &World) -> &Theme {
+    world.resource::<BevyFynix<Theme>>().theme()
+}
+
+/// The theme, to edit in place. Schedules a full rebuild for the
+/// next flush - see [`Fynix::theme_mut`].
+pub fn theme_mut<Theme: Send + Sync + 'static>(
+    world: &mut World,
+) -> &mut Theme {
+    let kernel = world.resource_mut::<BevyFynix<Theme>>();
+    kernel.into_inner().theme_mut()
+}
+
+/// Build `root` immediately, and never again.
+///
+/// Everything reactive below it is declared inside `build`. Call it
+/// once per root, after spawning that root.
+pub fn watch_root<Theme: Send + Sync + 'static>(
     world: &mut World,
     root: Entity,
-    build: impl BuildFn<BevyHost>,
+    build: impl BuildFn<BevyHost<Theme>>,
 ) {
     let mut pending = true;
 
-    world.resource_mut::<BevyFynix>().0.watch(
-        root,
-        move |_, _| core::mem::take(&mut pending),
-        build,
+    world.resource_scope::<BevyFynix<Theme>, _>(
+        |world, mut kernel| {
+            kernel.watch(
+                root,
+                move |_, _| core::mem::take(&mut pending),
+                build,
+                world,
+            );
+        },
     );
 }
 
-fn flush(world: &mut World) {
-    with_kernel(world, |kernel, world| kernel.flush(world));
+fn flush<Theme: Send + Sync + 'static>(world: &mut World) {
+    with_kernel::<Theme>(world, |kernel, world| kernel.flush(world));
 }
 
-/// Run `f` with the kernel out of the world, which is the only way to
-/// have both. Not for anything a flush can reach: the kernel is gone
-/// from the world for as long as this runs.
-pub(crate) fn with_kernel(
+/// Run `f` with the kernel taken out of the world. Not for anything
+/// a flush can reach.
+pub(crate) fn with_kernel<Theme: Send + Sync + 'static>(
     world: &mut World,
-    f: impl FnOnce(&mut Fynix<BevyHost>, &mut World),
+    f: impl FnOnce(&mut Fynix<BevyHost<Theme>>, &mut World),
 ) {
-    world.resource_scope(|world, mut kernel: Mut<BevyFynix>| {
-        f(&mut kernel.0, world);
-    });
+    world.resource_scope(
+        |world, mut kernel: Mut<BevyFynix<Theme>>| {
+            f(&mut kernel, world);
+        },
+    );
 }
 
-/// What bevy wants on a node that the element itself has no say in.
-pub trait ElementMutExt<E: Element<BevyHost>> {
-    /// Watch this node for `V`.
-    fn observe<V: EntityEvent, B: Bundle, M>(
-        self,
-        observer: impl IntoObserverSystem<V, B, M>,
-    ) -> Self;
+/// Entity-level operations on whichever node `Build`, `Patch`, or
+/// `ElementMut` currently holds, built on [`Self::id`] and
+/// [`Self::world_mut`] plus whatever `bevy_ecs` offers on top.
+pub trait EntityExt {
+    /// This node's own handle.
+    fn id(&self) -> Entity;
+
+    /// The world this node lives in.
+    fn world_mut(&mut self) -> &mut World;
+
+    /// This node itself, for whatever `bevy_ecs` offers with no
+    /// shorthand here.
+    fn entity_mut(&mut self) -> EntityWorldMut<'_> {
+        let node = self.id();
+        self.world_mut().entity_mut(node)
+    }
 
     /// Put `bundle` on this node, once, now.
-    fn insert(self, bundle: impl Bundle) -> Self;
-}
-
-impl<E: Element<BevyHost>> ElementMutExt<E>
-    for ElementMut<'_, '_, BevyHost, E>
-{
-    fn observe<V: EntityEvent, B: Bundle, M>(
-        self,
-        observer: impl IntoObserverSystem<V, B, M>,
-    ) -> Self {
-        let node = self.id();
-        self.ui.world.entity_mut(node).observe(observer);
+    fn insert(&mut self, bundle: impl Bundle) -> &mut Self {
+        self.entity_mut().insert(bundle);
         self
     }
 
-    fn insert(self, bundle: impl Bundle) -> Self {
-        let node = self.id();
-        self.ui.world.entity_mut(node).insert(bundle);
+    /// Take `B` off this node, once, now.
+    fn remove<B: Bundle>(&mut self) -> &mut Self {
+        self.entity_mut().remove::<B>();
         self
+    }
+
+    /// Spawn `bundle` as a new child of this node, once, now.
+    fn with_child(&mut self, bundle: impl Bundle) -> &mut Self {
+        self.entity_mut().with_child(bundle);
+        self
+    }
+
+    /// Spawn each child `func` adds, on this node, once, now.
+    fn with_children(
+        &mut self,
+        func: impl FnOnce(&mut ChildSpawner),
+    ) -> &mut Self {
+        self.entity_mut().with_children(func);
+        self
+    }
+
+    /// Watch this node for `V`.
+    fn observe<V: EntityEvent, B: Bundle, M>(
+        &mut self,
+        observer: impl IntoObserverSystem<V, B, M>,
+    ) -> &mut Self {
+        self.entity_mut().observe(observer);
+        self
+    }
+}
+
+impl<E, T> EntityExt for ElementMut<'_, '_, BevyHost<T>, E>
+where
+    T: Send + Sync + 'static,
+    E: Element<BevyHost<T>>,
+{
+    fn id(&self) -> Entity {
+        ElementMut::id(self)
+    }
+
+    fn world_mut(&mut self) -> &mut World {
+        self.ui.world
+    }
+}
+
+impl<E, T> EntityExt for Build<'_, BevyHost<T>, E>
+where
+    E: Element<BevyHost<T>>,
+    T: Send + Sync + 'static,
+{
+    fn id(&self) -> Entity {
+        Build::id(self)
+    }
+
+    fn world_mut(&mut self) -> &mut World {
+        self.world
+    }
+}
+
+impl<T> EntityExt for Patch<'_, BevyHost<T>>
+where
+    T: Send + Sync + 'static,
+{
+    fn id(&self) -> Entity {
+        Patch::id(self)
+    }
+
+    fn world_mut(&mut self) -> &mut World {
+        self.world
     }
 }

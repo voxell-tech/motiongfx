@@ -3,17 +3,17 @@
 
 use bevy::feathers::cursor::{EntityCursor, OverrideCursor};
 use bevy::prelude::*;
-
-/// What a drop target is tinted with while a drag is over it.
-const DROP_TINT: Color = Color::srgba(0.47, 0.86, 0.91, 0.18);
 use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy::window::SystemCursorIcon;
+use bevy_fynix::BevyFynix;
 
 use super::area::DockArea;
 use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tabs::DockTabRow;
 use super::tree::{DockTree, Edge as TreeEdge, TabId};
+use crate::layout::logical_rect;
+use crate::theme::EditorTheme;
 
 pub struct DockDragPlugin;
 
@@ -74,19 +74,6 @@ pub struct DragGhost;
 #[derive(Component)]
 pub struct DropOverlay;
 
-/// Node rect in logical (UI) coordinates. Shared with the add-popup.
-pub(super) fn logical_rect(
-    computed: &ComputedNode,
-    transform: &UiGlobalTransform,
-) -> Rect {
-    let inv = computed.inverse_scale_factor();
-    let size = computed.size() * inv;
-    let (_scale, _angle, center) =
-        transform.to_scale_angle_translation();
-    let center = center.trunc() * inv;
-    Rect::from_center_size(center, size)
-}
-
 fn on_tab_drag_start(
     trigger: On<Pointer<DragStart>>,
     tabs: Query<&super::area::DockTab>,
@@ -137,7 +124,12 @@ fn on_drag_move(
     parent_query: Query<&ChildOf>,
     ui_scale: Res<UiScale>,
     mut override_cursor: ResMut<OverrideCursor>,
+    kernel: Res<BevyFynix<EditorTheme>>,
 ) {
+    // The accent, at low alpha, so the panel underneath still reads
+    // through it.
+    let drop_tint = kernel.theme().accent.with_alpha(0.18);
+    let text_primary = kernel.theme().text_primary;
     let drag_event = trigger.event();
     let cursor_pos_ui = Vec2::new(
         drag_event.pointer_location.position.x,
@@ -183,7 +175,12 @@ fn on_drag_move(
             commands.entity(source_tab).insert(Visibility::Hidden);
             let name = window_name.clone();
             commands.queue(move |world: &mut World| {
-                super::tabs::spawn_ghost_tab(world, ghost, &name);
+                super::tabs::spawn_ghost_tab(
+                    world,
+                    ghost,
+                    &name,
+                    text_primary,
+                );
             });
 
             *drag_state = DockDragState::Dragging {
@@ -327,7 +324,7 @@ fn on_drag_move(
                             border_radius: BorderRadius::all(px(4)),
                             ..Default::default()
                         },
-                        BackgroundColor(DROP_TINT),
+                        BackgroundColor(drop_tint),
                         GlobalZIndex(150),
                     ))
                     .id();
@@ -369,7 +366,7 @@ fn on_drag_move(
                                     ),
                                     ..default()
                                 },
-                                BackgroundColor(DROP_TINT),
+                                BackgroundColor(drop_tint),
                                 GlobalZIndex(150),
                             ))
                             .id();
@@ -393,7 +390,7 @@ fn on_drag_move(
                                     ),
                                     ..default()
                                 },
-                                BackgroundColor(DROP_TINT),
+                                BackgroundColor(drop_tint),
                                 GlobalZIndex(150),
                             ))
                             .id();

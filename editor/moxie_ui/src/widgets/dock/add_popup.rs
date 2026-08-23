@@ -4,7 +4,7 @@
 //! State-driven: the click observer only writes
 //! [`AddWindowPopupState`]; a watcher renders whatever that says.
 //! The state lives on the overlay node itself (there's exactly one),
-//! rather than a global `Resource` — see [`crate::reactive::component_changed`].
+//! rather than a global `Resource`; see [`crate::reactive::component_changed`].
 
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
@@ -12,17 +12,16 @@ use bevy::ui::UiGlobalTransform;
 use bevy::ui_widgets::Activate;
 
 use super::area::DockTabAddButton;
-use super::drag::logical_rect;
 use super::reconcile::NodeBinding;
 use super::registry::WindowRegistry;
 use super::tree::DockTree;
-use bevy_fynix::ElementMutExt;
+use crate::layout::logical_rect;
+use bevy_fynix::EntityExt;
 use fynix_mock::{elem, val};
 
 use crate::elements::{Frame, GhostButton, Icon, Label, Overlay};
 use crate::icons;
 use crate::reactive::{BevyUi, component_changed};
-use crate::theme::EditorTheme;
 
 const POPUP_WIDTH: f32 = 150.0;
 
@@ -158,14 +157,14 @@ fn build_popup(ui: &mut BevyUi) {
         padding = UiRect::all(px(4)),
         radius = px(6),
         background = Color::srgba(0.11, 0.10, 0.11, 0.98),
-        z = Some(181)
+        z = 181
     ))
     .with(move |ui| build_rows(ui, area));
 }
 
 /// Windows are single-instance, so only closed ones are listed.
 fn build_rows(ui: &mut BevyUi, area: Entity) {
-    let text_color = ui.world.resource::<EditorTheme>().text_primary;
+    let text_color = ui.theme.text_primary;
     let tree = ui.world.resource::<DockTree>();
     let closed = ui
         .world
@@ -178,7 +177,7 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
     // Every window is already open, so the popup would be a blank
     // box: say why it is empty rather than showing nothing.
     if closed.is_empty() {
-        let muted = ui.world.resource::<EditorTheme>().text_muted;
+        let muted = ui.theme.text_muted;
 
         ui.elem(elem!(
             Label,
@@ -202,8 +201,6 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
             width = percent(100),
             height = auto(),
             justify = JustifyContent::FlexStart,
-            padding = UiRect::axes(px(8), px(4)),
-            radius = px(4),
             icon = val!(
                 Icon,
                 image = image,

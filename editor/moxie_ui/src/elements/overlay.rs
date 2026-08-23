@@ -1,13 +1,13 @@
+use crate::reactive::BevyHost;
 use bevy::picking::Pickable;
 use bevy::prelude::*;
-use bevy_fynix::host::BevyHost;
-use fynix_mock::OverrideDefault;
+use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::lenz::Lenz;
+use fynix_mock::ui::{Build, Patch};
 
 /// A node the size of the window, for something that positions itself
 /// against the window rather than against a parent.
-#[derive(Element, OverrideDefault, Lenz)]
+#[derive(Element)]
 pub struct Overlay {
     /// Whether the pointer sees it. Off unless it is there to catch
     /// something: seen, it is the target of every press, and a press
@@ -27,8 +27,8 @@ impl Overlay {
 }
 
 impl ElementVisual<BevyHost> for Overlay {
-    fn build_fields(&self, world: &mut World, node: Entity) {
-        world.entity_mut(node).insert((
+    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+        build.insert((
             Node {
                 position_type: PositionType::Absolute,
                 left: px(0),
@@ -44,18 +44,15 @@ impl ElementVisual<BevyHost> for Overlay {
 
     fn patch_fields(
         &self,
-        world: &mut World,
-        node: Entity,
+        patch: &mut Patch<BevyHost>,
         field: OverlayField,
     ) {
-        let mut entity = world.entity_mut(node);
-
         match field {
             OverlayField::Catches => {
-                entity.insert(self.pickable());
+                patch.insert(self.pickable());
             }
             OverlayField::Z => {
-                entity.insert(GlobalZIndex(self.z));
+                patch.insert(GlobalZIndex(self.z));
             }
         }
     }

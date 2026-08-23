@@ -2,26 +2,20 @@
 //! than spelling it out. Each takes the field by cursor, so one of
 //! them serves every widget with a colour in the right place.
 
+use crate::reactive::BevyHost;
+use crate::theme::EditorTheme;
 use bevy::color::Mix;
 use bevy::picking::events::{
     Cancel, Out, Over, Pointer, Press, Release,
 };
 use bevy::prelude::*;
-use bevy_fynix::host::BevyHost;
-use bevy_fynix::interact::OnExt as _;
+use bevy_fynix::interact::OnExt;
 use fynix_mock::element::Element;
 use fynix_mock::host::Host;
 use fynix_mock::lenz::{Cursor, FieldPath, Identity};
 use fynix_mock::transition::Transition;
-use fynix_mock::ui::ElementMut;
+use fynix_mock::ui::{Build, ElementMut};
 use motiongfx_interp::ease;
-
-/// Long enough to read as a fade, short enough to feel immediate.
-const INTERACT_MS: u32 = 120;
-
-/// What a surface lights up to under the cursor, and while held.
-pub const HOVER: Color = Color::srgba(1.0, 1.0, 1.0, 0.14);
-pub const PRESS: Color = Color::srgba(1.0, 1.0, 1.0, 0.22);
 
 /// What `lit` can aim at: a colour itself, or a field that only wears
 /// one sometimes.
@@ -56,31 +50,71 @@ impl Lit for Option<Color> {
     }
 }
 
-pub trait MotionExt<E: Element<Self::Host>>: Sized {
-    type Host: Host;
-
+/// Lights a field under the cursor, reading its base out of the
+/// kernel's own table. Only [`ElementMut`] offers this, not
+/// [`Build`]: a node running its own
+/// `build_fields` has no entry there yet.
+pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
+    LitFrom<E>
+{
     /// Lights `field` under the cursor and again while held, leaving
     /// the element's own colour to show the rest of the time. The
     /// base is never written, so that is what it returns to.
     fn lit<P, T>(
-        self,
+        &mut self,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
         hover: Color,
         press: Color,
-    ) -> Self
+    ) -> &mut Self
     where
         P: FieldPath<Source = E, Target = T>,
         T: Lit;
 
-    /// Same as [`Self::lit()`] but watching a specific entity rather
-    /// than this node.
+    /// Same as [`Self::lit()`], but watches a specific entity, not
+    /// this node.
     fn lit_entity<P, T>(
-        self,
+        &mut self,
         entity: Entity,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
         hover: Color,
         press: Color,
-    ) -> Self
+    ) -> &mut Self
+    where
+        P: FieldPath<Source = E, Target = T>,
+        T: Lit;
+}
+
+/// As [`MotionExt`], but given the base explicitly instead of
+/// reading it out of the kernel's table, for
+/// [`build_fields`](fynix_mock::element::ElementVisual::build_fields)
+/// whose node has no entry there yet. Both [`ElementMut`] and
+/// [`Build`] offer this.
+pub trait LitFrom<E: Element<Self::Host>> {
+    type Host: Host;
+
+    fn theme(&self) -> &EditorTheme;
+
+    fn lit_from<P, T>(
+        &mut self,
+        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+        base: T,
+        hover: Color,
+        press: Color,
+    ) -> &mut Self
+    where
+        P: FieldPath<Source = E, Target = T>,
+        T: Lit;
+
+    /// Same as [`Self::lit_from()`], but watches a specific entity,
+    /// not this node.
+    fn lit_entity_from<P, T>(
+        &mut self,
+        entity: Entity,
+        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+        base: T,
+        hover: Color,
+        press: Color,
+    ) -> &mut Self
     where
         P: FieldPath<Source = E, Target = T>,
         T: Lit;
@@ -89,14 +123,12 @@ pub trait MotionExt<E: Element<Self::Host>>: Sized {
 impl<E: Element<BevyHost> + Send + Sync> MotionExt<E>
     for ElementMut<'_, '_, BevyHost, E>
 {
-    type Host = BevyHost;
-
     fn lit<P, T>(
-        self,
+        &mut self,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
         hover: Color,
         press: Color,
-    ) -> Self
+    ) -> &mut Self
     where
         P: FieldPath<Source = E, Target = T>,
         T: Lit,
@@ -106,33 +138,145 @@ impl<E: Element<BevyHost> + Send + Sync> MotionExt<E>
     }
 
     fn lit_entity<P, T>(
-        self,
+        &mut self,
         entity: Entity,
         field: fn(Cursor<Identity<E>>) -> Cursor<P>,
         hover: Color,
         press: Color,
-    ) -> Self
+    ) -> &mut Self
     where
         P: FieldPath<Source = E, Target = T>,
         T: Lit,
     {
-        let mut elem = self.transition(
+        let interact_ms = self.theme().interact_ms;
+        self.transition(
             field,
-            Transition::ms(INTERACT_MS, T::mix)
+            Transition::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
-
-        elem.on_entity::<Pointer<Over>>(entity)
-            .aim(field, Some(T::lit(hover)));
-        elem.on_entity::<Pointer<Press>>(entity)
-            .aim(field, Some(T::lit(press)));
-        elem.on_entity::<Pointer<Release>>(entity)
-            .aim(field, Some(T::lit(hover)));
-        // `Cancel` is the drag that carried the pointer away without
-        // an `Out` to go with it, and means the same thing.
-        elem.on_entity::<Pointer<Out>>(entity).aim(field, None);
-        elem.on_entity::<Pointer<Cancel>>(entity).aim(field, None);
-
-        elem
+        on_lit(self, entity, field, hover, press)
     }
+}
+
+impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
+    for ElementMut<'_, '_, BevyHost, E>
+{
+    type Host = BevyHost;
+
+    fn theme(&self) -> &EditorTheme {
+        self.ui.theme
+    }
+
+    fn lit_from<P, T>(
+        &mut self,
+        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+        base: T,
+        hover: Color,
+        press: Color,
+    ) -> &mut Self
+    where
+        P: FieldPath<Source = E, Target = T>,
+        T: Lit,
+    {
+        let node = self.id();
+        self.lit_entity_from(node, field, base, hover, press)
+    }
+
+    fn lit_entity_from<P, T>(
+        &mut self,
+        entity: Entity,
+        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+        base: T,
+        hover: Color,
+        press: Color,
+    ) -> &mut Self
+    where
+        P: FieldPath<Source = E, Target = T>,
+        T: Lit,
+    {
+        let interact_ms = self.theme().interact_ms;
+        self.transition_from(
+            field,
+            base,
+            Transition::ms(interact_ms, T::mix)
+                .ease(ease::cubic::ease_out),
+        );
+        on_lit(self, entity, field, hover, press)
+    }
+}
+
+impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
+    for Build<'_, BevyHost, E>
+{
+    type Host = BevyHost;
+
+    fn theme(&self) -> &EditorTheme {
+        self.theme
+    }
+
+    fn lit_from<P, T>(
+        &mut self,
+        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+        base: T,
+        hover: Color,
+        press: Color,
+    ) -> &mut Self
+    where
+        P: FieldPath<Source = E, Target = T>,
+        T: Lit,
+    {
+        let node = self.id();
+        self.lit_entity_from(node, field, base, hover, press)
+    }
+
+    fn lit_entity_from<P, T>(
+        &mut self,
+        entity: Entity,
+        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+        base: T,
+        hover: Color,
+        press: Color,
+    ) -> &mut Self
+    where
+        P: FieldPath<Source = E, Target = T>,
+        T: Lit,
+    {
+        let interact_ms = self.theme().interact_ms;
+        self.transition_from(
+            field,
+            base,
+            Transition::ms(interact_ms, T::mix)
+                .ease(ease::cubic::ease_out),
+        );
+        on_lit(self, entity, field, hover, press)
+    }
+}
+
+/// The pointer wiring a lit field needs: lights on hover, lights
+/// harder on press, releases on out or cancel.
+fn on_lit<T, E, P, Target>(
+    elem: &mut T,
+    entity: Entity,
+    field: fn(Cursor<Identity<E>>) -> Cursor<P>,
+    hover: Color,
+    press: Color,
+) -> &mut T
+where
+    T: OnExt<E, EditorTheme>,
+    E: Element<BevyHost> + Send + Sync,
+    P: FieldPath<Source = E, Target = Target>,
+    Target: Lit,
+{
+    elem.on_entity::<Pointer<Over>>(entity)
+        .aim(field, Some(Target::lit(hover)));
+    elem.on_entity::<Pointer<Press>>(entity)
+        .aim(field, Some(Target::lit(press)));
+    elem.on_entity::<Pointer<Release>>(entity)
+        .aim(field, Some(Target::lit(hover)));
+    // `Cancel` is the drag that carried the pointer away without
+    // an `Out` to go with it, and means the same thing.
+    elem.on_entity::<Pointer<Out>>(entity).aim(field, None);
+    elem.on_entity::<Pointer<Cancel>>(entity).aim(field, None);
+
+    elem
 }
