@@ -14,6 +14,7 @@ mod block_layout;
 mod icons;
 mod playback;
 mod scene;
+mod time_axis;
 mod ui;
 mod view;
 

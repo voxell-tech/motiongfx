@@ -15,7 +15,10 @@ use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_click_release,
     on_track_drag, on_track_press, on_track_release,
 };
-use crate::{EditorScene, EditorState, SelectedAction};
+use crate::{
+    EditorScene, EditorState, PIXELS_PER_SECOND, SelectedAction,
+    time_axis,
+};
 use bevy_fynix::ElementMutExt;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
@@ -23,7 +26,7 @@ use fynix_mock::{elem, val};
 use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
     LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
-    TimelineAction, TimelineBlock,
+    TimeLabel, TimeTick, TimelineAction, TimelineBlock,
 };
 use moxie_ui::reactive::{
     BevyHost, BevyUi, resource_changed, value_changed,
@@ -31,6 +34,10 @@ use moxie_ui::reactive::{
 use moxie_ui::theme::EditorTheme;
 
 const CONTROL_BAR_HEIGHT: f32 = 40.0;
+const TIME_AXIS_HEIGHT: f32 = 24.0;
+const MAJOR_TICK: f32 = 8.0;
+const MINOR_TICK: f32 = 4.0;
+const LABEL_SIZE: f32 = 10.0;
 
 /// Viewport where the timeline, track and action UI is displayed.
 #[derive(Component, Default, Clone)]
@@ -121,6 +128,67 @@ impl Composer<BevyHost> for ControlBar {
     }
 }
 
+/// The time axis ruler above the tracks.
+struct TimeAxis;
+
+impl Composer<BevyHost> for TimeAxis {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            height = px(TIME_AXIS_HEIGHT),
+        ))
+        .watch(value_changed(axis_width), build_ticks)
+        .handle()
+    }
+}
+
+/// How wide the time axis ruler is drawn.
+fn axis_width(world: &World, node: Entity) -> u32 {
+    world
+        .get::<ComputedNode>(node)
+        .map(|computed| {
+            (computed.size().x * computed.inverse_scale_factor())
+                as u32
+        })
+        .unwrap_or(0)
+}
+
+fn build_ticks(ui: &mut BevyUi) {
+    let width = axis_width(ui.world, ui.parent()) as f32;
+    let color = ui.world.resource::<EditorTheme>().text_muted;
+    let marks = time_axis::ticks(PIXELS_PER_SECOND, 0.0, width);
+
+    for tick in marks {
+        let major = tick.label.is_some();
+        ui.elem(elem!(
+            TimeTick,
+            x = tick.x,
+            height = if major { MAJOR_TICK } else { MINOR_TICK },
+            color = color.with_alpha(if major { 0.6 } else { 0.3 })
+        ));
+
+        if let Some(text) = tick.label {
+            ui.elem(elem!(
+                TimeLabel,
+                x = tick.x,
+                label = val!(
+                    Label,
+                    text = text,
+                    size = LABEL_SIZE,
+                    wrap = false,
+                    color = Some(color.with_alpha(0.7))
+                )
+            ));
+        }
+    }
+}
+
 /// The scrollable track viewport, filling the whole panel width, with
 /// the playhead floating over it as a sibling - not a descendant, so
 /// it's neither scrolled nor clipped by the [`ScrollArea`].
@@ -136,6 +204,7 @@ impl Composer<BevyHost> for TrackArea {
         ui.elem(elem!(
             Frame,
             width = percent(100),
+            direction = FlexDirection::Column,
             flex_grow = 1.0f32
         ))
         .observe(on_track_press)
@@ -153,9 +222,16 @@ impl Composer<BevyHost> for TrackArea {
             );
         })
         .with(|ui| {
-            ui.elem(elem!(ScrollArea, width = percent(100)))
-                .insert(TrackViewport)
-                .watch(value_changed(block_view), build_block_boxes);
+            ui.compose(TimeAxis);
+        })
+        .with(|ui| {
+            ui.elem(elem!(
+                ScrollArea,
+                width = percent(100),
+                flex_grow = 1.0f32
+            ))
+            .insert(TrackViewport)
+            .watch(value_changed(block_view), build_block_boxes);
         })
         .handle()
     }
