@@ -269,7 +269,7 @@ pub fn inspect_value(ui: &mut BevyUi, source: &dyn Source) {
 /// which would otherwise pull the 40% mark inward with it; the label
 /// sheds that same width back so `value` starts at the same place
 /// no matter how deep its row is nested.
-pub struct FieldRow<F> {
+pub struct FieldRow<F: FnOnce(&mut BevyUi)> {
     pub label: String,
     pub color: Color,
     pub bold: bool,
