@@ -149,7 +149,7 @@ fn build(ui: &mut BevyUi) {
         return;
     }
 
-    heading(ui, shape.kind, path.clone());
+    heading(ui, path.clone());
     {
         let source = Property {
             path: path.clone(),
@@ -684,10 +684,9 @@ fn combinator_name(combinator: &Combinator) -> &'static str {
 
 /// The panel's heading: the node's name if set (bold, primary text),
 /// or an "Unnamed" placeholder (muted, not bold) - the same promotion
-/// the Name row below reads and writes - plus a small tag naming its
-/// kind. Bound to the same `Name` edit, so it stays live as that row
-/// is typed into.
-fn heading(ui: &mut BevyUi, kind: &'static str, path: Vec<usize>) {
+/// the Name row below reads and writes. Bound to the same `Name`
+/// edit, so it stays live as that row is typed into.
+fn heading(ui: &mut BevyUi, path: Vec<usize>) {
     let primary = ui.theme.text_primary;
     let muted = ui.theme.text_muted;
 
@@ -698,51 +697,31 @@ fn heading(ui: &mut BevyUi, kind: &'static str, path: Vec<usize>) {
     let named = shown_name(&source, ui.world);
 
     ui.elem(elem!(
-        Frame,
-        direction = FlexDirection::Row,
-        align = AlignItems::Baseline,
-        column_gap = px(6)
+        Label,
+        text = named.clone().unwrap_or_else(|| "Unnamed".into()),
+        bold = named.is_some(),
+        color = Some(if named.is_some() { primary } else { muted })
     ))
-    .with(move |ui| {
-        ui.elem(elem!(
-            Label,
-            text = named.clone().unwrap_or_else(|| "Unnamed".into()),
-            bold = named.is_some(),
-            color =
-                Some(if named.is_some() { primary } else { muted })
-        ))
-        .bind(|label| label.text(), when_changed(&source), {
-            let source = source.boxed();
-            move |world, _| {
-                shown_name(&*source, world)
-                    .unwrap_or_else(|| "Unnamed".into())
+    .bind(|label| label.text(), when_changed(&source), {
+        let source = source.boxed();
+        move |world, _| {
+            shown_name(&*source, world)
+                .unwrap_or_else(|| "Unnamed".into())
+        }
+    })
+    .bind(|label| label.bold(), when_changed(&source), {
+        let source = source.boxed();
+        move |world, _| shown_name(&*source, world).is_some()
+    })
+    .bind(|label| label.color(), when_changed(&source), {
+        let source = source.boxed();
+        move |world, _| {
+            if shown_name(&*source, world).is_some() {
+                primary
+            } else {
+                muted
             }
-        })
-        .bind(|label| label.bold(), when_changed(&source), {
-            let source = source.boxed();
-            move |world, _| shown_name(&*source, world).is_some()
-        })
-        .bind(
-            |label| label.color(),
-            when_changed(&source),
-            {
-                let source = source.boxed();
-                move |world, _| {
-                    if shown_name(&*source, world).is_some() {
-                        primary
-                    } else {
-                        muted
-                    }
-                }
-            },
-        );
-
-        ui.elem(elem!(
-            Label,
-            text = kind.to_string(),
-            size = 10.0f32,
-            color = Some(muted)
-        ));
+        }
     });
 }
 
