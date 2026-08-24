@@ -16,8 +16,7 @@ use crate::playback::{
     on_track_drag, on_track_press, on_track_release,
 };
 use crate::{
-    EditorScene, EditorState, PIXELS_PER_SECOND, SelectedAction,
-    time_axis,
+    EditorScene, EditorState, SelectedAction, TimeScale, time_axis,
 };
 use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
@@ -171,8 +170,9 @@ fn axis_width(world: &World, node: Entity) -> u32 {
 
 fn build_ticks(ui: &mut BevyUi) {
     let width = axis_width(ui.world, ui.parent()) as f32;
+    let time_scale = ui.world.resource::<TimeScale>().0;
     let color = ui.theme.text_muted;
-    let marks = time_axis::ticks(PIXELS_PER_SECOND, 0.0, width);
+    let marks = time_axis::ticks(time_scale, 0.0, width);
 
     for tick in marks {
         let major = tick.label.is_some();

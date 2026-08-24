@@ -80,8 +80,18 @@ pub(crate) fn ensure_scene_root(
 #[reflect(Component, Default, Clone)]
 pub struct SceneRoot;
 
-/// Pixels per second of animation (horizontal zoom).
+/// Pixels per second of animation at the default zoom.
 pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
+
+/// Horizontal zoom in pixels per second of animation.
+#[derive(Resource, Clone, Copy, PartialEq)]
+pub(crate) struct TimeScale(pub(crate) f32);
+
+impl Default for TimeScale {
+    fn default() -> Self {
+        Self(PIXELS_PER_SECOND)
+    }
+}
 
 /// Horizontal pixel offset for a point `t` into the timeline.
 #[inline]
