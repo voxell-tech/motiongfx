@@ -30,7 +30,7 @@ use super::{
 };
 use crate::icons;
 use crate::inspector::{
-    Field, InspectorFields, ReflectInspectable, Section, field_row,
+    Field, FieldRow, InspectorFields, ReflectInspectable, Section,
     inspect_value, single_value,
 };
 use crate::motion::MotionExt;
@@ -42,7 +42,7 @@ pub struct ComponentInspector {
     pub entity: Entity,
     pub component: TypeId,
     /// How many [`Foldable`](crate::fold::Foldable) bodies this sits
-    /// under, for `field_row` to keep its columns aligned. `0` for
+    /// under, for `FieldRow` to keep its columns aligned. `0` for
     /// a call site with none of its own.
     pub depth: u32,
 }
@@ -334,8 +334,12 @@ fn single(ui: &mut BevyUi, name: &str, field: Field) {
     let name = name.to_string();
     let primary = ui.theme.text_primary;
 
-    field_row(ui, name, primary, true, 0, move |ui| {
-        inspect_value(ui, &field);
+    ui.compose(FieldRow {
+        label: name,
+        color: primary,
+        bold: true,
+        depth: 0,
+        value: move |ui: &mut BevyUi| inspect_value(ui, &field),
     });
 }
 

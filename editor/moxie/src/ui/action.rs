@@ -17,8 +17,10 @@ use fynix_mock::composer::Composer;
 use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
-use moxie_ui::elements::{Frame, Label, ScrollArea};
-use moxie_ui::inspector::{Source, inspect_value, reflect_changed};
+use moxie_ui::elements::{Label, ScrollArea};
+use moxie_ui::inspector::{
+    FieldRow, Source, inspect_value, reflect_changed,
+};
 use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
 use moxie_ui::theme::EditorTheme;
 
@@ -115,32 +117,54 @@ fn build(ui: &mut BevyUi) {
     let shape = shape(ui.world, ui.parent());
 
     let Some(path) = shape.path else {
-        note(ui, theme, "Nothing selected");
+        note(ui, "Nothing selected");
         return;
     };
     if shape.kind.is_empty() {
-        note(ui, theme, "Selection is no longer in the scene");
+        note(ui, "Selection is no longer in the scene");
         return;
     }
 
     heading(ui, theme, shape.kind);
     for (name, value) in shape.rows {
-        row(ui, theme, &name, &value);
+        let primary = theme.text_primary;
+        ui.compose(FieldRow {
+            label: name,
+            color: theme.text_muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| {
+                ui.elem(elem!(
+                    Label,
+                    text = value,
+                    color = Some(primary),
+                    wrap = false
+                ));
+            },
+        });
     }
     for (name, edit) in shape.edits {
         let source = Property {
             path: path.clone(),
             edit,
         };
-        line(ui, name, theme.text_muted, move |ui| {
-            inspect_value(ui, &source);
+        ui.compose(FieldRow {
+            label: name,
+            color: theme.text_muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| inspect_value(ui, &source),
         });
     }
 
     // Whatever the registry has for the type it turns out to hold.
     if let Some(pooled) = shape.value {
-        line(ui, "Value".to_string(), theme.text_muted, move |ui| {
-            inspect_value(ui, &pooled);
+        ui.compose(FieldRow {
+            label: "Value".to_string(),
+            color: theme.text_muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| inspect_value(ui, &pooled),
         });
     }
 }
@@ -414,53 +438,11 @@ fn heading(ui: &mut BevyUi, theme: &EditorTheme, text: &str) {
     ));
 }
 
-/// One `name: value` line, for what this panel cannot change.
-fn row(
-    ui: &mut BevyUi,
-    theme: &EditorTheme,
-    name: &str,
-    value: &str,
-) {
-    let value = value.to_string();
-    let primary = theme.text_primary;
-
-    line(ui, name.to_string(), theme.text_muted, move |ui| {
-        ui.elem(elem!(
-            Label,
-            text = value,
-            color = Some(primary),
-            wrap = false
-        ));
-    });
-}
-
-/// The name on the left, whatever it takes on the right.
-fn line(
-    ui: &mut BevyUi,
-    name: String,
-    muted: Color,
-    body: impl FnOnce(&mut BevyUi),
-) {
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Row,
-        justify = JustifyContent::SpaceBetween,
-        align = AlignItems::Center,
-        column_gap = px(8),
-        padding = UiRect::vertical(px(3))
-    ))
-    .with(move |ui| {
-        ui.elem(elem!(Label, text = name, color = Some(muted)));
-        body(ui);
-    });
-}
-
 /// What the panel says when there is nothing to show.
-fn note(ui: &mut BevyUi, theme: &EditorTheme, text: &str) {
+fn note(ui: &mut BevyUi, text: &str) {
     ui.elem(elem!(
         Label,
         text = text.to_string(),
-        color = Some(theme.text_muted)
+        color = Some(ui.theme.text_muted)
     ));
 }
