@@ -44,8 +44,6 @@ pub enum Combinator {
     Chain,
     /// Simultaneous; children share a start, wait for all. (`ord_all`)
     All,
-    /// Simultaneous; wait for any. (`ord_any`)
-    Any,
     /// Staggered starts, one `delay` apart. (`ord_flow`)
     Flow(Duration),
 }

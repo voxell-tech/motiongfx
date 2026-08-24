@@ -605,7 +605,7 @@
         ),
         Block(
           block: (
-            combinator: Any,
+            combinator: Chain,
             children: [
               Action(
                 action: (

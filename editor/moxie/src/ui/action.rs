@@ -553,7 +553,6 @@ fn combinator_name(combinator: &Combinator) -> &'static str {
     match combinator {
         Combinator::Chain => "Chain",
         Combinator::All => "All",
-        Combinator::Any => "Any",
         // Its stagger is editable, so the row above only names it.
         Combinator::Flow(_) => "Flow",
     }

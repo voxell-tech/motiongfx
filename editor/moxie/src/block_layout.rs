@@ -52,17 +52,8 @@ pub(crate) fn layout(animation: &Block<Backend>) -> Vec<Placed> {
 struct Measured {
     start: Duration,
     /// This node's own duration - `node_duration`/`block_duration` -
-    /// what its *own* box is drawn to. A block's box is only ever
-    /// this wide, `Any` included: it marks the group's boundary, not
-    /// how long its content happens to keep drawing past it.
+    /// what its box is drawn to.
     end: Duration,
-    /// The rightmost point any of this node's own content actually
-    /// draws to - used only to detect whether a following `Chain`
-    /// sibling needs to drop to a new row, never to size a box. Equal
-    /// to `end` everywhere except an `Any`, whose losing branch keeps
-    /// animating (and drawing) past it, and any block containing one,
-    /// recursively.
-    visual_end: Duration,
     height: f32,
     kind: MeasuredKind,
 }
@@ -79,7 +70,6 @@ fn combinator_label(combinator: &Combinator) -> String {
     match combinator {
         Combinator::Chain => "Chain".into(),
         Combinator::All => "All".into(),
-        Combinator::Any => "Any".into(),
         Combinator::Flow(delay) => {
             format!("Flow {:.2}s", delay.as_secs_f32())
         }
@@ -113,10 +103,6 @@ fn block_duration(block: &Block<Backend>) -> Duration {
             { block.children.iter().map(node_duration).max() }
                 .unwrap_or_default()
         }
-        Combinator::Any => {
-            { block.children.iter().map(node_duration).min() }
-                .unwrap_or_default()
-        }
         Combinator::Flow(delay) => block
             .children
             .iter()
@@ -141,11 +127,9 @@ fn measure_node(node: &Node<Backend>, start: Duration) -> Measured {
 
     match node {
         Node::Action { action, .. } => {
-            let end = start.saturating_add(action.duration);
             Measured {
                 start,
-                end,
-                visual_end: end,
+                end: start.saturating_add(action.duration),
                 height: ROW_HEIGHT,
                 kind: MeasuredKind::Action,
             }
@@ -160,15 +144,9 @@ fn measure_block(
 ) -> Measured {
     let (children, content_height) =
         measure_children(&block.children, &block.combinator, start);
-    let visual_end = children
-        .iter()
-        .map(|(_, m)| m.visual_end)
-        .max()
-        .unwrap_or(start);
     Measured {
         start,
         end: start.saturating_add(block_duration(block)),
-        visual_end,
         height: HEADER_HEIGHT + content_height,
         kind: MeasuredKind::Block {
             label: combinator_label(&block.combinator),
@@ -179,20 +157,14 @@ fn measure_block(
 
 /// Measures every child, then lays them into lanes (rows).
 ///
-/// `All`/`Any`/`Flow` give each child its own dedicated lane, always -
+/// `All`/`Flow` give each child its own dedicated lane, always -
 /// packing them would occasionally let two children share a lane (a
 /// `Flow`'s first and fifth child, say, once the first has finished),
 /// which reads as one fused bar instead of two separate actions.
 ///
-/// A `Chain`'s children share one row by default, since they never
-/// overlap by construction - except an `Any` child's visual extent
-/// can bleed past its official contribution to the chain (its losing
-/// branch keeps animating), reaching into where the next sibling
-/// starts. When it does, only *that* sibling drops below - directly
-/// under the one predecessor it actually overlaps, not under whatever
-/// else happens to share the row - since a chain's children are
-/// already time-ordered and only ever need to check the one right
-/// before them.
+/// A `Chain`'s children share one row, since they never overlap by
+/// construction: each one starts only once its predecessor's duration
+/// (plus its own `delay`) has elapsed.
 fn measure_children(
     children: &[Node<Backend>],
     combinator: &Combinator,
@@ -214,7 +186,7 @@ fn measure_children(
                 })
                 .collect()
         }
-        Combinator::All | Combinator::Any => {
+        Combinator::All => {
             children.iter().map(|_| block_start).collect()
         }
         Combinator::Flow(delay) => (0..children.len())
@@ -232,24 +204,12 @@ fn measure_children(
         .collect();
 
     let ys: Vec<f32> = match combinator {
-        Combinator::Chain => {
-            let mut ys = Vec::with_capacity(measured.len());
-            let mut prev: Option<(Duration, f32, f32)> = None;
-            for m in &measured {
-                let y = match prev {
-                    Some((end, y, height)) if m.start < end => {
-                        y + height + LANE_GAP
-                    }
-                    _ => 0.0,
-                };
-                ys.push(y);
-                prev = Some((m.visual_end, y, m.height));
-            }
-            ys
-        }
-        // Every other combinator's children can genuinely overlap in
-        // time, so each always gets its own dedicated row.
-        Combinator::All | Combinator::Any | Combinator::Flow(_) => {
+        // Children never overlap in time by construction, so they all
+        // share one row.
+        Combinator::Chain => vec![0.0; measured.len()],
+        // `All`/`Flow` children can genuinely overlap in time, so each
+        // always gets its own dedicated row.
+        Combinator::All | Combinator::Flow(_) => {
             let mut y = 0.0;
             measured
                 .iter()
