@@ -243,14 +243,21 @@ ghost-preview visuals, one gesture vocabulary.
       has no room to distinguish an edge from its body.
 - [x] Body-drag move, both `TimelineAction` and `TimelineBlock`
       (`timeline/drag.rs`): edits `delay` live inside `All`/`Flow`/at
-      a block's own position; reorders `children` inside a `Chain`.
-      The reorder is simpler than `hierarchy/drag.rs`'s live
-      before/after drop-target highlighting - no ghost, nothing
-      redraws until the drop, when the target index comes from the
-      drag's total distance against where its siblings started (each
-      one's own `Placed.x`/`.w`, snapshotted at drag-start). Good
-      enough to reorder correctly; a live indicator while dragging is
-      still open.
+      a block's own position; reorders `children` inside a `Chain`,
+      the target index coming from the drag's live distance against
+      where its siblings started (each one's own `Placed.x`/`.w`,
+      snapshotted at drag-start).
+- [x] Other boxes react live too - a resize that pushes into a later
+      `Chain` sibling, a reorder's shuffle. Neither writes
+      `EditorScene` mid-drag (that would rebuild the timeline and kill
+      the gesture - see the module doc). Instead: clone the tree,
+      apply the drag's live edit to the clone, run the real
+      `block_layout::layout` on it, and push the result onto every
+      already-spawned box a new `BoxPath` component says still has an
+      entry - the same real layout function `EditorScene` itself uses,
+      so a cascade or a reorder comes out correct by construction, not
+      by a hand-rolled approximation. `EditorScene` itself is only
+      ever written once, on drop.
 - [ ] Not built: the merge/chain/drag-out restructuring the intro
       above alludes to (drop onto another action to group them into a
       new `All`/`Chain`) - out of scope for this round, its own
