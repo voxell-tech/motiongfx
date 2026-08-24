@@ -433,15 +433,19 @@ fn is_subject(world: &World, entity: Entity) -> bool {
 /// Its [`Name`], or the head of its id. A whole uuid is unreadable;
 /// the first characters tell two unnamed subjects apart.
 fn name_of(world: &World, entity: Entity) -> String {
-    /// How much of an id a row shows.
-    const HEAD: usize = 8;
-
     if let Some(name) = world.get::<Name>(entity) {
         return name.as_str().to_string();
     }
 
     match world.get::<EntityUid>(entity) {
-        Some(uid) => uid.to_string().chars().take(HEAD).collect(),
+        Some(uid) => uid_head(*uid),
         None => "?".to_string(),
     }
+}
+
+/// How much of an id a row shows. A whole uuid is unreadable; the
+/// first characters are enough to tell two subjects apart.
+pub(crate) fn uid_head(uid: EntityUid) -> String {
+    const HEAD: usize = 8;
+    uid.to_string().chars().take(HEAD).collect()
 }

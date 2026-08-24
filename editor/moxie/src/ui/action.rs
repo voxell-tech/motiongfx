@@ -12,7 +12,7 @@ use bevy::asset::uuid::Uuid;
 use bevy::prelude::*;
 use bevy::reflect::PartialReflect;
 use bevy_motiongfx::scene::backend::{AnimEase, AnimInterp, Backend};
-use bevy_motiongfx::scene::id::SceneUid;
+use bevy_motiongfx::scene::id::{SceneUid, SceneUidMap};
 use fynix_mock::composer::Composer;
 use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
@@ -24,7 +24,7 @@ use moxie_ui::inspector::{
 use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
 use moxie_ui::theme::EditorTheme;
 
-use super::PANEL_PADDING;
+use super::{PANEL_PADDING, hierarchy};
 use crate::{EditorScene, SelectedAction};
 
 /// The action panel, as kernel nodes.
@@ -217,7 +217,7 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
         kind: "Action",
         value: Some(Pooled(action.value)),
         rows: vec![
-            ("Subject".into(), subject_name(action)),
+            ("Subject".into(), subject_name(world, action)),
             ("Type".into(), action.field.type_name().to_string()),
             ("Field".into(), action.field.path().to_string()),
             ("Operation".into(), format!("{:?}", action.op)),
@@ -413,9 +413,23 @@ fn set_seconds(node: &mut Node<Backend>, edit: Edit, value: f32) {
     }
 }
 
-fn subject_name(action: &ActionCmd<Backend>) -> String {
+/// Its [`Name`], if it still has an entity, followed by the head of
+/// its id - a whole uuid is unreadable, but two entities sharing a
+/// name still need telling apart.
+fn subject_name(world: &World, action: &ActionCmd<Backend>) -> String {
     let SceneUid::Entity(uid) = action.subject;
-    format!("{uid}")
+    let head = hierarchy::uid_head(uid);
+
+    let name = world
+        .get_resource::<SceneUidMap>()
+        .and_then(|map| map.entity(uid))
+        .and_then(|entity| world.get::<Name>(entity))
+        .map(Name::as_str);
+
+    match name {
+        Some(name) => format!("{name} #{head}"),
+        None => format!("#{head}"),
+    }
 }
 
 fn combinator_name(combinator: &Combinator) -> &'static str {
