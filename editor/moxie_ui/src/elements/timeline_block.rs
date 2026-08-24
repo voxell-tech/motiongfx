@@ -1,5 +1,8 @@
 use crate::reactive::BevyHost;
+use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
+use bevy::ui_widgets::Button as ButtonBehavior;
+use bevy::window::SystemCursorIcon;
 use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
@@ -11,6 +14,10 @@ use super::Label;
 /// `Node::Block` in a scene's animation tree gets one of these -
 /// an action leaf has no children and so no label, and stays a plain
 /// `Frame` instead.
+///
+/// Clickable exactly like [`TimelineAction`](super::TimelineAction):
+/// it carries the same [`ButtonBehavior`], so a click fires
+/// `Activate` the caller can select it on.
 #[derive(Element)]
 pub struct TimelineBlock {
     #[elem(child)]
@@ -49,6 +56,8 @@ impl ElementVisual<BevyHost> for TimelineBlock {
             self.node(),
             BackgroundColor(self.background),
             BorderColor::all(self.border),
+            ButtonBehavior,
+            EntityCursor::System(SystemCursorIcon::Pointer),
         ));
     }
 
