@@ -37,9 +37,9 @@ itself.
       `ButtonElem`/`SegmentButton`, mirroring bevy_feathers'
       `RoundedCorners`/`ButtonVariant::Primary` pattern: selected
       segment filled solid, no border, 1px gap as the seam between
-      segments (the row clips its children rather than rounding each
-      segment). Picking Flow still reveals its stagger field the same
-      way Delay already appears conditionally.
+      segments, only the row's own two ends rounded (not themed yet -
+      see `docs/backlog.md`). Picking Flow still reveals its stagger
+      field the same way Delay already appears conditionally.
 
 ## Name blocks and actions
 
