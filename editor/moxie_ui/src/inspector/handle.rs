@@ -100,6 +100,6 @@ fn label_of<T: Asset>(world: &World, source: &dyn Source) -> String {
     world
         .get_resource::<AssetServer>()
         .and_then(|assets| assets.get_path(&handle))
-        .map(|path| path.path().display().to_string())
+        .map(|path| path.to_string())
         .unwrap_or_else(|| "(unnamed)".to_string())
 }
