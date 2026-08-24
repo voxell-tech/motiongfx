@@ -16,7 +16,7 @@ use crate::playback::{
     on_track_drag, on_track_press, on_track_release,
 };
 use crate::{
-    EditorScene, EditorState, SelectedAction, TimeScale, time_axis,
+    EditorScene, EditorState, SelectedAction, TimelineView, time_axis,
 };
 use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
@@ -151,28 +151,31 @@ impl Composer<BevyHost> for TimeAxis {
             width = percent(100),
             height = px(TIME_AXIS_HEIGHT),
         ))
-        .watch(value_changed(axis_width), build_ticks)
+        .watch(value_changed(axis_view), build_ticks)
         .handle()
     }
 }
 
-/// Time axis's width, rounded so sub-pixel jitter cannot
-/// retrigger the watch.
-fn axis_width(world: &World, node: Entity) -> u32 {
-    world
+/// The time axis's width and the view it draws, so a change to
+/// either retriggers the watch. Width is rounded so sub-pixel
+/// jitter cannot.
+fn axis_view(world: &World, node: Entity) -> (u32, TimelineView) {
+    let width = world
         .get::<ComputedNode>(node)
         .map(|computed| {
             (computed.size().x * computed.inverse_scale_factor())
                 as u32
         })
-        .unwrap_or(0)
+        .unwrap_or(0);
+
+    (width, *world.resource::<TimelineView>())
 }
 
 fn build_ticks(ui: &mut BevyUi) {
-    let width = axis_width(ui.world, ui.parent()) as f32;
-    let time_scale = ui.world.resource::<TimeScale>().0;
+    let (width, view) = axis_view(ui.world, ui.parent());
     let color = ui.theme.text_muted;
-    let marks = time_axis::ticks(time_scale, 0.0, width);
+    let marks =
+        time_axis::ticks(view.px_per_second, 0.0, width as f32);
 
     for tick in marks {
         let major = tick.label.is_some();
@@ -227,7 +230,9 @@ impl Composer<BevyHost> for TrackArea {
                 |line| line.left(),
                 resource_changed::<MotionGfxManager>(),
                 |world, node| {
-                    crate::px_for(current_time(world, node))
+                    world
+                        .resource::<TimelineView>()
+                        .x_from_time(current_time(world, node))
                 },
             );
         })
@@ -262,10 +267,15 @@ fn current_time(world: &World, _: Entity) -> Duration {
 
 /// The editor scene's animation tree, laid out as nested boxes.
 fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
+    let view = *world.resource::<TimelineView>();
+
     world
         .get_resource::<EditorScene>()
         .map(|editor_scene| {
-            block_layout::layout(&editor_scene.scene().0.animation)
+            block_layout::layout(
+                &editor_scene.scene().0.animation,
+                view,
+            )
         })
         .unwrap_or_default()
 }

@@ -10,7 +10,7 @@ use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 use bevy_motiongfx::prelude::*;
 
-use crate::{EditorState, PIXELS_PER_SECOND};
+use crate::{EditorState, TimelineView};
 use bevy_motiongfx::prelude::TimelineId;
 
 /// Command to flip playback, dispatched from the play/pause button
@@ -90,13 +90,13 @@ pub(crate) fn track_first_timeline(
 #[derive(Component)]
 pub(crate) struct Scrubbing;
 
-/// Time under `cursor` for a track laid out at
-/// [`PIXELS_PER_SECOND`], clamped to the track's duration.
+/// Time under `cursor`, clamped to the track's duration.
 fn time_at_cursor(
     cursor: Vec2,
     computed: &ComputedNode,
     transform: &UiGlobalTransform,
     duration: Duration,
+    view: &TimelineView,
 ) -> Duration {
     let inv = computed.inverse_scale_factor();
     let (_scale, _angle, center) =
@@ -105,8 +105,7 @@ fn time_at_cursor(
         center.trunc() * inv,
         computed.size() * inv,
     );
-    let secs = ((cursor.x - rect.min.x) / PIXELS_PER_SECOND).max(0.0);
-    Duration::from_secs_f32(secs).min(duration)
+    view.time_from_x(cursor.x - rect.min.x).min(duration)
 }
 
 /// Move the timeline to `time` and stop playback so the scrub isn't
@@ -140,6 +139,7 @@ pub(crate) fn on_track_press(
     mut press: On<Pointer<Press>>,
     state: Res<EditorState>,
     ui_scale: Res<UiScale>,
+    view: Res<TimelineView>,
     q_track: Query<(&ComputedNode, &UiGlobalTransform)>,
     mut manager: ResMut<MotionGfxManager>,
     mut q_players: Query<&mut RealtimePlayer>,
@@ -153,8 +153,13 @@ pub(crate) fn on_track_press(
     commands.entity(track).insert(Scrubbing);
 
     let cursor = press.pointer_location.position / ui_scale.0;
-    let time =
-        time_at_cursor(cursor, computed, transform, state.duration);
+    let time = time_at_cursor(
+        cursor,
+        computed,
+        transform,
+        state.duration,
+        &view,
+    );
     scrub_to(time, &state, &mut manager, &mut q_players);
 }
 
@@ -164,6 +169,7 @@ pub(crate) fn on_track_drag(
     mut drag: On<Pointer<Drag>>,
     state: Res<EditorState>,
     ui_scale: Res<UiScale>,
+    view: Res<TimelineView>,
     q_track: Query<
         (&ComputedNode, &UiGlobalTransform),
         With<Scrubbing>,
@@ -177,8 +183,13 @@ pub(crate) fn on_track_drag(
     drag.propagate(false);
 
     let cursor = drag.pointer_location.position / ui_scale.0;
-    let time =
-        time_at_cursor(cursor, computed, transform, state.duration);
+    let time = time_at_cursor(
+        cursor,
+        computed,
+        transform,
+        state.duration,
+        &view,
+    );
     scrub_to(time, &state, &mut manager, &mut q_players);
 }
 

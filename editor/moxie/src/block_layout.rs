@@ -4,7 +4,7 @@
 //! containers (blocks).
 //!
 //! Horizontal position always comes straight from a node's resolved
-//! start time ([`crate::px_for`]). Nesting only affects the vertical
+//! start time ([`TimelineView`]). Nesting only affects the vertical
 //! axis: a block's box literally encloses its children's boxes,
 //! rather than implying the relationship through indentation.
 
@@ -12,6 +12,8 @@ use core::time::Duration;
 
 use bevy_motiongfx::scene::backend::Backend;
 use motiongfx_scene::block::{Block, Combinator, Node};
+
+use crate::TimelineView;
 
 /// Height of an action leaf's bar, and of a block's header strip.
 const ROW_HEIGHT: f32 = 20.0;
@@ -39,10 +41,13 @@ pub(crate) struct Placed {
 
 /// Every box in `animation`'s tree, depth-first. `animation` itself
 /// gets a box too, at depth `0`, as the timeline's outer frame.
-pub(crate) fn layout(animation: &Block<Backend>) -> Vec<Placed> {
+pub(crate) fn layout(
+    animation: &Block<Backend>,
+    view: TimelineView,
+) -> Vec<Placed> {
     let root = measure_block(animation, Duration::ZERO);
     let mut out = Vec::new();
-    flatten(&root, 0.0, 0, &mut Vec::new(), &mut out);
+    flatten(&root, 0.0, 0, view, &mut Vec::new(), &mut out);
     out
 }
 
@@ -276,13 +281,12 @@ fn flatten(
     measured: &Measured,
     y: f32,
     depth: usize,
+    view: TimelineView,
     path: &mut Vec<usize>,
     out: &mut Vec<Placed>,
 ) {
-    let x = crate::px_for(measured.start);
-    let w =
-        crate::px_for(measured.end.saturating_sub(measured.start))
-            .max(MIN_WIDTH);
+    let x = view.x_from_time(measured.start);
+    let w = (view.x_from_time(measured.end) - x).max(MIN_WIDTH);
 
     match &measured.kind {
         MeasuredKind::Action => out.push(Placed {
@@ -311,6 +315,7 @@ fn flatten(
                     child,
                     content_top + lane_y,
                     depth + 1,
+                    view,
                     path,
                     out,
                 );

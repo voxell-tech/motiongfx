@@ -83,20 +83,38 @@ pub struct SceneRoot;
 /// Pixels per second of animation at the default zoom.
 pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
 
-/// Horizontal zoom in pixels per second of animation.
+/// Maps animation time to timeline pixels.
 #[derive(Resource, Clone, Copy, PartialEq)]
-pub(crate) struct TimeScale(pub(crate) f32);
+pub(crate) struct TimelineView {
+    pub(crate) px_per_second: f32,
+    /// Seconds of animation at the timeline's left edge. Held as a
+    /// time so zooming does not move it.
+    pub(crate) offset: f32,
+}
 
-impl Default for TimeScale {
+impl Default for TimelineView {
     fn default() -> Self {
-        Self(PIXELS_PER_SECOND)
+        Self {
+            px_per_second: PIXELS_PER_SECOND,
+            offset: 0.0,
+        }
     }
 }
 
-/// Horizontal pixel offset for a point `t` into the timeline.
-#[inline]
-pub(crate) fn px_for(t: Duration) -> f32 {
-    t.as_secs_f32() * PIXELS_PER_SECOND
+impl TimelineView {
+    /// Horizontal pixel offset for a point `t` into the timeline.
+    #[inline]
+    pub(crate) fn x_from_time(&self, t: Duration) -> f32 {
+        (t.as_secs_f32() - self.offset) * self.px_per_second
+    }
+
+    /// Point into the timeline at `x`, clamped to a non-negative
+    /// time.
+    #[inline]
+    pub(crate) fn time_from_x(&self, x: f32) -> Duration {
+        let secs = (x / self.px_per_second + self.offset).max(0.0);
+        Duration::from_secs_f32(secs)
+    }
 }
 
 /// The offscreen texture the composition's scene cameras render into.

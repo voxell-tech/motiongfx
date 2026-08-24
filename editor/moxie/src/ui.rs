@@ -16,8 +16,8 @@ use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 
 use crate::{
     EditorSettings, EditorState, PreviewImage, ProjectBookmarks,
-    ProjectPath, SelectedAction, SelectedEntity, TimeScale, playback,
-    scene, view,
+    ProjectPath, SelectedAction, SelectedEntity, TimelineView,
+    playback, scene, view,
 };
 use bevy_fynix::EntityExt;
 use fynix_mock::elem;
@@ -41,7 +41,7 @@ impl Plugin for UiPlugin {
             .init_resource::<SelectedEntity>()
             .init_resource::<ProjectBookmarks>()
             .init_resource::<ProjectPath>()
-            .init_resource::<TimeScale>()
+            .init_resource::<TimelineView>()
             .init_resource::<assets::AssetFoldState>()
             .init_resource::<hierarchy::Dragging>()
             .init_resource::<scene::EditorScene>()
