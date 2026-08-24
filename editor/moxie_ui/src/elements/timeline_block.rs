@@ -7,23 +7,28 @@ use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
-use super::Label;
+use super::{ButtonElem, Label};
 
 /// A block's header box: an absolutely positioned, bordered container
-/// with its label pinned to its top-left corner, left padded to leave
-/// room for a fold chevron drawn on top of it separately - a nested
-/// row here would need `AlignItems::Center` to line the two up, which
-/// (this box spanning the block's full height, not just its header
-/// strip) centers the row in the whole block instead. Every
-/// `Node::Block` in a scene's animation tree gets one of these - an
-/// action leaf has no children and so no label, and stays a plain
+/// with a fold chevron and its label pinned to its top-left corner.
+/// Every `Node::Block` in a scene's animation tree gets one of these -
+/// an action leaf has no children and so no label, and stays a plain
 /// `Frame` instead.
 ///
 /// Clickable exactly like [`TimelineAction`](super::TimelineAction):
 /// it carries the same [`ButtonBehavior`], so a click fires
-/// `Activate` the caller can select it on.
+/// `Activate` the caller can select it on. `chevron` is its own
+/// absolutely-positioned [`ButtonElem`] rather than a normal-flow
+/// child beside the label: a row of the two would need
+/// `AlignItems::Center` to line them up, which (this box spanning the
+/// block's full height, not just its header strip) centers the row in
+/// the whole block instead of just the header. Positioning `chevron`
+/// itself, not the label, sidesteps that without pulling it out of
+/// this element altogether.
 #[derive(Element)]
 pub struct TimelineBlock {
+    #[elem(child)]
+    pub chevron: ButtonElem,
     #[elem(child)]
     pub label: Label,
     pub top: f32,
@@ -46,8 +51,7 @@ impl TimelineBlock {
             height: px(self.height),
             // The label sits in normal flow rather than absolute, so
             // this padding alone is what pins it to the top-left
-            // corner - left wide enough to clear the chevron drawn
-            // over it.
+            // corner - left wide enough to clear the chevron.
             padding: UiRect::new(px(16), Val::ZERO, px(2), Val::ZERO),
             border: UiRect::all(px(1)),
             ..default()

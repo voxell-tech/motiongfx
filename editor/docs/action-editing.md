@@ -80,12 +80,15 @@ already uses for the asset browser's own folder tree.
       plain `value_changed(block_view)` rebuild, same as any other
       timeline edit - no extra resource-changed wiring needed, since
       `Placed` already reflects the new state.
-- [x] The chevron is its own absolutely-positioned element beside
-      `TimelineBlock`'s header, not nested inside it - a nested
-      `AlignItems::Center` row centers in the whole block's height
-      (header *and* all its content), not just the header strip,
-      since that's the box's real height. Independent positioning
-      sidesteps that entirely.
+- [x] The chevron is embedded in `TimelineBlock` after all, as a
+      `ButtonElem` child positioned `Absolute` rather than laid out in
+      a normal-flow row beside the label - `ButtonElem` gained
+      `position`/`inset` fields for exactly this. A flowed row would
+      still need `AlignItems::Center` to line the two up, which
+      centers in the whole block's height (header *and* all its
+      content) rather than just the header strip, since that's the
+      box's real height; positioning the chevron itself sidesteps that
+      without pulling it out of the element altogether.
 
 ## Unassigned actions (`Node::Draft`)
 

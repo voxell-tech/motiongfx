@@ -34,7 +34,7 @@ use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
     LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
     TimeLabel, TimeTick, TimelineAction, TimelineActionCursor,
-    TimelineBlock, TintButton,
+    TimelineBlock, TimelineBlockCursor, TintButton,
 };
 use moxie_ui::fold::{CHEVRON_OPEN, CHEVRON_SHUT};
 use moxie_ui::motion::MotionExt;
@@ -328,8 +328,28 @@ fn build_block_boxes(ui: &mut BevyUi) {
         match placed.label {
             Some(label) => {
                 let path = placed.path.clone();
+                let folded = placed.folded;
                 let mut block = ui.elem(elem!(
                     TimelineBlock,
+                    chevron = val!(
+                        !TintButton::default(),
+                        position = PositionType::Absolute,
+                        // width = px(12),
+                        // height = px(12),
+                        radius = px(3),
+                        icon = val!(
+                            Icon,
+                            image = moxie_ui::icons::CHEVRON,
+                            size = px(7),
+                            color =
+                                theme.text_primary.with_alpha(0.6),
+                            rotation = if folded {
+                                CHEVRON_SHUT
+                            } else {
+                                CHEVRON_OPEN
+                            }
+                        )
+                    ),
                     label = val!(
                         Label,
                         text = label,
@@ -354,50 +374,16 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     path.clone(),
                     siblings.clone(),
                 );
+                let chevron = block.child(|c| c.chevron());
                 block.observe(
                     move |_: On<Activate>,
                           mut selected: ResMut<SelectedAction>| {
                         selected.0 = Some(path.clone());
                     },
                 );
-
-                // Its own element, absolutely positioned over the
-                // block's top-left corner rather than nested in
-                // `TimelineBlock`: a nested row would need
-                // `AlignItems::Center` to line up with the label,
-                // which centers in the whole block's height instead
-                // of just the header strip.
-                let path = placed.path.clone();
-                let folded = placed.folded;
-                ui.elem(elem!(
-                    Frame,
-                    position = PositionType::Absolute,
-                    inset = UiRect::new(
-                        px(placed.x),
-                        auto(),
-                        px(placed.y),
-                        auto()
-                    ),
-                    width = px(12),
-                    height = px(12)
-                ))
-                .with(move |ui| {
-                    ui.elem(elem!(
-                        !TintButton::default(),
-                        radius = px(3),
-                        icon = val!(
-                            Icon,
-                            image = moxie_ui::icons::CHEVRON,
-                            size = px(7),
-                            color = theme.text_primary.with_alpha(0.6),
-                            rotation = if folded {
-                                CHEVRON_SHUT
-                            } else {
-                                CHEVRON_OPEN
-                            }
-                        )
-                    ))
-                    .observe(
+                if let Some(chevron) = chevron {
+                    let path = placed.path.clone();
+                    ui.world.entity_mut(chevron).observe(
                         move |_: On<Activate>, mut commands: Commands| {
                             let path = path.clone();
                             commands.queue(move |world: &mut World| {
@@ -405,7 +391,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                             });
                         },
                     );
-                });
+                }
             }
             // An action leaf's own element: position, colors and
             // selection are all typed fields, and it owns its
@@ -470,10 +456,14 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     },
                 );
 
-                // Its own element, overlaid on the box's right edge:
-                // dragging it resizes `duration` instead of moving
-                // the body, the same split `TimelineBlock`'s chevron
-                // uses to keep folding separate from selecting.
+                // Its own element, overlaid on the box's right edge,
+                // rather than embedded in `TimelineAction` the way
+                // the chevron now is in `TimelineBlock`: this box
+                // already clips its own content (`Overflow::clip()`,
+                // for the label), which would cut off a handle
+                // anchored to overhang its right edge slightly.
+                // Dragging it resizes `duration` instead of moving
+                // the body.
                 let path = placed.path.clone();
                 let mut handle = ui.elem(elem!(
                     Frame,

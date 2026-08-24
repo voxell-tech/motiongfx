@@ -62,6 +62,13 @@ pub struct ButtonElem {
     #[default(::Center)]
     pub justify: JustifyContent,
     pub padding: UiRect,
+    /// `Absolute`, for a button placed by `inset` rather than by
+    /// normal flow - a chevron overlaid on a taller sibling, say,
+    /// where flow (or centering within it) would place it relative to
+    /// that sibling's own full height rather than just its own corner.
+    pub position: PositionType,
+    #[default(UiRect::all(auto()))]
+    pub inset: UiRect,
     #[default(::ZERO)]
     pub radius: Val,
     /// Overrides `radius` with independent corners, for a button that
@@ -87,6 +94,11 @@ impl ButtonElem {
             align_items: AlignItems::Center,
             column_gap: self.column_gap,
             padding: self.padding,
+            position_type: self.position,
+            left: self.inset.left,
+            right: self.inset.right,
+            top: self.inset.top,
+            bottom: self.inset.bottom,
             border_radius: self
                 .corners
                 .unwrap_or(BorderRadius::all(self.radius)),
@@ -273,6 +285,8 @@ impl ElementVisual<BevyHost> for ButtonElem {
             | ButtonElemField::Justify
             | ButtonElemField::ColumnGap
             | ButtonElemField::Padding
+            | ButtonElemField::Position
+            | ButtonElemField::Inset
             | ButtonElemField::Radius
             | ButtonElemField::Corners => {
                 patch.insert(self.node());
