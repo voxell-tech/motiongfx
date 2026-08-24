@@ -502,7 +502,7 @@ fn field_name(world: &World, field: &FieldRef) -> String {
                 .into()
         });
 
-    format!("{name}::{}", field.path())
+    format!("{name}{}", field.path())
 }
 
 fn combinator_name(combinator: &Combinator) -> &'static str {
