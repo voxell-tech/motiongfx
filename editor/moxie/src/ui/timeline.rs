@@ -341,6 +341,12 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 let path = placed.path.clone();
                 ui.elem(elem!(
                     TimelineAction,
+                    label = val!(
+                        Label,
+                        text = placed.name.unwrap_or_default(),
+                        size = 10.0f32,
+                        color = Some(action_fill.with_alpha(0.9))
+                    ),
                     top = placed.y,
                     left = placed.x,
                     width = placed.w,

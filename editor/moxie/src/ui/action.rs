@@ -19,13 +19,14 @@ use fynix_mock::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
 use motiongfx_scene::refs::FieldRef;
 use moxie_ui::elements::{
-    Frame, Label, ScrollArea, SegmentedControl, display_name,
+    Frame, Label, LabelCursor, ScrollArea, SegmentedControl,
+    display_name,
 };
 use moxie_ui::inspector::{
-    FieldRow, Source, inspect_value, reflect_changed,
+    FieldRow, Source, SourceExt, inspect_value, reflect_changed,
+    when_changed,
 };
 use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
-use moxie_ui::theme::EditorTheme;
 
 use super::{PANEL_PADDING, hierarchy};
 use crate::{EditorScene, SelectedAction};
@@ -54,7 +55,7 @@ impl Composer<BevyHost> for ActionPanel {
     }
 }
 
-/// One number in the selected node that an input writes back.
+/// One property of the selected node that an input writes back.
 ///
 /// Named, not captured: an input re-reads and rewrites it long after
 /// the panel was built.
@@ -70,6 +71,8 @@ enum Edit {
     Ease,
     /// How its values are blended.
     Interp,
+    /// The node's own name, block or action alike.
+    Name,
 }
 
 /// Everything a rebuild depends on. The numbers are deliberately
@@ -146,7 +149,20 @@ fn build(ui: &mut BevyUi) {
         return;
     }
 
-    heading(ui, theme, shape.kind);
+    heading(ui, shape.kind, path.clone());
+    {
+        let source = Property {
+            path: path.clone(),
+            edit: Edit::Name,
+        };
+        ui.compose(FieldRow {
+            label: "Name".to_string(),
+            color: theme.text_muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| inspect_value(ui, &source),
+        });
+    }
     if let Some(subject) = shape.subject {
         let primary = theme.text_primary;
         let muted = theme.text_muted;
@@ -422,12 +438,22 @@ impl Source for Property {
         let scene = world.get_resource::<EditorScene>()?.scene();
 
         // The root has no `Node` of its own, so no `Ease`, `Interp`,
-        // `Duration` or `Delay` either - only ever reached for its
-        // own `Stagger`.
+        // `Duration` or `Delay` - only ever reached for its own
+        // `Stagger` and `Name`.
         if self.path.is_empty() {
-            return Some(Box::new(stagger_seconds(
-                &scene.0.animation,
-            )?));
+            return match self.edit {
+                Edit::Name => Some(Box::new(
+                    scene
+                        .0
+                        .animation
+                        .name
+                        .clone()
+                        .unwrap_or_default(),
+                )),
+                _ => Some(Box::new(stagger_seconds(
+                    &scene.0.animation,
+                )?)),
+            };
         }
         let node = node_at(&scene.0.animation, &self.path)?;
 
@@ -439,6 +465,14 @@ impl Source for Property {
             ),
             (Edit::Interp, Node::Action { action, .. }) => Some(
                 Box::new(action.interp.unwrap_or(AnimInterp::Linear)),
+            ),
+            // Unset shows as the widget's own empty state, not a
+            // missing row.
+            (Edit::Name, Node::Block { block, .. }) => {
+                Some(Box::new(block.name.clone().unwrap_or_default()))
+            }
+            (Edit::Name, Node::Action { action, .. }) => Some(
+                Box::new(action.name.clone().unwrap_or_default()),
             ),
             _ => Some(Box::new(seconds(node, self.edit)?)),
         }
@@ -453,9 +487,18 @@ impl Source for Property {
         let scene = editor.edit();
 
         if self.path.is_empty() {
-            if let Some(value) = f32::from_reflect(value) {
-                scene.0.animation.combinator =
-                    Combinator::Flow(clamp_seconds(value));
+            match self.edit {
+                Edit::Name => {
+                    if let Some(value) = String::from_reflect(value) {
+                        scene.0.animation.name = named(value);
+                    }
+                }
+                _ => {
+                    if let Some(value) = f32::from_reflect(value) {
+                        scene.0.animation.combinator =
+                            Combinator::Flow(clamp_seconds(value));
+                    }
+                }
             }
             return;
         }
@@ -471,6 +514,16 @@ impl Source for Property {
             }
             (Edit::Interp, Node::Action { action, .. }) => {
                 action.interp = AnimInterp::from_reflect(value);
+            }
+            (Edit::Name, Node::Block { block, .. }) => {
+                if let Some(value) = String::from_reflect(value) {
+                    block.name = named(value);
+                }
+            }
+            (Edit::Name, Node::Action { action, .. }) => {
+                if let Some(value) = String::from_reflect(value) {
+                    action.name = named(value);
+                }
             }
             (edit, node) => {
                 if let Some(value) = f32::from_reflect(value) {
@@ -521,6 +574,13 @@ fn stagger_seconds(block: &Block<Backend>) -> Option<f32> {
 /// Never negative: nothing here runs backwards.
 fn clamp_seconds(value: f32) -> Duration {
     Duration::from_secs_f32(value.max(0.0))
+}
+
+/// Blank input clears a name back to `None`, rather than storing an
+/// empty string.
+fn named(value: String) -> Option<String> {
+    let value = value.trim();
+    (!value.is_empty()).then(|| value.to_string())
 }
 
 /// Writes one of the properties measured in seconds.
@@ -622,14 +682,76 @@ fn combinator_name(combinator: &Combinator) -> &'static str {
     }
 }
 
-/// A section header, which is all this panel has by way of structure.
-fn heading(ui: &mut BevyUi, theme: &EditorTheme, text: &str) {
+/// The panel's heading: the node's name if set (bold, primary text),
+/// or an "Unnamed" placeholder (muted, not bold) - the same promotion
+/// the Name row below reads and writes - plus a small tag naming its
+/// kind. Bound to the same `Name` edit, so it stays live as that row
+/// is typed into.
+fn heading(ui: &mut BevyUi, kind: &'static str, path: Vec<usize>) {
+    let primary = ui.theme.text_primary;
+    let muted = ui.theme.text_muted;
+
+    let source = Property {
+        path,
+        edit: Edit::Name,
+    };
+    let named = shown_name(&source, ui.world);
+
     ui.elem(elem!(
-        Label,
-        text = text.to_string(),
-        bold = true,
-        color = Some(theme.text_primary)
-    ));
+        Frame,
+        direction = FlexDirection::Row,
+        align = AlignItems::Baseline,
+        column_gap = px(6)
+    ))
+    .with(move |ui| {
+        ui.elem(elem!(
+            Label,
+            text = named.clone().unwrap_or_else(|| "Unnamed".into()),
+            bold = named.is_some(),
+            color =
+                Some(if named.is_some() { primary } else { muted })
+        ))
+        .bind(|label| label.text(), when_changed(&source), {
+            let source = source.boxed();
+            move |world, _| {
+                shown_name(&*source, world)
+                    .unwrap_or_else(|| "Unnamed".into())
+            }
+        })
+        .bind(|label| label.bold(), when_changed(&source), {
+            let source = source.boxed();
+            move |world, _| shown_name(&*source, world).is_some()
+        })
+        .bind(
+            |label| label.color(),
+            when_changed(&source),
+            {
+                let source = source.boxed();
+                move |world, _| {
+                    if shown_name(&*source, world).is_some() {
+                        primary
+                    } else {
+                        muted
+                    }
+                }
+            },
+        );
+
+        ui.elem(elem!(
+            Label,
+            text = kind.to_string(),
+            size = 10.0f32,
+            color = Some(muted)
+        ));
+    });
+}
+
+/// `source`'s current name, `None` for both an absent and a
+/// blank-after-trim one.
+fn shown_name(source: &dyn Source, world: &World) -> Option<String> {
+    source
+        .read::<String>(world)
+        .filter(|name| !name.trim().is_empty())
 }
 
 /// What the panel says when there is nothing to show.

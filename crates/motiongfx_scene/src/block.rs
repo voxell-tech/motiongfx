@@ -4,6 +4,7 @@
 //! a [`Node`] is a nested block, an action leaf, or a delayed wrapper.
 //! Each maps 1:1 onto a `motiongfx` track combinator.
 
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::time::Duration;
 
@@ -24,6 +25,8 @@ use crate::refs::FieldRef;
 pub struct Block<B: SceneBackend> {
     pub combinator: Combinator,
     pub children: Vec<Node<B>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 impl<B: SceneBackend> Block<B> {
@@ -32,6 +35,7 @@ impl<B: SceneBackend> Block<B> {
         Self {
             combinator: Combinator::Chain,
             children,
+            name: None,
         }
     }
 }
@@ -113,4 +117,6 @@ pub struct ActionCmd<B: SceneBackend> {
     /// `None` = the field type's default interpolation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub interp: Option<B::InterpId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }

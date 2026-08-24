@@ -119,6 +119,7 @@ fn action_cmd(
         duration: ms(duration_ms),
         ease: None,
         interp: None,
+        name: None,
     }
 }
 
@@ -322,6 +323,7 @@ fn all_combinator_runs_children_simultaneously() {
                     200,
                 )),
             ],
+            name: None,
         },
         values,
     };
@@ -403,6 +405,7 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
         duration: ms(100),
         ease: None,
         interp: None,
+        name: None,
     };
     // Two owning types on one subject, so two initial entries.
     let mut staged = subject(&mut values, 0, &["x"]);

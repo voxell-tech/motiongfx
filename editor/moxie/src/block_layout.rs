@@ -20,8 +20,8 @@ const HEADER_HEIGHT: f32 = 20.0;
 const LANE_GAP: f32 = 4.0;
 const MIN_WIDTH: f32 = 2.0;
 
-/// One box to draw: a block header (its combinator, as a label) or an
-/// action leaf.
+/// One box to draw: a block header (its name, or its combinator if
+/// unnamed) or an action leaf.
 #[derive(Clone, PartialEq)]
 pub(crate) struct Placed {
     pub(crate) x: f32,
@@ -31,6 +31,9 @@ pub(crate) struct Placed {
     pub(crate) depth: usize,
     /// `Some` for a block header box; `None` for an action leaf.
     pub(crate) label: Option<String>,
+    /// An action leaf's own name, if set. `None` for a block - its
+    /// name, if any, is already folded into `label`.
+    pub(crate) name: Option<String>,
     /// This node's position in `animation`'s tree: child index at
     /// each depth, root first. What [`crate::SelectedAction`] compares
     /// against, so a click can name exactly which node it landed on.
@@ -59,11 +62,22 @@ struct Measured {
 }
 
 enum MeasuredKind {
-    Action,
+    Action {
+        name: Option<String>,
+    },
     Block {
         label: String,
         children: Vec<(f32, Measured)>,
     },
+}
+
+/// A block's own header text: its name if set, its combinator
+/// otherwise.
+fn block_label(block: &Block<Backend>) -> String {
+    block
+        .name
+        .clone()
+        .unwrap_or_else(|| combinator_label(&block.combinator))
 }
 
 fn combinator_label(combinator: &Combinator) -> String {
@@ -130,7 +144,9 @@ fn measure_node(node: &Node<Backend>, start: Duration) -> Measured {
             start,
             end: start.saturating_add(action.duration),
             height: ROW_HEIGHT,
-            kind: MeasuredKind::Action,
+            kind: MeasuredKind::Action {
+                name: action.name.clone(),
+            },
         },
         Node::Block { block, .. } => measure_block(block, start),
     }
@@ -147,7 +163,7 @@ fn measure_block(
         end: start.saturating_add(block_duration(block)),
         height: HEADER_HEIGHT + content_height,
         kind: MeasuredKind::Block {
-            label: combinator_label(&block.combinator),
+            label: block_label(block),
             children,
         },
     }
@@ -243,13 +259,14 @@ fn flatten(
             .max(MIN_WIDTH);
 
     match &measured.kind {
-        MeasuredKind::Action => out.push(Placed {
+        MeasuredKind::Action { name } => out.push(Placed {
             x,
             y,
             w,
             h: measured.height,
             depth,
             label: None,
+            name: name.clone(),
             path: path.clone(),
         }),
         MeasuredKind::Block { label, children } => {
@@ -260,6 +277,7 @@ fn flatten(
                 h: measured.height,
                 depth,
                 label: Some(label.clone()),
+                name: None,
                 path: path.clone(),
             });
             let content_top = y + HEADER_HEIGHT;

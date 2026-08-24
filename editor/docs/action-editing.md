@@ -48,13 +48,22 @@ itself.
 = "Option::is_none")]`, is purely additive - an old scene file just
 deserializes with `None`, no migration needed (unlike `Any` above).
 
-- [ ] `name: Option<String>` on `Block` and `ActionCmd`.
-- [ ] Action panel: a Name row heading the panel, promoting into the
-      bold heading once set; an italic "Unnamed" placeholder
-      otherwise.
-- [ ] Timeline: a block's header shows its name if set, falling back
-      to its combinator type; a wide-enough action bar shows its name
-      too.
+- [x] `name: Option<String>` on `Block` and `ActionCmd`.
+- [x] Action panel: a Name row (reusing the registered `String`
+      `Inspect` widget, same as any other text field) heading the
+      panel, promoting into the bold heading once set; a muted,
+      not-bold "Unnamed" placeholder otherwise - `Label` has no italic
+      support today, so that part of the mock isn't literal. Both the
+      Name row and the heading read/write the same `Property`
+      (`Edit::Name`), so typing updates the heading live without a
+      panel rebuild - the same "identifier in `Shape`, live value read
+      through the widget's own binding" trick `Edit::Duration`/`Delay`
+      already use.
+- [x] Timeline: a block's header shows its name if set, falling back
+      to its combinator type (`block_layout::block_label`);
+      `TimelineAction` grew an optional label child, pinned
+      top-left and clipped, so a bar too narrow for its name just
+      shows nothing instead of overflowing its neighbor.
 
 ## Collapsible blocks
 
