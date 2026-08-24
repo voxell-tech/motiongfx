@@ -223,6 +223,16 @@ impl TextField {
         if let Some(mut layout) = world.get_mut::<Node>(node) {
             layout.width = self.width;
             layout.flex_grow = 0.0;
+
+            // `FeathersTextInputContainer` reserves its left inset as
+            // a colorless 3px *border* rather than padding (room for
+            // a leading icon we never add), which leaves the
+            // background unpainted there and the left corners looking
+            // square next to the fully rounded right ones. Folding it
+            // into padding instead paints the background - and so the
+            // radius - all the way around.
+            layout.border = UiRect::ZERO;
+            layout.padding = UiRect::horizontal(px(3.0));
         }
 
         self.show(world, node);
