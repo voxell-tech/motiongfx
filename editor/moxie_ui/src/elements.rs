@@ -50,6 +50,7 @@ pub use icon::{Icon, IconCursor, IconField};
 // nothing about them is stored to be patched later.
 pub use inspector::{
     ComponentInspector, EntityInspector, ResourceInspector,
+    display_name,
 };
 pub use label::{Label, LabelCursor, LabelField};
 pub use overlay::{Overlay, OverlayCursor, OverlayField};

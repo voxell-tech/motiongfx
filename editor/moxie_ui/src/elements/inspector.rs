@@ -412,7 +412,7 @@ fn inspectable(
 
 /// What [`ReflectInspectable::name`] overrides to, or `T`'s own name
 /// split into words.
-fn display_name(
+pub fn display_name(
     registration: &TypeRegistration,
 ) -> Cow<'static, str> {
     if let Some(name) = registration

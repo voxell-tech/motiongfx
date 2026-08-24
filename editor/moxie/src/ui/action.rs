@@ -17,7 +17,8 @@ use fynix_mock::composer::Composer;
 use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
-use moxie_ui::elements::{Label, ScrollArea};
+use motiongfx_scene::refs::FieldRef;
+use moxie_ui::elements::{Label, ScrollArea, display_name};
 use moxie_ui::inspector::{
     FieldRow, Source, inspect_value, reflect_changed,
 };
@@ -218,8 +219,7 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
         value: Some(Pooled(action.value)),
         rows: vec![
             ("Subject".into(), subject_name(world, action)),
-            ("Type".into(), action.field.type_name().to_string()),
-            ("Field".into(), action.field.path().to_string()),
+            ("Field".into(), field_name(world, &action.field)),
             ("Operation".into(), format!("{:?}", action.op)),
         ],
         edits,
@@ -430,6 +430,32 @@ fn subject_name(world: &World, action: &ActionCmd<Backend>) -> String {
         Some(name) => format!("{name} #{head}"),
         None => format!("#{head}"),
     }
+}
+
+/// The type's own display name, the same [`ReflectInspectable`]-aware
+/// one the entity inspector shows it by, followed by the path to the
+/// field this action drives - `Transform::translation::x`. Falls back
+/// to the type path's own last segment when the registry has never
+/// heard of it.
+///
+/// [`ReflectInspectable`]: moxie_ui::inspector::ReflectInspectable
+fn field_name(world: &World, field: &FieldRef) -> String {
+    let type_name = field.type_name().to_string();
+    let registry = world.resource::<AppTypeRegistry>().read();
+
+    let name = registry
+        .get_with_type_path(&type_name)
+        .map(display_name)
+        .unwrap_or_else(|| {
+            type_name
+                .rsplit("::")
+                .next()
+                .unwrap_or(&type_name)
+                .to_string()
+                .into()
+        });
+
+    format!("{name}::{}", field.path())
 }
 
 fn combinator_name(combinator: &Combinator) -> &'static str {
