@@ -18,7 +18,9 @@ use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
 use motiongfx_scene::refs::FieldRef;
-use moxie_ui::elements::{Frame, Label, ScrollArea, display_name};
+use moxie_ui::elements::{
+    Frame, Label, ScrollArea, SegmentedControl, display_name,
+};
 use moxie_ui::inspector::{
     FieldRow, Source, inspect_value, reflect_changed,
 };
@@ -79,6 +81,9 @@ struct Shape {
     kind: &'static str,
     /// Set only for an action: a block has none to show.
     subject: Option<Subject>,
+    /// Set only for a block: which of Chain/All/Flow it is, for the
+    /// Type row's picker. An action has none to show.
+    combinator: Option<&'static str>,
     rows: Vec<(String, String)>,
     edits: Vec<(String, Edit)>,
     /// The action's target value. Which widget draws it is the
@@ -121,6 +126,7 @@ fn shape(world: &World, _: Entity) -> Shape {
             path,
             kind: "",
             subject: None,
+            combinator: None,
             rows: Vec::new(),
             edits: Vec::new(),
             value: None,
@@ -171,6 +177,39 @@ fn build(ui: &mut BevyUi) {
                         color = Some(muted),
                         wrap = false
                     ));
+                });
+            },
+        });
+    }
+    if let Some(combinator) = shape.combinator {
+        let selected = match combinator {
+            "Chain" => 0,
+            "All" => 1,
+            _ => 2,
+        };
+        let path = path.clone();
+        ui.compose(FieldRow {
+            label: "Type".to_string(),
+            color: theme.text_muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| {
+                ui.compose(SegmentedControl {
+                    options: vec![
+                        "Chain".to_string(),
+                        "All".to_string(),
+                        "Flow".to_string(),
+                    ],
+                    selected,
+                    on_select:
+                        move |i: usize, commands: &mut Commands| {
+                            let path = path.clone();
+                            commands.queue(
+                                move |world: &mut World| {
+                                    set_combinator(world, &path, i);
+                                },
+                            );
+                        },
                 });
             },
         });
@@ -253,6 +292,7 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
         path: Some(path.to_vec()),
         kind: "Action",
         subject: Some(subject_of(world, action)),
+        combinator: None,
         value: Some(Pooled(action.value)),
         rows: vec![
             ("Field".into(), field_name(world, &action.field)),
@@ -262,9 +302,8 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
     })
 }
 
-/// A block's own row of info: its combinator and child count, plus
-/// whatever of its timing the [`Node`] wrapping it (if any) lets
-/// through.
+/// A block's own row of info: its combinator, plus whatever of its
+/// timing the [`Node`] wrapping it (if any) lets through.
 fn block_shape(
     path: Vec<usize>,
     block: &Block<Backend>,
@@ -282,14 +321,9 @@ fn block_shape(
         path: Some(path),
         kind: "Block",
         subject: None,
+        combinator: Some(combinator_name(&block.combinator)),
         value: None,
-        rows: vec![
-            (
-                "Combinator".into(),
-                combinator_name(&block.combinator).to_string(),
-            ),
-            ("Children".into(), block.children.len().to_string()),
-        ],
+        rows: Vec::new(),
         edits,
     }
 }
@@ -391,7 +425,9 @@ impl Source for Property {
         // `Duration` or `Delay` either - only ever reached for its
         // own `Stagger`.
         if self.path.is_empty() {
-            return Some(Box::new(stagger_seconds(&scene.0.animation)?));
+            return Some(Box::new(stagger_seconds(
+                &scene.0.animation,
+            )?));
         }
         let node = node_at(&scene.0.animation, &self.path)?;
 
@@ -547,6 +583,34 @@ fn field_name(world: &World, field: &FieldRef) -> String {
         });
 
     format!("{name}{}", field.path())
+}
+
+/// Writes the block at `path` (the tree's own root, if empty) onto
+/// whichever of Chain/All/Flow the Type picker's `index` names.
+/// Switching into Flow seeds a default stagger; switching out of it
+/// drops whatever stagger it had.
+fn set_combinator(world: &mut World, path: &[usize], index: usize) {
+    let Some(mut editor) = world.get_resource_mut::<EditorScene>()
+    else {
+        return;
+    };
+    let scene = editor.edit();
+
+    let combinator = match index {
+        0 => Combinator::Chain,
+        1 => Combinator::All,
+        _ => Combinator::Flow(Duration::from_secs_f32(0.15)),
+    };
+
+    if path.is_empty() {
+        scene.0.animation.combinator = combinator;
+        return;
+    }
+    if let Some(Node::Block { block, .. }) =
+        node_at_mut(&mut scene.0.animation, path)
+    {
+        block.combinator = combinator;
+    }
 }
 
 fn combinator_name(combinator: &Combinator) -> &'static str {

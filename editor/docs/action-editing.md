@@ -29,12 +29,17 @@ itself.
       (`combinator_name`).
 - [x] `hello_world.mox`'s one `Any` block edited to `Chain` directly.
       No other `.mox`/`.mgx.ron` asset uses it.
-- [ ] Action panel: replace the read-only "Combinator" row with a
-      3-way segmented control (Chain / All / Flow), feathers'
-      `RoundedCorners`/`ButtonVariant::Primary` pattern - selected
+- [x] Action panel: replaced the read-only "Combinator" row (and the
+      "Children" row next to it, dropped as clutter) with a `Type`
+      row holding a 3-way segmented control (Chain / All / Flow) -
+      `moxie_ui::elements::SegmentedControl`, a reusable composer, not
+      wired to anything scene-specific itself. Styled on
+      `ButtonElem`/`SegmentButton`, mirroring bevy_feathers'
+      `RoundedCorners`/`ButtonVariant::Primary` pattern: selected
       segment filled solid, no border, 1px gap as the seam between
-      segments, not a divider line. Picking Flow reveals its stagger
-      field the same way Delay already appears conditionally.
+      segments (the row clips its children rather than rounding each
+      segment). Picking Flow still reveals its stagger field the same
+      way Delay already appears conditionally.
 
 ## Name blocks and actions
 

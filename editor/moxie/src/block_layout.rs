@@ -126,14 +126,12 @@ fn measure_node(node: &Node<Backend>, start: Duration) -> Measured {
     let start = start.saturating_add(delay);
 
     match node {
-        Node::Action { action, .. } => {
-            Measured {
-                start,
-                end: start.saturating_add(action.duration),
-                height: ROW_HEIGHT,
-                kind: MeasuredKind::Action,
-            }
-        }
+        Node::Action { action, .. } => Measured {
+            start,
+            end: start.saturating_add(action.duration),
+            height: ROW_HEIGHT,
+            kind: MeasuredKind::Action,
+        },
         Node::Block { block, .. } => measure_block(block, start),
     }
 }

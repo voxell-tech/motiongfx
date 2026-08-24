@@ -147,6 +147,34 @@ impl Style for MenuButton {
     }
 }
 
+/// One segment of a [`SegmentedControl`](super::SegmentedControl):
+/// filled solid with the theme's accent when `active`, its theme fill
+/// otherwise. Rounding is the control's own, not each segment's - it
+/// clips its row of children rather than rounding them individually.
+pub struct SegmentButton {
+    pub active: bool,
+}
+
+impl Style for SegmentButton {
+    type Host = BevyHost;
+    type Element = ButtonElem;
+
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+        button.height = px(24);
+        button.flex_grow = 1.0;
+        button.fill = if self.active {
+            theme.accent
+        } else {
+            theme.button_fill
+        };
+        button.hover = if self.active {
+            Hover::None
+        } else {
+            Hover::Fill(theme.hover_overlay)
+        };
+    }
+}
+
 /// A button with no surface of its own until the cursor is on it, for
 /// one that sits in a row of its own kind or on something that is
 /// already a surface.
