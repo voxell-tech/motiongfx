@@ -235,12 +235,26 @@ open space = move (`delay` edit, or a `children` reorder inside a
 chain, as already designed. Same `Dragging`-style resource, same
 ghost-preview visuals, one gesture vocabulary.
 
-- [ ] Edge-drag resize on `TimelineAction` only - `TimelineBlock` gets
-      no resize handle, body-drag only.
-- [ ] Body-drag move, both `TimelineAction` and `TimelineBlock`: edits
-      `delay` inside `All`/`Flow`/at a block's own position; reorders
-      `children` inside a `Chain`, reusing `hierarchy/drag.rs`'s
-      before/after drop-target pattern.
+- [x] Edge-drag resize - `TimelineBlock` gets no resize handle,
+      body-drag only; `TimelineAction` gets one, and so does a draft's
+      empty-slot box (it has a `duration` too). A small `Frame`
+      overlaid on the box's right edge, same trick as the block
+      header's chevron - not nested in `TimelineAction` itself, which
+      has no room to distinguish an edge from its body.
+- [x] Body-drag move, both `TimelineAction` and `TimelineBlock`
+      (`timeline/drag.rs`): edits `delay` live inside `All`/`Flow`/at
+      a block's own position; reorders `children` inside a `Chain`.
+      The reorder is simpler than `hierarchy/drag.rs`'s live
+      before/after drop-target highlighting - no ghost, nothing
+      redraws until the drop, when the target index comes from the
+      drag's total distance against where its siblings started (each
+      one's own `Placed.x`/`.w`, snapshotted at drag-start). Good
+      enough to reorder correctly; a live indicator while dragging is
+      still open.
+- [ ] Not built: the merge/chain/drag-out restructuring the intro
+      above alludes to (drop onto another action to group them into a
+      new `All`/`Chain`) - out of scope for this round, its own
+      follow-up.
 
 ## Creating an action: drag a field onto the timeline
 

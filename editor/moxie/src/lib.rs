@@ -89,6 +89,12 @@ pub(crate) fn px_for(t: Duration) -> f32 {
     t.as_secs_f32() * PIXELS_PER_SECOND
 }
 
+/// The inverse of [`px_for`]: how many seconds `px` covers.
+#[inline]
+pub(crate) fn seconds_for(px: f32) -> f32 {
+    px / PIXELS_PER_SECOND
+}
+
 /// The offscreen texture the composition's scene cameras render into.
 /// `bevy_ui` scales this image to fit the preview area above the
 /// timeline panel, so growing the panel shrinks the whole frame

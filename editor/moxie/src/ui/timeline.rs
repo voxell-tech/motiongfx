@@ -2,12 +2,18 @@
 //! scrubbable track viewport, edge to edge. No name gutter: a
 //! block's own header box already carries its label.
 
+mod drag;
+
+pub(super) use drag::Dragging;
+
 use core::time::Duration;
 use std::collections::BTreeSet;
 
+use bevy::feathers::cursor::EntityCursor;
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
+use bevy::window::SystemCursorIcon;
 use bevy_motiongfx::prelude::MotionGfxManager;
 
 use super::PANEL_PADDING;
@@ -312,6 +318,9 @@ fn block_view(
 fn build_block_boxes(ui: &mut BevyUi) {
     let (placements, selected) = block_view(ui.world, ui.parent());
     let theme = ui.theme;
+    // Cloned once, up front: `drag::moves` wants every sibling's own
+    // box, not just the one it's called for.
+    let siblings = placements.clone();
 
     for placed in placements {
         let is_selected = selected.as_ref() == Some(&placed.path);
@@ -319,13 +328,14 @@ fn build_block_boxes(ui: &mut BevyUi) {
         match placed.label {
             Some(label) => {
                 let path = placed.path.clone();
-                ui.elem(elem!(
+                let mut block = ui.elem(elem!(
                     TimelineBlock,
                     label = val!(
                         Label,
                         text = label,
                         size = 10.0f32,
-                        color = Some(theme.text_primary.with_alpha(0.8))
+                        color =
+                            Some(theme.text_primary.with_alpha(0.8))
                     ),
                     top = placed.y,
                     left = placed.x,
@@ -337,8 +347,13 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     } else {
                         theme.text_primary.with_alpha(0.4)
                     }
-                ))
-                .observe(
+                ));
+                drag::moves(
+                    &mut block,
+                    path.clone(),
+                    siblings.clone(),
+                );
+                block.observe(
                     move |_: On<Activate>,
                           mut selected: ResMut<SelectedAction>| {
                         selected.0 = Some(path.clone());
@@ -404,17 +419,17 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 } else {
                     theme.palette.blue.with_alpha(0.35)
                 };
-                ui.elem(elem!(
+                let mut action = ui.elem(elem!(
                     TimelineAction,
                     label = val!(
                         Label,
-                        text = placed
-                            .name
-                            .unwrap_or_else(|| if placed.draft {
+                        text = placed.name.unwrap_or_else(|| {
+                            if placed.draft {
                                 "Draft".to_string()
                             } else {
                                 String::new()
-                            }),
+                            }
+                        }),
                         size = 10.0f32,
                         color = Some(if placed.draft {
                             theme.critical.with_alpha(0.9)
@@ -435,14 +450,45 @@ fn build_block_boxes(ui: &mut BevyUi) {
                         Color::NONE
                     },
                     selected = is_selected
-                ))
-                .lit(|action| action.fill(), theme.clip_hover, theme.clip_press)
-                .observe(
+                ));
+                action.lit(
+                    |action| action.fill(),
+                    theme.clip_hover,
+                    theme.clip_press,
+                );
+                drag::moves(
+                    &mut action,
+                    path.clone(),
+                    siblings.clone(),
+                );
+                action.observe(
                     move |_: On<Activate>,
                           mut selected: ResMut<SelectedAction>| {
                         selected.0 = Some(path.clone());
                     },
                 );
+
+                // Its own element, overlaid on the box's right edge:
+                // dragging it resizes `duration` instead of moving
+                // the body, the same split `TimelineBlock`'s chevron
+                // uses to keep folding separate from selecting.
+                let path = placed.path.clone();
+                let mut handle = ui.elem(elem!(
+                    Frame,
+                    position = PositionType::Absolute,
+                    inset = UiRect::new(
+                        px(placed.x + placed.w - 4.0),
+                        auto(),
+                        px(placed.y),
+                        auto()
+                    ),
+                    width = px(6),
+                    height = px(placed.h)
+                ));
+                handle.insert(EntityCursor::System(
+                    SystemCursorIcon::EwResize,
+                ));
+                drag::resizes(&mut handle, path);
             }
         }
     }
