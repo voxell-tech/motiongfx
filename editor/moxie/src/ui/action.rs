@@ -219,38 +219,25 @@ fn build(ui: &mut BevyUi) {
 }
 
 /// The selected node, as what to show and what can be changed.
+///
+/// An empty `path` names the tree's own root - a block like any
+/// other, just never wrapped in a [`Node`] of its own, so it has no
+/// delay to show or edit.
 fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
     let scene = world.get_resource::<EditorScene>()?.scene();
-    let node = node_at(&scene.0.animation, path)?;
 
+    if path.is_empty() {
+        return Some(block_shape(
+            Vec::new(),
+            &scene.0.animation,
+            None,
+        ));
+    }
+
+    let node = node_at(&scene.0.animation, path)?;
     let (delay, action) = match node {
         Node::Block { block, delay } => {
-            let mut edits = Vec::new();
-            if matches!(block.combinator, Combinator::Flow(_)) {
-                edits.push(("Stagger".to_string(), Edit::Stagger));
-            }
-            if delay.is_some() {
-                edits.push(("Delay".to_string(), Edit::Delay));
-            }
-
-            return Some(Shape {
-                path: Some(path.to_vec()),
-                kind: "Block",
-                subject: None,
-                value: None,
-                rows: vec![
-                    (
-                        "Combinator".into(),
-                        combinator_name(&block.combinator)
-                            .to_string(),
-                    ),
-                    (
-                        "Children".into(),
-                        block.children.len().to_string(),
-                    ),
-                ],
-                edits,
-            });
+            return Some(block_shape(path.to_vec(), block, *delay));
         }
         Node::Action { action, delay } => (delay, action),
     };
@@ -273,6 +260,38 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
         ],
         edits,
     })
+}
+
+/// A block's own row of info: its combinator and child count, plus
+/// whatever of its timing the [`Node`] wrapping it (if any) lets
+/// through.
+fn block_shape(
+    path: Vec<usize>,
+    block: &Block<Backend>,
+    delay: Option<Duration>,
+) -> Shape {
+    let mut edits = Vec::new();
+    if matches!(block.combinator, Combinator::Flow(_)) {
+        edits.push(("Stagger".to_string(), Edit::Stagger));
+    }
+    if delay.is_some() {
+        edits.push(("Delay".to_string(), Edit::Delay));
+    }
+
+    Shape {
+        path: Some(path),
+        kind: "Block",
+        subject: None,
+        value: None,
+        rows: vec![
+            (
+                "Combinator".into(),
+                combinator_name(&block.combinator).to_string(),
+            ),
+            ("Children".into(), block.children.len().to_string()),
+        ],
+        edits,
+    }
 }
 
 /// The node `path` names.
@@ -367,6 +386,13 @@ impl Source for Pooled {
 impl Source for Property {
     fn get(&self, world: &World) -> Option<Box<dyn PartialReflect>> {
         let scene = world.get_resource::<EditorScene>()?.scene();
+
+        // The root has no `Node` of its own, so no `Ease`, `Interp`,
+        // `Duration` or `Delay` either - only ever reached for its
+        // own `Stagger`.
+        if self.path.is_empty() {
+            return Some(Box::new(stagger_seconds(&scene.0.animation)?));
+        }
         let node = node_at(&scene.0.animation, &self.path)?;
 
         match (self.edit, node) {
@@ -389,6 +415,14 @@ impl Source for Property {
             return;
         };
         let scene = editor.edit();
+
+        if self.path.is_empty() {
+            if let Some(value) = f32::from_reflect(value) {
+                scene.0.animation.combinator =
+                    Combinator::Flow(clamp_seconds(value));
+            }
+            return;
+        }
         let Some(node) =
             node_at_mut(&mut scene.0.animation, &self.path)
         else {
@@ -430,10 +464,7 @@ fn seconds(node: &Node<Backend>, edit: Edit) -> Option<f32> {
             Some(delay.unwrap_or_default().as_secs_f32())
         }
         (Edit::Stagger, Node::Block { block, .. }) => {
-            match block.combinator {
-                Combinator::Flow(delay) => Some(delay.as_secs_f32()),
-                _ => None,
-            }
+            stagger_seconds(block)
         }
         (Edit::Duration, Node::Action { action, .. }) => {
             Some(action.duration.as_secs_f32())
@@ -442,10 +473,23 @@ fn seconds(node: &Node<Backend>, edit: Edit) -> Option<f32> {
     }
 }
 
+/// A `Flow` block's own stagger, in seconds - `None` for any other
+/// combinator.
+fn stagger_seconds(block: &Block<Backend>) -> Option<f32> {
+    match block.combinator {
+        Combinator::Flow(delay) => Some(delay.as_secs_f32()),
+        _ => None,
+    }
+}
+
+/// Never negative: nothing here runs backwards.
+fn clamp_seconds(value: f32) -> Duration {
+    Duration::from_secs_f32(value.max(0.0))
+}
+
 /// Writes one of the properties measured in seconds.
 fn set_seconds(node: &mut Node<Backend>, edit: Edit, value: f32) {
-    // Never negative: an action cannot run backwards.
-    let seconds = Duration::from_secs_f32(value.max(0.0));
+    let seconds = clamp_seconds(value);
 
     match (edit, node) {
         (Edit::Delay, Node::Block { delay, .. })
