@@ -20,6 +20,8 @@ mod panel;
 mod playhead;
 mod scroll_area;
 mod tab;
+mod time_label;
+mod time_tick;
 mod timeline_action;
 mod timeline_block;
 mod timeline_track;
@@ -71,3 +73,7 @@ pub use timeline_block::{
 pub use timeline_track::{
     TimelineTrack, TimelineTrackCursor, TimelineTrackField,
 };
+
+pub use time_tick::{TimeTick, TimeTickCursor, TimeTickField};
+
+pub use time_label::{TimeLabel, TimeLabelCursor, TimeLabelField};

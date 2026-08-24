@@ -18,6 +18,7 @@ mod icons;
 mod playback;
 mod project;
 mod scene;
+mod time_axis;
 mod ui;
 mod view;
 
