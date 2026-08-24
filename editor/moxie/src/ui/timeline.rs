@@ -351,6 +351,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 drag::moves(
                     &mut block,
                     path.clone(),
+                    placed.x,
                     siblings.clone(),
                 );
                 block.observe(
@@ -451,6 +452,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     },
                     selected = is_selected
                 ));
+                let action_entity = action.id();
                 action.lit(
                     |action| action.fill(),
                     theme.clip_hover,
@@ -459,6 +461,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 drag::moves(
                     &mut action,
                     path.clone(),
+                    placed.x,
                     siblings.clone(),
                 );
                 action.observe(
@@ -488,7 +491,12 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 handle.insert(EntityCursor::System(
                     SystemCursorIcon::EwResize,
                 ));
-                drag::resizes(&mut handle, path);
+                drag::resizes(
+                    &mut handle,
+                    path,
+                    action_entity,
+                    placed.w,
+                );
             }
         }
     }

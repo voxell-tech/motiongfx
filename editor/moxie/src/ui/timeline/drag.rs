@@ -2,18 +2,22 @@
 //! edit inside `All`/`Flow`/at a block's own position, or a reorder
 //! among siblings inside a `Chain`.
 //!
-//! No ghost, unlike `hierarchy/drag.rs`'s row drag: a resize or a
-//! delay edit already redraws the real box live as it's dragged, so a
-//! second floating copy would be redundant. A `Chain` reorder is the
-//! one case with nothing to show live - it commits on drop, from the
-//! drag's total distance against where its siblings started.
+//! A resize or a delay edit writes `EditorScene` only once, on drop -
+//! not on every `Pointer<Drag>`. Live feedback comes from poking the
+//! dragged box's own `Node` directly instead: any earlier write
+//! landed on `EditorScene` would trigger the timeline's own
+//! `value_changed(block_view)` watch, rebuilding (despawning and
+//! respawning) every box on the timeline mid-drag - including the one
+//! being dragged, ending the gesture after a single event. A `Chain`
+//! reorder was never writing mid-drag to begin with; nothing here
+//! shows it live either, both commit only on drop.
 
 use core::time::Duration;
 
 use bevy::picking::events::{Drag, DragEnd, DragStart, Pointer};
 use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
-use bevy::ui::UiScale;
+use bevy::ui::{Node as UiNode, UiScale};
 use bevy_fynix::EntityExt as _;
 use bevy_motiongfx::scene::backend::Backend;
 use fynix_mock::element::Element;
@@ -23,9 +27,9 @@ use moxie_ui::reactive::BevyHost;
 
 use super::super::action::{node_at, node_at_mut};
 use crate::block_layout::Placed;
-use crate::{EditorScene, seconds_for};
+use crate::{EditorScene, px_for, seconds_for};
 
-/// Never zero or negative: an action with no duration has nothing to
+/// Never zero or negative: a leaf with no duration has nothing to
 /// play.
 const MIN_DURATION: f32 = 0.05;
 
@@ -35,11 +39,21 @@ const MIN_DURATION: f32 = 0.05;
 pub(in crate::ui) struct Dragging(Option<Kind>);
 
 enum Kind {
-    /// A leaf's own duration (action or draft), before the drag
-    /// started.
-    Resize { start: Duration },
-    /// A node's own delay, before the drag started.
-    Delay { start: Duration },
+    /// The box's own entity and width, plus its duration, all as the
+    /// drag started - so a live update never has to read `Node` back
+    /// (`UiScale` could have changed it) or reach into `EditorScene`.
+    Resize {
+        entity: Entity,
+        start_width: f32,
+        start_duration: Duration,
+    },
+    /// The box's own entity and left edge, plus its delay, all as the
+    /// drag started.
+    Delay {
+        entity: Entity,
+        start_left: f32,
+        start_delay: Duration,
+    },
     /// Reordering inside a `Chain`: each sibling's `(x, width)` as the
     /// drag started, in child order, so the drop's target index comes
     /// from where the cursor ends up among them without re-measuring
@@ -120,71 +134,114 @@ fn set_node_duration(node: &mut Node<Backend>, value: Duration) {
     }
 }
 
-/// Wires `elem`, a leaf's own box (action or draft), to resize its
-/// `duration` by dragging its right edge.
+/// Wires `handle`, a small box overlaid on a leaf's (action or
+/// draft's) right edge, to resize that leaf's `duration`. `entity` is
+/// the leaf's own box, not `handle` itself - dragging the handle
+/// resizes the box it sits on, not the handle.
 pub(super) fn resizes<E: Element<BevyHost>>(
-    elem: &mut ElementMut<BevyHost, E>,
+    handle: &mut ElementMut<BevyHost, E>,
     path: Vec<usize>,
+    entity: Entity,
+    start_width: f32,
 ) {
-    elem.observe({
-        let path = path.clone();
-        move |start: On<Pointer<DragStart>>,
-              editor_scene: Res<EditorScene>,
-              mut dragging: ResMut<Dragging>| {
-            if start.button != PointerButton::Primary {
-                return;
+    handle
+        .observe({
+            let path = path.clone();
+            move |start: On<Pointer<DragStart>>,
+                  editor_scene: Res<EditorScene>,
+                  mut dragging: ResMut<Dragging>| {
+                if start.button != PointerButton::Primary {
+                    return;
+                }
+                let Some(start_duration) =
+                    node_at(&editor_scene.scene().0.animation, &path)
+                        .and_then(node_duration)
+                else {
+                    return;
+                };
+                dragging.0 = Some(Kind::Resize {
+                    entity,
+                    start_width,
+                    start_duration,
+                });
             }
-            let Some(start) =
-                node_at(&editor_scene.scene().0.animation, &path)
-                    .and_then(node_duration)
-            else {
-                return;
-            };
-            dragging.0 = Some(Kind::Resize { start });
-        }
-    })
-    .observe({
-        let path = path.clone();
-        move |drag: On<Pointer<Drag>>,
-              scale: Res<UiScale>,
-              dragging: Res<Dragging>,
-              mut editor_scene: ResMut<EditorScene>| {
-            if drag.button != PointerButton::Primary {
-                return;
-            }
-            let Some(Kind::Resize { start }) = &dragging.0 else {
-                return;
-            };
-            let seconds = (start.as_secs_f32()
-                + seconds_for(drag.distance.x / scale.0))
-            .max(MIN_DURATION);
+        })
+        .observe(
+            move |drag: On<Pointer<Drag>>,
+                  scale: Res<UiScale>,
+                  dragging: Res<Dragging>,
+                  mut nodes: Query<&mut UiNode>| {
+                if drag.button != PointerButton::Primary {
+                    return;
+                }
+                let Some(Kind::Resize {
+                    entity,
+                    start_width,
+                    ..
+                }) = &dragging.0
+                else {
+                    return;
+                };
+                let width = (start_width + drag.distance.x / scale.0)
+                    .max(px_for(Duration::from_secs_f32(
+                        MIN_DURATION,
+                    )));
 
-            if let Some(node) = node_at_mut(
-                &mut editor_scene.edit().0.animation,
-                &path,
-            ) {
-                set_node_duration(
-                    node,
-                    Duration::from_secs_f32(seconds),
-                );
+                if let Ok(mut node) = nodes.get_mut(*entity) {
+                    node.width = px(width);
+                }
+            },
+        )
+        .observe({
+            let path = path.clone();
+            move |end: On<Pointer<DragEnd>>,
+                  scale: Res<UiScale>,
+                  mut dragging: ResMut<Dragging>,
+                  mut commands: Commands| {
+                let Some(Kind::Resize { start_duration, .. }) =
+                    dragging.0.take()
+                else {
+                    return;
+                };
+                if end.button != PointerButton::Primary {
+                    return;
+                }
+                let seconds = (start_duration.as_secs_f32()
+                    + seconds_for(end.distance.x / scale.0))
+                .max(MIN_DURATION);
+                let path = path.clone();
+
+                commands.queue(move |world: &mut World| {
+                    let Some(mut editor) =
+                        world.get_resource_mut::<EditorScene>()
+                    else {
+                        return;
+                    };
+                    if let Some(node) = node_at_mut(
+                        &mut editor.edit().0.animation,
+                        &path,
+                    ) {
+                        set_node_duration(
+                            node,
+                            Duration::from_secs_f32(seconds),
+                        );
+                    }
+                });
             }
-        }
-    })
-    .observe(
-        |_: On<Pointer<DragEnd>>, mut dragging: ResMut<Dragging>| {
-            dragging.0 = None;
-        },
-    );
+        });
 }
 
 /// Wires `elem`, a node's own box (action or block alike), to move
 /// its body: a live `delay` edit, or - inside a `Chain` - a reorder
-/// among its siblings, committed on drop.
+/// among its siblings, both committed on drop.
 pub(super) fn moves<E: Element<BevyHost>>(
     elem: &mut ElementMut<BevyHost, E>,
     path: Vec<usize>,
+    start_left: f32,
     placements: Vec<Placed>,
 ) {
+    let entity = elem.id();
+
     elem.observe({
         let path = path.clone();
         move |start: On<Pointer<DragStart>>,
@@ -217,41 +274,41 @@ pub(super) fn moves<E: Element<BevyHost>>(
                         index,
                     }
                 } else {
-                    let start = node_at(root, &path)
+                    let start_delay = node_at(root, &path)
                         .map(node_delay)
                         .unwrap_or_default();
-                    Kind::Delay { start }
+                    Kind::Delay {
+                        entity,
+                        start_left,
+                        start_delay,
+                    }
                 });
         }
     })
-    .observe({
-        let path = path.clone();
+    .observe(
         move |drag: On<Pointer<Drag>>,
               scale: Res<UiScale>,
               dragging: Res<Dragging>,
-              mut editor_scene: ResMut<EditorScene>| {
+              mut nodes: Query<&mut UiNode>| {
             if drag.button != PointerButton::Primary {
                 return;
             }
-            let Some(Kind::Delay { start }) = &dragging.0 else {
+            let Some(Kind::Delay {
+                entity, start_left, ..
+            }) = &dragging.0
+            else {
                 return;
             };
-            let seconds = (start.as_secs_f32()
-                + seconds_for(drag.distance.x / scale.0))
-            .max(0.0);
+            let left =
+                (start_left + drag.distance.x / scale.0).max(0.0);
 
-            if let Some(node) = node_at_mut(
-                &mut editor_scene.edit().0.animation,
-                &path,
-            ) {
-                set_node_delay(
-                    node,
-                    Duration::from_secs_f32(seconds),
-                );
+            if let Ok(mut node) = nodes.get_mut(*entity) {
+                node.left = px(left);
             }
-        }
-    })
+        },
+    )
     .observe({
+        let path = path.clone();
         move |end: On<Pointer<DragEnd>>,
               scale: Res<UiScale>,
               mut dragging: ResMut<Dragging>,
@@ -260,28 +317,53 @@ pub(super) fn moves<E: Element<BevyHost>>(
                 dragging.0 = None;
                 return;
             }
-            let Some(Kind::Reorder {
-                path,
-                siblings,
-                index,
-            }) = dragging.0.take()
-            else {
-                return;
-            };
 
-            let (x, w) = siblings[index];
-            let center = x + w / 2.0 + end.distance.x / scale.0;
-            let target = siblings
-                .iter()
-                .enumerate()
-                .filter(|&(i, _)| i != index)
-                .filter(|&(_, &(x, w))| x + w / 2.0 < center)
-                .count();
+            match dragging.0.take() {
+                Some(Kind::Delay { start_delay, .. }) => {
+                    let seconds = (start_delay.as_secs_f32()
+                        + seconds_for(end.distance.x / scale.0))
+                    .max(0.0);
+                    let path = path.clone();
 
-            if target != index {
-                commands.queue(move |world: &mut World| {
-                    reorder(world, &path, target);
-                });
+                    commands.queue(move |world: &mut World| {
+                        let Some(mut editor) =
+                            world.get_resource_mut::<EditorScene>()
+                        else {
+                            return;
+                        };
+                        if let Some(node) = node_at_mut(
+                            &mut editor.edit().0.animation,
+                            &path,
+                        ) {
+                            set_node_delay(
+                                node,
+                                Duration::from_secs_f32(seconds),
+                            );
+                        }
+                    });
+                }
+                Some(Kind::Reorder {
+                    path,
+                    siblings,
+                    index,
+                }) => {
+                    let (x, w) = siblings[index];
+                    let center =
+                        x + w / 2.0 + end.distance.x / scale.0;
+                    let target = siblings
+                        .iter()
+                        .enumerate()
+                        .filter(|&(i, _)| i != index)
+                        .filter(|&(_, &(x, w))| x + w / 2.0 < center)
+                        .count();
+
+                    if target != index {
+                        commands.queue(move |world: &mut World| {
+                            reorder(world, &path, target);
+                        });
+                    }
+                }
+                _ => {}
             }
         }
     });
