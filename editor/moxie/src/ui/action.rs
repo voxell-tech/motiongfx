@@ -19,12 +19,10 @@ use fynix_mock::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
 use motiongfx_scene::refs::FieldRef;
 use moxie_ui::elements::{
-    Frame, Label, LabelCursor, ScrollArea, SegmentedControl,
-    display_name,
+    Frame, Label, ScrollArea, SegmentedControl, display_name,
 };
 use moxie_ui::inspector::{
-    FieldRow, Source, SourceExt, inspect_value, reflect_changed,
-    when_changed,
+    FieldRow, Source, inspect_value, reflect_changed,
 };
 use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
 
@@ -150,19 +148,6 @@ fn build(ui: &mut BevyUi) {
     }
 
     heading(ui, path.clone());
-    {
-        let source = Property {
-            path: path.clone(),
-            edit: Edit::Name,
-        };
-        ui.compose(FieldRow {
-            label: "Name".to_string(),
-            color: theme.text_muted,
-            bold: false,
-            depth: 0,
-            value: move |ui: &mut BevyUi| inspect_value(ui, &source),
-        });
-    }
     if let Some(subject) = shape.subject {
         let primary = theme.text_primary;
         let muted = theme.text_muted;
@@ -682,55 +667,17 @@ fn combinator_name(combinator: &Combinator) -> &'static str {
     }
 }
 
-/// The panel's heading: the node's name if set (bold, primary text),
-/// or an "Unnamed" placeholder (muted, not bold) - the same promotion
-/// the Name row below reads and writes. Bound to the same `Name`
-/// edit, so it stays live as that row is typed into.
+/// The panel's heading: the node's own name, editable directly rather
+/// than a read-only title plus a separate Name row beneath it -
+/// clicking it is what a text field already does. Reuses the same
+/// `Property`/`Edit::Name` source and the registered `String` widget
+/// every other text edit in this panel goes through.
 fn heading(ui: &mut BevyUi, path: Vec<usize>) {
-    let primary = ui.theme.text_primary;
-    let muted = ui.theme.text_muted;
-
     let source = Property {
         path,
         edit: Edit::Name,
     };
-    let named = shown_name(&source, ui.world);
-
-    ui.elem(elem!(
-        Label,
-        text = named.clone().unwrap_or_else(|| "Unnamed".into()),
-        bold = named.is_some(),
-        color = Some(if named.is_some() { primary } else { muted })
-    ))
-    .bind(|label| label.text(), when_changed(&source), {
-        let source = source.boxed();
-        move |world, _| {
-            shown_name(&*source, world)
-                .unwrap_or_else(|| "Unnamed".into())
-        }
-    })
-    .bind(|label| label.bold(), when_changed(&source), {
-        let source = source.boxed();
-        move |world, _| shown_name(&*source, world).is_some()
-    })
-    .bind(|label| label.color(), when_changed(&source), {
-        let source = source.boxed();
-        move |world, _| {
-            if shown_name(&*source, world).is_some() {
-                primary
-            } else {
-                muted
-            }
-        }
-    });
-}
-
-/// `source`'s current name, `None` for both an absent and a
-/// blank-after-trim one.
-fn shown_name(source: &dyn Source, world: &World) -> Option<String> {
-    source
-        .read::<String>(world)
-        .filter(|name| !name.trim().is_empty())
+    inspect_value(ui, &source);
 }
 
 /// What the panel says when there is nothing to show.

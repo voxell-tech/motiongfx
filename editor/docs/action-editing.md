@@ -49,16 +49,13 @@ itself.
 deserializes with `None`, no migration needed (unlike `Any` above).
 
 - [x] `name: Option<String>` on `Block` and `ActionCmd`.
-- [x] Action panel: a Name row (reusing the registered `String`
-      `Inspect` widget, same as any other text field) heading the
-      panel, promoting into the bold heading once set; a muted,
-      not-bold "Unnamed" placeholder otherwise - `Label` has no italic
-      support today, so that part of the mock isn't literal. Both the
-      Name row and the heading read/write the same `Property`
-      (`Edit::Name`), so typing updates the heading live without a
-      panel rebuild - the same "identifier in `Shape`, live value read
-      through the widget's own binding" trick `Edit::Duration`/`Delay`
-      already use.
+- [x] Action panel: the heading itself is the editable Name field
+      (reusing the registered `String` `Inspect` widget, same as any
+      other text field) - no separate read-only title plus a Name row
+      beneath it; clicking the heading is what a text field already
+      does. Simpler than the mock's promote-on-set heading, and drops
+      needing a bold/muted or italic-placeholder distinction (`Label`
+      has no italic support today anyway).
 - [x] Timeline: a block's header shows its name if set, falling back
       to its combinator type (`block_layout::block_label`);
       `TimelineAction` grew an optional label child, pinned
