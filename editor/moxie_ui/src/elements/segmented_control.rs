@@ -13,10 +13,10 @@ use super::{Frame, Label, SegmentButton};
 use crate::reactive::{BevyHost, BevyUi};
 
 /// A 3-way (or more) radio, one option filled solid - bevy_feathers'
-/// own `RoundedCorners`/`ButtonVariant::Primary` pattern, rounded only
-/// at the row's own ends (the row clips its children rather than
-/// rounding each segment) with a 1px gap as the seam between segments,
-/// not a divider line.
+/// own `RoundedCorners`/`ButtonVariant::Primary` pattern: only the
+/// row's own two ends are rounded, each segment its own corners rather
+/// than the row clipping a straight-edged strip, with a 1px gap as the
+/// seam between segments, not a divider line.
 pub struct SegmentedControl<F> {
     pub options: Vec<String>,
     pub selected: usize,
@@ -42,13 +42,13 @@ where
         } = self;
         let theme = ui.theme;
 
+        let count = options.len();
+
         ui.elem(elem!(
             Frame,
             width = percent(100),
             direction = FlexDirection::Row,
-            column_gap = px(1),
-            radius = px(4),
-            overflow = Overflow::clip()
+            column_gap = px(1)
         ))
         .with(move |ui| {
             for (i, label) in options.into_iter().enumerate() {
@@ -58,10 +58,12 @@ where
                 } else {
                     theme.text_primary
                 };
+                let corners = segment_corners(i, count);
                 let on_select = on_select.clone();
 
                 ui.elem(elem!(
                     !SegmentButton { active },
+                    corners = Some(corners),
                     label = val!(
                         Label,
                         text = label,
@@ -80,4 +82,22 @@ where
         })
         .handle()
     }
+}
+
+/// The corner radius for the segment at `index` of `count`: rounded on
+/// whichever side (or both, or neither) sits at the row's own edge.
+/// Not themed yet - see the backlog entry to give `EditorTheme` a
+/// button corner radius and use it here and everywhere else a button
+/// rounds itself.
+fn segment_corners(index: usize, count: usize) -> BorderRadius {
+    let radius = px(4);
+    let first = index == 0;
+    let last = index == count - 1;
+
+    BorderRadius::new(
+        if first { radius } else { Val::ZERO },
+        if last { radius } else { Val::ZERO },
+        if last { radius } else { Val::ZERO },
+        if first { radius } else { Val::ZERO },
+    )
 }

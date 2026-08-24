@@ -64,6 +64,11 @@ pub struct ButtonElem {
     pub padding: UiRect,
     #[default(::ZERO)]
     pub radius: Val,
+    /// Overrides `radius` with independent corners, for a button that
+    /// sits at one end of a row of others (a
+    /// [`SegmentedControl`](super::SegmentedControl)'s outer
+    /// segments). `None` rounds all four corners by `radius`.
+    pub corners: Option<BorderRadius>,
     /// Set by whichever [`Style`] built this - see [`Hover`]. Never
     /// patched: read once, in `build_fields`.
     #[elem(ignore)]
@@ -82,7 +87,9 @@ impl ButtonElem {
             align_items: AlignItems::Center,
             column_gap: self.column_gap,
             padding: self.padding,
-            border_radius: BorderRadius::all(self.radius),
+            border_radius: self
+                .corners
+                .unwrap_or(BorderRadius::all(self.radius)),
             ..default()
         }
     }
@@ -266,7 +273,8 @@ impl ElementVisual<BevyHost> for ButtonElem {
             | ButtonElemField::Justify
             | ButtonElemField::ColumnGap
             | ButtonElemField::Padding
-            | ButtonElemField::Radius => {
+            | ButtonElemField::Radius
+            | ButtonElemField::Corners => {
                 patch.insert(self.node());
             }
         }

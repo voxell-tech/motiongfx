@@ -20,6 +20,10 @@ those as moxie_ui elements styled off `EditorTheme`, then drop
       them.
 - [ ] `Label`'s `None => ThemedText` fallback should default to
       `theme.text_primary` directly.
+- [ ] Give `EditorTheme` a button corner radius (there's no field for
+      one today) and use it everywhere a button rounds itself -
+      `Button`/`GhostButton`/`MenuButton`/`SegmentButton` each pick
+      their own `px(N)` constant right now.
 
 ## Open a `.mox` by double-clicking it
 
