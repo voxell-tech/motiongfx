@@ -16,6 +16,8 @@ hashbrown = { workspace = true, features = ["default-hasher"] }
 motiongfx_interp = { workspace = true, default-features = false }
 nonempty = { workspace = true }
 typarena = { workspace = true }
+libm = { workspace = true }
+tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -28,5 +30,6 @@ harness = false
 workspace = true
 
 [features]
-default = ["std"]
+default = ["std", "tracing"]
 std = ["motiongfx_interp/std"]
+tracing = ["dep:tracing"]

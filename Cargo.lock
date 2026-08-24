@@ -3914,6 +3914,7 @@ dependencies = [
  "hashbrown 0.17.1",
  "motiongfx_interp",
  "nonempty",
+ "tracing",
  "typarena",
 ]
 
