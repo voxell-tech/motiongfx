@@ -164,8 +164,19 @@ editor, not just fails cleanly. Demoting the orphaned action to a
 draft instead turns "the whole scene stops compiling" into "one action
 needs reassignment."
 
-Two different triggers, two different demotion shapes:
+Two different triggers, two different demotion shapes - plus a third,
+generic one that landed first, as a safety net rather than a proactive
+fix:
 
+- [x] `recompile_dirty_scene`: a `CompileError` no longer panics the
+      editor. `demote_offending_action` walks the tree for whichever
+      `Node::Action` the error names (by subject/field/op/value/ease/
+      interp, matching the error variant), demotes just that one, and
+      retries - looping until it compiles or nothing more can be
+      demoted. Catches anything unresolvable regardless of cause (a
+      hand-edited scene file, a typo'd field path), not only the two
+      triggers below - but reactive, not proactive: it only runs the
+      next time something recompiles, not the instant an entity dies.
 - [ ] Entity deleted: subject itself is gone, so nothing about the
       action is still valid. Extend the existing `on_remove_entity_uid`
       observer (`bevy_motiongfx/scene/id.rs`, already keeps
