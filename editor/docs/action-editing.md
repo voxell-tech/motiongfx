@@ -64,14 +64,28 @@ deserializes with `None`, no migration needed (unlike `Any` above).
 
 ## Collapsible blocks
 
-Reuses `moxie_ui::fold::Foldable` - the same chevron/rail the entity
-inspector's own sections already use, not a new mechanism.
+`Foldable` itself doesn't apply here - it's a vertical-list composer
+(header row, then an indented body below), and the timeline is
+absolutely-positioned boxes on a time axis, not a flex column. What's
+reused instead is the convention: `fold::CHEVRON_SHUT`/`CHEVRON_OPEN`
+rotation values and a `BTreeSet<Vec<usize>>` fold-state resource
+(`timeline::BlockFoldState`), the same shape `assets::AssetFoldState`
+already uses for the asset browser's own folder tree.
 
-- [ ] `TimelineBlock` gets a chevron (`fold::CHEVRON_SHUT`/`CHEVRON_OPEN`
-      convention) that toggles a folded state per block.
-- [ ] Collapsed: children hidden, header strip alone still spans the
-      block's full duration and shows its name - same as a collapsed
-      folder track in any NLE.
+- [x] `BlockFoldState`, by path. `block_layout::layout` takes it and
+      threads it through measurement: a folded block's children are
+      skipped (empty, not built) and its height drops to just the
+      header strip's - its duration is untouched, so it still
+      contributes its full width/timing to siblings. Toggling is a
+      plain `value_changed(block_view)` rebuild, same as any other
+      timeline edit - no extra resource-changed wiring needed, since
+      `Placed` already reflects the new state.
+- [x] The chevron is its own absolutely-positioned element beside
+      `TimelineBlock`'s header, not nested inside it - a nested
+      `AlignItems::Center` row centers in the whole block's height
+      (header *and* all its content), not just the header strip,
+      since that's the box's real height. Independent positioning
+      sidesteps that entirely.
 
 ## Unassigned actions (`Node::Draft`)
 
