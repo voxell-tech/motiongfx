@@ -312,12 +312,6 @@ fn block_view(
 fn build_block_boxes(ui: &mut BevyUi) {
     let (placements, selected) = block_view(ui.world, ui.parent());
     let theme = ui.theme;
-    let action_fill = theme.palette.blue;
-    let block_outline = theme.text_primary;
-    let accent = theme.accent;
-    let critical = theme.critical;
-    let hover_tint = theme.clip_hover;
-    let press_tint = theme.clip_press;
 
     for placed in placements {
         let is_selected = selected.as_ref() == Some(&placed.path);
@@ -331,17 +325,17 @@ fn build_block_boxes(ui: &mut BevyUi) {
                         Label,
                         text = label,
                         size = 10.0f32,
-                        color = Some(block_outline.with_alpha(0.8))
+                        color = Some(theme.text_primary.with_alpha(0.8))
                     ),
                     top = placed.y,
                     left = placed.x,
                     width = placed.w,
                     height = placed.h,
-                    background = block_outline.with_alpha(0.04),
+                    background = theme.text_primary.with_alpha(0.04),
                     border = if is_selected {
-                        accent
+                        theme.accent
                     } else {
-                        block_outline.with_alpha(0.4)
+                        theme.text_primary.with_alpha(0.4)
                     }
                 ))
                 .observe(
@@ -379,7 +373,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                             Icon,
                             image = moxie_ui::icons::CHEVRON,
                             size = px(7),
-                            color = block_outline.with_alpha(0.6),
+                            color = theme.text_primary.with_alpha(0.6),
                             rotation = if folded {
                                 CHEVRON_SHUT
                             } else {
@@ -406,9 +400,9 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 // as an empty slot in the critical color, rather than
                 // a real action's fill.
                 let fill = if placed.draft {
-                    critical.with_alpha(0.12)
+                    theme.critical.with_alpha(0.12)
                 } else {
-                    action_fill.with_alpha(0.35)
+                    theme.palette.blue.with_alpha(0.35)
                 };
                 ui.elem(elem!(
                     TimelineAction,
@@ -423,9 +417,9 @@ fn build_block_boxes(ui: &mut BevyUi) {
                             }),
                         size = 10.0f32,
                         color = Some(if placed.draft {
-                            critical.with_alpha(0.9)
+                            theme.critical.with_alpha(0.9)
                         } else {
-                            action_fill.with_alpha(0.9)
+                            theme.palette.blue.with_alpha(0.9)
                         })
                     ),
                     top = placed.y,
@@ -434,15 +428,15 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     height = placed.h,
                     fill = fill,
                     border = if is_selected {
-                        accent
+                        theme.accent
                     } else if placed.draft {
-                        critical.with_alpha(0.5)
+                        theme.critical.with_alpha(0.5)
                     } else {
                         Color::NONE
                     },
                     selected = is_selected
                 ))
-                .lit(|action| action.fill(), hover_tint, press_tint)
+                .lit(|action| action.fill(), theme.clip_hover, theme.clip_press)
                 .observe(
                     move |_: On<Activate>,
                           mut selected: ResMut<SelectedAction>| {
