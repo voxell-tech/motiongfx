@@ -315,6 +315,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
     let action_fill = theme.palette.blue;
     let block_outline = theme.text_primary;
     let accent = theme.accent;
+    let critical = theme.critical;
     let hover_tint = theme.clip_hover;
     let press_tint = theme.clip_press;
 
@@ -402,9 +403,10 @@ fn build_block_boxes(ui: &mut BevyUi) {
             None => {
                 let path = placed.path.clone();
                 // A draft has no subject/field yet, so its clip reads
-                // as an empty slot rather than a real action's fill.
+                // as an empty slot in the critical color, rather than
+                // a real action's fill.
                 let fill = if placed.draft {
-                    block_outline.with_alpha(0.08)
+                    critical.with_alpha(0.12)
                 } else {
                     action_fill.with_alpha(0.35)
                 };
@@ -421,7 +423,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                             }),
                         size = 10.0f32,
                         color = Some(if placed.draft {
-                            block_outline.with_alpha(0.5)
+                            critical.with_alpha(0.9)
                         } else {
                             action_fill.with_alpha(0.9)
                         })
@@ -434,7 +436,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     border = if is_selected {
                         accent
                     } else if placed.draft {
-                        block_outline.with_alpha(0.3)
+                        critical.with_alpha(0.5)
                     } else {
                         Color::NONE
                     },
