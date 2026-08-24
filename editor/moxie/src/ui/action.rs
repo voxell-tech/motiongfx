@@ -18,7 +18,7 @@ use fynix_mock::elem;
 use fynix_mock::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
 use motiongfx_scene::refs::FieldRef;
-use moxie_ui::elements::{Label, ScrollArea, display_name};
+use moxie_ui::elements::{Frame, Label, ScrollArea, display_name};
 use moxie_ui::inspector::{
     FieldRow, Source, inspect_value, reflect_changed,
 };
@@ -77,11 +77,24 @@ struct Shape {
     path: Option<Vec<usize>>,
     /// Empty when the path no longer lands on a node.
     kind: &'static str,
+    /// Set only for an action: a block has none to show.
+    subject: Option<Subject>,
     rows: Vec<(String, String)>,
     edits: Vec<(String, Edit)>,
     /// The action's target value. Which widget draws it is the
     /// registry's business, not this panel's.
     value: Option<Pooled>,
+}
+
+/// An action's subject, split so its id can render muted where its
+/// name cannot.
+#[derive(Clone, PartialEq)]
+struct Subject {
+    /// Its [`Name`], if it still has an entity.
+    name: Option<String>,
+    /// The head of its id - a whole uuid is unreadable, but two
+    /// entities sharing a name still need telling apart.
+    head: String,
 }
 
 /// The action's target value, wherever the pool keeps it.
@@ -107,6 +120,7 @@ fn shape(world: &World, _: Entity) -> Shape {
         .unwrap_or(Shape {
             path,
             kind: "",
+            subject: None,
             rows: Vec::new(),
             edits: Vec::new(),
             value: None,
@@ -127,6 +141,40 @@ fn build(ui: &mut BevyUi) {
     }
 
     heading(ui, theme, shape.kind);
+    if let Some(subject) = shape.subject {
+        let primary = theme.text_primary;
+        let muted = theme.text_muted;
+        ui.compose(FieldRow {
+            label: "Subject".to_string(),
+            color: muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| {
+                ui.elem(elem!(
+                    Frame,
+                    direction = FlexDirection::Row,
+                    align = AlignItems::Center,
+                    column_gap = px(4)
+                ))
+                .with(move |ui| {
+                    if let Some(name) = subject.name {
+                        ui.elem(elem!(
+                            Label,
+                            text = name,
+                            color = Some(primary),
+                            wrap = false
+                        ));
+                    }
+                    ui.elem(elem!(
+                        Label,
+                        text = format!("#{}", subject.head),
+                        color = Some(muted),
+                        wrap = false
+                    ));
+                });
+            },
+        });
+    }
     for (name, value) in shape.rows {
         let primary = theme.text_primary;
         ui.compose(FieldRow {
@@ -188,6 +236,7 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
             return Some(Shape {
                 path: Some(path.to_vec()),
                 kind: "Block",
+                subject: None,
                 value: None,
                 rows: vec![
                     (
@@ -216,9 +265,9 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
     Some(Shape {
         path: Some(path.to_vec()),
         kind: "Action",
+        subject: Some(subject_of(world, action)),
         value: Some(Pooled(action.value)),
         rows: vec![
-            ("Subject".into(), subject_name(world, action)),
             ("Field".into(), field_name(world, &action.field)),
             ("Operation".into(), format!("{:?}", action.op)),
         ],
@@ -413,22 +462,20 @@ fn set_seconds(node: &mut Node<Backend>, edit: Edit, value: f32) {
     }
 }
 
-/// Its [`Name`], if it still has an entity, followed by the head of
-/// its id - a whole uuid is unreadable, but two entities sharing a
-/// name still need telling apart.
-fn subject_name(world: &World, action: &ActionCmd<Backend>) -> String {
+/// The action's subject, as its own [`Name`] (if it still has an
+/// entity) and the head of its id.
+fn subject_of(world: &World, action: &ActionCmd<Backend>) -> Subject {
     let SceneUid::Entity(uid) = action.subject;
-    let head = hierarchy::uid_head(uid);
 
     let name = world
         .get_resource::<SceneUidMap>()
         .and_then(|map| map.entity(uid))
         .and_then(|entity| world.get::<Name>(entity))
-        .map(Name::as_str);
+        .map(|name| name.as_str().to_string());
 
-    match name {
-        Some(name) => format!("{name} #{head}"),
-        None => format!("#{head}"),
+    Subject {
+        name,
+        head: hierarchy::uid_head(uid),
     }
 }
 
