@@ -279,6 +279,9 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
         Node::Block { block, delay } => {
             return Some(block_shape(path.to_vec(), block, *delay));
         }
+        Node::Draft { delay, .. } => {
+            return Some(draft_shape(path.to_vec(), *delay));
+        }
         Node::Action { action, delay } => (delay, action),
     };
 
@@ -325,6 +328,30 @@ fn block_shape(
         combinator: Some(combinator_name(&block.combinator)),
         value: None,
         rows: Vec::new(),
+        edits,
+    }
+}
+
+/// A draft's own row of info - a subject and field yet to be picked,
+/// so its Subject/Field rows are placeholder text for now rather than
+/// the pickers that will land alongside dragging a field onto the
+/// timeline.
+fn draft_shape(path: Vec<usize>, delay: Option<Duration>) -> Shape {
+    let mut edits = vec![("Duration".to_string(), Edit::Duration)];
+    if delay.is_some() {
+        edits.push(("Delay".to_string(), Edit::Delay));
+    }
+
+    Shape {
+        path: Some(path),
+        kind: "Draft",
+        subject: None,
+        combinator: None,
+        value: None,
+        rows: vec![
+            ("Subject".into(), "Unassigned".into()),
+            ("Field".into(), "Unassigned".into()),
+        ],
         edits,
     }
 }
@@ -459,6 +486,9 @@ impl Source for Property {
             (Edit::Name, Node::Action { action, .. }) => Some(
                 Box::new(action.name.clone().unwrap_or_default()),
             ),
+            (Edit::Name, Node::Draft { name, .. }) => {
+                Some(Box::new(name.clone().unwrap_or_default()))
+            }
             _ => Some(Box::new(seconds(node, self.edit)?)),
         }
     }
@@ -510,6 +540,11 @@ impl Source for Property {
                     action.name = named(value);
                 }
             }
+            (Edit::Name, Node::Draft { name, .. }) => {
+                if let Some(value) = String::from_reflect(value) {
+                    *name = named(value);
+                }
+            }
             (edit, node) => {
                 if let Some(value) = f32::from_reflect(value) {
                     set_seconds(node, edit, value);
@@ -534,7 +569,8 @@ impl Source for Property {
 fn seconds(node: &Node<Backend>, edit: Edit) -> Option<f32> {
     match (edit, node) {
         (Edit::Delay, Node::Block { delay, .. })
-        | (Edit::Delay, Node::Action { delay, .. }) => {
+        | (Edit::Delay, Node::Action { delay, .. })
+        | (Edit::Delay, Node::Draft { delay, .. }) => {
             Some(delay.unwrap_or_default().as_secs_f32())
         }
         (Edit::Stagger, Node::Block { block, .. }) => {
@@ -542,6 +578,9 @@ fn seconds(node: &Node<Backend>, edit: Edit) -> Option<f32> {
         }
         (Edit::Duration, Node::Action { action, .. }) => {
             Some(action.duration.as_secs_f32())
+        }
+        (Edit::Duration, Node::Draft { duration, .. }) => {
+            Some(duration.as_secs_f32())
         }
         _ => None,
     }
@@ -574,7 +613,8 @@ fn set_seconds(node: &mut Node<Backend>, edit: Edit, value: f32) {
 
     match (edit, node) {
         (Edit::Delay, Node::Block { delay, .. })
-        | (Edit::Delay, Node::Action { delay, .. }) => {
+        | (Edit::Delay, Node::Action { delay, .. })
+        | (Edit::Delay, Node::Draft { delay, .. }) => {
             *delay = Some(seconds);
         }
         (Edit::Stagger, Node::Block { block, .. }) => {
@@ -582,6 +622,9 @@ fn set_seconds(node: &mut Node<Backend>, edit: Edit, value: f32) {
         }
         (Edit::Duration, Node::Action { action, .. }) => {
             action.duration = seconds;
+        }
+        (Edit::Duration, Node::Draft { duration, .. }) => {
+            *duration = seconds;
         }
         _ => {}
     }

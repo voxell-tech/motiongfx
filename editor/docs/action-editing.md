@@ -109,16 +109,23 @@ plumbing. The alternative (an editor-only staging list outside
 `scene.0.animation`) would need its own parallel selection, placement,
 and timing concept instead of reusing what's there.
 
-- [ ] `Node::Draft` variant. New match arm everywhere `Node` is
+- [x] `Node::Draft` variant. New match arm everywhere `Node` is
       matched exhaustively: `walk_node` (compile.rs), `measure_node`
-      (block_layout.rs), `node_at`/`node_at_mut`/`summarize`/
-      `Property::get`/`set` (action.rs).
-- [ ] `compile()`: a draft resolves to an empty/no-op `TrackFragment`
-      of its own duration - reserves its timing slot without needing
-      anything else resolved. Not a `CompileError`; being incomplete
-      isn't being broken.
-- [ ] Action panel: a draft's Subject/Field rows are pickers, not
-      display text.
+      (block_layout.rs, plus `node_duration`), `summarize`/
+      `Property::get`/`set`/`seconds`/`set_seconds` (action.rs).
+      `node_at`/`node_at_mut` needed no change - they already fall
+      through on anything that isn't `Node::Block`.
+- [x] `compile()`: a draft resolves to `TrackFragment::silent(duration)`
+      (new, alongside `TrackFragment::new`/`single`) - a fragment with
+      no clips that still reserves its timing slot. Not a
+      `CompileError`; being incomplete isn't being broken.
+- [x] Action panel: `draft_shape` - Duration/Delay/Name are real edits
+      (the same `Property` machinery Action/Block already use);
+      Subject/Field are still plain "Unassigned" text for now. The
+      picker UI itself is its own follow-up, not built this round.
+- [x] Timeline: a draft's clip reads as an empty slot (a faint outline,
+      no fill, "Draft" label) rather than a real action's solid fill -
+      `Placed` grew a `draft: bool`.
 
 ### Graduating: draft to action
 

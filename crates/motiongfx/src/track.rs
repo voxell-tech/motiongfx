@@ -169,6 +169,16 @@ impl TrackFragment {
         }
     }
 
+    /// A fragment with no clips of its own, reserving `duration` of
+    /// time - for a slot in the tree nothing resolves into an action
+    /// yet.
+    pub fn silent(duration: Duration) -> Self {
+        Self {
+            sequences: HashMap::new(),
+            duration,
+        }
+    }
+
     /// Updates or inserts a [`Sequence`] in a track.
     ///
     /// If the [`ActionKey`] already exists, this method appends the

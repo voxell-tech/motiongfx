@@ -401,21 +401,40 @@ fn build_block_boxes(ui: &mut BevyUi) {
             // pointer cursor and hover/press tint itself.
             None => {
                 let path = placed.path.clone();
+                // A draft has no subject/field yet, so its clip reads
+                // as an empty slot rather than a real action's fill.
+                let fill = if placed.draft {
+                    block_outline.with_alpha(0.08)
+                } else {
+                    action_fill.with_alpha(0.35)
+                };
                 ui.elem(elem!(
                     TimelineAction,
                     label = val!(
                         Label,
-                        text = placed.name.unwrap_or_default(),
+                        text = placed
+                            .name
+                            .unwrap_or_else(|| if placed.draft {
+                                "Draft".to_string()
+                            } else {
+                                String::new()
+                            }),
                         size = 10.0f32,
-                        color = Some(action_fill.with_alpha(0.9))
+                        color = Some(if placed.draft {
+                            block_outline.with_alpha(0.5)
+                        } else {
+                            action_fill.with_alpha(0.9)
+                        })
                     ),
                     top = placed.y,
                     left = placed.x,
                     width = placed.w,
                     height = placed.h,
-                    fill = action_fill.with_alpha(0.35),
+                    fill = fill,
                     border = if is_selected {
                         accent
+                    } else if placed.draft {
+                        block_outline.with_alpha(0.3)
                     } else {
                         Color::NONE
                     },

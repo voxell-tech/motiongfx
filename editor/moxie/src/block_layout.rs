@@ -38,6 +38,9 @@ pub(crate) struct Placed {
     /// `true` when a block's children are folded away. Always `false`
     /// for an action leaf.
     pub(crate) folded: bool,
+    /// `true` for a `Node::Draft` leaf - an unassigned slot, styled
+    /// apart from a real action.
+    pub(crate) draft: bool,
     /// This node's position in `animation`'s tree: child index at
     /// each depth, root first. What [`crate::SelectedAction`] compares
     /// against, so a click can name exactly which node it landed on.
@@ -80,6 +83,9 @@ enum MeasuredKind {
     Action {
         name: Option<String>,
     },
+    Draft {
+        name: Option<String>,
+    },
     Block {
         label: String,
         folded: bool,
@@ -116,6 +122,9 @@ fn node_duration(node: &Node<Backend>) -> Duration {
         Node::Block { delay, block } => {
             (delay, block_duration(block))
         }
+        Node::Draft {
+            delay, duration, ..
+        } => (delay, *duration),
     };
     inner.saturating_add(delay.unwrap_or_default())
 }
@@ -155,9 +164,9 @@ fn measure_node(
     path: &mut Vec<usize>,
 ) -> Measured {
     let delay = match node {
-        Node::Action { delay, .. } | Node::Block { delay, .. } => {
-            delay.unwrap_or_default()
-        }
+        Node::Action { delay, .. }
+        | Node::Block { delay, .. }
+        | Node::Draft { delay, .. } => delay.unwrap_or_default(),
     };
     let start = start.saturating_add(delay);
 
@@ -169,6 +178,12 @@ fn measure_node(
             kind: MeasuredKind::Action {
                 name: action.name.clone(),
             },
+        },
+        Node::Draft { duration, name, .. } => Measured {
+            start,
+            end: start.saturating_add(*duration),
+            height: ROW_HEIGHT,
+            kind: MeasuredKind::Draft { name: name.clone() },
         },
         Node::Block { block, .. } => {
             measure_block(block, start, folded, path)
@@ -313,6 +328,19 @@ fn flatten(
             label: None,
             name: name.clone(),
             folded: false,
+            draft: false,
+            path: path.clone(),
+        }),
+        MeasuredKind::Draft { name } => out.push(Placed {
+            x,
+            y,
+            w,
+            h: measured.height,
+            depth,
+            label: None,
+            name: name.clone(),
+            folded: false,
+            draft: true,
             path: path.clone(),
         }),
         MeasuredKind::Block {
@@ -329,6 +357,7 @@ fn flatten(
                 label: Some(label.clone()),
                 name: None,
                 folded: *folded,
+                draft: false,
                 path: path.clone(),
             });
             let content_top = y + HEADER_HEIGHT;
