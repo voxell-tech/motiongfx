@@ -21,6 +21,7 @@ mod scene;
 mod time_axis;
 mod ui;
 mod view;
+mod zoom;
 
 use core::time::Duration;
 use std::path::PathBuf;
@@ -83,13 +84,17 @@ pub struct SceneRoot;
 /// Pixels per second of animation at the default zoom.
 pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
 
+/// Zoom range, spanning the scales the time axis is exercised at.
+const MIN_PX_PER_SECOND: f32 = 1.0;
+const MAX_PX_PER_SECOND: f32 = 20_000.0;
+
 /// Maps animation time to timeline pixels.
 #[derive(Resource, Clone, Copy, PartialEq)]
 pub(crate) struct TimelineView {
-    pub(crate) px_per_second: f32,
+    px_per_second: f32,
     /// Seconds of animation at the timeline's left edge. Held as a
     /// time so zooming does not move it.
-    pub(crate) offset: f32,
+    offset: f32,
 }
 
 impl Default for TimelineView {
@@ -102,6 +107,12 @@ impl Default for TimelineView {
 }
 
 impl TimelineView {
+    /// The horizontal zoom.
+    #[inline]
+    pub(crate) fn px_per_second(&self) -> f32 {
+        self.px_per_second
+    }
+
     /// Horizontal pixel offset for a point `t` into the timeline.
     #[inline]
     pub(crate) fn x_from_time(&self, t: Duration) -> f32 {
@@ -114,6 +125,16 @@ impl TimelineView {
     pub(crate) fn time_from_x(&self, x: f32) -> Duration {
         let secs = (x / self.px_per_second + self.offset).max(0.0);
         Duration::from_secs_f32(secs)
+    }
+
+    /// Scale the zoom about the timeline's left edge, saturating at
+    /// the ends of the range.
+    pub(crate) fn zoom_by(&mut self, factor: f32) {
+        if !(factor.is_finite() && factor > 0.0) {
+            return;
+        }
+        self.px_per_second = (self.px_per_second * factor)
+            .clamp(MIN_PX_PER_SECOND, MAX_PX_PER_SECOND);
     }
 }
 

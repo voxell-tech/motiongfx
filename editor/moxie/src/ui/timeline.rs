@@ -6,7 +6,7 @@ use core::time::Duration;
 
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
+use bevy::ui_widgets::{Activate, ScrollArea as ScrollAreaBehavior};
 use bevy_motiongfx::prelude::MotionGfxManager;
 
 use super::PANEL_PADDING;
@@ -15,6 +15,7 @@ use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_click_release,
     on_track_drag, on_track_press, on_track_release,
 };
+use crate::zoom::on_track_scroll;
 use crate::{
     EditorScene, EditorState, SelectedAction, TimelineView, time_axis,
 };
@@ -175,7 +176,7 @@ fn build_ticks(ui: &mut BevyUi) {
     let (width, view) = axis_view(ui.world, ui.parent());
     let color = ui.theme.text_muted;
     let marks =
-        time_axis::ticks(view.px_per_second, 0.0, width as f32);
+        time_axis::ticks(view.px_per_second(), 0.0, width as f32);
 
     for tick in marks {
         let major = tick.label.is_some();
@@ -246,6 +247,8 @@ impl Composer<BevyHost> for TrackArea {
                 flex_grow = 1.0f32
             ))
             .insert(TrackViewport)
+            .remove::<ScrollAreaBehavior>()
+            .observe(on_track_scroll)
             .watch(value_changed(block_view), build_block_boxes);
         })
         .handle()
