@@ -7,10 +7,11 @@ use bevy::prelude::*;
 use bevy_motiongfx::prelude::*;
 use bevy_motiongfx::scene::asset::MotionGfxScene;
 use bevy_motiongfx::scene::backend::{
-    BackendRegistry, default_scene_registry,
+    Backend, BackendRegistry, default_scene_registry,
 };
 use bevy_motiongfx::scene::value_pool::ValuePool;
-use motiongfx_scene::block::Block;
+use motiongfx_scene::block::{ActionCmd, Block, Node};
+use motiongfx_scene::error::CompileError;
 use motiongfx_scene::scene::{Scene, Stage};
 
 /// The project: a scene plus the registry that resolves its names.
@@ -69,7 +70,7 @@ impl Default for EditorScene {
 /// Scheduled with `run_if(resource_changed::<EditorScene>)`, so this
 /// only runs when [`EditorScene::edit`] actually landed a write.
 pub(crate) fn recompile_dirty_scene(world: &mut World) {
-    world.resource_scope::<EditorScene, _>(|world, editor_scene| {
+    world.resource_scope::<EditorScene, _>(|world, mut editor_scene| {
         world.resource_scope::<MotionGfxManager, _>(
             |world, mut manager| {
                 let mut q_players =
@@ -87,10 +88,28 @@ pub(crate) fn recompile_dirty_scene(world: &mut World) {
                     manager.remove_timeline(&old_id);
                 }
 
-                let new_id = editor_scene
-                    .scene
-                    .compile(&editor_scene.registry, &mut manager)
-                    .expect("editor scene should compile");
+                let new_id = loop {
+                    match editor_scene
+                        .scene
+                        .compile(&editor_scene.registry, &mut manager)
+                    {
+                        Ok(id) => break id,
+                        Err(err) => {
+                            if !demote_offending_action(
+                                &mut editor_scene.scene.0.animation,
+                                &err,
+                            ) {
+                                error!(
+                                    "scene can't compile and no action could be demoted: {err}"
+                                );
+                                return;
+                            }
+                            warn!(
+                                "demoted an action the scene can't compile: {err}"
+                            );
+                        }
+                    }
+                };
 
                 editor_scene
                     .scene
@@ -125,4 +144,59 @@ pub(crate) fn recompile_dirty_scene(world: &mut World) {
             },
         );
     });
+}
+
+/// Finds the first `Node::Action` under `block` that `error` names as
+/// unresolvable, and turns it into a `Node::Draft` in place - keeping
+/// its timing and name, dropping the subject/field/op/value `error`
+/// says is broken. `true` if it found and demoted one.
+fn demote_offending_action(
+    block: &mut Block<Backend>,
+    error: &CompileError<Backend>,
+) -> bool {
+    for child in &mut block.children {
+        if let Node::Block { block, .. } = child {
+            if demote_offending_action(block, error) {
+                return true;
+            }
+            continue;
+        }
+        let Node::Action { delay, action } = child else {
+            continue;
+        };
+        if !matches_error(action, error) {
+            continue;
+        }
+
+        let (delay, duration, name) =
+            (*delay, action.duration, action.name.clone());
+        *child = Node::Draft {
+            delay,
+            duration,
+            name,
+        };
+        return true;
+    }
+
+    false
+}
+
+fn matches_error(
+    action: &ActionCmd<Backend>,
+    error: &CompileError<Backend>,
+) -> bool {
+    match error {
+        CompileError::UnknownSubject(id) => action.subject == *id,
+        CompileError::UnknownField(field)
+        | CompileError::UnknownSubjectKind(field)
+        | CompileError::TypeMismatch { field, .. } => {
+            action.field == *field
+        }
+        CompileError::UnknownOp(_, op) => action.op == *op,
+        CompileError::UnknownValue(value) => action.value == *value,
+        CompileError::UnknownEase(ease) => action.ease == Some(*ease),
+        CompileError::UnknownInterp(interp) => {
+            action.interp == Some(*interp)
+        }
+    }
 }

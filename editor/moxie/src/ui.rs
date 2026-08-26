@@ -42,6 +42,7 @@ impl Plugin for UiPlugin {
             .init_resource::<ProjectBookmarks>()
             .init_resource::<ProjectPath>()
             .init_resource::<assets::AssetFoldState>()
+            .init_resource::<timeline::BlockFoldState>()
             .init_resource::<hierarchy::Dragging>()
             .init_resource::<scene::EditorScene>()
             .add_systems(Startup, setup_editor_ui)

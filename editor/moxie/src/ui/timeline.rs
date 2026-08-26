@@ -3,6 +3,7 @@
 //! block's own header box already carries its label.
 
 use core::time::Duration;
+use std::collections::BTreeSet;
 
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
@@ -27,12 +28,24 @@ use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
     LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
     TimeLabel, TimeTick, TimelineAction, TimelineActionCursor,
-    TimelineBlock,
+    TimelineBlock, TintButton,
 };
+use moxie_ui::fold::{CHEVRON_OPEN, CHEVRON_SHUT};
 use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{
     BevyHost, BevyUi, resource_changed, value_changed,
 };
+
+/// Folded blocks, by path.
+#[derive(Resource, Default, Clone, PartialEq)]
+pub(super) struct BlockFoldState(BTreeSet<Vec<usize>>);
+
+fn toggle_folded(world: &mut World, path: &[usize]) {
+    let mut state = world.resource_mut::<BlockFoldState>();
+    if !state.0.remove(path) {
+        state.0.insert(path.to_vec());
+    }
+}
 
 const CONTROL_BAR_HEIGHT: f32 = 40.0;
 const TIME_AXIS_HEIGHT: f32 = 24.0;
@@ -262,10 +275,18 @@ fn current_time(world: &World, _: Entity) -> Duration {
 
 /// The editor scene's animation tree, laid out as nested boxes.
 fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
+    let empty = BTreeSet::new();
+    let folded = world
+        .get_resource::<BlockFoldState>()
+        .map_or(&empty, |state| &state.0);
+
     world
         .get_resource::<EditorScene>()
         .map(|editor_scene| {
-            block_layout::layout(&editor_scene.scene().0.animation)
+            block_layout::layout(
+                &editor_scene.scene().0.animation,
+                folded,
+            )
         })
         .unwrap_or_default()
 }
@@ -288,19 +309,9 @@ fn block_view(
 /// Either outlines in the theme's accent when [`SelectedAction`] names
 /// its path, and clicking either writes that path in; only the action
 /// also lights up under the cursor.
-///
-/// An `Any` block's box, and any ancestor its visual extent bleeds
-/// into, is already sized to its losing branch's full duration (see
-/// [`block_layout::layout`]), so nothing here needs to clip or fade
-/// anything to keep a slower action visible.
 fn build_block_boxes(ui: &mut BevyUi) {
     let (placements, selected) = block_view(ui.world, ui.parent());
     let theme = ui.theme;
-    let action_fill = theme.palette.blue;
-    let block_outline = theme.text_primary;
-    let accent = theme.accent;
-    let hover_tint = theme.clip_hover;
-    let press_tint = theme.clip_press;
 
     for placed in placements {
         let is_selected = selected.as_ref() == Some(&placed.path);
@@ -314,17 +325,17 @@ fn build_block_boxes(ui: &mut BevyUi) {
                         Label,
                         text = label,
                         size = 10.0f32,
-                        color = Some(block_outline.with_alpha(0.8))
+                        color = Some(theme.text_primary.with_alpha(0.8))
                     ),
                     top = placed.y,
                     left = placed.x,
                     width = placed.w,
                     height = placed.h,
-                    background = block_outline.with_alpha(0.04),
+                    background = theme.text_primary.with_alpha(0.04),
                     border = if is_selected {
-                        accent
+                        theme.accent
                     } else {
-                        block_outline.with_alpha(0.4)
+                        theme.text_primary.with_alpha(0.4)
                     }
                 ))
                 .observe(
@@ -333,33 +344,99 @@ fn build_block_boxes(ui: &mut BevyUi) {
                         selected.0 = Some(path.clone());
                     },
                 );
+
+                // Its own element, absolutely positioned over the
+                // block's top-left corner rather than nested in
+                // `TimelineBlock`: a nested row would need
+                // `AlignItems::Center` to line up with the label,
+                // which centers in the whole block's height instead
+                // of just the header strip.
+                let path = placed.path.clone();
+                let folded = placed.folded;
+                ui.elem(elem!(
+                    Frame,
+                    position = PositionType::Absolute,
+                    inset = UiRect::new(
+                        px(placed.x),
+                        auto(),
+                        px(placed.y),
+                        auto()
+                    ),
+                    width = px(12),
+                    height = px(12)
+                ))
+                .with(move |ui| {
+                    ui.elem(elem!(
+                        !TintButton::default(),
+                        radius = px(3),
+                        icon = val!(
+                            Icon,
+                            image = moxie_ui::icons::CHEVRON,
+                            size = px(7),
+                            color = theme.text_primary.with_alpha(0.6),
+                            rotation = if folded {
+                                CHEVRON_SHUT
+                            } else {
+                                CHEVRON_OPEN
+                            }
+                        )
+                    ))
+                    .observe(
+                        move |_: On<Activate>, mut commands: Commands| {
+                            let path = path.clone();
+                            commands.queue(move |world: &mut World| {
+                                toggle_folded(world, &path);
+                            });
+                        },
+                    );
+                });
             }
             // An action leaf's own element: position, colors and
             // selection are all typed fields, and it owns its
             // pointer cursor and hover/press tint itself.
             None => {
                 let path = placed.path.clone();
+                // A draft has no subject/field yet, so its clip reads
+                // as an empty slot in the critical color, rather than
+                // a real action's fill.
+                let fill = if placed.draft {
+                    theme.critical.with_alpha(0.12)
+                } else {
+                    theme.palette.blue.with_alpha(0.35)
+                };
                 ui.elem(elem!(
                     TimelineAction,
                     label = val!(
                         Label,
-                        text = placed.name.unwrap_or_default(),
+                        text = placed
+                            .name
+                            .unwrap_or_else(|| if placed.draft {
+                                "Draft".to_string()
+                            } else {
+                                String::new()
+                            }),
                         size = 10.0f32,
-                        color = Some(action_fill.with_alpha(0.9))
+                        color = Some(if placed.draft {
+                            theme.critical.with_alpha(0.9)
+                        } else {
+                            theme.palette.blue.with_alpha(0.9)
+                        })
                     ),
                     top = placed.y,
                     left = placed.x,
                     width = placed.w,
                     height = placed.h,
-                    fill = action_fill.with_alpha(0.35),
+                    fill = fill,
                     border = if is_selected {
-                        accent
+                        theme.accent
+                    } else if placed.draft {
+                        theme.critical.with_alpha(0.5)
                     } else {
                         Color::NONE
                     },
                     selected = is_selected
                 ))
-                .lit(|action| action.fill(), hover_tint, press_tint)
+                .lit(|action| action.fill(), theme.clip_hover, theme.clip_press)
                 .observe(
                     move |_: On<Activate>,
                           mut selected: ResMut<SelectedAction>| {

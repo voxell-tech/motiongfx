@@ -9,6 +9,7 @@
 //! rather than implying the relationship through indentation.
 
 use core::time::Duration;
+use std::collections::BTreeSet;
 
 use bevy_motiongfx::scene::backend::Backend;
 use motiongfx_scene::block::{Block, Combinator, Node};
@@ -34,6 +35,12 @@ pub(crate) struct Placed {
     /// An action leaf's own name, if set. `None` for a block - its
     /// name, if any, is already folded into `label`.
     pub(crate) name: Option<String>,
+    /// `true` when a block's children are folded away. Always `false`
+    /// for an action leaf.
+    pub(crate) folded: bool,
+    /// `true` for a `Node::Draft` leaf - an unassigned slot, styled
+    /// apart from a real action.
+    pub(crate) draft: bool,
     /// This node's position in `animation`'s tree: child index at
     /// each depth, root first. What [`crate::SelectedAction`] compares
     /// against, so a click can name exactly which node it landed on.
@@ -42,8 +49,19 @@ pub(crate) struct Placed {
 
 /// Every box in `animation`'s tree, depth-first. `animation` itself
 /// gets a box too, at depth `0`, as the timeline's outer frame.
-pub(crate) fn layout(animation: &Block<Backend>) -> Vec<Placed> {
-    let root = measure_block(animation, Duration::ZERO);
+///
+/// `folded` names every block whose children are collapsed away - its
+/// duration is unaffected, only its height and its children's boxes.
+pub(crate) fn layout(
+    animation: &Block<Backend>,
+    folded: &BTreeSet<Vec<usize>>,
+) -> Vec<Placed> {
+    let root = measure_block(
+        animation,
+        Duration::ZERO,
+        folded,
+        &mut Vec::new(),
+    );
     let mut out = Vec::new();
     flatten(&root, 0.0, 0, &mut Vec::new(), &mut out);
     out
@@ -65,8 +83,12 @@ enum MeasuredKind {
     Action {
         name: Option<String>,
     },
+    Draft {
+        name: Option<String>,
+    },
     Block {
         label: String,
+        folded: bool,
         children: Vec<(f32, Measured)>,
     },
 }
@@ -92,13 +114,17 @@ fn combinator_label(combinator: &Combinator) -> String {
 
 /// A node's own duration, including its `delay`: how much it advances
 /// its parent block's chain/flow position. Mirrors the timing math
-/// `motiongfx::track`'s `chain`/`flow` apply at compile time.
+/// `motiongfx::track`'s `chain`/`flow` apply at compile time. Not
+/// affected by folding.
 fn node_duration(node: &Node<Backend>) -> Duration {
     let (delay, inner) = match node {
         Node::Action { delay, action } => (delay, action.duration),
         Node::Block { delay, block } => {
             (delay, block_duration(block))
         }
+        Node::Draft {
+            delay, duration, ..
+        } => (delay, *duration),
     };
     inner.saturating_add(delay.unwrap_or_default())
 }
@@ -131,11 +157,16 @@ fn block_duration(block: &Block<Backend>) -> Duration {
     }
 }
 
-fn measure_node(node: &Node<Backend>, start: Duration) -> Measured {
+fn measure_node(
+    node: &Node<Backend>,
+    start: Duration,
+    folded: &BTreeSet<Vec<usize>>,
+    path: &mut Vec<usize>,
+) -> Measured {
     let delay = match node {
-        Node::Action { delay, .. } | Node::Block { delay, .. } => {
-            delay.unwrap_or_default()
-        }
+        Node::Action { delay, .. }
+        | Node::Block { delay, .. }
+        | Node::Draft { delay, .. } => delay.unwrap_or_default(),
     };
     let start = start.saturating_add(delay);
 
@@ -148,22 +179,43 @@ fn measure_node(node: &Node<Backend>, start: Duration) -> Measured {
                 name: action.name.clone(),
             },
         },
-        Node::Block { block, .. } => measure_block(block, start),
+        Node::Draft { duration, name, .. } => Measured {
+            start,
+            end: start.saturating_add(*duration),
+            height: ROW_HEIGHT,
+            kind: MeasuredKind::Draft { name: name.clone() },
+        },
+        Node::Block { block, .. } => {
+            measure_block(block, start, folded, path)
+        }
     }
 }
 
 fn measure_block(
     block: &Block<Backend>,
     start: Duration,
+    folded: &BTreeSet<Vec<usize>>,
+    path: &mut Vec<usize>,
 ) -> Measured {
-    let (children, content_height) =
-        measure_children(&block.children, &block.combinator, start);
+    let is_folded = folded.contains(path.as_slice());
+    let (children, content_height) = if is_folded {
+        (Vec::new(), 0.0)
+    } else {
+        measure_children(
+            &block.children,
+            &block.combinator,
+            start,
+            folded,
+            path,
+        )
+    };
     Measured {
         start,
         end: start.saturating_add(block_duration(block)),
         height: HEADER_HEIGHT + content_height,
         kind: MeasuredKind::Block {
             label: block_label(block),
+            folded: is_folded,
             children,
         },
     }
@@ -183,6 +235,8 @@ fn measure_children(
     children: &[Node<Backend>],
     combinator: &Combinator,
     block_start: Duration,
+    folded: &BTreeSet<Vec<usize>>,
+    path: &mut Vec<usize>,
 ) -> (Vec<(f32, Measured)>, f32) {
     if children.is_empty() {
         return (Vec::new(), 0.0);
@@ -214,7 +268,13 @@ fn measure_children(
     let measured: Vec<Measured> = children
         .iter()
         .zip(starts)
-        .map(|(child, start)| measure_node(child, start))
+        .enumerate()
+        .map(|(i, (child, start))| {
+            path.push(i);
+            let measured = measure_node(child, start, folded, path);
+            path.pop();
+            measured
+        })
         .collect();
 
     let ys: Vec<f32> = match combinator {
@@ -267,9 +327,27 @@ fn flatten(
             depth,
             label: None,
             name: name.clone(),
+            folded: false,
+            draft: false,
             path: path.clone(),
         }),
-        MeasuredKind::Block { label, children } => {
+        MeasuredKind::Draft { name } => out.push(Placed {
+            x,
+            y,
+            w,
+            h: measured.height,
+            depth,
+            label: None,
+            name: name.clone(),
+            folded: false,
+            draft: true,
+            path: path.clone(),
+        }),
+        MeasuredKind::Block {
+            label,
+            folded,
+            children,
+        } => {
             out.push(Placed {
                 x,
                 y,
@@ -278,6 +356,8 @@ fn flatten(
                 depth,
                 label: Some(label.clone()),
                 name: None,
+                folded: *folded,
+                draft: false,
                 path: path.clone(),
             });
             let content_top = y + HEADER_HEIGHT;

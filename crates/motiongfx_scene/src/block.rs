@@ -1,8 +1,8 @@
 //! The animation tree: nested [`Block`]s of [`Node`]s.
 //!
 //! A [`Block`] carries a [`Combinator`] for how its children combine;
-//! a [`Node`] is a nested block, an action leaf, or a delayed wrapper.
-//! Each maps 1:1 onto a `motiongfx` track combinator.
+//! a [`Node`] is a nested block, an action leaf, or an unassigned
+//! draft, each with its own delay.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -72,6 +72,15 @@ pub enum Node<B: SceneBackend> {
         delay: Option<Duration>,
         action: ActionCmd<B>,
     },
+    /// Not yet a real action: reserves a timing slot without a
+    /// subject or field picked yet.
+    Draft {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        delay: Option<Duration>,
+        duration: Duration,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
+    },
 }
 
 impl<B: SceneBackend> Node<B> {
@@ -88,12 +97,22 @@ impl<B: SceneBackend> Node<B> {
         }
     }
 
+    /// An unassigned slot of `duration`, starting with its parent.
+    pub fn draft(duration: Duration) -> Self {
+        Self::Draft {
+            delay: None,
+            duration,
+            name: None,
+        }
+    }
+
     /// Offsets this node's start by `offset`, replacing any existing
     /// delay.
     pub fn delay(mut self, offset: Duration) -> Self {
         *match &mut self {
             Self::Block { delay, .. }
-            | Self::Action { delay, .. } => delay,
+            | Self::Action { delay, .. }
+            | Self::Draft { delay, .. } => delay,
         } = Some(offset);
         self
     }

@@ -10,9 +10,13 @@ use fynix_mock::ui::{Build, Patch};
 use super::Label;
 
 /// A block's header box: an absolutely positioned, bordered container
-/// with its label pinned to its top-left corner. Every
-/// `Node::Block` in a scene's animation tree gets one of these -
-/// an action leaf has no children and so no label, and stays a plain
+/// with its label pinned to its top-left corner, left padded to leave
+/// room for a fold chevron drawn on top of it separately - a nested
+/// row here would need `AlignItems::Center` to line the two up, which
+/// (this box spanning the block's full height, not just its header
+/// strip) centers the row in the whole block instead. Every
+/// `Node::Block` in a scene's animation tree gets one of these - an
+/// action leaf has no children and so no label, and stays a plain
 /// `Frame` instead.
 ///
 /// Clickable exactly like [`TimelineAction`](super::TimelineAction):
@@ -42,8 +46,9 @@ impl TimelineBlock {
             height: px(self.height),
             // The label sits in normal flow rather than absolute, so
             // this padding alone is what pins it to the top-left
-            // corner.
-            padding: UiRect::new(px(4), Val::ZERO, px(2), Val::ZERO),
+            // corner - left wide enough to clear the chevron drawn
+            // over it.
+            padding: UiRect::new(px(16), Val::ZERO, px(2), Val::ZERO),
             border: UiRect::all(px(1)),
             ..default()
         }

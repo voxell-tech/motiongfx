@@ -79,6 +79,9 @@ fn walk_node<B: SceneBackend>(
             delay,
             resolve_action(action, registry, values, builder)?,
         ),
+        Node::Draft {
+            delay, duration, ..
+        } => (delay, TrackFragment::silent(*duration)),
     };
 
     Ok(match offset {

@@ -64,14 +64,28 @@ deserializes with `None`, no migration needed (unlike `Any` above).
 
 ## Collapsible blocks
 
-Reuses `moxie_ui::fold::Foldable` - the same chevron/rail the entity
-inspector's own sections already use, not a new mechanism.
+`Foldable` itself doesn't apply here - it's a vertical-list composer
+(header row, then an indented body below), and the timeline is
+absolutely-positioned boxes on a time axis, not a flex column. What's
+reused instead is the convention: `fold::CHEVRON_SHUT`/`CHEVRON_OPEN`
+rotation values and a `BTreeSet<Vec<usize>>` fold-state resource
+(`timeline::BlockFoldState`), the same shape `assets::AssetFoldState`
+already uses for the asset browser's own folder tree.
 
-- [ ] `TimelineBlock` gets a chevron (`fold::CHEVRON_SHUT`/`CHEVRON_OPEN`
-      convention) that toggles a folded state per block.
-- [ ] Collapsed: children hidden, header strip alone still spans the
-      block's full duration and shows its name - same as a collapsed
-      folder track in any NLE.
+- [x] `BlockFoldState`, by path. `block_layout::layout` takes it and
+      threads it through measurement: a folded block's children are
+      skipped (empty, not built) and its height drops to just the
+      header strip's - its duration is untouched, so it still
+      contributes its full width/timing to siblings. Toggling is a
+      plain `value_changed(block_view)` rebuild, same as any other
+      timeline edit - no extra resource-changed wiring needed, since
+      `Placed` already reflects the new state.
+- [x] The chevron is its own absolutely-positioned element beside
+      `TimelineBlock`'s header, not nested inside it - a nested
+      `AlignItems::Center` row centers in the whole block's height
+      (header *and* all its content), not just the header strip,
+      since that's the box's real height. Independent positioning
+      sidesteps that entirely.
 
 ## Unassigned actions (`Node::Draft`)
 
@@ -95,16 +109,23 @@ plumbing. The alternative (an editor-only staging list outside
 `scene.0.animation`) would need its own parallel selection, placement,
 and timing concept instead of reusing what's there.
 
-- [ ] `Node::Draft` variant. New match arm everywhere `Node` is
+- [x] `Node::Draft` variant. New match arm everywhere `Node` is
       matched exhaustively: `walk_node` (compile.rs), `measure_node`
-      (block_layout.rs), `node_at`/`node_at_mut`/`summarize`/
-      `Property::get`/`set` (action.rs).
-- [ ] `compile()`: a draft resolves to an empty/no-op `TrackFragment`
-      of its own duration - reserves its timing slot without needing
-      anything else resolved. Not a `CompileError`; being incomplete
-      isn't being broken.
-- [ ] Action panel: a draft's Subject/Field rows are pickers, not
-      display text.
+      (block_layout.rs, plus `node_duration`), `summarize`/
+      `Property::get`/`set`/`seconds`/`set_seconds` (action.rs).
+      `node_at`/`node_at_mut` needed no change - they already fall
+      through on anything that isn't `Node::Block`.
+- [x] `compile()`: a draft resolves to `TrackFragment::silent(duration)`
+      (new, alongside `TrackFragment::new`/`single`) - a fragment with
+      no clips that still reserves its timing slot. Not a
+      `CompileError`; being incomplete isn't being broken.
+- [x] Action panel: `draft_shape` - Duration/Delay/Name are real edits
+      (the same `Property` machinery Action/Block already use);
+      Subject/Field are still plain "Unassigned" text for now. The
+      picker UI itself is its own follow-up, not built this round.
+- [x] Timeline: a draft's clip reads as an empty slot (a faint outline,
+      no fill, "Draft" label) rather than a real action's solid fill -
+      `Placed` grew a `draft: bool`.
 
 ### Graduating: draft to action
 
@@ -143,8 +164,19 @@ editor, not just fails cleanly. Demoting the orphaned action to a
 draft instead turns "the whole scene stops compiling" into "one action
 needs reassignment."
 
-Two different triggers, two different demotion shapes:
+Two different triggers, two different demotion shapes - plus a third,
+generic one that landed first, as a safety net rather than a proactive
+fix:
 
+- [x] `recompile_dirty_scene`: a `CompileError` no longer panics the
+      editor. `demote_offending_action` walks the tree for whichever
+      `Node::Action` the error names (by subject/field/op/value/ease/
+      interp, matching the error variant), demotes just that one, and
+      retries - looping until it compiles or nothing more can be
+      demoted. Catches anything unresolvable regardless of cause (a
+      hand-edited scene file, a typo'd field path), not only the two
+      triggers below - but reactive, not proactive: it only runs the
+      next time something recompiles, not the instant an entity dies.
 - [ ] Entity deleted: subject itself is gone, so nothing about the
       action is still valid. Extend the existing `on_remove_entity_uid`
       observer (`bevy_motiongfx/scene/id.rs`, already keeps
