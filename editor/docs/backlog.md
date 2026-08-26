@@ -20,6 +20,10 @@ those as moxie_ui elements styled off `EditorTheme`, then drop
       them.
 - [ ] `Label`'s `None => ThemedText` fallback should default to
       `theme.text_primary` directly.
+- [ ] Give `EditorTheme` a button corner radius (there's no field for
+      one today) and use it everywhere a button rounds itself -
+      `Button`/`GhostButton`/`MenuButton`/`SegmentButton` each pick
+      their own `px(N)` constant right now.
 
 ## Open a `.mox` by double-clicking it
 
@@ -185,3 +189,141 @@ embed-or-reference flag, or Rive's embed-by-default. Not Bevy's own
       `.mat`.
 - [ ] A preview panel beside the asset browser's own listing, showing
       whatever asset is currently selected or hovered there.
+
+## Treat multi-item files (`.glb` and similar) as folders in the asset panel
+
+The asset panel (`editor/moxie/src/ui/assets.rs`) already has a folder
+concept, but only for real filesystem directories: `FolderRow` /
+`BookmarkRow` both lean on `moxie_ui::fold::Foldable` and a live
+`fs::read_dir` (`build_children`) to expand a directory into its
+children, tracked open/closed by `AssetFoldState`. What decides
+whether a *file* is even recognized is `moxie_asset::AssetKinds`, a
+flat `extension -> TypeId` map with exactly one registration today
+(`.mat` -> `StandardMaterial`, in `inspector.rs`); nothing maps `.glb`/
+`.gltf`, so such a file currently renders inert and undraggable.
+
+A `.glb` isn't a single asset the way a `.mat` is - it's a small
+archive (meshes, materials, lights, cameras, an implicit scene graph).
+Making it *browsable* as a folder means the row needs to expand into a
+synthetic child list the same way `FolderRow` does, but sourced from
+gltf-parsed contents instead of `fs::read_dir`. That's a second, virtual
+kind of expandable row alongside the filesystem-backed one -
+`FolderRow`'s body-building step (`build_children`) would need a
+non-filesystem counterpart that inspects a `Gltf`/`GltfAssetLabel`'s
+node list instead of walking a path, while still fitting the same
+`Foldable` shell and `AssetFoldState` bookkeeping. No `Gltf`/
+`GltfAssetLabel`/`SceneRoot`-from-`bevy::scene` usage exists anywhere
+in `editor/` yet - this is greenfield relative to the current asset
+loading code. Worth noting: the editor already has its own unrelated
+`SceneRoot` marker (`editor/moxie/src/lib.rs`) naming the scene tree's
+own root entity - a real gltf `SceneRoot` component would need a
+distinguishing name or an explicit path (`bevy::scene::SceneRoot`)
+wherever both are in scope.
+
+Each child item (a mesh, a material, a light) still wants its own
+`AssetKinds` entry so it can be dragged into a `Handle<T>` field the
+same way a `.mat` can be today - a gltf-derived material handle isn't
+structurally different from a hand-authored one once loaded.
+
+- [ ] Register `.glb`/`.gltf` extensions against `bevy_gltf::Gltf` (or
+      per-sub-asset types) in `AssetKinds`, so the file stops being
+      inert in the browser.
+- [ ] A "virtual folder" row variant that expands via a gltf's parsed
+      node/mesh/material list instead of `fs::read_dir`, reusing
+      `Foldable`/`AssetFoldState` rather than forking them.
+- [ ] Decide the child-item addressing scheme (bevy's own
+      `GltfAssetLabel` path syntax, e.g. `Mesh0/Primitive0`, is the
+      obvious fit) so a child row's path round-trips through
+      `AssetServer::load`.
+- [ ] Wire each recognized child kind (`Handle<Mesh>`,
+      `Handle<StandardMaterial>`, lights) into `draggable(...)` the
+      same way `file_row` already does for flat files.
+- [ ] Generalize past `.glb` specifically once the pattern holds -
+      any future container format (e.g. a multi-clip animation file)
+      wants the same virtual-folder shell, not a bespoke one per format.
+
+## Drag a `.glb` straight into the hierarchy to spawn its scene
+
+Two unrelated drag systems exist today, and neither reaches across to
+the other. `editor/moxie/src/ui/hierarchy/drag.rs`'s `Dragging`
+resource only reacts to other hierarchy rows (reparent/reorder within
+the tree). `editor/moxie_ui/src/asset.rs`'s `AssetDragging` resource -
+structurally the same ghost-follows-cursor pattern, for files instead
+of rows - is only ever *read* by one consumer:
+`editor/moxie_ui/src/inspector/handle.rs`'s `Inspect for Handle<T>`,
+which compares `AssetDragging.kind` against the inspected field's
+`TypeId` and loads a `Handle<T>` onto that field on drop. Dropping a
+file over the hierarchy panel today does nothing - nothing there reads
+`AssetDragging` at all.
+
+Spawning a `.glb`'s scene into the hierarchy needs a new drop target
+that *does* read `AssetDragging`, added to the hierarchy panel (rows
+and/or the gap strip in `editor/moxie/src/ui/hierarchy.rs`), mirroring
+`Inspect for Handle<T>`'s drop-handling shape but building
+`bevy::scene::SceneRoot`/child entities from the gltf's default scene
+instead of writing a single field. This is a natural companion to the
+folder-browsing item above (same `.glb` registration work), but is
+useful on its own even before individual gltf children are browsable -
+dropping the whole file can just spawn the default scene.
+
+- [ ] A hierarchy-panel drop target reading `AssetDragging`,
+      alongside the existing entity-reparenting one in
+      `hierarchy/drag.rs` - same resource, different consumer.
+- [ ] On drop, resolve the dragged path to a gltf asset and spawn its
+      default scene (or the whole node graph) as children of the drop
+      target, parallel to how `Inspect for Handle<T>` resolves a path
+      through `AssetServer` with `override_unapproved()` today.
+- [ ] Decide undo/naming conventions for a spawned subtree - it's the
+      first hierarchy mutation that isn't either hand-built in the
+      editor or loaded wholesale from a `.mox`.
+
+## Multiple simultaneous tracks in the timeline
+
+"Multiple tracks" already exists at two different layers, and neither
+is a video-editor-style stack a user can freely add to:
+
+- **Runtime** (`crates/motiongfx/src/track.rs`,`timeline.rs`):
+  `TrackList`/`Timeline` do hold `Box<[Track]>`, but `curr_index`/
+  `target_index` and `set_target_track` describe *switching between*
+  tracks (jump to another sequence and play toward/from it), not
+  sampling several simultaneously. Repurposing this for layered
+  playback would change `queue_actions`'s sampling model, not just add
+  UI.
+- **Editor UI** (`motiongfx_scene::block::Block`/`Combinator`,
+  `editor/moxie/src/block_layout.rs`): `Scene::animation` is one
+  `Block` tree; "tracks" only appear as the lanes `block_layout::layout`
+  already assigns per sibling under `All`/`Any`/`Flow` - every child of
+  one of those combinators gets its own row today
+  (`measure_children`), stacked and drawn by `ui/timeline.rs`'s
+  `TrackArea`. There's no persistent, user-named, independently
+  addable "Track 1 / Track 2" the way a video editor has - what looks
+  like stacked lanes is really nested combinator structure, laid out
+  automatically.
+
+The second point matters for scoping: a literal free-form track list
+(add/remove/reorder independent tracks a user names) means either
+changing `Scene`'s schema to hold a flat `Vec<Block>` alongside/instead
+of the single `animation` root - touching serialization,
+`block_layout.rs`, and every `EditorScene` mutator - or leaning on the
+`All`/`Flow` nesting that already lays siblings out as lanes and
+building add/remove/reorder affordances directly on top of that
+existing behavior. The latter is a much smaller lift since the layout
+half is already built; it would mainly need UI to let a user insert/
+remove a top-level `All` child and treat it as a named lane, rather
+than requiring the tree-editing gestures the timeline doesn't expose
+today.
+
+- [ ] Decide the schema question first: reuse `All`/`Flow` top-level
+      children as lanes, or give `Scene` an explicit flat track list -
+      this determines the size of everything else.
+- [ ] If reusing combinator nesting: UI affordances on the timeline
+      panel to add/remove/reorder a top-level lane (today's tree has
+      no user-facing "insert a sibling block" gesture at all).
+- [ ] Lane naming/labeling - `block_layout.rs`'s `combinator_label`
+      shows the `Combinator` kind, not a user-chosen name; a track
+      stack wants the latter.
+- [ ] If simultaneous (not switched) playback is ever needed at
+      runtime, not just visually stacked in the editor: revisit
+      `Timeline`'s `curr_index`/`target_index` sampling model in
+      `crates/motiongfx/src/timeline.rs`, which currently assumes one
+      active track at a time.

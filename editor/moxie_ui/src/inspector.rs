@@ -24,12 +24,14 @@ use std::any::TypeId;
 use bevy::light::CascadeShadowConfig;
 use bevy::prelude::*;
 use bevy::reflect::{FromType, GetTypeRegistration, PartialReflect};
+use fynix_mock::composer::Composer;
 use fynix_mock::elem;
+use fynix_mock::ui::ElementHandle;
 use moxie_asset::AssetKindAppExt;
 
 use crate::elements::{Frame, Label};
 use crate::fold;
-use crate::reactive::BevyUi;
+use crate::reactive::{BevyHost, BevyUi};
 pub use field::Field;
 pub(crate) use tree::single_value;
 pub use tree::{InspectorFields, Section};
@@ -267,48 +269,65 @@ pub fn inspect_value(ui: &mut BevyUi, source: &dyn Source) {
 /// which would otherwise pull the 40% mark inward with it; the label
 /// sheds that same width back so `value` starts at the same place
 /// no matter how deep its row is nested.
-pub(crate) fn field_row(
-    ui: &mut BevyUi,
-    label: String,
-    color: Color,
-    bold: bool,
-    depth: u32,
-    value: impl FnOnce(&mut BevyUi),
-) {
-    const VALUE_SHARE: f32 = 0.6;
-    const LABEL_SIZE: f32 = 12.0;
-    const EDGE_PADDING: f32 = 8.0;
-    let indent = ui.theme.fold_indent + fold::RAIL_WIDTH;
-    let shed = VALUE_SHARE * depth as f32 * indent;
+pub struct FieldRow<F: FnOnce(&mut BevyUi)> {
+    pub label: String,
+    pub color: Color,
+    pub bold: bool,
+    pub depth: u32,
+    pub value: F,
+}
 
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Row,
-        align = AlignItems::Center,
-        column_gap = px(8),
-        padding = UiRect::vertical(px(3))
-    ))
-    .with(move |ui| {
+impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for FieldRow<F> {
+    type Element = Frame;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, Frame> {
+        let Self {
+            label,
+            color,
+            bold,
+            depth,
+            value,
+        } = self;
+
+        const VALUE_SHARE: f32 = 0.6;
+        const LABEL_SIZE: f32 = 12.0;
+        const EDGE_PADDING: f32 = 8.0;
+        let indent = ui.theme.fold_indent + fold::RAIL_WIDTH;
+        let shed = VALUE_SHARE * depth as f32 * indent;
+
         ui.elem(elem!(
             Frame,
-            width = percent(40),
-            margin = UiRect::right(px(-shed)),
-            overflow = Overflow::clip_x(),
-            padding = UiRect::right(px(EDGE_PADDING))
+            width = percent(100),
+            direction = FlexDirection::Row,
+            align = AlignItems::Center,
+            column_gap = px(8),
+            padding = UiRect::vertical(px(3))
         ))
         .with(move |ui| {
             ui.elem(elem!(
-                Label,
-                text = label,
-                size = LABEL_SIZE,
-                color = Some(color),
-                bold = bold,
-                wrap = false
-            ));
-        });
-        ui.elem(elem!(Frame, flex_grow = 1.0f32)).with(value);
-    });
+                Frame,
+                width = percent(40),
+                margin = UiRect::right(px(-shed)),
+                overflow = Overflow::clip_x(),
+                padding = UiRect::right(px(EDGE_PADDING))
+            ))
+            .with(move |ui| {
+                ui.elem(elem!(
+                    Label,
+                    text = label,
+                    size = LABEL_SIZE,
+                    color = Some(color),
+                    bold = bold,
+                    wrap = false
+                ));
+            });
+            ui.elem(elem!(Frame, flex_grow = 1.0f32)).with(value);
+        })
+        .handle()
+    }
 }
 
 /// Builds the editing widget for one reflected value.

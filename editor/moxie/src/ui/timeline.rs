@@ -285,9 +285,9 @@ fn block_view(
 
 /// One box per placement: a block's header ([`TimelineBlock`], which
 /// owns its own label), or an action leaf's own [`TimelineAction`].
-/// The action lights up under the cursor and outlines in the theme's
-/// accent when [`SelectedAction`] names its path; clicking it writes
-/// that path in.
+/// Either outlines in the theme's accent when [`SelectedAction`] names
+/// its path, and clicking either writes that path in; only the action
+/// also lights up under the cursor.
 ///
 /// An `Any` block's box, and any ancestor its visual extent bleeds
 /// into, is already sized to its losing branch's full duration (see
@@ -307,6 +307,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
 
         match placed.label {
             Some(label) => {
+                let path = placed.path.clone();
                 ui.elem(elem!(
                     TimelineBlock,
                     label = val!(
@@ -320,8 +321,18 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     width = placed.w,
                     height = placed.h,
                     background = block_outline.with_alpha(0.04),
-                    border = block_outline.with_alpha(0.4)
-                ));
+                    border = if is_selected {
+                        accent
+                    } else {
+                        block_outline.with_alpha(0.4)
+                    }
+                ))
+                .observe(
+                    move |_: On<Activate>,
+                          mut selected: ResMut<SelectedAction>| {
+                        selected.0 = Some(path.clone());
+                    },
+                );
             }
             // An action leaf's own element: position, colors and
             // selection are all typed fields, and it owns its
@@ -330,6 +341,12 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 let path = placed.path.clone();
                 ui.elem(elem!(
                     TimelineAction,
+                    label = val!(
+                        Label,
+                        text = placed.name.unwrap_or_default(),
+                        size = 10.0f32,
+                        color = Some(action_fill.with_alpha(0.9))
+                    ),
                     top = placed.y,
                     left = placed.x,
                     width = placed.w,

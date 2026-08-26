@@ -19,6 +19,7 @@ mod overlay;
 mod panel;
 mod playhead;
 mod scroll_area;
+mod segmented_control;
 mod tab;
 mod time_label;
 mod time_tick;
@@ -30,7 +31,7 @@ mod timeline_track;
 // it, and the walk is what those provide.
 pub use button::{
     Button, ButtonElem, ButtonElemCursor, ButtonElemField,
-    GhostButton, MenuButton, TintButton,
+    GhostButton, MenuButton, SegmentButton, TintButton,
 };
 pub use divider::{Divider, DividerCursor, DividerField};
 pub use dropdown::{
@@ -50,6 +51,7 @@ pub use icon::{Icon, IconCursor, IconField};
 // nothing about them is stored to be patched later.
 pub use inspector::{
     ComponentInspector, EntityInspector, ResourceInspector,
+    display_name,
 };
 pub use label::{Label, LabelCursor, LabelField};
 pub use overlay::{Overlay, OverlayCursor, OverlayField};
@@ -60,6 +62,7 @@ pub use playhead::{
 pub use scroll_area::{
     ScrollArea, ScrollAreaCursor, ScrollAreaField,
 };
+pub use segmented_control::SegmentedControl;
 pub use tab::{
     Tab, TabBar, TabBarCursor, TabBarField, TabCursor, TabField,
     TabRow, TabRowCursor, TabRowField,
