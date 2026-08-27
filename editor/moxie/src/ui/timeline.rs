@@ -31,10 +31,11 @@ use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
 use moxie_ui::elements::{
-    Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
-    LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
-    TimeLabel, TimeTick, TimelineAction, TimelineActionCursor,
-    TimelineBlock, TimelineGap, TintButton,
+    Button, ButtonElemCursor, Frame, FrameCursor, GhostButton, Icon,
+    IconCursor, Label, LabelCursor, Panel, PlayheadLine,
+    PlayheadLineCursor, ScrollArea, TimeLabel, TimeTick,
+    TimelineAction, TimelineActionCursor, TimelineBlock, TimelineGap,
+    TintButton,
 };
 use moxie_ui::fold::{CHEVRON_OPEN, CHEVRON_SHUT};
 use moxie_ui::motion::MotionExt;
@@ -349,12 +350,15 @@ impl Composer<BevyHost> for BlockHeader {
             is_selected,
         } = self;
         let theme = ui.theme;
-        let border = if is_selected {
-            theme.accent
+        let default_color = theme.text_primary;
+        let selected_color = theme.palette.purple;
+
+        let block_color = if is_selected {
+            selected_color
         } else {
-            theme.text_primary.with_alpha(0.4)
+            default_color
         };
-        let background = theme.text_primary.with_alpha(0.04);
+
         let chevron_color = theme.text_primary.with_alpha(0.6);
         let label_color = theme.text_primary.with_alpha(0.8);
 
@@ -364,30 +368,44 @@ impl Composer<BevyHost> for BlockHeader {
             left = x,
             width = w,
             height = h,
-            background = background,
-            border = border
+            background = block_color.with_alpha(0.03),
+            border = block_color.with_alpha(0.5)
         ));
-        header
-            .insert(drag::BoxPath(path.clone()))
-            .observe({
-                let path = path.clone();
-                move |_: On<Activate>,
-                      mut selected: ResMut<SelectedAction>| {
-                    selected.0 = Some(path.clone());
-                }
-            })
+        header.insert(drag::BoxPath(path.clone())).with(move |ui| {
+            ui.elem(elem!(
+                Frame,
+                width = percent(100),
+                direction = FlexDirection::Row,
+                align = AlignItems::Center,
+                column_gap = px(4),
+                padding = UiRect::axes(px(4), px(2))
+            ))
             .with(move |ui| {
+                chevron(ui, path.clone(), folded, chevron_color);
                 ui.elem(elem!(
-                    Frame,
-                    direction = FlexDirection::Row,
-                    align = AlignItems::Center,
-                    column_gap = px(4)
+                    !GhostButton,
+                    flex_grow = 1.0f32,
+                    justify = JustifyContent::FlexStart,
+                    padding = UiRect::axes(px(4), Val::ZERO),
+                    radius = Val::ZERO,
+                    height = px(18)
                 ))
+                .observe(
+                    move |_: On<Activate>,
+                          mut selected: ResMut<SelectedAction>| {
+                        selected.0 = Some(path.clone());
+                    },
+                )
                 .with(move |ui| {
-                    chevron(ui, path, folded, chevron_color);
-                    header_label(ui, label, label_color);
+                    ui.elem(elem!(
+                        Label,
+                        text = label,
+                        wrap = false,
+                        color = Some(label_color)
+                    ));
                 });
             });
+        });
 
         header.handle()
     }
@@ -466,9 +484,9 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 // as an empty slot in the critical color, rather than
                 // a real action's fill.
                 let fill = if placed.draft {
-                    theme.critical.with_alpha(0.12)
+                    theme.critical.with_alpha(0.5)
                 } else {
-                    theme.palette.blue.with_alpha(0.35)
+                    theme.palette.blue.with_alpha(0.5)
                 };
                 let border = if is_selected {
                     theme.accent
@@ -542,7 +560,6 @@ fn chevron(
 ) {
     ui.elem(elem!(
         !TintButton::default(),
-        radius = px(3),
         icon = val!(
             Icon,
             image = moxie_ui::icons::CHEVRON,
@@ -560,16 +577,6 @@ fn chevron(
     });
 }
 
-/// A block's own header label.
-fn header_label(ui: &mut BevyUi, text: String, color: Color) {
-    ui.elem(elem!(
-        Label,
-        text = text,
-        size = 10.0f32,
-        color = Some(color)
-    ));
-}
-
 /// A thin, absolutely positioned strip at one edge of a box, wired to
 /// `kind` via [`drag::edge`].
 fn edge_handle(
@@ -580,6 +587,7 @@ fn edge_handle(
     y: f32,
     h: f32,
 ) {
+    let accent = ui.theme.accent;
     let mut handle = ui.elem(elem!(
         Frame,
         position = PositionType::Absolute,
@@ -587,5 +595,10 @@ fn edge_handle(
         width = px(drag::EDGE_HANDLE_PX),
         height = px(h)
     ));
+    handle.lit(
+        |frame| frame.background(),
+        accent.with_alpha(0.35),
+        accent.with_alpha(0.6),
+    );
     drag::edge(&mut handle, path, kind);
 }

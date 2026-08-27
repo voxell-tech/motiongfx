@@ -1,8 +1,5 @@
 use crate::reactive::BevyHost;
-use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
-use bevy::ui_widgets::Button as ButtonBehavior;
-use bevy::window::SystemCursorIcon;
 use bevy_fynix::EntityExt as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
@@ -37,6 +34,7 @@ impl TimelineBlock {
             height: px(self.height),
             border: UiRect::all(px(1)),
             align_items: AlignItems::Start,
+            overflow: Overflow::clip(),
             ..default()
         }
     }
@@ -48,8 +46,6 @@ impl ElementVisual<BevyHost> for TimelineBlock {
             self.node(),
             BackgroundColor(self.background),
             BorderColor::all(self.border),
-            ButtonBehavior,
-            EntityCursor::System(SystemCursorIcon::Pointer),
         ));
     }
 
