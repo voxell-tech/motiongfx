@@ -2,6 +2,12 @@
 //! scrubbable track viewport, edge to edge. No name gutter: a
 //! block's own header box already carries its label.
 
+mod drag;
+mod pattern;
+
+pub(crate) use drag::{Dragging, cancel_on_escape};
+pub(crate) use pattern::DelayPattern;
+
 use core::time::Duration;
 use std::collections::BTreeSet;
 
@@ -28,7 +34,7 @@ use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
     LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,
     TimeLabel, TimeTick, TimelineAction, TimelineActionCursor,
-    TimelineBlock, TintButton,
+    TimelineBlock, TimelineGap, TintButton,
 };
 use moxie_ui::fold::{CHEVRON_OPEN, CHEVRON_SHUT};
 use moxie_ui::motion::MotionExt;
@@ -39,6 +45,13 @@ use moxie_ui::reactive::{
 /// Folded blocks, by path.
 #[derive(Resource, Default, Clone, PartialEq)]
 pub(super) struct BlockFoldState(BTreeSet<Vec<usize>>);
+
+impl BlockFoldState {
+    /// The folded paths this holds.
+    pub(super) fn paths(&self) -> &BTreeSet<Vec<usize>> {
+        &self.0
+    }
+}
 
 fn toggle_folded(world: &mut World, path: &[usize]) {
     let mut state = world.resource_mut::<BlockFoldState>();
@@ -304,98 +317,151 @@ fn block_view(
     (block_placements(world, node), selected)
 }
 
-/// One box per placement: a block's header ([`TimelineBlock`], which
-/// owns its own label), or an action leaf's own [`TimelineAction`].
-/// Either outlines in the theme's accent when [`SelectedAction`] names
-/// its path, and clicking either writes that path in; only the action
-/// also lights up under the cursor.
+/// A block's header: its name (or combinator, if unnamed) beside its
+/// fold chevron, clickable to select - the chevron alone toggles the
+/// fold.
+struct BlockHeader {
+    path: Vec<usize>,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    folded: bool,
+    label: String,
+    is_selected: bool,
+}
+
+impl Composer<BevyHost> for BlockHeader {
+    type Element = TimelineBlock;
+
+    fn compose(
+        self,
+        ui: &mut BevyUi,
+    ) -> ElementHandle<BevyHost, TimelineBlock> {
+        let Self {
+            path,
+            x,
+            y,
+            w,
+            h,
+            folded,
+            label,
+            is_selected,
+        } = self;
+        let theme = ui.theme;
+        let border = if is_selected {
+            theme.accent
+        } else {
+            theme.text_primary.with_alpha(0.4)
+        };
+        let background = theme.text_primary.with_alpha(0.04);
+        let chevron_color = theme.text_primary.with_alpha(0.6);
+        let label_color = theme.text_primary.with_alpha(0.8);
+
+        let mut header = ui.elem(elem!(
+            TimelineBlock,
+            top = y,
+            left = x,
+            width = w,
+            height = h,
+            background = background,
+            border = border
+        ));
+        header
+            .insert(drag::BoxPath(path.clone()))
+            .observe({
+                let path = path.clone();
+                move |_: On<Activate>,
+                      mut selected: ResMut<SelectedAction>| {
+                    selected.0 = Some(path.clone());
+                }
+            })
+            .with(move |ui| {
+                ui.elem(elem!(
+                    Frame,
+                    direction = FlexDirection::Row,
+                    align = AlignItems::Center,
+                    column_gap = px(4)
+                ))
+                .with(move |ui| {
+                    chevron(ui, path, folded, chevron_color);
+                    header_label(ui, label, label_color);
+                });
+            });
+
+        header.handle()
+    }
+}
+
+/// One box per placement: a block's header ([`BlockHeader`]), or an
+/// action leaf's own [`TimelineAction`]. Either outlines in the
+/// theme's accent when [`SelectedAction`] names its path, and
+/// clicking either writes that path in; only the action also lights
+/// up under the cursor.
 fn build_block_boxes(ui: &mut BevyUi) {
     let (placements, selected) = block_view(ui.world, ui.parent());
     let theme = ui.theme;
+    let pattern = ui.world.resource::<DelayPattern>().0.clone();
 
     for placed in placements {
         let is_selected = selected.as_ref() == Some(&placed.path);
 
+        // Spawned at zero width even with no delay yet, so a live
+        // drag that opens one up has an entity already in place to
+        // grow.
+        if !placed.path.is_empty() {
+            let gap_x = placed.gap_x.unwrap_or(placed.x);
+            ui.elem(elem!(
+                TimelineGap,
+                top = placed.y,
+                left = gap_x,
+                width = placed.x - gap_x,
+                height = placed.h,
+                image = pattern.clone(),
+                color = theme.text_muted.with_alpha(0.35)
+            ))
+            .insert(drag::GapPath(placed.path.clone()));
+        }
+
         match placed.label {
             Some(label) => {
                 let path = placed.path.clone();
-                ui.elem(elem!(
-                    TimelineBlock,
-                    label = val!(
-                        Label,
-                        text = label,
-                        size = 10.0f32,
-                        color = Some(theme.text_primary.with_alpha(0.8))
-                    ),
-                    top = placed.y,
-                    left = placed.x,
-                    width = placed.w,
-                    height = placed.h,
-                    background = theme.text_primary.with_alpha(0.04),
-                    border = if is_selected {
-                        theme.accent
-                    } else {
-                        theme.text_primary.with_alpha(0.4)
-                    }
-                ))
-                .observe(
-                    move |_: On<Activate>,
-                          mut selected: ResMut<SelectedAction>| {
-                        selected.0 = Some(path.clone());
-                    },
-                );
-
-                // Its own element, absolutely positioned over the
-                // block's top-left corner rather than nested in
-                // `TimelineBlock`: a nested row would need
-                // `AlignItems::Center` to line up with the label,
-                // which centers in the whole block's height instead
-                // of just the header strip.
-                let path = placed.path.clone();
-                let folded = placed.folded;
-                ui.elem(elem!(
-                    Frame,
-                    position = PositionType::Absolute,
-                    inset = UiRect::new(
-                        px(placed.x),
-                        auto(),
-                        px(placed.y),
-                        auto()
-                    ),
-                    width = px(12),
-                    height = px(12)
-                ))
-                .with(move |ui| {
-                    ui.elem(elem!(
-                        !TintButton::default(),
-                        radius = px(3),
-                        icon = val!(
-                            Icon,
-                            image = moxie_ui::icons::CHEVRON,
-                            size = px(7),
-                            color = theme.text_primary.with_alpha(0.6),
-                            rotation = if folded {
-                                CHEVRON_SHUT
-                            } else {
-                                CHEVRON_OPEN
-                            }
-                        )
-                    ))
-                    .observe(
-                        move |_: On<Activate>, mut commands: Commands| {
-                            let path = path.clone();
-                            commands.queue(move |world: &mut World| {
-                                toggle_folded(world, &path);
-                            });
-                        },
-                    );
+                ui.compose(BlockHeader {
+                    path: path.clone(),
+                    x: placed.x,
+                    y: placed.y,
+                    w: placed.w,
+                    h: placed.h,
+                    folded: placed.folded,
+                    label,
+                    is_selected,
                 });
+                // The root's box has no `delay` of its own to drag -
+                // it always starts at zero.
+                if !path.is_empty() {
+                    edge_handle(
+                        ui,
+                        path,
+                        drag::Kind::Move,
+                        placed.x,
+                        placed.y,
+                        placed.h,
+                    );
+                }
             }
             // An action leaf's own element: position, colors and
             // selection are all typed fields, and it owns its
             // pointer cursor and hover/press tint itself.
             None => {
                 let path = placed.path.clone();
+                let label =
+                    placed.name.clone().unwrap_or_else(|| {
+                        if placed.draft {
+                            "Draft".to_string()
+                        } else {
+                            String::new()
+                        }
+                    });
                 // A draft has no subject/field yet, so its clip reads
                 // as an empty slot in the critical color, rather than
                 // a real action's fill.
@@ -404,17 +470,18 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 } else {
                     theme.palette.blue.with_alpha(0.35)
                 };
-                ui.elem(elem!(
+                let border = if is_selected {
+                    theme.accent
+                } else if placed.draft {
+                    theme.critical.with_alpha(0.5)
+                } else {
+                    Color::NONE
+                };
+                let mut clip = ui.elem(elem!(
                     TimelineAction,
                     label = val!(
                         Label,
-                        text = placed
-                            .name
-                            .unwrap_or_else(|| if placed.draft {
-                                "Draft".to_string()
-                            } else {
-                                String::new()
-                            }),
+                        text = label.clone(),
                         size = 10.0f32,
                         color = Some(if placed.draft {
                             theme.critical.with_alpha(0.9)
@@ -427,23 +494,98 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     width = placed.w,
                     height = placed.h,
                     fill = fill,
-                    border = if is_selected {
-                        theme.accent
-                    } else if placed.draft {
-                        theme.critical.with_alpha(0.5)
-                    } else {
-                        Color::NONE
-                    },
+                    border = border,
                     selected = is_selected
-                ))
-                .lit(|action| action.fill(), theme.clip_hover, theme.clip_press)
-                .observe(
-                    move |_: On<Activate>,
-                          mut selected: ResMut<SelectedAction>| {
-                        selected.0 = Some(path.clone());
-                    },
+                ));
+                clip.insert(drag::BoxPath(placed.path.clone()))
+                    .lit(
+                        |action| action.fill(),
+                        theme.clip_hover,
+                        theme.clip_press,
+                    )
+                    .observe({
+                        let path = path.clone();
+                        move |_: On<Activate>,
+                              mut selected: ResMut<SelectedAction>| {
+                            selected.0 = Some(path.clone());
+                        }
+                    });
+                edge_handle(
+                    ui,
+                    path.clone(),
+                    drag::Kind::Move,
+                    placed.x,
+                    placed.y,
+                    placed.h,
+                );
+                edge_handle(
+                    ui,
+                    path,
+                    drag::Kind::Resize,
+                    placed.x + placed.w - drag::EDGE_HANDLE_PX,
+                    placed.y,
+                    placed.h,
                 );
             }
         }
     }
+}
+
+/// A block's fold toggle: positioned relative to its own corner
+/// rather than the placement's absolute coordinates, so it moves for
+/// free with whatever a live drag does to the block's own `Node`.
+fn chevron(
+    ui: &mut BevyUi,
+    path: Vec<usize>,
+    folded: bool,
+    color: Color,
+) {
+    ui.elem(elem!(
+        !TintButton::default(),
+        radius = px(3),
+        icon = val!(
+            Icon,
+            image = moxie_ui::icons::CHEVRON,
+            size = px(7),
+            color = color,
+            rotation =
+                if folded { CHEVRON_SHUT } else { CHEVRON_OPEN }
+        )
+    ))
+    .observe(move |_: On<Activate>, mut commands: Commands| {
+        let path = path.clone();
+        commands.queue(move |world: &mut World| {
+            toggle_folded(world, &path);
+        });
+    });
+}
+
+/// A block's own header label.
+fn header_label(ui: &mut BevyUi, text: String, color: Color) {
+    ui.elem(elem!(
+        Label,
+        text = text,
+        size = 10.0f32,
+        color = Some(color)
+    ));
+}
+
+/// A thin, absolutely positioned strip at one edge of a box, wired to
+/// `kind` via [`drag::edge`].
+fn edge_handle(
+    ui: &mut BevyUi,
+    path: Vec<usize>,
+    kind: drag::Kind,
+    x: f32,
+    y: f32,
+    h: f32,
+) {
+    let mut handle = ui.elem(elem!(
+        Frame,
+        position = PositionType::Absolute,
+        inset = UiRect::new(px(x), auto(), px(y), auto()),
+        width = px(drag::EDGE_HANDLE_PX),
+        height = px(h)
+    ));
+    drag::edge(&mut handle, path, kind);
 }

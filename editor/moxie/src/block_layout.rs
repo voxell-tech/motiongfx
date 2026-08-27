@@ -41,6 +41,10 @@ pub(crate) struct Placed {
     /// `true` for a `Node::Draft` leaf - an unassigned slot, styled
     /// apart from a real action.
     pub(crate) draft: bool,
+    /// Where this node's own `delay` begins, if it has one - the
+    /// stretch from here to `x` is time reserved but not yet running.
+    /// `None` when there's no delay to show.
+    pub(crate) gap_x: Option<f32>,
     /// This node's position in `animation`'s tree: child index at
     /// each depth, root first. What [`crate::SelectedAction`] compares
     /// against, so a click can name exactly which node it landed on.
@@ -75,6 +79,9 @@ struct Measured {
     /// This node's own duration - `node_duration`/`block_duration` -
     /// what its box is drawn to.
     end: Duration,
+    /// This node's own `delay` - zero for the tree's root, which has
+    /// no `Node` of its own to carry one.
+    gap: Duration,
     height: f32,
     kind: MeasuredKind,
 }
@@ -174,6 +181,7 @@ fn measure_node(
         Node::Action { action, .. } => Measured {
             start,
             end: start.saturating_add(action.duration),
+            gap: delay,
             height: ROW_HEIGHT,
             kind: MeasuredKind::Action {
                 name: action.name.clone(),
@@ -182,12 +190,14 @@ fn measure_node(
         Node::Draft { duration, name, .. } => Measured {
             start,
             end: start.saturating_add(*duration),
+            gap: delay,
             height: ROW_HEIGHT,
             kind: MeasuredKind::Draft { name: name.clone() },
         },
-        Node::Block { block, .. } => {
-            measure_block(block, start, folded, path)
-        }
+        Node::Block { block, .. } => Measured {
+            gap: delay,
+            ..measure_block(block, start, folded, path)
+        },
     }
 }
 
@@ -212,6 +222,10 @@ fn measure_block(
     Measured {
         start,
         end: start.saturating_add(block_duration(block)),
+        // Overwritten by `measure_node` for anything but the tree's
+        // root, which calls this directly with no `Node::Block`
+        // delay to carry.
+        gap: Duration::ZERO,
         height: HEADER_HEIGHT + content_height,
         kind: MeasuredKind::Block {
             label: block_label(block),
@@ -317,6 +331,9 @@ fn flatten(
     let w =
         crate::px_for(measured.end.saturating_sub(measured.start))
             .max(MIN_WIDTH);
+    let gap_x = (measured.gap > Duration::ZERO).then(|| {
+        crate::px_for(measured.start.saturating_sub(measured.gap))
+    });
 
     match &measured.kind {
         MeasuredKind::Action { name } => out.push(Placed {
@@ -329,6 +346,7 @@ fn flatten(
             name: name.clone(),
             folded: false,
             draft: false,
+            gap_x,
             path: path.clone(),
         }),
         MeasuredKind::Draft { name } => out.push(Placed {
@@ -341,6 +359,7 @@ fn flatten(
             name: name.clone(),
             folded: false,
             draft: true,
+            gap_x,
             path: path.clone(),
         }),
         MeasuredKind::Block {
@@ -358,6 +377,7 @@ fn flatten(
                 name: None,
                 folded: *folded,
                 draft: false,
+                gap_x,
                 path: path.clone(),
             });
             let content_top = y + HEADER_HEIGHT;
