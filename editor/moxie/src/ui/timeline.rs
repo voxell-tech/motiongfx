@@ -373,37 +373,29 @@ impl Composer<BevyHost> for BlockHeader {
         ));
         header.insert(drag::BoxPath(path.clone())).with(move |ui| {
             ui.elem(elem!(
-                Frame,
+                !GhostButton,
                 width = percent(100),
-                direction = FlexDirection::Row,
-                align = AlignItems::Center,
-                column_gap = px(4),
-                padding = UiRect::axes(px(4), px(2))
+                height = px(18),
+                justify = JustifyContent::FlexStart,
+                padding = UiRect::axes(px(4), px(2)),
+                radius = Val::ZERO,
+                column_gap = px(4)
             ))
+            .observe({
+                let path = path.clone();
+                move |_: On<Activate>,
+                      mut selected: ResMut<SelectedAction>| {
+                    selected.0 = Some(path.clone());
+                }
+            })
             .with(move |ui| {
-                chevron(ui, path.clone(), folded, chevron_color);
+                chevron(ui, path, folded, chevron_color);
                 ui.elem(elem!(
-                    !GhostButton,
-                    flex_grow = 1.0f32,
-                    justify = JustifyContent::FlexStart,
-                    padding = UiRect::axes(px(4), Val::ZERO),
-                    radius = Val::ZERO,
-                    height = px(18)
-                ))
-                .observe(
-                    move |_: On<Activate>,
-                          mut selected: ResMut<SelectedAction>| {
-                        selected.0 = Some(path.clone());
-                    },
-                )
-                .with(move |ui| {
-                    ui.elem(elem!(
-                        Label,
-                        text = label,
-                        wrap = false,
-                        color = Some(label_color)
-                    ));
-                });
+                    Label,
+                    text = label,
+                    wrap = false,
+                    color = Some(label_color)
+                ));
             });
         });
 
