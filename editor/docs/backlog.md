@@ -25,6 +25,35 @@ those as moxie_ui elements styled off `EditorTheme`, then drop
       `Button`/`GhostButton`/`MenuButton`/`SegmentButton` each pick
       their own `px(N)` constant right now.
 
+## Unify icon size across icon-only buttons
+
+Every icon-only button (a fold chevron, a variant picker's, a
+toolbar-style button) currently sets its own `size` on the `Icon` it
+carries, and they disagree: `fold::Foldable` uses `px(8)`, `inspector/
+enums.rs`'s `VariantPicker` chevron `px(9)`, `ui/timeline.rs`'s block
+chevron `px(4)`, and `ui/assets.rs`'s two folder-row chevrons plus
+`inspector/tree.rs`'s leave it unset, falling through to `Icon`'s own
+default of `px(11)`.
+
+A style can't fix this from `ButtonElem`'s side: fynix_mock's cascade
+is element `Default` -> `Style` -> call site (`style.rs`), and the
+call site's own `icon = val!(Icon, ...)` assignment replaces the whole
+field, style-applied or not - a `Style for ButtonElem` (`TintButton`
+and friends) runs before that and gets overwritten regardless. The fix
+has to be a `Style for Icon` instead, used at the icon assignment
+itself: `icon = val!(!SomeIconStyle, image = ..., color = ...,
+rotation = ...)`, dropping each call site's own `size = px(N)`. `val!`
+already supports the same `!style` form `elem!` does.
+
+- [ ] Add a `Style for Icon` in `moxie_ui/elements` fixing `size` to
+      one constant.
+- [ ] Convert every icon-only button's `icon = val!(Icon, ...)` to the
+      new styled form, across `fold.rs`, `inspector/enums.rs`,
+      `ui/timeline.rs`, `ui/assets.rs` (two spots), and
+      `inspector/tree.rs`.
+- [ ] Pick the actual size - `px(8)` (`Foldable`'s current value) is
+      the closest thing to an existing default among them.
+
 ## Open a `.mox` by double-clicking it
 
 Needs moxie shipped as an installed app: the OS only routes a document
