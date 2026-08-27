@@ -52,7 +52,9 @@ pub(crate) struct Placed {
 }
 
 /// Every box in `animation`'s tree, depth-first. `animation` itself
-/// gets a box too, at depth `0`, as the timeline's outer frame.
+/// gets a box too, at depth `0`, as the timeline's outer frame - an
+/// empty root skips even that, since a combinator with nothing under
+/// it yet has nothing worth a box of its own.
 ///
 /// `folded` names every block whose children are collapsed away - its
 /// duration is unaffected, only its height and its children's boxes.
@@ -60,6 +62,10 @@ pub(crate) fn layout(
     animation: &Block<Backend>,
     folded: &BTreeSet<Vec<usize>>,
 ) -> Vec<Placed> {
+    if animation.children.is_empty() {
+        return Vec::new();
+    }
+
     let root = measure_block(
         animation,
         Duration::ZERO,
