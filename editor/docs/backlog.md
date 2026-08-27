@@ -70,6 +70,32 @@ would be worth wiring up on its own.
       an installer's job or something moxie does for itself on first
       run.
 
+## "Open" dialog never remembers the last-used location
+
+Reported: "Open" should start wherever a project was last opened or
+saved from, but doesn't - not a case of another picker's state leaking
+in, there's simply no last-used-location memory at all today.
+
+`project.rs`'s `ask_for_path` unconditionally calls
+`.set_directory(&scenes)`, `scenes` being the fixed
+`CARGO_MANIFEST_DIR/../assets/scenes` - every Open and every Save
+starts there, every time, regardless of what was picked last (this
+session or a previous one). `ProjectPath` (already updated by both
+`save_scene` and `load_scene` on success) is the obvious source of
+truth for "last used" - `ask_for_path` just doesn't read it, and isn't
+even passed `world` today to be able to.
+
+- [ ] Thread `world: &World` (or just the resolved `Option<PathBuf>`)
+      into `ask_for_path`, and seed `.set_directory(...)` from
+      `ProjectPath.0`'s parent when set, falling back to `scenes` only
+      when nothing has been opened or saved yet.
+- [ ] Decide whether Open and Save should track the same "last
+      location", or diverge (e.g. Save defaulting to the current
+      project's own folder, Open to wherever was last opened).
+- [ ] Persisting this across app restarts (not just within one running
+      session) would need somewhere durable to keep it -
+      `EditorSettings` is the existing precedent for that.
+
 ## `BevyElementVisual` boilerplate
 
 Every `ElementVisual<BevyHost>` impl starts with
