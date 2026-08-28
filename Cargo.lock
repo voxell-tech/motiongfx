@@ -3039,6 +3039,7 @@ version = "0.3.0"
 dependencies = [
  "fynix_macros",
  "hashbrown 0.17.1",
+ "lenz",
  "motiongfx_interp",
  "typarena",
 ]
@@ -3752,6 +3753,23 @@ name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
+
+[[package]]
+name = "lenz"
+version = "0.3.0"
+dependencies = [
+ "lenz_macros",
+]
+
+[[package]]
+name = "lenz_macros"
+version = "0.3.0"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
 
 [[package]]
 name = "lewton"

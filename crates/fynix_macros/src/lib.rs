@@ -1,4 +1,8 @@
 //! Derive macros for `fynix`.
+//!
+//! `#[derive(Lenz)]` for field paths lives in the `lenz` crate, which
+//! `fynix` re-exports; `#[derive(Element)]` derives what it would as
+//! part of its own output.
 
 mod common;
 mod element;
@@ -8,37 +12,21 @@ mod override_default;
 use proc_macro::TokenStream;
 use syn::{DeriveInput, parse_macro_input};
 
-/// Generates the field paths for a struct: a zero-sized
-/// `FieldPath` marker per field, and a `Cursor` method that walks to
-/// it. Call `accessor()` to end the walk.
-///
-/// [`Element`] already derives this for its own struct - reach for
-/// this directly only for one that never derives `Element` at all.
-#[proc_macro_derive(Lenz)]
-pub fn derive_lenz(input: TokenStream) -> TokenStream {
-    let ast = parse_macro_input!(input as DeriveInput);
-    match lenz::expand(&ast) {
-        Ok(tokens) => tokens.into(),
-        Err(err) => err.into_compile_error().into(),
-    }
-}
-
 /// Generates an enum naming the fields this element draws itself, so
 /// dispatching on a field is a `match` the compiler checks for
 /// exhaustiveness.
 ///
 /// Fields marked `#[elem(child)]` are left out: they are elements of
 /// their own, and patch through their own id. Fields marked
-/// `#[elem(ignore)]` are left out too, and out of the cursor
-/// [`Lenz`] would otherwise give them: they only ever change at
-/// build, so there is nothing for the field/patch system, or a path
-/// naming one for it to reach, to find there.
+/// `#[elem(ignore)]` are left out too, and out of the cursor `Lenz`
+/// would otherwise give them: they only ever change at build, so
+/// there is nothing for the field/patch system, or a path naming one
+/// for it to reach, to find there.
 ///
-/// Also derives what [`Lenz`] and [`OverrideDefault`] would: an
+/// Also emits what `#[derive(Lenz)]` and [`OverrideDefault`] would: an
 /// element's own dispatch reports a field by the id `Lenz` gives it,
-/// so the two have always been derived together, and `#[default(...)]`
-/// is the usual way an element's own fields differ from their type's
-/// default.
+/// so the two have always gone together, and `#[default(...)]` is the
+/// usual way an element's own fields differ from their type's default.
 #[proc_macro_derive(Element, attributes(elem, default))]
 pub fn derive_element(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);

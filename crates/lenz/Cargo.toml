@@ -1,0 +1,13 @@
+[package]
+name = "lenz"
+description = "Type level field paths for a struct, and the cursor that walks them."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+lenz_macros = { workspace = true }
+
+[lints]
+workspace = true

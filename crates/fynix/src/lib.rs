@@ -20,7 +20,6 @@ mod elem;
 pub mod element;
 pub mod host;
 pub mod lanes;
-pub mod lenz;
 pub mod records;
 pub mod store;
 pub mod style;
@@ -29,6 +28,9 @@ pub mod ui;
 pub mod world_node;
 
 pub use crate::world_node::{WorldNodeMut, WorldNodeRef};
+/// Field paths - the [`lenz`] crate, re-exported so `fynix::lenz::…`
+/// keeps naming it.
+pub use ::lenz;
 
 /// Writes the `Default` an element starts from, before a style and then
 /// a call site have had their say.

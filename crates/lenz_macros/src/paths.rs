@@ -3,23 +3,16 @@ use quote::{format_ident, quote};
 use syn::DeriveInput;
 
 use crate::common::{
-    generics, lenz_path, named_fields, option_inner, snake_case,
+    generics, ignored, lenz_root, named_fields, option_inner,
+    snake_case,
 };
 
-/// Generates the field paths for `#[derive(Element)]`'s struct,
-/// skipping any field `keep` returns `false` for: a field marked
-/// `#[elem(ignore)]` gets no cursor, so nothing can name a path to it.
-///
-/// The standalone `#[derive(Lenz)]` lives in the `lenz` crate.
-pub fn expand_filtered(
-    ast: &DeriveInput,
-    keep: impl Fn(&syn::Field) -> bool,
-) -> syn::Result<TokenStream2> {
-    let lenz = lenz_path();
+pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
+    let lenz = lenz_root(&ast.attrs)?;
     let name = &ast.ident;
-    let fields: Vec<_> = named_fields(ast, "Lenz")?
+    let fields: Vec<_> = named_fields(ast)?
         .iter()
-        .filter(|field| keep(field))
+        .filter(|field| !ignored(field))
         .cloned()
         .collect();
 
