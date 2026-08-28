@@ -15,10 +15,10 @@ pub(crate) use drag::Dragging;
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
 use bevy_motiongfx::scene::id::EntityUid;
-use fynix_mock::composer::Composer;
 use fynix_mock::WorldNodeRef;
+use fynix_mock::composer::Composer;
 use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
 use moxie_ui::elements::{
@@ -306,7 +306,9 @@ impl Composer<BevyHost> for Subtree {
                     .bind(
                         |button| button.label().text(),
                         component_changed_on::<Name>(entity),
-                        move |WorldNodeRef { world, .. }| name_of(world, entity),
+                        move |WorldNodeRef { world, .. }| {
+                            name_of(world, entity)
+                        },
                     );
             },
             body: move |ui: &mut BevyUi| {

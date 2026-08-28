@@ -20,10 +20,10 @@ use crate::{
     EditorScene, EditorState, PIXELS_PER_SECOND, SelectedAction,
     time_axis,
 };
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
+use fynix_mock::WorldNodeRef;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
-use fynix_mock::WorldNodeRef;
 use fynix_mock::{elem, val};
 use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
@@ -139,7 +139,10 @@ impl Composer<BevyHost> for ControlBar {
             ui.elem(elem!(Label, text = "0.00s")).bind(
                 |label| label.text(),
                 resource_changed::<MotionGfxManager>(),
-                |WorldNodeRef { world, node: entity }| {
+                |WorldNodeRef {
+                     world,
+                     node: entity,
+                 }| {
                     format!(
                         "{:.2}s",
                         current_time(world, entity).as_secs_f32()

@@ -11,7 +11,7 @@ use bevy::picking::events::{DragDrop, Pointer};
 use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
 
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
 use fynix_mock::WorldNodeRef;
 use fynix_mock::{elem, val};
 use moxie_asset::ABSOLUTE_SOURCE;
@@ -48,7 +48,9 @@ impl<T: Asset + TypePath> Inspect for Handle<T> {
         .bind(
             |button| button.label().text(),
             when_changed(source),
-            move |WorldNodeRef { world, .. }| label_of::<T>(world, &*read),
+            move |WorldNodeRef { world, .. }| {
+                label_of::<T>(world, &*read)
+            },
         )
         .observe(
             move |drop: On<Pointer<DragDrop>>,

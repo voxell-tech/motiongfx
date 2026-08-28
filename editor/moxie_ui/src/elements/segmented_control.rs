@@ -6,7 +6,7 @@
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::EntityExt as _;
+use bevy_fynix::WorldEntityMut as _;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};

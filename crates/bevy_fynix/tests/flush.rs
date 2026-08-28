@@ -4,7 +4,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::prelude::*;
 use bevy_fynix::host::BevyHost;
-use bevy_fynix::{FynixPlugin, watch_root};
+use bevy_fynix::{FynixPlugin, WorldEntityRef as _, watch_root};
 use bevy_ui::Node;
 use fynix_mock::elem;
 use fynix_mock::element::{Element, ElementVisual};
@@ -119,8 +119,8 @@ fn binding_patches_the_node_it_built() {
     watch_root(app.world_mut(), root, |ui| {
         ui.elem(elem!(Label)).bind(
             |label| label.text(),
-            |world_node| world_node.world.resource::<Source>().changed,
-            |world_node| world_node.world.resource::<Source>().text.clone(),
+            |world_node| world_node.resource::<Source>().changed,
+            |world_node| world_node.resource::<Source>().text.clone(),
         );
     });
 

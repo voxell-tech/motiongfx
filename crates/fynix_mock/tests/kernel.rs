@@ -81,8 +81,8 @@ fn binding_writes_and_patches_one_field() {
         |ui| {
             ui.elem(elem!(Label)).bind(
                 |label| label.text(),
-                |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
-                |world_node: WorldNodeRef<Backend>| world_node.world.source.text.clone(),
+                |WorldNodeRef { world, .. }| world.source.changed,
+                |WorldNodeRef { world, .. }| world.source.text.clone(),
             );
         },
         &mut world,
@@ -115,8 +115,8 @@ fn binding_stays_quiet_until_its_predicate_fires() {
         |ui| {
             ui.elem(elem!(Label)).bind(
                 |label| label.text(),
-                |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
-                |world_node: WorldNodeRef<Backend>| world_node.world.source.text.clone(),
+                |WorldNodeRef { world, .. }| world.source.changed,
+                |WorldNodeRef { world, .. }| world.source.text.clone(),
             );
         },
         &mut world,
@@ -140,7 +140,7 @@ fn rebuild_replaces_the_children() {
     // set below.
     kernel.watch(
         root,
-        |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
+        |WorldNodeRef { world, .. }: WorldNodeRef<Backend>| world.source.changed,
         |ui| {
             ui.elem(elem!(Label));
         },
@@ -173,8 +173,8 @@ fn dead_node_is_not_patched() {
         |ui| {
             ui.elem(elem!(Label)).bind(
                 |label| label.text(),
-                |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
-                |world_node: WorldNodeRef<Backend>| world_node.world.source.text.clone(),
+                |WorldNodeRef { world, .. }| world.source.changed,
+                |WorldNodeRef { world, .. }| world.source.text.clone(),
             );
         },
         &mut world,
@@ -203,7 +203,7 @@ fn swept_node_takes_its_element_with_it() {
     // set below.
     kernel.watch(
         root,
-        |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
+        |WorldNodeRef { world, .. }: WorldNodeRef<Backend>| world.source.changed,
         |ui| {
             ui.elem(elem!(Label));
         },
@@ -269,8 +269,8 @@ fn dead_node_takes_its_bindings_with_it() {
         |ui| {
             ui.elem(elem!(Label)).bind(
                 |label| label.text(),
-                |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
-                |world_node: WorldNodeRef<Backend>| world_node.world.source.text.clone(),
+                |WorldNodeRef { world, .. }| world.source.changed,
+                |WorldNodeRef { world, .. }| world.source.text.clone(),
             );
         },
         &mut world,

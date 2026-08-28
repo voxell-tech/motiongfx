@@ -11,13 +11,14 @@ use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
 
 use bevy_app::prelude::*;
+use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::IntoObserverSystem;
 use fynix_mock::Fynix;
 use fynix_mock::element::Element;
 use fynix_mock::records::BuildFn;
 use fynix_mock::ui::{Build, ElementMut, Patch, Ui};
-use fynix_mock::world_node::WorldNodeMut;
+use fynix_mock::world_node::{WorldNodeMut, WorldNodeRef};
 
 use crate::host::BevyHost;
 
@@ -130,14 +131,27 @@ pub(crate) fn with_kernel<Theme: Send + Sync + 'static>(
     );
 }
 
-/// Entity-level operations on whichever node `Build`, `Patch`, or
-/// `ElementMut` currently holds, built on [`Self::id`] and
-/// [`Self::world_mut`] plus whatever `bevy_ecs` offers on top.
-pub trait EntityExt {
+/// Read-only node context: the node's handle and the world it lives
+/// in, plus shorthands built on the two. Implemented by everything
+/// that carries a `(world, node)` pair, `WorldNodeRef` included.
+pub trait WorldEntityRef {
     /// This node's own handle.
     fn id(&self) -> Entity;
 
     /// The world this node lives in.
+    fn world(&self) -> &World;
+
+    /// The world's `R`. Panics if it is absent.
+    fn resource<R: Resource>(&self) -> &R {
+        self.world().resource::<R>()
+    }
+}
+
+/// Entity-level operations on whichever node `Build`, `Patch`, or
+/// `ElementMut` currently holds, built on [`EntityRef::id`] and
+/// [`Self::world_mut`] plus whatever `bevy_ecs` offers on top.
+pub trait WorldEntityMut: WorldEntityRef {
+    /// The world this node lives in, mutably.
     fn world_mut(&mut self) -> &mut World;
 
     /// This node itself, for whatever `bevy_ecs` offers with no
@@ -182,9 +196,16 @@ pub trait EntityExt {
         self.entity_mut().observe(observer);
         self
     }
+
+    /// The world's `R`, mutably. Panics if it is absent.
+    fn resource_mut<R: Resource<Mutability = Mutable>>(
+        &mut self,
+    ) -> Mut<'_, R> {
+        self.world_mut().resource_mut::<R>()
+    }
 }
 
-impl<E, T> EntityExt for ElementMut<'_, '_, BevyHost<T>, E>
+impl<E, T> WorldEntityRef for ElementMut<'_, '_, BevyHost<T>, E>
 where
     T: Send + Sync + 'static,
     E: Element<BevyHost<T>>,
@@ -193,12 +214,22 @@ where
         ElementMut::id(self)
     }
 
+    fn world(&self) -> &World {
+        self.ui.world
+    }
+}
+
+impl<E, T> WorldEntityMut for ElementMut<'_, '_, BevyHost<T>, E>
+where
+    T: Send + Sync + 'static,
+    E: Element<BevyHost<T>>,
+{
     fn world_mut(&mut self) -> &mut World {
         self.ui.world
     }
 }
 
-impl<E, T> EntityExt for Build<'_, BevyHost<T>, E>
+impl<E, T> WorldEntityRef for Build<'_, BevyHost<T>, E>
 where
     E: Element<BevyHost<T>>,
     T: Send + Sync + 'static,
@@ -207,12 +238,22 @@ where
         Build::id(self)
     }
 
+    fn world(&self) -> &World {
+        self.world
+    }
+}
+
+impl<E, T> WorldEntityMut for Build<'_, BevyHost<T>, E>
+where
+    E: Element<BevyHost<T>>,
+    T: Send + Sync + 'static,
+{
     fn world_mut(&mut self) -> &mut World {
         self.world
     }
 }
 
-impl<T> EntityExt for Patch<'_, BevyHost<T>>
+impl<T> WorldEntityRef for Patch<'_, BevyHost<T>>
 where
     T: Send + Sync + 'static,
 {
@@ -220,7 +261,31 @@ where
         Patch::id(self)
     }
 
+    fn world(&self) -> &World {
+        self.world
+    }
+}
+
+impl<T> WorldEntityMut for Patch<'_, BevyHost<T>>
+where
+    T: Send + Sync + 'static,
+{
     fn world_mut(&mut self) -> &mut World {
+        self.world
+    }
+}
+
+/// So a predicate or value reader handed a [`WorldNodeRef`] can reach
+/// a resource with `world_node.resource::<R>()`.
+impl<T> WorldEntityRef for WorldNodeRef<'_, BevyHost<T>>
+where
+    T: Send + Sync + 'static,
+{
+    fn id(&self) -> Entity {
+        self.node
+    }
+
+    fn world(&self) -> &World {
         self.world
     }
 }
@@ -229,7 +294,7 @@ where
 /// reach one child) can take a [`WorldNodeMut`] and use the same
 /// entity shorthands `Build` and `Patch` offer, rather than a manual
 /// `world.entity_mut(node)`.
-impl<T> EntityExt for WorldNodeMut<'_, BevyHost<T>>
+impl<T> WorldEntityRef for WorldNodeMut<'_, BevyHost<T>>
 where
     T: Send + Sync + 'static,
 {
@@ -237,6 +302,15 @@ where
         self.node
     }
 
+    fn world(&self) -> &World {
+        self.world
+    }
+}
+
+impl<T> WorldEntityMut for WorldNodeMut<'_, BevyHost<T>>
+where
+    T: Send + Sync + 'static,
+{
     fn world_mut(&mut self) -> &mut World {
         self.world
     }

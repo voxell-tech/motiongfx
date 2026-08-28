@@ -12,9 +12,9 @@
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
+use bevy_fynix::WorldEntityMut;
 use fynix_mock::WorldNodeRef;
+use fynix_mock::composer::Composer;
 use fynix_mock::records::BuildFn;
 use fynix_mock::style::StyledElem;
 use fynix_mock::ui::{ElementHandle, ElementMut};

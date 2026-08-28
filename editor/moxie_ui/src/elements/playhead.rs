@@ -1,6 +1,6 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::EntityExt as _;
+use bevy_fynix::WorldEntityMut as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -41,12 +41,11 @@ impl ElementVisual<BevyHost> for PlayheadLine {
         patch: &mut Patch<BevyHost>,
         field: PlayheadLineField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
             PlayheadLineField::Left => {
-                if let Some(mut node) = world.get_mut::<Node>(node) {
+                if let Some(mut node) =
+                    patch.entity_mut().get_mut::<Node>()
+                {
                     node.left = px(self.left);
                 }
             }

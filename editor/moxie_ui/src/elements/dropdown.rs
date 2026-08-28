@@ -17,7 +17,7 @@ use bevy::ui_widgets::{
     ActivateOnPress, Button as ButtonBehavior, MenuButton, MenuItem,
 };
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -33,11 +33,8 @@ pub struct DropdownMenu;
 
 impl ElementVisual<BevyHost> for DropdownMenu {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
         if let Err(err) =
-            world.entity_mut(node).apply_scene(bsn! { @FeathersMenu })
+            build.entity_mut().apply_scene(bsn! { @FeathersMenu })
         {
             error!("failed to build a dropdown: {err}");
         }
@@ -185,7 +182,7 @@ impl DropdownList {
     /// Only the width and the corners. The rest of the node belongs to
     /// the popup scene, and writing it whole would undo the placement
     /// that came with it.
-    fn size(&self, entity: &mut impl EntityExt) {
+    fn size(&self, entity: &mut impl WorldEntityMut) {
         if let Some(mut layout) =
             entity.entity_mut().get_mut::<Node>()
         {
@@ -197,11 +194,8 @@ impl DropdownList {
 
 impl ElementVisual<BevyHost> for DropdownList {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-
         if let Err(err) = build
-            .world
-            .entity_mut(node)
+            .entity_mut()
             .apply_scene(bsn! { @FeathersMenuPopup })
         {
             error!("failed to build a dropdown list: {err}");

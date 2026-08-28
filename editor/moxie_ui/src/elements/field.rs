@@ -13,7 +13,7 @@ use bevy::text::EditableText;
 use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 
@@ -33,7 +33,7 @@ pub struct CheckBox {
 struct CheckMark;
 
 impl CheckBox {
-    fn tick(&self, entity: &mut impl EntityExt) {
+    fn tick(&self, entity: &mut impl WorldEntityMut) {
         if self.checked {
             entity.insert(Checked);
         } else {
@@ -55,7 +55,7 @@ impl CheckBox {
         }
     }
 
-    fn paint(&self, entity: &mut impl EntityExt) {
+    fn paint(&self, entity: &mut impl WorldEntityMut) {
         let node = entity.id();
         let world = entity.world_mut();
 
@@ -142,8 +142,7 @@ pub struct NumberField {
 impl NumberField {
     /// Feathers builds the input as a scene of its own: a container,
     /// the two steppers, and the text in between.
-    fn scene(&self, entity: &mut impl EntityExt) {
-        let node = entity.id();
+    fn scene(&self, entity: &mut impl WorldEntityMut) {
         let format = self.format;
         let scene = bsn! {
             @FeathersNumberInput { @number_format: {format} }
@@ -157,7 +156,7 @@ impl NumberField {
         // container carries the row's height, padding and rim, and an
         // input without them has nothing to type into.
         if let Some(mut layout) =
-            entity.world_mut().get_mut::<Node>(node)
+            entity.entity_mut().get_mut::<Node>()
         {
             layout.width = self.width;
             layout.flex_grow = 0.0;
@@ -187,7 +186,7 @@ impl ElementVisual<BevyHost> for NumberField {
             }
             NumberFieldField::Width => {
                 if let Some(mut layout) =
-                    patch.world.get_mut::<Node>(node)
+                    patch.entity_mut().get_mut::<Node>()
                 {
                     layout.width = self.width;
                 }
@@ -208,8 +207,7 @@ impl TextField {
     /// Feathers wants its own child entity for the editable text -
     /// see the type's own docs - so this node is the container, and
     /// the widget beneath it what actually holds [`EditableText`].
-    fn scene(&self, entity: &mut impl EntityExt) {
-        let node = entity.id();
+    fn scene(&self, entity: &mut impl WorldEntityMut) {
         let scene = bsn! {
             @FeathersTextInputContainer
             Children [
@@ -222,7 +220,7 @@ impl TextField {
         }
 
         if let Some(mut layout) =
-            entity.world_mut().get_mut::<Node>(node)
+            entity.entity_mut().get_mut::<Node>()
         {
             layout.width = self.width;
             layout.flex_grow = 0.0;
@@ -242,7 +240,7 @@ impl TextField {
     }
 
     /// Writes `self.value` into the child [`EditableText`].
-    fn show(&self, entity: &mut impl EntityExt) {
+    fn show(&self, entity: &mut impl WorldEntityMut) {
         let node = entity.id();
         let world = entity.world_mut();
         let Some(text_input) = Self::text_input(world, node) else {
@@ -282,9 +280,8 @@ impl ElementVisual<BevyHost> for TextField {
         match field {
             TextFieldField::Value => self.show(patch),
             TextFieldField::Width => {
-                let node = patch.id();
                 if let Some(mut layout) =
-                    patch.world.get_mut::<Node>(node)
+                    patch.entity_mut().get_mut::<Node>()
                 {
                     layout.width = self.width;
                 }

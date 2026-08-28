@@ -19,9 +19,9 @@ use crate::{
     ProjectPath, SelectedAction, SelectedEntity, playback, scene,
     view,
 };
-use bevy_fynix::EntityExt;
-use fynix_mock::elem;
+use bevy_fynix::WorldEntityMut;
 use fynix_mock::WorldNodeRef;
+use fynix_mock::elem;
 use moxie_ui::elements::{Frame, FrameCursor, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{
