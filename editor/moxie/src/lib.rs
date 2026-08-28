@@ -107,12 +107,6 @@ impl Default for TimelineView {
 }
 
 impl TimelineView {
-    /// The horizontal zoom.
-    #[inline]
-    pub(crate) fn px_per_second(&self) -> f32 {
-        self.px_per_second
-    }
-
     /// Horizontal pixel offset for a point `t` into the timeline.
     #[inline]
     pub(crate) fn x_from_time(&self, t: Duration) -> f32 {
@@ -127,14 +121,29 @@ impl TimelineView {
         Duration::from_secs_f32(secs)
     }
 
-    /// Scale the zoom about the timeline's left edge, saturating at
-    /// the ends of the range.
-    pub(crate) fn zoom_by(&mut self, factor: f32) {
+    /// Scale the zoom by `factor` and leave `anchor_time` sitting at
+    /// `anchor_x`, saturating at the ends of the range.
+    pub(crate) fn zoom_to(
+        &mut self,
+        anchor_x: f32,
+        anchor_time: Duration,
+        factor: f32,
+    ) {
         if !(factor.is_finite() && factor > 0.0) {
             return;
         }
         self.px_per_second = (self.px_per_second * factor)
             .clamp(MIN_PX_PER_SECOND, MAX_PX_PER_SECOND);
+        self.offset = (anchor_time.as_secs_f32()
+            - anchor_x / self.px_per_second)
+            .max(0.0);
+    }
+
+    /// Slide the view `delta_x` pixels along the timeline, stopping at
+    /// the start.
+    pub(crate) fn pan_by(&mut self, delta_x: f32) {
+        self.offset =
+            (self.offset - delta_x / self.px_per_second).max(0.0);
     }
 }
 

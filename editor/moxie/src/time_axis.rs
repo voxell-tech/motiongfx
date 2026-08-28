@@ -1,10 +1,14 @@
+use core::time::Duration;
+
+use crate::TimelineView;
+
 const MIN_TICK_PX: f32 = 10.0;
 /// Minimum spacing between labelled ticks.
 const MIN_LABEL_PX: f32 = 48.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Tick {
-    /// Pixels from the start of the timeline.
+    /// Pixels from the left edge of the view.
     pub(crate) x: f32,
     pub(crate) label: Option<String>,
 }
@@ -44,17 +48,17 @@ fn label(ms: i64, major_ms: i64) -> String {
     format!("{secs:.decimals$}")
 }
 
-/// Every mark covering `from_px..to_px` in timeline viewport in order.
-pub(crate) fn ticks(
-    px_per_second: f32,
-    from_px: f32,
-    to_px: f32,
-) -> Vec<Tick> {
+/// Every mark visible across a timeline `width` px wide in order.
+pub(crate) fn ticks(view: &TimelineView, width: f32) -> Vec<Tick> {
+    let px_per_second = view.px_per_second;
     // A zero scale has no marks to give.
     if !(px_per_second.is_finite() && px_per_second > 0.0) {
         return Vec::new();
     }
     let px_per_ms = px_per_second / 1000.0;
+    // Absolute pixels from t = 0 that the view's two edges land on.
+    let from_px = view.offset * px_per_second;
+    let to_px = from_px + width;
 
     let minor_ms = tick_step(px_per_second, MIN_TICK_PX);
     let major_ms = tick_step(px_per_second, MIN_LABEL_PX);
@@ -71,7 +75,7 @@ pub(crate) fn ticks(
         .map(|tick_index| {
             let ms = tick_index * minor_ms;
             Tick {
-                x: ms as f32 * px_per_ms,
+                x: view.x_from_time(Duration::from_millis(ms as u64)),
                 label: (tick_index.rem_euclid(ticks_per_label) == 0)
                     .then(|| label(ms, major_ms)),
             }
@@ -93,6 +97,14 @@ mod tests {
         (5_000.0, 10),
         (20_000.0, 5),
     ];
+
+    /// A view at `px_per_second`, parked `offset` seconds in.
+    fn view(px_per_second: f32, offset: f32) -> TimelineView {
+        TimelineView {
+            px_per_second,
+            offset,
+        }
+    }
 
     /// Adjacent labels should always display different values.
     #[test]
@@ -123,7 +135,7 @@ mod tests {
     #[test]
     fn marks_span_the_range_and_label_every_nth() {
         for (scale, _) in SCALES {
-            let marks = ticks(scale, 0.0, 800.0);
+            let marks = ticks(&view(scale, 0.0), 800.0);
             assert!(!marks.is_empty(), "no marks at {scale}");
 
             // Zero is always the first mark, and always labelled.
@@ -157,6 +169,28 @@ mod tests {
                     "scale {scale} labels are uneven: {labelled:?}"
                 );
             }
+        }
+    }
+
+    /// A panned view is covered edge to edge, same as an unpanned one.
+    #[test]
+    fn marks_cover_a_panned_view() {
+        let width = 800.0;
+        for (scale, _) in SCALES {
+            // Two screens in, so the pan bites at every scale rather
+            // than washing out against the clamp at the coarse end.
+            let offset = 2.0 * width / scale;
+            let marks = ticks(&view(scale, offset), width);
+            assert!(!marks.is_empty(), "no marks at {scale}");
+
+            assert!(
+                marks.first().unwrap().x <= 0.0,
+                "scale {scale} starts inside the view"
+            );
+            assert!(
+                marks.last().unwrap().x >= width,
+                "scale {scale} stops short"
+            );
         }
     }
 }

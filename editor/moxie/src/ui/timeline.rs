@@ -42,7 +42,7 @@ const LABEL_SIZE: f32 = 10.0;
 
 /// Viewport where the timeline, track and action UI is displayed.
 #[derive(Component, Default, Clone)]
-struct TrackViewport;
+pub(crate) struct TrackViewport;
 
 /// The timeline panel, as kernel nodes.
 ///
@@ -175,8 +175,7 @@ fn axis_view(world: &World, node: Entity) -> (u32, TimelineView) {
 fn build_ticks(ui: &mut BevyUi) {
     let (width, view) = axis_view(ui.world, ui.parent());
     let color = ui.theme.text_muted;
-    let marks =
-        time_axis::ticks(view.px_per_second(), 0.0, width as f32);
+    let marks = time_axis::ticks(&view, width as f32);
 
     for tick in marks {
         let major = tick.label.is_some();

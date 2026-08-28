@@ -90,14 +90,12 @@ pub(crate) fn track_first_timeline(
 #[derive(Component)]
 pub(crate) struct Scrubbing;
 
-/// Time under `cursor`, clamped to the track's duration.
-fn time_at_cursor(
+/// Pixels from the node's left edge to `cursor`.
+pub(crate) fn x_from_cursor(
     cursor: Vec2,
     computed: &ComputedNode,
     transform: &UiGlobalTransform,
-    duration: Duration,
-    view: &TimelineView,
-) -> Duration {
+) -> f32 {
     let inv = computed.inverse_scale_factor();
     let (_scale, _angle, center) =
         transform.to_scale_angle_translation();
@@ -105,7 +103,7 @@ fn time_at_cursor(
         center.trunc() * inv,
         computed.size() * inv,
     );
-    view.time_from_x(cursor.x - rect.min.x).min(duration)
+    cursor.x - rect.min.x
 }
 
 /// Move the timeline to `time` and stop playback so the scrub isn't
@@ -153,13 +151,9 @@ pub(crate) fn on_track_press(
     commands.entity(track).insert(Scrubbing);
 
     let cursor = press.pointer_location.position / ui_scale.0;
-    let time = time_at_cursor(
-        cursor,
-        computed,
-        transform,
-        state.duration,
-        &view,
-    );
+    let time = view
+        .time_from_x(x_from_cursor(cursor, computed, transform))
+        .min(state.duration);
     scrub_to(time, &state, &mut manager, &mut q_players);
 }
 
@@ -183,13 +177,9 @@ pub(crate) fn on_track_drag(
     drag.propagate(false);
 
     let cursor = drag.pointer_location.position / ui_scale.0;
-    let time = time_at_cursor(
-        cursor,
-        computed,
-        transform,
-        state.duration,
-        &view,
-    );
+    let time = view
+        .time_from_x(x_from_cursor(cursor, computed, transform))
+        .min(state.duration);
     scrub_to(time, &state, &mut manager, &mut q_players);
 }
 

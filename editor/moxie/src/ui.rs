@@ -3,7 +3,7 @@ mod assets;
 mod hierarchy;
 mod inspector;
 mod settings;
-mod timeline;
+pub(crate) mod timeline;
 mod top_bar;
 
 use bevy::camera::Hdr;
