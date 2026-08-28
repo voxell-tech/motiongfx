@@ -5,12 +5,12 @@
 mod common;
 
 use common::{Backend, Interact, Label, LabelCursor, TestAim, World};
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::host::Host;
-use fynix_mock::style::Style;
-use fynix_mock::transition::Transition;
-use fynix_mock::ui::{Build, Patch};
-use fynix_mock::{Fynix, WorldNodeRef, elem};
+use fynix::element::{Element, ElementVisual};
+use fynix::host::Host;
+use fynix::style::Style;
+use fynix::transition::Transition;
+use fynix::ui::{Build, Patch};
+use fynix::{Fynix, WorldNodeRef, elem};
 use motiongfx_interp::ease;
 use motiongfx_interp::interpolation::Interpolation;
 

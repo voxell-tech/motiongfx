@@ -3,7 +3,7 @@
 //! Nothing here is an element: the derive is about a struct's starting
 //! state, and knows nothing of UI.
 
-use fynix_mock::OverrideDefault;
+use fynix::OverrideDefault;
 
 /// A plain `Default`, to override fields of.
 #[derive(Debug, Default, PartialEq)]

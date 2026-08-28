@@ -1,4 +1,4 @@
-//! Bevy backend for [`fynix_mock`].
+//! Bevy backend for [`fynix`].
 //!
 //! The seam, and nothing else: nodes are entities, the world is
 //! [`World`], and the kernel is a resource flushed once a frame.
@@ -14,11 +14,11 @@ use bevy_app::prelude::*;
 use bevy_ecs::component::Mutable;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::IntoObserverSystem;
-use fynix_mock::Fynix;
-use fynix_mock::element::Element;
-use fynix_mock::records::BuildFn;
-use fynix_mock::ui::{Build, ElementMut, Patch, Ui};
-use fynix_mock::world_node::{WorldNodeMut, WorldNodeRef};
+use fynix::Fynix;
+use fynix::element::Element;
+use fynix::records::BuildFn;
+use fynix::ui::{Build, ElementMut, Patch, Ui};
+use fynix::world_node::{WorldNodeMut, WorldNodeRef};
 
 use crate::host::BevyHost;
 

@@ -13,8 +13,8 @@ use std::fmt::Write as _;
 
 use bevy::prelude::*;
 
-use fynix_mock::WorldNodeRef;
-use fynix_mock::elem;
+use fynix::WorldNodeRef;
+use fynix::elem;
 
 use super::area::ActiveDockWindow;
 

@@ -17,7 +17,7 @@ use super::registry::WindowRegistry;
 use super::tree::DockTree;
 use crate::layout::logical_rect;
 use bevy_fynix::WorldEntityMut;
-use fynix_mock::{elem, val};
+use fynix::{elem, val};
 
 use crate::elements::{Frame, GhostButton, Icon, Label, Overlay};
 use crate::icons;

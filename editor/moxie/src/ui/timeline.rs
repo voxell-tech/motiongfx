@@ -21,10 +21,10 @@ use crate::{
     time_axis,
 };
 use bevy_fynix::WorldEntityMut;
-use fynix_mock::WorldNodeRef;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
-use fynix_mock::{elem, val};
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::ui::ElementHandle;
+use fynix::{elem, val};
 use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, Icon, IconCursor, Label,
     LabelCursor, Panel, PlayheadLine, PlayheadLineCursor, ScrollArea,

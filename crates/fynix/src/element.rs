@@ -14,7 +14,7 @@ use crate::ui::{Build, Patch};
 
 // Same name as the trait, in the macro namespace, the way `Default`
 // and `Clone` do it.
-pub use fynix_mock_macros::Element;
+pub use fynix_macros::Element;
 
 /// An element and the `#[elem(child)]` children beneath it.
 ///

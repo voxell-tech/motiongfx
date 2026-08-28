@@ -7,10 +7,10 @@ use core::marker::PhantomData;
 use std::sync::Arc;
 
 use bevy_ecs::prelude::*;
-use fynix_mock::Fynix;
-use fynix_mock::element::Element;
-use fynix_mock::lenz::{Cursor, FieldPath, Identity};
-use fynix_mock::ui::{Build, ElementMut};
+use fynix::Fynix;
+use fynix::element::Element;
+use fynix::lenz::{Cursor, FieldPath, Identity};
+use fynix::ui::{Build, ElementMut};
 
 use crate::host::BevyHost;
 use crate::with_kernel;

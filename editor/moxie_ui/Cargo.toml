@@ -8,7 +8,7 @@ repository.workspace = true
 
 [dependencies]
 bevy_fynix = { workspace = true }
-fynix_mock = { workspace = true }
+fynix = { workspace = true }
 motiongfx_interp = { workspace = true }
 moxie_asset = { workspace = true }
 bevy = { workspace = true, default-features = true, features = [

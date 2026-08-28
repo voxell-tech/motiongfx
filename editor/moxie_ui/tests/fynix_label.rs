@@ -6,7 +6,7 @@ use bevy::prelude::{
     Children, Entity, Node, Resource, Text, TextFont, World,
 };
 use bevy_fynix::WorldEntityRef as _;
-use fynix_mock::elem;
+use fynix::elem;
 use moxie_ui::elements::{Label, LabelCursor};
 use moxie_ui::reactive::{FynixPlugin, watch_root};
 

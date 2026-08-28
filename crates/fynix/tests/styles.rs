@@ -9,12 +9,12 @@ use core::marker::PhantomData;
 mod common;
 
 use common::{Backend, Label, World};
-use fynix_mock::Fynix;
-use fynix_mock::element::Element;
-use fynix_mock::host::Host;
-use fynix_mock::records::Records;
-use fynix_mock::style::{Raw, Style, StyledElem};
-use fynix_mock::{elem, val};
+use fynix::Fynix;
+use fynix::element::Element;
+use fynix::host::Host;
+use fynix::records::Records;
+use fynix::style::{Raw, Style, StyledElem};
+use fynix::{elem, val};
 
 /// What the cascade produced, for a test that only wants the value.
 /// `create` says nothing about a backend, but the type it is called on

@@ -2,7 +2,7 @@
 //! `Option`.
 
 mod icon {
-    use fynix_mock::lenz::Lenz;
+    use fynix::lenz::Lenz;
 
     #[derive(Lenz)]
     pub struct Icon {
@@ -11,7 +11,7 @@ mod icon {
 }
 
 mod badge {
-    use fynix_mock::lenz::Lenz;
+    use fynix::lenz::Lenz;
 
     use crate::icon::Icon;
 
@@ -23,7 +23,7 @@ mod badge {
 }
 
 mod header {
-    use fynix_mock::lenz::Lenz;
+    use fynix::lenz::Lenz;
 
     use crate::badge::Badge;
 
@@ -34,7 +34,7 @@ mod header {
 }
 
 mod card {
-    use fynix_mock::lenz::Lenz;
+    use fynix::lenz::Lenz;
 
     use crate::header::Header;
 

@@ -1,4 +1,4 @@
-//! Derive macros for `fynix_mock`.
+//! Derive macros for `fynix`.
 
 mod common;
 mod element;

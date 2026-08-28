@@ -13,11 +13,11 @@ use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
 use bevy_fynix::WorldEntityMut;
-use fynix_mock::WorldNodeRef;
-use fynix_mock::composer::Composer;
-use fynix_mock::records::BuildFn;
-use fynix_mock::ui::{ElementHandle, ElementMut};
-use fynix_mock::{elem, val};
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::records::BuildFn;
+use fynix::ui::{ElementHandle, ElementMut};
+use fynix::{elem, val};
 
 use super::{Field, FieldRow, ReflectInspect, enums};
 use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};

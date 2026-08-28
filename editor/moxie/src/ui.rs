@@ -20,8 +20,8 @@ use crate::{
     view,
 };
 use bevy_fynix::WorldEntityMut;
-use fynix_mock::WorldNodeRef;
-use fynix_mock::elem;
+use fynix::WorldNodeRef;
+use fynix::elem;
 use moxie_ui::elements::{Frame, FrameCursor, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{

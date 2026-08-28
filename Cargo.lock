@@ -943,7 +943,7 @@ dependencies = [
  "bevy_picking",
  "bevy_time",
  "bevy_ui",
- "fynix_mock",
+ "fynix",
 ]
 
 [[package]]
@@ -3034,17 +3034,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "fynix_mock"
+name = "fynix"
 version = "0.3.0"
 dependencies = [
- "fynix_mock_macros",
+ "fynix_macros",
  "hashbrown 0.17.1",
  "motiongfx_interp",
  "typarena",
 ]
 
 [[package]]
-name = "fynix_mock_macros"
+name = "fynix_macros"
 version = "0.3.0"
 dependencies = [
  "proc-macro-crate",
@@ -3957,7 +3957,7 @@ dependencies = [
  "bevy",
  "bevy_fynix",
  "bevy_motiongfx",
- "fynix_mock",
+ "fynix",
  "motiongfx_scene",
  "moxie_asset",
  "moxie_ui",
@@ -3981,7 +3981,7 @@ version = "0.3.0"
 dependencies = [
  "bevy",
  "bevy_fynix",
- "fynix_mock",
+ "fynix",
  "motiongfx_interp",
  "moxie_asset",
 ]
