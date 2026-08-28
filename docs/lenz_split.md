@@ -86,7 +86,7 @@ depends on `lenz` directly, and gets the `crate_name("lenz")` default.
 
 ## Steps
 
-Done:
+All done:
 
 - [x] `lenz` crate - the field-path types, moved out of
       `fynix/src/lenz.rs`. `fynix` re-exports it with `pub use ::lenz`,
@@ -94,14 +94,14 @@ Done:
 - [x] `lenz_macros` crate - the `Lenz` derive, with `#[lenz(ignore)]`
       on a field and `#[lenz(crate = <path>)]` on the struct. Vendors
       the syn/quote helpers it needs rather than sharing a crate.
-- [x] `#[derive(Element)]` unchanged - `fynix_macros` keeps its own
-      copy of the lenz path codegen (`lenz::expand_filtered`) and
-      emits paths to `::fynix::lenz`, which now resolves through the
-      re-export.
-
-Deferred:
-
-- [ ] Rewrite `#[derive(Element)]` as the `#[element]` attribute
-      macro, so it emits `#[derive(fynix::Lenz)] #[lenz(crate = ...)]`
-      instead of carrying its own copy of the lenz codegen. Touches
-      every `#[derive(Element)]` site (~40 files).
+- [x] `#[derive(Element)]` is now the `#[element]` attribute macro. It
+      re-emits the struct with `#[derive(fynix::lenz::Lenz,
+      fynix::OverrideDefault)] #[lenz(crate = ::fynix::lenz)]`,
+      translating `#[elem(child)]` (dropped) and `#[elem(ignore)]`
+      (`#[lenz(ignore)]`), then hand-writes the dispatch enum,
+      `Fields`, and `Element`. `fynix_macros` carries no lenz path
+      codegen - `fynix_macros/src/lenz.rs` is gone.
+- [x] ~48 `#[derive(Element)]` sites swept to `#[element]`; element
+      files import `element` from `fynix::element` and drop the unused
+      `Element` trait import (test files that call `Element::build`
+      directly keep it).

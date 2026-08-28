@@ -1,12 +1,12 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 /// The sized, optionally filled container almost every other widget's
 /// root node turns out to be.
-#[derive(Element)]
+#[element]
 pub struct Frame {
     pub width: Val,
     pub height: Val,

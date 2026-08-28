@@ -2,12 +2,12 @@ use crate::reactive::BevyHost;
 use bevy::picking::Pickable;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 /// A node the size of the window, for something that positions itself
 /// against the window rather than against a parent.
-#[derive(Element)]
+#[element]
 pub struct Overlay {
     /// Whether the pointer sees it. Off unless it is there to catch
     /// something: seen, it is the target of every press, and a press

@@ -9,14 +9,12 @@ use syn::{
     PathArguments, Type, WhereClause,
 };
 
-/// A struct's generics, in the pieces the derives splice.
-pub struct Generics<'a> {
+/// A struct's generics, in the pieces the derive splices.
+pub struct Generics {
     /// The parameters with their bounds: `S: Look, T`. Empty when the
     /// struct has none, and safe to follow a parameter of our own, as
     /// `impl<P, #decl>`.
     pub decl: TokenStream2,
-    /// Just the names: `S, T`.
-    pub idents: Vec<&'a Ident>,
     /// The arguments as written on the type: `<S, T>`, or nothing.
     pub ty: TokenStream2,
     /// The struct's own `where`, plus `'static` for every parameter.
@@ -30,7 +28,7 @@ pub struct Generics<'a> {
 }
 
 /// Reads a struct's generics, rejecting what a path cannot carry.
-pub fn generics(ast: &DeriveInput) -> syn::Result<Generics<'_>> {
+pub fn generics(ast: &DeriveInput) -> syn::Result<Generics> {
     let mut idents = Vec::new();
 
     for param in &ast.generics.params {
@@ -76,7 +74,6 @@ pub fn generics(ast: &DeriveInput) -> syn::Result<Generics<'_>> {
 
     Ok(Generics {
         decl,
-        idents,
         ty,
         where_clause,
         predicates,
@@ -148,7 +145,7 @@ pub fn option_inner(ty: &Type) -> Option<&Type> {
     })
 }
 
-/// The path to `fynix::lenz`, following a renamed dependency.
+/// The path to the `fynix` crate, following a renamed dependency.
 ///
 /// `Itself` maps to the absolute path rather than `crate`, which
 /// would mean the test crate for an integration test in our own
@@ -161,11 +158,6 @@ pub fn crate_path() -> TokenStream2 {
         }
         Ok(FoundCrate::Itself) | Err(_) => quote!(::fynix),
     }
-}
-
-pub fn lenz_path() -> TokenStream2 {
-    let root = crate_path();
-    quote!(#root::lenz)
 }
 
 pub fn pascal_case(ident: &Ident) -> String {

@@ -2,7 +2,7 @@
 //!
 //! [`ElementVisual`] is the half you write. It only sees the fields
 //! this element draws itself. [`Element`] is the half
-//! `#[derive(Element)]` writes. It owns the `#[elem(child)]`
+//! `#[element]` writes. It owns the `#[elem(child)]`
 //! children, builds them first, and walks down to them when a change
 //! names one.
 
@@ -12,13 +12,13 @@ use crate::records::Records;
 use crate::store::Store;
 use crate::ui::{Build, Patch};
 
-// Same name as the trait, in the macro namespace, the way `Default`
-// and `Clone` do it.
-pub use fynix_macros::Element;
+/// Marks a struct as an element. See
+/// [`fynix_macros::element`](macro@fynix_macros::element).
+pub use fynix_macros::element;
 
 /// An element and the `#[elem(child)]` children beneath it.
 ///
-/// Written by `#[derive(Element)]`, once per backend.
+/// Written by `#[element]`, once per backend.
 pub trait Element<H: Host>: ElementVisual<H> + Default {
     /// Build this element under `parent`, children and all.
     ///

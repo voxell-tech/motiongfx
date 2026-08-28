@@ -4,7 +4,7 @@
 mod common;
 
 use common::{Label, LabelCursor, World};
-use fynix::element::{Element, ElementVisual, Fields};
+use fynix::element::{Element, ElementVisual, Fields, element};
 use fynix::records::Records;
 use fynix::ui::{Build, Patch};
 
@@ -25,7 +25,7 @@ impl Look for Dark {
     }
 }
 
-#[derive(Element)]
+#[element]
 pub struct Themed<L: Look> {
     #[elem(child)]
     pub label: Label,

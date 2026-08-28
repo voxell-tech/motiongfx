@@ -4,13 +4,13 @@ use bevy::prelude::*;
 use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 const DIVIDER_WIDTH: f32 = 6.0;
 
 /// The draggable line between two panes.
-#[derive(Element)]
+#[element]
 pub struct Divider {
     #[default(px(DIVIDER_WIDTH))]
     pub thickness: Val,

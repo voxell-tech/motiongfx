@@ -7,7 +7,7 @@ use bevy_fynix::host::BevyHost;
 use bevy_fynix::{FynixPlugin, WorldEntityRef as _, watch_root};
 use bevy_ui::Node;
 use fynix::elem;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 /// Nothing in these tests reads a theme - a host still needs one.
@@ -21,7 +21,7 @@ type Host = BevyHost<NoTheme>;
 #[derive(Component, Debug, PartialEq)]
 struct Caption(String);
 
-#[derive(Element)]
+#[element]
 pub struct Label {
     #[default(String::from("Label"))]
     pub text: String,

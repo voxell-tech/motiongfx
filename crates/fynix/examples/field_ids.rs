@@ -6,17 +6,17 @@
 //!
 //! Run with `cargo run -p fynix --example field_ids`.
 
-use fynix::element::{Element, Fields};
+use fynix::element::{Fields, element};
 use fynix::lenz::FieldId;
 
-#[derive(Element)]
+#[element]
 pub struct Label {
     pub text: String,
     pub size: u32,
 }
 
 /// Two children of the same type, side by side.
-#[derive(Element)]
+#[element]
 pub struct Pair {
     #[elem(child)]
     pub top: Label,
@@ -26,7 +26,7 @@ pub struct Pair {
 }
 
 /// A different struct, with a field of the same name and type.
-#[derive(Element)]
+#[element]
 pub struct Stack {
     #[elem(child)]
     pub top: Label,
@@ -34,13 +34,13 @@ pub struct Stack {
 }
 
 /// Reached through two owners, to walk the same `Label` twice over.
-#[derive(Element)]
+#[element]
 pub struct Card {
     #[elem(child)]
     pub header: Label,
 }
 
-#[derive(Element)]
+#[element]
 pub struct Panel {
     #[elem(child)]
     pub header: Label,
@@ -58,7 +58,7 @@ impl Look for Dark {}
 impl Look for Light {}
 
 /// Generic, so its paths differ per argument.
-#[derive(Element)]
+#[element]
 pub struct Themed<L: Look> {
     #[elem(child)]
     pub label: Label,

@@ -18,7 +18,7 @@ use bevy::ui_widgets::{
 };
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 use super::{Icon, Label};
@@ -28,7 +28,7 @@ use super::{Icon, Label};
 /// Carries the observer that opens and closes the list, found by
 /// looking through this node's children. Both must be built
 /// underneath it, in either order.
-#[derive(Element)]
+#[element]
 pub struct DropdownMenu;
 
 impl ElementVisual<BevyHost> for DropdownMenu {
@@ -50,7 +50,7 @@ impl ElementVisual<BevyHost> for DropdownMenu {
 }
 
 /// The shut control: what is chosen now, and a chevron.
-#[derive(Element)]
+#[element]
 pub struct Dropdown {
     /// A node of its own, so the choice showing can be bound without
     /// the control being rebuilt.
@@ -167,7 +167,7 @@ impl ElementVisual<BevyHost> for Dropdown {
 /// Placed by the popup scene it is built from, so it flips above the
 /// control rather than off the bottom of the window, and is not
 /// clipped by whatever it was opened inside.
-#[derive(Element)]
+#[element]
 pub struct DropdownList {
     /// Matched to the control's, so the two line up.
     #[default(px(160))]
@@ -221,7 +221,7 @@ impl ElementVisual<BevyHost> for DropdownList {
 ///
 /// Picking one closes the list. It also has to be focusable, because
 /// focus is what keeps the list open at all.
-#[derive(Element)]
+#[element]
 pub struct DropdownItem {
     #[elem(child)]
     pub label: Label,

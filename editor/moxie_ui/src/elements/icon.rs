@@ -2,13 +2,13 @@ use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 /// An image at a size of its own, which is what a [`Button`] shows.
 ///
 /// [`Button`]: super::Button
-#[derive(Element)]
+#[element]
 pub struct Icon {
     /// Asset path.
     pub image: String,

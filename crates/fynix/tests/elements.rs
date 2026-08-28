@@ -4,13 +4,13 @@
 mod common;
 
 use common::{Backend, Label, LabelCursor, World};
-use fynix::element::{Element, ElementVisual, Fields};
+use fynix::element::{Element, ElementVisual, Fields, element};
 use fynix::host::Host;
 use fynix::lenz::FieldPath;
 use fynix::records::Records;
 use fynix::ui::{Build, Patch};
 
-#[derive(Element)]
+#[element]
 pub struct Icon {
     #[default('+')]
     pub glyph: char,
@@ -18,13 +18,13 @@ pub struct Icon {
 
 /// Plain data, not an element: no node of its own, so `Button` draws
 /// it.
-#[derive(Element)]
+#[element]
 pub struct Border {
     pub width: u32,
     pub radius: u32,
 }
 
-#[derive(Element)]
+#[element]
 pub struct Button {
     #[elem(child)]
     pub label: Label,

@@ -1,14 +1,14 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 /// The scrubbable timeline track: a plain node sized to the track's
 /// duration. The consuming app resolves its own pixels per second
 /// scale and passes the result as `width`, so a clip at time `t` sits
 /// at `t * pixels_per_second` from the track's left edge.
-#[derive(Element)]
+#[element]
 pub struct TimelineTrack {
     pub width: f32,
 }

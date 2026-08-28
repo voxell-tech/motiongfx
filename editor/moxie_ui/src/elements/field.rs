@@ -14,11 +14,11 @@ use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 /// A box that is ticked or not.
-#[derive(Element)]
+#[element]
 pub struct CheckBox {
     pub checked: bool,
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.08))]
@@ -127,7 +127,7 @@ impl ElementVisual<BevyHost> for CheckBox {
 }
 
 /// A number, typed or dragged.
-#[derive(Element)]
+#[element]
 pub struct NumberField {
     pub format: NumberFormat,
     /// What it shows. Pushed as an event rather than written as a
@@ -196,7 +196,7 @@ impl ElementVisual<BevyHost> for NumberField {
 }
 
 /// A single-line string, edited in place.
-#[derive(Element)]
+#[element]
 pub struct TextField {
     pub value: String,
     #[default(px(110))]
