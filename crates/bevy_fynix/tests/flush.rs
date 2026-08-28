@@ -119,10 +119,8 @@ fn binding_patches_the_node_it_built() {
     watch_root(app.world_mut(), root, |ui| {
         ui.elem(elem!(Label)).bind(
             |label| label.text(),
-            |world: &World, _| world.resource::<Source>().changed,
-            |world: &World, _| {
-                world.resource::<Source>().text.clone()
-            },
+            |world_node| world_node.world.resource::<Source>().changed,
+            |world_node| world_node.world.resource::<Source>().text.clone(),
         );
     });
 

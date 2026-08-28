@@ -23,6 +23,7 @@ use fynix_mock::composer::Composer;
 use fynix_mock::records::{BuildFn, ChangedFn};
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
+use fynix_mock::WorldNodeRef;
 
 use super::{
     Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
@@ -360,7 +361,7 @@ fn resource_entity(
 /// old bindings quietly re-pointed.
 fn entity_changed(
     resource: TypeId,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| resource_entity(world, resource))
 }
 
@@ -371,7 +372,7 @@ fn entity_changed(
 /// rebuilds when one is added, removed, or the entity goes.
 fn components_changed(
     entity: Entity,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| inspectable(world, entity))
 }
 
@@ -475,6 +476,6 @@ fn column(
 /// [`InspectorFields`]' own business, with its own watcher for that.
 fn presence_changed(
     field: Field,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| field.exists(world))
 }

@@ -6,14 +6,16 @@ mod common;
 use common::{Backend, Label, LabelCursor, World};
 use fynix_mock::Fynix;
 use fynix_mock::elem;
+use fynix_mock::WorldNodeRef;
 use fynix_mock::host::Host;
 
 /// Fires on the first call and never again, the way a bootstrap
 /// build does. A stateful predicate consumes its own signal.
-fn once() -> impl FnMut(&World, usize) -> bool + Send + Sync + 'static
+fn once()
+-> impl for<'w> FnMut(WorldNodeRef<'w, Backend>) -> bool + Send + Sync + 'static
 {
     let mut pending = true;
-    move |_, _| core::mem::take(&mut pending)
+    move |_| core::mem::take(&mut pending)
 }
 
 /// The one child a watcher built under `root`.
@@ -54,7 +56,7 @@ fn watch_builds_nothing_when_its_predicate_never_fires() {
 
     kernel.watch(
         root,
-        |_, _| false,
+        |_| false,
         |ui| {
             ui.elem(elem!(Label));
         },
@@ -79,8 +81,8 @@ fn binding_writes_and_patches_one_field() {
         |ui| {
             ui.elem(elem!(Label)).bind(
                 |label| label.text(),
-                |world, _| world.source.changed,
-                |world, _| world.source.text.clone(),
+                |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
+                |world_node: WorldNodeRef<Backend>| world_node.world.source.text.clone(),
             );
         },
         &mut world,
@@ -113,8 +115,8 @@ fn binding_stays_quiet_until_its_predicate_fires() {
         |ui| {
             ui.elem(elem!(Label)).bind(
                 |label| label.text(),
-                |world, _| world.source.changed,
-                |world, _| world.source.text.clone(),
+                |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
+                |world_node: WorldNodeRef<Backend>| world_node.world.source.text.clone(),
             );
         },
         &mut world,
@@ -138,7 +140,7 @@ fn rebuild_replaces_the_children() {
     // set below.
     kernel.watch(
         root,
-        |world: &World, _| world.source.changed,
+        |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
         |ui| {
             ui.elem(elem!(Label));
         },
@@ -171,8 +173,8 @@ fn dead_node_is_not_patched() {
         |ui| {
             ui.elem(elem!(Label)).bind(
                 |label| label.text(),
-                |world, _| world.source.changed,
-                |world, _| world.source.text.clone(),
+                |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
+                |world_node: WorldNodeRef<Backend>| world_node.world.source.text.clone(),
             );
         },
         &mut world,
@@ -201,7 +203,7 @@ fn swept_node_takes_its_element_with_it() {
     // set below.
     kernel.watch(
         root,
-        |world: &World, _| world.source.changed,
+        |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
         |ui| {
             ui.elem(elem!(Label));
         },
@@ -267,8 +269,8 @@ fn dead_node_takes_its_bindings_with_it() {
         |ui| {
             ui.elem(elem!(Label)).bind(
                 |label| label.text(),
-                |world, _| world.source.changed,
-                |world, _| world.source.text.clone(),
+                |world_node: WorldNodeRef<Backend>| world_node.world.source.changed,
+                |world_node: WorldNodeRef<Backend>| world_node.world.source.text.clone(),
             );
         },
         &mut world,

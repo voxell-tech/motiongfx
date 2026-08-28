@@ -17,6 +17,7 @@ use fynix_mock::Fynix;
 use fynix_mock::element::Element;
 use fynix_mock::records::BuildFn;
 use fynix_mock::ui::{Build, ElementMut, Patch, Ui};
+use fynix_mock::world_node::WorldNodeMut;
 
 use crate::host::BevyHost;
 
@@ -104,7 +105,7 @@ pub fn watch_root<Theme: Send + Sync + 'static>(
         |world, mut kernel| {
             kernel.watch(
                 root,
-                move |_, _| core::mem::take(&mut pending),
+                move |_| core::mem::take(&mut pending),
                 build,
                 world,
             );
@@ -217,6 +218,23 @@ where
 {
     fn id(&self) -> Entity {
         Patch::id(self)
+    }
+
+    fn world_mut(&mut self) -> &mut World {
+        self.world
+    }
+}
+
+/// So a free function whose whole job is to mutate its own node (or
+/// reach one child) can take a [`WorldNodeMut`] and use the same
+/// entity shorthands `Build` and `Patch` offer, rather than a manual
+/// `world.entity_mut(node)`.
+impl<T> EntityExt for WorldNodeMut<'_, BevyHost<T>>
+where
+    T: Send + Sync + 'static,
+{
+    fn id(&self) -> Entity {
+        self.node
     }
 
     fn world_mut(&mut self) -> &mut World {

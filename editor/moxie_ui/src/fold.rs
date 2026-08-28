@@ -14,6 +14,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::EntityExt;
 use fynix_mock::composer::Composer;
+use fynix_mock::WorldNodeRef;
 use fynix_mock::records::BuildFn;
 use fynix_mock::style::StyledElem;
 use fynix_mock::ui::{ElementHandle, ElementMut};
@@ -201,7 +202,7 @@ where
             .bind(
                 |frame| frame.display(),
                 component_changed_on::<Folded>(node),
-                move |world, _| {
+                move |WorldNodeRef { world, .. }| {
                     if is_folded(world, node) {
                         Display::None
                     } else {
@@ -265,7 +266,7 @@ fn folds<T>(
         .bind(
             |button| button.icon().rotation(),
             component_changed_on::<Folded>(node),
-            move |world, _| {
+            move |WorldNodeRef { world, .. }| {
                 if is_folded(world, node) {
                     CHEVRON_SHUT
                 } else {

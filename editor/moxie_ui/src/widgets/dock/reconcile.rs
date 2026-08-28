@@ -14,6 +14,7 @@ use std::fmt::Write as _;
 use bevy::prelude::*;
 
 use fynix_mock::elem;
+use fynix_mock::WorldNodeRef;
 
 use super::area::ActiveDockWindow;
 
@@ -165,7 +166,7 @@ fn build_panel(
         .bind(
             |panel| panel.ratio(),
             resource_changed::<DockTree>(),
-            move |world, _| ratio_of(world, split_id, is_a),
+            move |WorldNodeRef { world, .. }| ratio_of(world, split_id, is_a),
         )
         .with(move |ui| build_node(child, ui));
 }
@@ -232,7 +233,7 @@ fn build_leaf(id: NodeId, leaf: DockLeaf, ui: &mut BevyUi) {
     area.bind(
         |area| area.active(),
         resource_changed::<DockTree>(),
-        move |world, _| ActiveDockWindow(active_of(world, id)),
+        move |WorldNodeRef { world, .. }| ActiveDockWindow(active_of(world, id)),
     );
 
     // The area's handle is in hand, so the tab bar gets it directly
@@ -271,7 +272,7 @@ fn build_content(
     .bind(
         |content| content.showing(),
         resource_changed::<DockTree>(),
-        move |world, _| active_of(world, leaf) == Some(tab),
+        move |WorldNodeRef { world, .. }| active_of(world, leaf) == Some(tab),
     )
     // The window's own content, as elements of its own.
     .with(build);

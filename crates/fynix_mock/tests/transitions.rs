@@ -10,15 +10,16 @@ use fynix_mock::host::Host;
 use fynix_mock::style::Style;
 use fynix_mock::transition::Transition;
 use fynix_mock::ui::{Build, Patch};
-use fynix_mock::{Fynix, elem};
+use fynix_mock::{Fynix, WorldNodeRef, elem};
 use motiongfx_interp::ease;
 use motiongfx_interp::interpolation::Interpolation;
 
 /// Fires on the first flush and never again.
-fn once() -> impl FnMut(&World, usize) -> bool + Send + Sync + 'static
+fn once()
+-> impl for<'w> FnMut(WorldNodeRef<'w, Backend>) -> bool + Send + Sync + 'static
 {
     let mut pending = true;
-    move |_, _| core::mem::take(&mut pending)
+    move |_| core::mem::take(&mut pending)
 }
 
 fn only_child(world: &World, root: usize) -> usize {

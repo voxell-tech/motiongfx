@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::text::{EditableText, TextEditChange};
 
 use fynix_mock::elem;
+use fynix_mock::WorldNodeRef;
 
 use crate::elements::{TextField, TextFieldCursor};
 use crate::reactive::BevyUi;
@@ -30,7 +31,7 @@ fn text_field<T: FromReflect>(
     field.bind(
         |input| input.value(),
         when_changed(source),
-        move |world, _| {
+        move |WorldNodeRef { world, .. }| {
             read.read::<T>(world)
                 .as_ref()
                 .map(to_shown)

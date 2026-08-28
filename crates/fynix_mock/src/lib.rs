@@ -26,6 +26,9 @@ pub mod store;
 pub mod style;
 pub mod transition;
 pub mod ui;
+pub mod world_node;
+
+pub use crate::world_node::{WorldNodeRef, WorldNodeMut};
 
 /// Writes the `Default` an element starts from, before a style and then
 /// a call site have had their say.
@@ -129,7 +132,7 @@ impl<H: Host> Fynix<H> {
         world: &mut H::World,
     ) {
         let mut changed = changed;
-        if changed(world, root) {
+        if changed(WorldNodeRef::new(world, root)) {
             clear_children::<H>(world, root);
             let mut ui =
                 Ui::new(world, root, &mut self.records, &self.theme);
@@ -195,7 +198,8 @@ impl<H: Host> Fynix<H> {
             // Called even when `retheme` forces the rebuild anyway.
             // Some `changed` closures are one-shot; skipping the call
             // would leave them armed for a later flush.
-            let changed = (watcher.changed)(world, watcher.root);
+            let changed =
+                (watcher.changed)(WorldNodeRef::new(world, watcher.root));
             if !retheme && !changed {
                 continue;
             }
@@ -236,7 +240,7 @@ impl<H: Host> Fynix<H> {
         } = records;
 
         for ((node, _), binding) in bindings.iter_mut() {
-            if !(binding.changed)(world, *node) {
+            if !(binding.changed)(WorldNodeRef::new(world, *node)) {
                 continue;
             }
             (binding.apply)(elements, world, *node, store, theme);
@@ -247,7 +251,13 @@ impl<H: Host> Fynix<H> {
         let delta = H::delta(world);
 
         for (node, lane) in lanes.iter_mut() {
-            lane.advance(delta, elements, world, node, store, theme);
+            lane.advance(
+                delta,
+                elements,
+                WorldNodeMut::new(world, node),
+                store,
+                theme,
+            );
         }
     }
 

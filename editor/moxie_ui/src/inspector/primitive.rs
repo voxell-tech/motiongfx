@@ -7,6 +7,7 @@ use bevy::ui_widgets::ValueChange;
 
 use bevy_fynix::EntityExt;
 use fynix_mock::elem;
+use fynix_mock::WorldNodeRef;
 
 use crate::elements::{
     CheckBox, CheckBoxCursor, NumberField, NumberFieldCursor,
@@ -40,7 +41,7 @@ impl Inspect for bool {
             .bind(
                 |b| b.checked(),
                 when_changed(source),
-                move |world, _| {
+                move |WorldNodeRef { world, .. }| {
                     read.read::<bool>(world).unwrap_or_default()
                 },
             );
@@ -88,7 +89,7 @@ pub(super) fn number_field<T, V>(
     .bind(
         |input| input.value(),
         when_changed(source),
-        move |world, _| {
+        move |WorldNodeRef { world, .. }| {
             read.read::<T>(world)
                 .map(to_input)
                 .unwrap_or(NumberInputValue::F32(0.0))

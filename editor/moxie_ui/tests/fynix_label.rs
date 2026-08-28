@@ -56,8 +56,8 @@ fn bound_field_is_patched_without_a_rebuild() {
     watch_root(app.world_mut(), root, |ui| {
         ui.elem(elem!(Label)).bind(
             |label| label.text(),
-            |world: &World, _| world.is_resource_changed::<Caption>(),
-            |world: &World, _| world.resource::<Caption>().0.clone(),
+            |world_node| world_node.world.is_resource_changed::<Caption>(),
+            |world_node| world_node.world.resource::<Caption>().0.clone(),
         );
     });
 

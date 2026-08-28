@@ -14,6 +14,7 @@ use crate::lenz::{Accessor, Cursor, FieldId, FieldPath, Identity};
 use crate::records::Elements;
 use crate::store::Store;
 use crate::transition::Transition;
+use crate::world_node::WorldNodeMut;
 
 /// A field on its way somewhere, kept beside the element rather than
 /// in it.
@@ -32,8 +33,7 @@ pub(crate) trait Lane<H: Host>: Send + Sync {
         &mut self,
         dt: f32,
         elements: &mut Elements<H>,
-        world: &mut H::World,
-        node: H::Node,
+        world_node: WorldNodeMut<'_, H>,
         store: &mut Store<H>,
         theme: &H::Theme,
     ) -> bool;
@@ -72,8 +72,7 @@ where
         &mut self,
         dt: f32,
         elements: &mut Elements<H>,
-        world: &mut H::World,
-        node: H::Node,
+        WorldNodeMut { world, node }: WorldNodeMut<'_, H>,
         store: &mut Store<H>,
         theme: &H::Theme,
     ) -> bool {
