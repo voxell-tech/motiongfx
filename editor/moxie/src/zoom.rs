@@ -66,6 +66,33 @@ pub(crate) fn zoom_hotkey(
     view.zoom_to(anchor_x, playhead, factor);
 }
 
+/// Fit the whole animation to the panel on `\`.
+pub(crate) fn fit_hotkey(
+    keys: Res<ButtonInput<KeyCode>>,
+    focus: Res<InputFocus>,
+    q_editable: Query<(), With<EditableText>>,
+    q_viewport: Query<&ComputedNode, With<TrackViewport>>,
+    state: Res<EditorState>,
+    mut view: ResMut<TimelineView>,
+) {
+    if !keys.just_pressed(KeyCode::Backslash) {
+        return;
+    }
+
+    if focus
+        .get()
+        .is_some_and(|entity| q_editable.contains(entity))
+    {
+        return;
+    }
+
+    let Some(computed) = q_viewport.iter().next() else {
+        return;
+    };
+    let width = computed.size().x * computed.inverse_scale_factor();
+    view.fit(width, state.duration);
+}
+
 /// Zoom on Alt+wheel, pan sideways on Shift+wheel or a
 /// horizontal wheel, and scroll the tracks otherwise.
 pub(crate) fn on_track_scroll(

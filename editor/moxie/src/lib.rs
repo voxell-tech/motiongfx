@@ -145,6 +145,18 @@ impl TimelineView {
         self.offset =
             (self.offset - delta_x / self.px_per_second).max(0.0);
     }
+
+    /// Scale the view so a `duration` long animation spans a `width`
+    /// px panel, leaving a little room after it.
+    pub(crate) fn fit(&mut self, width: f32, duration: Duration) {
+        let secs = duration.as_secs_f32();
+        if secs <= 0.0 {
+            return;
+        }
+        self.px_per_second = (width / (secs * 1.02))
+            .clamp(MIN_PX_PER_SECOND, MAX_PX_PER_SECOND);
+        self.offset = 0.0;
+    }
 }
 
 /// The offscreen texture the composition's scene cameras render into.
