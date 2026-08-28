@@ -12,8 +12,8 @@ use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
 
 use bevy_fynix::WorldEntityMut;
-use fynix_mock::WorldNodeRef;
-use fynix_mock::{elem, val};
+use fynix::WorldNodeRef;
+use fynix::{elem, val};
 use moxie_asset::ABSOLUTE_SOURCE;
 
 use crate::asset::AssetDragging;

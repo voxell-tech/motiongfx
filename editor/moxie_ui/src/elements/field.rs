@@ -14,8 +14,8 @@ use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual};
+use fynix::ui::{Build, Patch};
 
 /// A box that is ticked or not.
 #[derive(Element)]

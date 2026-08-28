@@ -4,9 +4,9 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::style::Style;
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual};
+use fynix::style::Style;
+use fynix::ui::{Build, Patch};
 
 use super::{Icon, IconCursor, Label, LabelCursor};
 use crate::motion::LitFrom as _;

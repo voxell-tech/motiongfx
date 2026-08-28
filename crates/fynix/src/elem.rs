@@ -18,9 +18,9 @@ use crate::elem;
 ///
 /// ```
 /// # #![allow(path_statements)]
-/// # use fynix_mock::{elem, val};
-/// # use fynix_mock::style::{Style, StyledElem};
-/// # use fynix_mock::host::Host;
+/// # use fynix::{elem, val};
+/// # use fynix::style::{Style, StyledElem};
+/// # use fynix::host::Host;
 /// # pub struct Backend;
 /// # impl Host for Backend {
 /// #     type Node = usize;
@@ -102,7 +102,7 @@ macro_rules! elem {
 /// nested in one reads like the element around it:
 ///
 /// ```
-/// # use fynix_mock::val;
+/// # use fynix::val;
 /// #[derive(Default)]
 /// struct Font { size: u32, weight: u32 }
 ///

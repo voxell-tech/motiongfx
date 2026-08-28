@@ -4,11 +4,11 @@
 mod common;
 
 use common::{Backend, Label, LabelCursor, World};
-use fynix_mock::element::{Element, ElementVisual, Fields};
-use fynix_mock::host::Host;
-use fynix_mock::lenz::FieldPath;
-use fynix_mock::records::Records;
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual, Fields};
+use fynix::host::Host;
+use fynix::lenz::FieldPath;
+use fynix::records::Records;
+use fynix::ui::{Build, Patch};
 
 #[derive(Element)]
 pub struct Icon {

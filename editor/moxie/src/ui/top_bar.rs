@@ -6,9 +6,9 @@ use bevy::ui_widgets::{
     Activate, ActivateOnPress, MenuButton as MenuButtonBehavior,
 };
 use bevy_fynix::WorldEntityMut;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
-use fynix_mock::{elem, val};
+use fynix::composer::Composer;
+use fynix::ui::ElementHandle;
+use fynix::{elem, val};
 use moxie_ui::elements::{
     Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
     DropdownMenu, Frame, Label, MenuButton,

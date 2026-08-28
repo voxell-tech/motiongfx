@@ -4,10 +4,10 @@
 //! `Label` are two different paths and get two different ids, which is
 //! what lets one store hold both.
 //!
-//! Run with `cargo run -p fynix_mock --example field_ids`.
+//! Run with `cargo run -p fynix --example field_ids`.
 
-use fynix_mock::element::{Element, Fields};
-use fynix_mock::lenz::FieldId;
+use fynix::element::{Element, Fields};
+use fynix::lenz::FieldId;
 
 #[derive(Element)]
 pub struct Label {

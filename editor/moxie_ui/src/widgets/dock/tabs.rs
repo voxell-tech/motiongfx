@@ -6,8 +6,8 @@ use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut;
-use fynix_mock::WorldNodeRef;
-use fynix_mock::{elem, val};
+use fynix::WorldNodeRef;
+use fynix::{elem, val};
 
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};

@@ -1,8 +1,8 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual};
+use fynix::ui::{Build, Patch};
 
 /// The scrubbable timeline track: a plain node sized to the track's
 /// duration. The consuming app resolves its own pixels per second

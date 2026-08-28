@@ -75,7 +75,7 @@ would be worth wiring up on its own.
 Every `ElementVisual<BevyHost>` impl starts with
 `world.entity_mut(node)`. A forwarding blanket impl hits Rust's
 orphan rule; the marker-param workaround compiles but can't satisfy
-`Element<H>`'s bound without changing `fynix_mock`'s kernel.
+`Element<H>`'s bound without changing `fynix`'s kernel.
 
 - [ ] Add a `macro_rules!` in `bevy_fynix` forwarding a narrower
       `BevyElementVisual` impl into `ElementVisual<BevyHost>`.
@@ -105,7 +105,7 @@ a direct field, rather than treating it as one opaque child.
 
 - [ ] Design `Layout` (or similarly-scoped groups) as a plain struct
       other `Element`s embed.
-- [ ] Teach `fynix_mock_macros/src/element.rs` an `#[elem(flatten)]`
+- [ ] Teach `fynix_macros/src/element.rs` an `#[elem(flatten)]`
       directive: for a flattened field, walk its own fields the same
       way as a direct one instead of minting a single variant for the
       whole struct.

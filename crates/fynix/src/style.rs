@@ -19,8 +19,8 @@ use crate::host::Host;
 /// carries are the fields of the struct it is written on:
 ///
 /// ```
-/// use fynix_mock::style::{Style, StyledElem};
-/// # use fynix_mock::host::Host;
+/// use fynix::style::{Style, StyledElem};
+/// # use fynix::host::Host;
 /// # pub struct Backend;
 /// # impl Host for Backend {
 /// #     type Node = usize;

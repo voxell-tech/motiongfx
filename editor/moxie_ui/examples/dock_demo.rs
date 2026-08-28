@@ -10,7 +10,7 @@
 //! - pressing Escape mid-drag to cancel.
 
 use bevy::prelude::*;
-use fynix_mock::elem;
+use fynix::elem;
 use moxie_ui::MoxieUiPlugin;
 use moxie_ui::elements::{Frame, Label};
 use moxie_ui::reactive::BevyUi;

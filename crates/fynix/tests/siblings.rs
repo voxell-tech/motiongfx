@@ -4,9 +4,9 @@
 mod common;
 
 use common::{Label, LabelCursor, World};
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::records::Records;
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual};
+use fynix::records::Records;
+use fynix::ui::{Build, Patch};
 
 /// Two labels that already say which is which, so a test can tell one
 /// node from the other without setting anything up.

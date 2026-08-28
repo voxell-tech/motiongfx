@@ -4,9 +4,9 @@
 mod common;
 
 use common::{Label, LabelCursor, World};
-use fynix_mock::element::{Element, ElementVisual, Fields};
-use fynix_mock::records::Records;
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual, Fields};
+use fynix::records::Records;
+use fynix::ui::{Build, Patch};
 
 /// `Default`, so an element generic over its look has one too.
 /// `Send`/`Sync` too, since `Themed<L>` is an `Element`, and

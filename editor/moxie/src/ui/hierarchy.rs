@@ -17,10 +17,10 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut;
 use bevy_motiongfx::scene::id::EntityUid;
-use fynix_mock::WorldNodeRef;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::{ElementHandle, ElementMut};
-use fynix_mock::{elem, val};
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::ui::{ElementHandle, ElementMut};
+use fynix::{elem, val};
 use moxie_ui::elements::{
     ButtonElem, ButtonElemCursor, Frame, FrameCursor, GhostButton,
     Icon, Label, LabelCursor, Panel, ScrollArea, TintButton,

@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual};
+use fynix::ui::{Build, Patch};
 
 const DIVIDER_WIDTH: f32 = 6.0;
 

@@ -6,8 +6,8 @@ use bevy::prelude::*;
 use bevy::ui_widgets::ValueChange;
 
 use bevy_fynix::WorldEntityMut;
-use fynix_mock::WorldNodeRef;
-use fynix_mock::elem;
+use fynix::WorldNodeRef;
+use fynix::elem;
 
 use crate::elements::{
     CheckBox, CheckBoxCursor, NumberField, NumberFieldCursor,

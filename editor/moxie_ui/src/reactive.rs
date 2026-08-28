@@ -8,7 +8,7 @@
 
 use bevy::ecs::change_detection::{ComponentTicks, Tick};
 use bevy::prelude::*;
-use fynix_mock::WorldNodeRef;
+use fynix::WorldNodeRef;
 
 // `watch_root` stays generic over `Theme`, same as `bevy_fynix`
 // itself: `build`'s own type already fixes `Theme` to `EditorTheme`

@@ -5,7 +5,7 @@
 //! is just another link, not a separate kind of path.
 //!
 //! ```
-//! use fynix_mock::lenz::Lenz;
+//! use fynix::lenz::Lenz;
 //! #[derive(Lenz)]
 //! pub struct Card { pub header: Header }
 //! #[derive(Lenz)]
@@ -28,7 +28,7 @@ use alloc::vec::Vec;
 use core::any::TypeId;
 use core::marker::PhantomData;
 
-pub use fynix_mock_macros::Lenz;
+pub use fynix_macros::Lenz;
 
 /// What a path is called once the types are gone.
 ///

@@ -5,8 +5,8 @@
 //! ends in one of three ways: reach the value, name the whole walk,
 //! or list the hops it took.
 
-use fynix_mock::OverrideDefault;
-use fynix_mock::lenz::Lenz;
+use fynix::OverrideDefault;
+use fynix::lenz::Lenz;
 
 #[derive(OverrideDefault, Lenz)]
 pub struct Card {

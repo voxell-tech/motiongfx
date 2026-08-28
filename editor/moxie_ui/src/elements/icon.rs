@@ -2,8 +2,8 @@ use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use bevy_fynix::WorldEntityMut as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual};
+use fynix::ui::{Build, Patch};
 
 /// An image at a size of its own, which is what a [`Button`] shows.
 ///

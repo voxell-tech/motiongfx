@@ -2,8 +2,8 @@ use crate::reactive::BevyHost;
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual};
+use fynix::ui::{Build, Patch};
 
 /// A theme-inheriting text label.
 #[derive(Element)]

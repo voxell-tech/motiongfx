@@ -7,11 +7,11 @@
 // Each test file uses a different part of this.
 #![allow(dead_code)]
 
-use fynix_mock::Fynix;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::host::Host;
-use fynix_mock::lenz::{Cursor, FieldPath, Identity};
-use fynix_mock::ui::{Build, ElementMut, Patch};
+use fynix::Fynix;
+use fynix::element::{Element, ElementVisual};
+use fynix::host::Host;
+use fynix::lenz::{Cursor, FieldPath, Identity};
+use fynix::ui::{Build, ElementMut, Patch};
 use hashbrown::HashMap;
 
 /// What this test stands in for a pointer with: not fynix's concern,

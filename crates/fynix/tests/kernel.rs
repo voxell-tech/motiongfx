@@ -4,10 +4,10 @@
 mod common;
 
 use common::{Backend, Label, LabelCursor, World};
-use fynix_mock::Fynix;
-use fynix_mock::WorldNodeRef;
-use fynix_mock::elem;
-use fynix_mock::host::Host;
+use fynix::Fynix;
+use fynix::WorldNodeRef;
+use fynix::elem;
+use fynix::host::Host;
 
 /// Fires on the first call and never again, the way a bootstrap
 /// build does. A stateful predicate consumes its own signal.

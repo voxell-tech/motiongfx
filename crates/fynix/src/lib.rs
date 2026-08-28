@@ -4,8 +4,8 @@
 
 extern crate alloc;
 
-// Lets the derive emit `::fynix_mock::...` everywhere, including here.
-extern crate self as fynix_mock;
+// Lets the derive emit `::fynix::...` everywhere, including here.
+extern crate self as fynix;
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -40,7 +40,7 @@ pub use crate::world_node::{WorldNodeMut, WorldNodeRef};
 /// name the field's type:
 ///
 /// ```
-/// use fynix_mock::OverrideDefault;
+/// use fynix::OverrideDefault;
 /// #[derive(Default)]
 /// struct Font { size: u32, weight: u32 }
 ///
@@ -82,7 +82,7 @@ pub use crate::world_node::{WorldNodeMut, WorldNodeRef};
 ///
 /// An enum starts in the variant marked `#[default]`, and that
 /// variant's own fields take the attribute as any other field does.
-pub use fynix_mock_macros::OverrideDefault;
+pub use fynix_macros::OverrideDefault;
 
 /// Owns every watcher and binding, and the tree they maintain.
 pub struct Fynix<H: Host> {

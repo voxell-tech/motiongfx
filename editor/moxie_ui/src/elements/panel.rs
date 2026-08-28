@@ -1,8 +1,8 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use fynix::element::{Element, ElementVisual};
+use fynix::ui::{Build, Patch};
 
 /// What a docked window fills its area with: the whole of it, and
 /// scrolling if what it holds does not fit.

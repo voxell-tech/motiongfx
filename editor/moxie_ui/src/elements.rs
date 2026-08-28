@@ -1,7 +1,7 @@
 //! What the editor is built out of.
 //!
 //! A widget is a struct rather than a `bsn!` scene: its fields are
-//! the data, [`ElementVisual`](fynix_mock::element::ElementVisual)
+//! the data, [`ElementVisual`](fynix::element::ElementVisual)
 //! says what they mean to bevy, and a binding names one of them, so
 //! a value can change without the node being rebuilt.
 

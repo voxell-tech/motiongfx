@@ -148,18 +148,18 @@ pub fn option_inner(ty: &Type) -> Option<&Type> {
     })
 }
 
-/// The path to `fynix_mock::lenz`, following a renamed dependency.
+/// The path to `fynix::lenz`, following a renamed dependency.
 ///
 /// `Itself` maps to the absolute path rather than `crate`, which
 /// would mean the test crate for an integration test in our own
-/// package. `extern crate self as fynix_mock` keeps it valid there.
+/// package. `extern crate self as fynix` keeps it valid there.
 pub fn crate_path() -> TokenStream2 {
-    match crate_name("fynix_mock") {
+    match crate_name("fynix") {
         Ok(FoundCrate::Name(name)) => {
             let ident = Ident::new(&name, Span::call_site());
             quote!(::#ident)
         }
-        Ok(FoundCrate::Itself) | Err(_) => quote!(::fynix_mock),
+        Ok(FoundCrate::Itself) | Err(_) => quote!(::fynix),
     }
 }
 
