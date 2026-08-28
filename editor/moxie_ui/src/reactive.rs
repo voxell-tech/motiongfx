@@ -25,8 +25,10 @@ pub type FynixPlugin = bevy_fynix::FynixPlugin<EditorTheme>;
 /// Fires when `R` changed since the last poll. Also fires on the first
 /// poll, so a binding starts out in sync with the world.
 pub fn resource_changed<R: Resource>()
--> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool + Send + Sync + 'static
-{
+-> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut seen: Option<Tick> = None;
     move |WorldNodeRef { world, .. }| {
         let Some(ticks) = world.get_resource_change_ticks::<R>()
@@ -97,8 +99,10 @@ where
 /// Rides the tick. Reach for [`value_changed`] when the value itself
 /// is what matters.
 pub fn component_changed<C: Component>()
--> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool + Send + Sync + 'static
-{
+-> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut seen: Option<Option<Tick>> = None;
     move |WorldNodeRef { world, node }| {
         let current = component_tick::<C>(world, node);
@@ -111,8 +115,10 @@ pub fn component_changed<C: Component>()
 /// Same, for `C` on some other entity than the node.
 pub fn component_changed_on<C: Component>(
     entity: Entity,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool + Send + Sync + 'static
-{
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut changed =
         tick_changed(move |world| component_tick::<C>(world, entity));
     move |WorldNodeRef { world, .. }| changed(world)
@@ -144,8 +150,10 @@ pub(crate) fn tick_changed(
 
 /// Fires when the current `S` differs from the last poll.
 pub fn state_changed<S: States>()
--> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool + Send + Sync + 'static
-{
+-> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut seen: Option<S> = None;
     move |WorldNodeRef { world, .. }| {
         let current =

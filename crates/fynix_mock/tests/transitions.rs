@@ -15,9 +15,10 @@ use motiongfx_interp::ease;
 use motiongfx_interp::interpolation::Interpolation;
 
 /// Fires on the first flush and never again.
-fn once()
--> impl for<'w> FnMut(WorldNodeRef<'w, Backend>) -> bool + Send + Sync + 'static
-{
+fn once() -> impl for<'w> FnMut(WorldNodeRef<'w, Backend>) -> bool
++ Send
++ Sync
++ 'static {
     let mut pending = true;
     move |_| core::mem::take(&mut pending)
 }

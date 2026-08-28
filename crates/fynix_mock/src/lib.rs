@@ -28,7 +28,7 @@ pub mod transition;
 pub mod ui;
 pub mod world_node;
 
-pub use crate::world_node::{WorldNodeRef, WorldNodeMut};
+pub use crate::world_node::{WorldNodeMut, WorldNodeRef};
 
 /// Writes the `Default` an element starts from, before a style and then
 /// a call site have had their say.
@@ -198,8 +198,10 @@ impl<H: Host> Fynix<H> {
             // Called even when `retheme` forces the rebuild anyway.
             // Some `changed` closures are one-shot; skipping the call
             // would leave them armed for a later flush.
-            let changed =
-                (watcher.changed)(WorldNodeRef::new(world, watcher.root));
+            let changed = (watcher.changed)(WorldNodeRef::new(
+                world,
+                watcher.root,
+            ));
             if !retheme && !changed {
                 continue;
             }

@@ -25,7 +25,10 @@ pub trait ChangedFn<H: Host>:
 }
 
 impl<H: Host, F> ChangedFn<H> for F where
-    F: for<'w> FnMut(WorldNodeRef<'w, H>) -> bool + Send + Sync + 'static
+    F: for<'w> FnMut(WorldNodeRef<'w, H>) -> bool
+        + Send
+        + Sync
+        + 'static
 {
 }
 
@@ -41,9 +44,8 @@ impl<H: Host, F> BuildFn<H> for F where
 }
 
 // The boxed forms the kernel stores.
-type BoxedChanged<H> = Box<
-    dyn for<'w> FnMut(WorldNodeRef<'w, H>) -> bool + Send + Sync,
->;
+type BoxedChanged<H> =
+    Box<dyn for<'w> FnMut(WorldNodeRef<'w, H>) -> bool + Send + Sync>;
 type BoxedBuild<H> =
     Box<dyn for<'a> Fn(&mut Ui<'a, H>) + Send + Sync>;
 

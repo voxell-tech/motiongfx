@@ -148,7 +148,7 @@ pub trait WorldEntityRef {
 }
 
 /// Entity-level operations on whichever node `Build`, `Patch`, or
-/// `ElementMut` currently holds, built on [`EntityRef::id`] and
+/// `ElementMut` currently holds, built on [`WorldEntityRef::id`] and
 /// [`Self::world_mut`] plus whatever `bevy_ecs` offers on top.
 pub trait WorldEntityMut: WorldEntityRef {
     /// The world this node lives in, mutably.
