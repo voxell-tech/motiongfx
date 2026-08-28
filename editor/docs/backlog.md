@@ -82,33 +82,6 @@ orphan rule; the marker-param workaround compiles but can't satisfy
 - [ ] Or an attribute macro on the impl itself, skipping the repeated
       type name - needs a new `bevy_fynix_macros` proc-macro crate.
 
-## `WorldNode`/`WorldNodeMut` for the `(world, node)` pair
-
-Bindings, a watcher's `ChangedFn`, and `Lane::advance` all take
-`(&H::World, H::Node)` or `(&mut H::World, H::Node)` as two separate
-params - the same pair `Build`/`Patch`/`ElementMut` already put behind
-`EntityExt`'s `id()`/`world_mut()`. A generic `WorldNode<'w, H: Host>`/
-`WorldNodeMut<'w, H: Host>` in `fynix_mock` would give bindings and
-watchers one param instead of two, and `bevy_fynix` could implement
-`EntityExt` for the mutable one directly, letting a free function that
-only mutates its own node (or reaches one child) drop its manual
-`world.entity_mut(node)` the same way `Build`/`Patch`/`ElementMut`
-already did.
-
-Only worth it for the mutating case - a function reading other
-resources or entities with `node` as just an index (`text_color`,
-`highlight`) doesn't want the bundle; Bevy's own `EntityRef`/
-`world.entity(node)` already covers a plain read.
-
-- [ ] `WorldNode<'w, H: Host>`/`WorldNodeMut<'w, H: Host>` in
-      `fynix_mock`, holding `world` and `node`.
-- [ ] `impl EntityExt for WorldNodeMut<'_, BevyHost<Theme>>` in
-      `bevy_fynix`.
-- [ ] Convert the `bevy_fynix`/editor free functions whose whole job is
-      "mutate this node, maybe touch one child" - audit each first,
-      since some `(&World, Node)` sites read other state through
-      `node` as an index and shouldn't move.
-
 ## `#[elem(flatten)]` for shared field groups
 
 `ButtonElem`, `Frame`, `ScrollArea`, `Panel`, and a few others each

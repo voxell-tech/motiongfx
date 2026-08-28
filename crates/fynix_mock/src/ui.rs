@@ -20,6 +20,7 @@ use crate::records::{
 use crate::store::Store;
 use crate::style::StyledElem;
 use crate::transition::Transition;
+use crate::world_node::WorldNodeRef;
 
 /// Builds elements under a parent and records their reactivity.
 pub struct Ui<'a, H: Host> {
@@ -287,7 +288,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         build: impl BuildFn<H>,
     ) -> &mut Self {
         let mut changed = changed;
-        if changed(self.ui.world, self.node) {
+        if changed(WorldNodeRef::new(self.ui.world, self.node)) {
             crate::clear_children::<H>(self.ui.world, self.node);
             let mut child = Ui::new(
                 self.ui.world,
@@ -412,7 +413,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
         changed: impl ChangedFn<H>,
-        value: impl Fn(&H::World, H::Node) -> P::Target
+        value: impl for<'w> Fn(WorldNodeRef<'w, H>) -> P::Target
         + Send
         + Sync
         + 'static,
@@ -431,7 +432,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
                           node: H::Node,
                           store: &mut Store<H>,
                           theme: &H::Theme| {
-            let new = value(world, node);
+            let new = value(WorldNodeRef::new(world, node));
 
             // `E` is still in hand here, so the element comes back as
             // itself. A node holding something else simply misses.

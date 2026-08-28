@@ -211,7 +211,7 @@ fn the_builder_takes_a_styled_element_whole() {
 
     kernel.watch(
         root,
-        |_: &World, _| true,
+        |_| true,
         |ui| {
             ui.elem(elem!(!Title, text = "Save"));
         },

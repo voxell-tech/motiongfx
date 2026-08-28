@@ -8,7 +8,7 @@
 
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::EntityExt as _;
+use bevy_fynix::WorldEntityMut as _;
 use fynix_mock::element::{Element, ElementVisual};
 use fynix_mock::ui::{Build, Patch};
 

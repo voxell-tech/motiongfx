@@ -20,7 +20,8 @@ use crate::{
     EditorScene, EditorState, PIXELS_PER_SECOND, SelectedAction,
     time_axis,
 };
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
+use fynix_mock::WorldNodeRef;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
@@ -126,7 +127,7 @@ impl Composer<BevyHost> for ControlBar {
             .bind(
                 |button| button.icon().image(),
                 resource_changed::<EditorState>(),
-                |world, _| {
+                |WorldNodeRef { world, .. }| {
                     if world.resource::<EditorState>().is_playing {
                         crate::icons::PAUSE.to_string()
                     } else {
@@ -138,7 +139,10 @@ impl Composer<BevyHost> for ControlBar {
             ui.elem(elem!(Label, text = "0.00s")).bind(
                 |label| label.text(),
                 resource_changed::<MotionGfxManager>(),
-                |world, entity| {
+                |WorldNodeRef {
+                     world,
+                     node: entity,
+                 }| {
                     format!(
                         "{:.2}s",
                         current_time(world, entity).as_secs_f32()
@@ -239,7 +243,7 @@ impl Composer<BevyHost> for TrackArea {
             ui.elem(elem!(PlayheadLine)).bind(
                 |line| line.left(),
                 resource_changed::<MotionGfxManager>(),
-                |world, node| {
+                |WorldNodeRef { world, node }| {
                     crate::px_for(current_time(world, node))
                 },
             );

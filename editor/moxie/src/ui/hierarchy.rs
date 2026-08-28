@@ -15,8 +15,9 @@ pub(crate) use drag::Dragging;
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
 use bevy_motiongfx::scene::id::EntityUid;
+use fynix_mock::WorldNodeRef;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::{ElementHandle, ElementMut};
 use fynix_mock::{elem, val};
@@ -134,7 +135,7 @@ impl Composer<BevyHost> for Roots {
             scroll_x = false
         ))
         .watch(
-            move |world, _| {
+            move |WorldNodeRef { world, .. }| {
                 let query = match &mut query {
                     Some(query) => query,
                     slot => match QueryState::try_new(world) {
@@ -228,7 +229,7 @@ fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
             .bind(
                 |line| line.background(),
                 drop_changed(entity, at),
-                move |world, _| {
+                move |WorldNodeRef { world, .. }| {
                     if world
                         .resource::<drag::Dragging>()
                         .shows(entity, at)
@@ -298,14 +299,16 @@ impl Composer<BevyHost> for Subtree {
                     .bind(
                         |button| button.fill(),
                         highlight_changed(entity),
-                        move |world, _| {
+                        move |WorldNodeRef { world, .. }| {
                             highlight(world, entity, accent)
                         },
                     )
                     .bind(
                         |button| button.label().text(),
                         component_changed_on::<Name>(entity),
-                        move |world, _| name_of(world, entity),
+                        move |WorldNodeRef { world, .. }| {
+                            name_of(world, entity)
+                        },
                     );
             },
             body: move |ui: &mut BevyUi| {
@@ -368,7 +371,7 @@ fn highlight(world: &World, entity: Entity, accent: Color) -> Color {
 /// Fires when either half of what [`highlight`] reads moves.
 fn highlight_changed(
     entity: Entity,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| {
         (
             world.resource::<SelectedEntity>().0 == Some(entity),
@@ -383,7 +386,7 @@ fn highlight_changed(
 fn drop_changed(
     entity: Entity,
     at: drag::At,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| {
         world.resource::<drag::Dragging>().shows(entity, at)
     })

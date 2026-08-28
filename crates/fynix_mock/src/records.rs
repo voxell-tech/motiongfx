@@ -13,18 +13,22 @@ use crate::lanes::Lanes;
 use crate::lenz::FieldId;
 use crate::store::Store;
 use crate::ui::Ui;
+use crate::world_node::WorldNodeRef;
 
-/// Predicate over the world, polled once per flush.
+/// Predicate over a node's world, polled once per flush.
 ///
 /// Must be called exactly once per flush. A stateful predicate
 /// consumes its own signal.
 pub trait ChangedFn<H: Host>:
-    FnMut(&H::World, H::Node) -> bool + Send + Sync + 'static
+    for<'w> FnMut(WorldNodeRef<'w, H>) -> bool + Send + Sync + 'static
 {
 }
 
 impl<H: Host, F> ChangedFn<H> for F where
-    F: FnMut(&H::World, H::Node) -> bool + Send + Sync + 'static
+    F: for<'w> FnMut(WorldNodeRef<'w, H>) -> bool
+        + Send
+        + Sync
+        + 'static
 {
 }
 
@@ -40,11 +44,8 @@ impl<H: Host, F> BuildFn<H> for F where
 }
 
 // The boxed forms the kernel stores.
-type BoxedChanged<H> = Box<
-    dyn FnMut(&<H as Host>::World, <H as Host>::Node) -> bool
-        + Send
-        + Sync,
->;
+type BoxedChanged<H> =
+    Box<dyn for<'w> FnMut(WorldNodeRef<'w, H>) -> bool + Send + Sync>;
 type BoxedBuild<H> =
     Box<dyn for<'a> Fn(&mut Ui<'a, H>) + Send + Sync>;
 

@@ -26,7 +26,8 @@ use bevy::reflect::{
 };
 use bevy::ui_widgets::Activate;
 
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
+use fynix_mock::WorldNodeRef;
 use fynix_mock::composer::Composer;
 use fynix_mock::ui::ElementHandle;
 use fynix_mock::{elem, val};
@@ -215,7 +216,9 @@ fn name(
     .bind(
         |label| label.text(),
         when_changed(source),
-        move |world, _| active(&*shown, world).unwrap_or_default(),
+        move |WorldNodeRef { world, .. }| {
+            active(&*shown, world).unwrap_or_default()
+        },
     );
 }
 
@@ -255,7 +258,9 @@ fn control(
     .bind(
         |dropdown| dropdown.label().text(),
         when_changed(source),
-        move |world, _| active(&*shown, world).unwrap_or_default(),
+        move |WorldNodeRef { world, .. }| {
+            active(&*shown, world).unwrap_or_default()
+        },
     );
 }
 

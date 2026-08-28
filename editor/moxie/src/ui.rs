@@ -19,7 +19,8 @@ use crate::{
     ProjectPath, SelectedAction, SelectedEntity, playback, scene,
     view,
 };
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
+use fynix_mock::WorldNodeRef;
 use fynix_mock::elem;
 use moxie_ui::elements::{Frame, FrameCursor, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
@@ -218,7 +219,7 @@ fn register_windows(registry: &mut WindowRegistry) {
                 .bind(
                     |frame| frame.width(),
                     value_changed(crate::view::preview_fit),
-                    |world, node| {
+                    |WorldNodeRef { world, node }| {
                         crate::view::preview_fit(world, node)
                             .map_or(Val::ZERO, |(width, _)| width)
                     },
@@ -226,7 +227,7 @@ fn register_windows(registry: &mut WindowRegistry) {
                 .bind(
                     |frame| frame.height(),
                     value_changed(crate::view::preview_fit),
-                    |world, node| {
+                    |WorldNodeRef { world, node }| {
                         crate::view::preview_fit(world, node)
                             .map_or(Val::ZERO, |(_, height)| height)
                     },
@@ -234,7 +235,7 @@ fn register_windows(registry: &mut WindowRegistry) {
                 .bind(
                     |frame| frame.display(),
                     value_changed(crate::view::preview_fit),
-                    |world, node| {
+                    |WorldNodeRef { world, node }| {
                         if crate::view::preview_fit(world, node)
                             .is_some()
                         {

@@ -14,7 +14,7 @@ use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
 use bevy::ui::UiScale;
 
-use bevy_fynix::{BevyFynix, EntityExt};
+use bevy_fynix::{BevyFynix, WorldEntityMut};
 use fynix_mock::element::Element;
 use fynix_mock::ui::ElementMut;
 

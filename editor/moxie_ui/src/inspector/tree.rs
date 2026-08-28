@@ -12,7 +12,8 @@ use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
+use fynix_mock::WorldNodeRef;
 use fynix_mock::composer::Composer;
 use fynix_mock::records::BuildFn;
 use fynix_mock::ui::{ElementHandle, ElementMut};
@@ -246,10 +247,12 @@ pub(crate) fn single_value(
 /// survives a value change; a rebuild would despawn it mid-edit. The
 /// tick is checked first so the walk only runs when something
 /// touched the component.
-fn shape_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
+fn shape_changed(
+    field: Field,
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     let mut seen_tick: Option<Tick> = None;
     let mut seen_shape: Option<Vec<Entry>> = None;
-    move |world, _| {
+    move |WorldNodeRef { world, .. }| {
         let tick = field.changed_tick(world);
         if seen_shape.is_some() && tick == seen_tick {
             return false;

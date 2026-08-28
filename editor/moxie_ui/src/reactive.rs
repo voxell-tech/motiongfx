@@ -2,11 +2,13 @@
 //!
 //! The kernel itself is [`bevy_fynix`]; what lives here is the
 //! predicates the editor asks it to watch, none of which know
-//! anything about the kernel: each is a `FnMut(&World, Entity)
-//! -> bool` that answers "has this changed since I last looked".
+//! anything about the kernel: each is a
+//! `FnMut(WorldNodeRef<BevyHost>) -> bool` that answers "has this changed
+//! since I last looked".
 
 use bevy::ecs::change_detection::{ComponentTicks, Tick};
 use bevy::prelude::*;
+use fynix_mock::WorldNodeRef;
 
 // `watch_root` stays generic over `Theme`, same as `bevy_fynix`
 // itself: `build`'s own type already fixes `Theme` to `EditorTheme`
@@ -23,9 +25,12 @@ pub type FynixPlugin = bevy_fynix::FynixPlugin<EditorTheme>;
 /// Fires when `R` changed since the last poll. Also fires on the first
 /// poll, so a binding starts out in sync with the world.
 pub fn resource_changed<R: Resource>()
--> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+-> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut seen: Option<Tick> = None;
-    move |world, _| {
+    move |WorldNodeRef { world, .. }| {
         let Some(ticks) = world.get_resource_change_ticks::<R>()
         else {
             return false;
@@ -46,12 +51,15 @@ pub fn resource_changed<R: Resource>()
 /// instead.
 pub fn structure_changed<R: Resource, K>(
     project: impl Fn(&R) -> K + Send + Sync + 'static,
-) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static
 where
     K: PartialEq + Send + Sync + 'static,
 {
     let mut seen: Option<K> = None;
-    move |world, _| {
+    move |WorldNodeRef { world, .. }| {
         let Some(resource) = world.get_resource::<R>() else {
             return false;
         };
@@ -69,12 +77,15 @@ where
 /// closure, since a predicate only has `&World` to scan with.
 pub fn value_changed<T>(
     read: impl Fn(&World, Entity) -> T + Send + Sync + 'static,
-) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static
 where
     T: PartialEq + Send + Sync + 'static,
 {
     let mut seen: Option<T> = None;
-    move |world, node| {
+    move |WorldNodeRef { world, node }| {
         let current = read(world, node);
         let fired = seen.as_ref() != Some(&current);
         seen = Some(current);
@@ -88,9 +99,12 @@ where
 /// Rides the tick. Reach for [`value_changed`] when the value itself
 /// is what matters.
 pub fn component_changed<C: Component>()
--> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+-> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut seen: Option<Option<Tick>> = None;
-    move |world, node| {
+    move |WorldNodeRef { world, node }| {
         let current = component_tick::<C>(world, node);
         let fired = seen != Some(current);
         seen = Some(current);
@@ -101,10 +115,13 @@ pub fn component_changed<C: Component>()
 /// Same, for `C` on some other entity than the node.
 pub fn component_changed_on<C: Component>(
     entity: Entity,
-) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut changed =
         tick_changed(move |world| component_tick::<C>(world, entity));
-    move |world, _| changed(world)
+    move |WorldNodeRef { world, .. }| changed(world)
 }
 
 /// When `C` on `entity` was last written.
@@ -133,9 +150,12 @@ pub(crate) fn tick_changed(
 
 /// Fires when the current `S` differs from the last poll.
 pub fn state_changed<S: States>()
--> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+-> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut seen: Option<S> = None;
-    move |world, _| {
+    move |WorldNodeRef { world, .. }| {
         let current =
             world.get_resource::<State<S>>().map(|s| s.get().clone());
         let fired = seen != current;
