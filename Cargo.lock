@@ -3757,14 +3757,16 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "lenz"
-version = "0.3.0"
+version = "0.1.0"
+source = "git+https://github.com/nixonyh/lenz#1a05f13be1cb57bd073f50abe9ca75afc03f3040"
 dependencies = [
  "lenz_macros",
 ]
 
 [[package]]
 name = "lenz_macros"
-version = "0.3.0"
+version = "0.1.0"
+source = "git+https://github.com/nixonyh/lenz#1a05f13be1cb57bd073f50abe9ca75afc03f3040"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
