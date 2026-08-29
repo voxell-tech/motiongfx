@@ -1,6 +1,6 @@
 # Splitting `lenz` out of `fynix`
 
-Plan, agreed but not built. The rest of `fynix` stays one crate: its
+Done. See the checklist at the end. The rest of `fynix` stays one crate: its
 kernel (`element`, `ui`, `records`, `lanes`, `composer`, `Fynix`) is a
 single dependency cycle and cannot be cut without turning `pub(crate)`
 plumbing into `pub` API. `lenz` is the exception - `lenz.rs` names
@@ -105,3 +105,10 @@ All done:
       files import `element` from `fynix::element` and drop the unused
       `Element` trait import (test files that call `Element::build`
       directly keep it).
+- [x] `OverrideDefault` extracted into its own single proc-macro crate
+      `override_default` (its codegen references no crate, only
+      `::core::default::Default`, so no `crate =` override - just the
+      derive plus a vendored `option_inner`). `fynix` re-exports it;
+      `#[element]` emits `#[derive(fynix::OverrideDefault)]`, which
+      resolves through the re-export. `fynix_macros/src/override_default.rs`
+      is gone.
