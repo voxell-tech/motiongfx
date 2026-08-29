@@ -1,5 +1,4 @@
-//! A `Default` derive where a field can start from something other
-//! than its own default.
+#![doc = include_str!("../README.md")]
 
 mod expand;
 

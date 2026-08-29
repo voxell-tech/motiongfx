@@ -4,7 +4,8 @@ description = "A `Default` derive where a field can start from something other t
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-repository.workspace = true
+repository = "https://github.com/nixonyh/override_default"
+readme = "./README.md"
 
 [lib]
 proc-macro = true
