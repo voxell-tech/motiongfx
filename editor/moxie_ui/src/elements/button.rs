@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::style::Style;
 use fynix::ui::{Build, Patch};
 
@@ -31,7 +31,7 @@ pub enum Hover {
 /// A hit area holding an icon, a label, both, or whatever is built
 /// under it, with no look of its own. [`Button`] and [`GhostButton`]
 /// are two the editor gives it.
-#[derive(Element)]
+#[element]
 pub struct ButtonElem {
     /// A node of its own, so its image and colour can be bound
     /// without touching the button.

@@ -8,7 +8,7 @@
 #![allow(dead_code)]
 
 use fynix::Fynix;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{Element, ElementVisual, element};
 use fynix::host::Host;
 use fynix::lenz::{Cursor, FieldPath, Identity};
 use fynix::ui::{Build, ElementMut, Patch};
@@ -219,7 +219,7 @@ impl Host for Backend {
 
 /// The default is what a test gets when it only cares that a label is
 /// there, so nothing has to spell one out.
-#[derive(Element)]
+#[element]
 pub struct Label {
     #[default(String::from("Label"))]
     pub text: String,

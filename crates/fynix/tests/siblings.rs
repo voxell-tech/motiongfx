@@ -4,13 +4,13 @@
 mod common;
 
 use common::{Label, LabelCursor, World};
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{Element, ElementVisual, element};
 use fynix::records::Records;
 use fynix::ui::{Build, Patch};
 
 /// Two labels that already say which is which, so a test can tell one
 /// node from the other without setting anything up.
-#[derive(Element)]
+#[element]
 pub struct Pair {
     #[elem(child)]
     #[default(text: String::from("up"), size: 1)]

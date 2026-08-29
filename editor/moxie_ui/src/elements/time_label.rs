@@ -1,14 +1,14 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 use super::Label;
 
 /// A time reading on the time axis, placing above the mark it reads
 /// for.
-#[derive(Element)]
+#[element]
 pub struct TimeLabel {
     #[elem(child)]
     pub label: Label,

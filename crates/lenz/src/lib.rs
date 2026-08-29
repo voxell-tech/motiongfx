@@ -5,7 +5,7 @@
 //! is just another link, not a separate kind of path.
 //!
 //! ```
-//! use fynix::lenz::Lenz;
+//! use lenz::Lenz;
 //! #[derive(Lenz)]
 //! pub struct Card { pub header: Header }
 //! #[derive(Lenz)]
@@ -24,11 +24,19 @@
 //! assert_eq!(size.get(&card), Some(&12));
 //! ```
 
+#![no_std]
+
+extern crate alloc;
+
+// Lets `#[derive(Lenz)]` inside this crate's own tests resolve
+// `::lenz` to itself.
+extern crate self as lenz;
+
 use alloc::vec::Vec;
 use core::any::TypeId;
 use core::marker::PhantomData;
 
-pub use fynix_macros::Lenz;
+pub use lenz_macros::Lenz;
 
 /// What a path is called once the types are gone.
 ///

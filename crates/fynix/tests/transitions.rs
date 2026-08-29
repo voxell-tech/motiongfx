@@ -5,7 +5,7 @@
 mod common;
 
 use common::{Backend, Interact, Label, LabelCursor, TestAim, World};
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::host::Host;
 use fynix::style::Style;
 use fynix::transition::Transition;
@@ -150,7 +150,7 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
     /// element's own business - `Grower` leaves a slot for a style to
     /// fill, and wires the lane itself once it has a node to put it
     /// on.
-    #[derive(Element)]
+    #[element]
     pub struct Grower {
         #[default(String::from("Label"))]
         pub text: String,

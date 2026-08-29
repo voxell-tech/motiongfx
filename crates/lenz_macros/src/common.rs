@@ -5,16 +5,18 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::{
-    Data, DeriveInput, Fields, GenericArgument, GenericParam, Ident,
-    PathArguments, Type, WhereClause,
+    Attribute, Data, DeriveInput, Fields, GenericArgument,
+    GenericParam, Ident, PathArguments, Type, WhereClause,
 };
 
 /// A struct's generics, in the pieces the derive splices.
-pub struct Generics {
+pub struct Generics<'a> {
     /// The parameters with their bounds: `S: Look, T`. Empty when the
     /// struct has none, and safe to follow a parameter of our own, as
     /// `impl<P, #decl>`.
     pub decl: TokenStream2,
+    /// Just the names: `S, T`.
+    pub idents: Vec<&'a Ident>,
     /// The arguments as written on the type: `<S, T>`, or nothing.
     pub ty: TokenStream2,
     /// The struct's own `where`, plus `'static` for every parameter.
@@ -28,7 +30,7 @@ pub struct Generics {
 }
 
 /// Reads a struct's generics, rejecting what a path cannot carry.
-pub fn generics(ast: &DeriveInput) -> syn::Result<Generics> {
+pub fn generics(ast: &DeriveInput) -> syn::Result<Generics<'_>> {
     let mut idents = Vec::new();
 
     for param in &ast.generics.params {
@@ -74,6 +76,7 @@ pub fn generics(ast: &DeriveInput) -> syn::Result<Generics> {
 
     Ok(Generics {
         decl,
+        idents,
         ty,
         where_clause,
         predicates,
@@ -94,28 +97,21 @@ fn predicates(
 }
 
 /// A struct's named fields, of which a unit struct has none.
-///
-/// An element with no data of its own is an ordinary thing to want:
-/// what it draws is fixed, and only where it sits varies.
-pub fn named_fields<'a>(
-    ast: &'a DeriveInput,
-    derive: &str,
-) -> syn::Result<Cow<'a, Punctuated<syn::Field, syn::Token![,]>>> {
+pub fn named_fields(
+    ast: &DeriveInput,
+) -> syn::Result<Cow<'_, Punctuated<syn::Field, syn::Token![,]>>> {
     match &ast.data {
         Data::Struct(data) => match &data.fields {
             Fields::Named(named) => Ok(Cow::Borrowed(&named.named)),
             Fields::Unit => Ok(Cow::Owned(Punctuated::new())),
             Fields::Unnamed(_) => Err(syn::Error::new_spanned(
                 &data.fields,
-                format!(
-                    "`#[derive({derive})]` needs named fields, or \
-                     none at all"
-                ),
+                "`#[derive(Lenz)]` needs named fields, or none at all",
             )),
         },
         _ => Err(syn::Error::new(
             Span::call_site(),
-            format!("`#[derive({derive})]` only applies to structs"),
+            "`#[derive(Lenz)]` only applies to structs",
         )),
     }
 }
@@ -145,38 +141,51 @@ pub fn option_inner(ty: &Type) -> Option<&Type> {
     })
 }
 
-/// The path to the `fynix` crate, following a renamed dependency.
+/// Where the generated code reaches the `lenz` crate.
 ///
-/// `Itself` maps to the absolute path rather than `crate`, which
-/// would mean the test crate for an integration test in our own
-/// package. `extern crate self as fynix` keeps it valid there.
-pub fn crate_path() -> TokenStream2 {
-    match crate_name("fynix") {
+/// `#[lenz(crate = <path>)]` on the struct wins. Otherwise the
+/// dependency's own name, following a rename. `Itself` and a missing
+/// dependency both fall back to `::lenz`, which `extern crate self as
+/// lenz` keeps valid inside the crate and its tests.
+pub fn lenz_root(attrs: &[Attribute]) -> syn::Result<TokenStream2> {
+    for attr in attrs {
+        if !attr.path().is_ident("lenz") {
+            continue;
+        }
+        let mut path = None;
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("crate") {
+                path = Some(meta.value()?.parse::<syn::Path>()?);
+                Ok(())
+            } else {
+                // `ignore` is a field directive; anything else is a
+                // typo. Neither belongs on the struct's `crate`
+                // lookup, but only `crate` is read here.
+                Err(meta.error("expected `crate = <path>`"))
+            }
+        })?;
+        if let Some(path) = path {
+            return Ok(quote!(#path));
+        }
+    }
+
+    Ok(match crate_name("lenz") {
         Ok(FoundCrate::Name(name)) => {
             let ident = Ident::new(&name, Span::call_site());
             quote!(::#ident)
         }
-        Ok(FoundCrate::Itself) | Err(_) => quote!(::fynix),
-    }
+        Ok(FoundCrate::Itself) | Err(_) => quote!(::lenz),
+    })
 }
 
-pub fn pascal_case(ident: &Ident) -> String {
-    let name = ident.to_string();
-    let mut out = String::with_capacity(name.len());
-    let mut capitalize = true;
-
-    for ch in name.chars() {
-        if ch == '_' {
-            capitalize = true;
-        } else if capitalize {
-            out.extend(ch.to_uppercase());
-            capitalize = false;
-        } else {
-            out.push(ch);
-        }
-    }
-
-    out
+/// Whether the field carries `#[lenz(ignore)]`.
+pub fn ignored(field: &syn::Field) -> bool {
+    field.attrs.iter().any(|attr| {
+        attr.path().is_ident("lenz")
+            && attr
+                .parse_args::<Ident>()
+                .is_ok_and(|ident| ident == "ignore")
+    })
 }
 
 pub fn snake_case(ident: &Ident) -> String {

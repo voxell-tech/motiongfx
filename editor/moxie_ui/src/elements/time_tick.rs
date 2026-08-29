@@ -1,11 +1,11 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 /// One mark on the time axis.
-#[derive(Element)]
+#[element]
 pub struct TimeTick {
     /// Pixels from the time axis's left edge.
     pub x: f32,

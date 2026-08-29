@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 use super::Label;
@@ -14,7 +14,7 @@ use super::Label;
 /// top-left corner exactly like [`TimelineBlock`](super::TimelineBlock)'s -
 /// clipped rather than measured, so a bar too narrow for it just
 /// shows nothing instead of overflowing its neighbor.
-#[derive(Element)]
+#[element]
 pub struct TimelineAction {
     /// Blank when the action has no name of its own.
     #[elem(child)]

@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
-use syn::{DeriveInput, Field};
+use syn::{Data, DeriveInput, Field, parse_quote};
 
 use crate::common::{
     crate_path, generics, named_fields, option_inner, pascal_case,
@@ -8,23 +8,9 @@ use crate::common::{
 };
 
 pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
-    // `Element`'s own dispatch names a field by the id `Lenz` gives
-    // it, and almost always wants `#[default(...)]` for its own
-    // fields - the two have never once been derived apart from
-    // `Element` across this workspace, so `Element` derives them
-    // itself rather than asking a caller to remember both.
-    //
-    // `#[elem(ignore)]` is left out of the cursor too: `Default`
-    // still needs to see the field, which is why it stays in for
-    // `override_default`, but nothing should be able to name a path
-    // to it once it can't be patched.
-    let lenz =
-        crate::lenz::expand_filtered(ast, |field| !ignore(field))?;
-    let default = crate::override_default::expand(ast)?;
-
     let root = crate_path();
     let name = &ast.ident;
-    let fields = named_fields(ast, "Element")?;
+    let fields = named_fields(ast, "element")?;
 
     let generics = generics(ast)?;
     let decl = &generics.decl;
@@ -53,7 +39,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         // A field marked `#[elem(child)]` is an element in its own
         // right. It is absent from the enum, because naming it there
         // would offer a second, redundant way in.
-        if is_elem(field) {
+        if is_child(field)? {
             // `Option<T>` builds nothing when absent, so the store
             // simply has no entry and the walk stops there.
             let (elem_ty, elem) = match option_inner(&field.ty) {
@@ -112,14 +98,13 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         }
 
         // A field marked `#[elem(ignore)]` only ever changes at
-        // build. Leaving it out of the enum the same way `child`
-        // does makes that true rather than merely asked for: nothing
-        // can name it to walk a path there, so a stray `.bind()`
-        // writes the field and has no way to tell the backend. It is
-        // left out of the cursor entirely too (see the call to
-        // `lenz::expand_filtered` above), so there is no `.field()`
-        // to even reach for one in the first place.
-        if ignore(field) {
+        // build. Leaving it out of the enum the same way `child` does
+        // makes that true rather than merely asked for: nothing can
+        // name it to walk a path there, so a stray `.bind()` writes
+        // the field and has no way to tell the backend. The struct is
+        // re-emitted with `#[lenz(ignore)]` in its place, so the
+        // cursor has no `.field()` for it either.
+        if is_ignore(field)? {
             continue;
         }
 
@@ -136,9 +121,10 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
         });
     }
 
+    let subject = rewrite_struct(ast, &root)?;
+
     Ok(quote! {
-        #lenz
-        #default
+        #subject
 
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum #field_enum {
@@ -236,31 +222,74 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     })
 }
 
-/// What `#[elem(...)]` says about this field, if it carries one.
-///
-/// One attribute, one directive: `elem(child)` for a field that is an
-/// element in its own right, `elem(ignore)` for one that only ever
-/// changes at build. Nothing else names it, so there is nothing to
-/// disambiguate between the two forms.
-fn elem_directive(field: &Field) -> Option<syn::Ident> {
-    let attr = field
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("elem"))?;
-    attr.parse_args::<syn::Ident>().ok()
+/// The struct itself, re-emitted for the field/patch system to derive
+/// off: `#[elem(child)]` markers dropped, `#[elem(ignore)]` swapped
+/// for `#[lenz(ignore)]`, and `Lenz`/`OverrideDefault` derived - the
+/// dispatch below names a field by the id `Lenz` gives it, and an
+/// element's own fields almost always want `#[default(...)]`.
+fn rewrite_struct(
+    ast: &DeriveInput,
+    root: &TokenStream2,
+) -> syn::Result<DeriveInput> {
+    let mut out = ast.clone();
+
+    out.attrs.push(parse_quote! {
+        #[derive(#root::lenz::Lenz, #root::OverrideDefault)]
+    });
+    out.attrs.push(parse_quote!(#[lenz(crate = #root::lenz)]));
+
+    let Data::Struct(data) = &mut out.data else {
+        return Err(syn::Error::new_spanned(
+            ast,
+            "`#[element]` only applies to structs",
+        ));
+    };
+
+    for field in &mut data.fields {
+        let mut kept = Vec::with_capacity(field.attrs.len());
+        for attr in field.attrs.drain(..) {
+            if !attr.path().is_ident("elem") {
+                kept.push(attr);
+                continue;
+            }
+            match attr.parse_args::<syn::Ident>() {
+                Ok(directive) if directive == "child" => {}
+                Ok(directive) if directive == "ignore" => {
+                    kept.push(parse_quote!(#[lenz(ignore)]));
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        attr,
+                        "expected `#[elem(child)]` or \
+                         `#[elem(ignore)]`",
+                    ));
+                }
+            }
+        }
+        field.attrs = kept;
+    }
+
+    Ok(out)
 }
 
-/// Whether the field carries `#[elem(child)]`.
-fn is_elem(field: &Field) -> bool {
-    elem_directive(field)
-        .is_some_and(|directive| directive == "child")
+/// What `#[elem(...)]` says about this field: `child` for one that is
+/// an element in its own right, `ignore` for one that only ever
+/// changes at build.
+fn elem_directive(field: &Field) -> syn::Result<Option<syn::Ident>> {
+    let Some(attr) =
+        field.attrs.iter().find(|attr| attr.path().is_ident("elem"))
+    else {
+        return Ok(None);
+    };
+    attr.parse_args::<syn::Ident>().map(Some)
 }
 
-/// Whether the field carries `#[elem(ignore)]`: a regular field that
-/// only ever changes at build (in `build_fields`), so it has nothing
-/// to reach through the field/patch system, and no cursor to name a
-/// path to it with either.
-fn ignore(field: &Field) -> bool {
-    elem_directive(field)
-        .is_some_and(|directive| directive == "ignore")
+fn is_child(field: &Field) -> syn::Result<bool> {
+    Ok(elem_directive(field)?
+        .is_some_and(|directive| directive == "child"))
+}
+
+fn is_ignore(field: &Field) -> syn::Result<bool> {
+    Ok(elem_directive(field)?
+        .is_some_and(|directive| directive == "ignore"))
 }

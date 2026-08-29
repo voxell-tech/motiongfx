@@ -1,11 +1,11 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{Element, ElementVisual};
+use fynix::element::{ElementVisual, element};
 use fynix::ui::{Build, Patch};
 
 /// The playhead line, positioned by the editor's playhead system.
-#[derive(Element)]
+#[element]
 pub struct PlayheadLine {
     pub left: f32,
 }

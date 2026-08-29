@@ -1,46 +1,40 @@
 //! Derive macros for `fynix`.
+//!
+//! `#[derive(Lenz)]` for field paths lives in the `lenz` crate, which
+//! `fynix` re-exports; `#[element]` derives what it and
+//! `#[derive(OverrideDefault)]` would as part of its own output.
 
 mod common;
 mod element;
-mod lenz;
 mod override_default;
 
 use proc_macro::TokenStream;
 use syn::{DeriveInput, parse_macro_input};
 
-/// Generates the field paths for a struct: a zero-sized
-/// `FieldPath` marker per field, and a `Cursor` method that walks to
-/// it. Call `accessor()` to end the walk.
+/// Marks a struct as an element: the fields it draws itself become a
+/// dispatch enum a `match` can check for exhaustiveness, and the
+/// `#[elem(child)]` fields become children the tree builds first and
+/// walks down to when a change names one.
 ///
-/// [`Element`] already derives this for its own struct - reach for
-/// this directly only for one that never derives `Element` at all.
-#[proc_macro_derive(Lenz)]
-pub fn derive_lenz(input: TokenStream) -> TokenStream {
-    let ast = parse_macro_input!(input as DeriveInput);
-    match lenz::expand(&ast) {
-        Ok(tokens) => tokens.into(),
-        Err(err) => err.into_compile_error().into(),
+/// The struct is re-emitted with `#[derive(Lenz, OverrideDefault)]`:
+/// the dispatch names a field by the id `Lenz` gives it, and an
+/// element's own fields almost always want `#[default(...)]`.
+///
+/// - `#[elem(child)]` - a field that is an element in its own right.
+///   Absent from the enum; patches through its own id.
+/// - `#[elem(ignore)]` - a field that only ever changes at build.
+///   Absent from the enum and from the cursor, so nothing can name a
+///   path to it.
+#[proc_macro_attribute]
+pub fn element(args: TokenStream, input: TokenStream) -> TokenStream {
+    if !args.is_empty() {
+        return syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "`#[element]` takes no arguments",
+        )
+        .into_compile_error()
+        .into();
     }
-}
-
-/// Generates an enum naming the fields this element draws itself, so
-/// dispatching on a field is a `match` the compiler checks for
-/// exhaustiveness.
-///
-/// Fields marked `#[elem(child)]` are left out: they are elements of
-/// their own, and patch through their own id. Fields marked
-/// `#[elem(ignore)]` are left out too, and out of the cursor
-/// [`Lenz`] would otherwise give them: they only ever change at
-/// build, so there is nothing for the field/patch system, or a path
-/// naming one for it to reach, to find there.
-///
-/// Also derives what [`Lenz`] and [`OverrideDefault`] would: an
-/// element's own dispatch reports a field by the id `Lenz` gives it,
-/// so the two have always been derived together, and `#[default(...)]`
-/// is the usual way an element's own fields differ from their type's
-/// default.
-#[proc_macro_derive(Element, attributes(elem, default))]
-pub fn derive_element(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     match element::expand(&ast) {
         Ok(tokens) => tokens.into(),
@@ -53,8 +47,8 @@ pub fn derive_element(input: TokenStream) -> TokenStream {
 /// `#[default(size: 24)]` to keep the field's default and override
 /// fields of it.
 ///
-/// [`Element`] already derives this for its own struct - reach for
-/// this directly only for one that never derives `Element` at all.
+/// `#[element]` emits this for its own struct - reach for it directly
+/// only for one that is never an element at all.
 #[proc_macro_derive(OverrideDefault, attributes(default))]
 pub fn derive_override_default(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
