@@ -84,7 +84,9 @@ pub use ::lenz;
 ///
 /// An enum starts in the variant marked `#[default]`, and that
 /// variant's own fields take the attribute as any other field does.
-pub use fynix_macros::OverrideDefault;
+///
+/// The derive itself is the [`override_default`] crate.
+pub use override_default::OverrideDefault;
 
 /// Owns every watcher and binding, and the tree they maintain.
 pub struct Fynix<H: Host> {

@@ -5,10 +5,34 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
     Data, DataEnum, DeriveInput, Expr, Field, FieldValue, Fields,
-    GenericParam, PathArguments, Token, Type, Variant,
+    GenericArgument, GenericParam, PathArguments, Token, Type,
+    Variant,
 };
 
-use crate::common::option_inner;
+/// The `T` of an `Option<T>`, if that is what this type is.
+fn option_inner(ty: &Type) -> Option<&Type> {
+    let Type::Path(path) = ty else {
+        return None;
+    };
+    if path.qself.is_some() {
+        return None;
+    }
+
+    let segment = path.path.segments.last()?;
+    if segment.ident != "Option" {
+        return None;
+    }
+
+    let PathArguments::AngleBracketed(args) = &segment.arguments
+    else {
+        return None;
+    };
+
+    args.args.iter().find_map(|arg| match arg {
+        GenericArgument::Type(ty) => Some(ty),
+        _ => None,
+    })
+}
 
 /// What `#[default(..)]` says a field starts as.
 enum Start {
