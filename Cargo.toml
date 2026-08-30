@@ -20,7 +20,7 @@ moxie = { version = "0.3.0", path = "editor/moxie" }
 moxie_ui = { version = "0.3.0", path = "editor/moxie_ui" }
 moxie_asset = { version = "0.3.0", path = "editor/moxie_asset" }
 lenz = { version = "0.1", git = "https://github.com/nixonyh/lenz" }
-override_default = { version = "0.3.0", path = "crates/override_default" }
+override_default = { version = "0.1", git = "https://github.com/nixonyh/override_default" }
 fynix = { version = "0.3.0", path = "crates/fynix" }
 fynix_macros = { version = "0.3.0", path = "crates/fynix_macros" }
 bevy_fynix = { version = "0.3.0", path = "crates/bevy_fynix" }

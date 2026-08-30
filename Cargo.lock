@@ -4636,7 +4636,8 @@ dependencies = [
 
 [[package]]
 name = "override_default"
-version = "0.3.0"
+version = "0.1.0"
+source = "git+https://github.com/nixonyh/override_default#c953e1361f2e2eed1670040cc44672028f14b525"
 dependencies = [
  "proc-macro2",
  "quote",
