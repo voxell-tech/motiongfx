@@ -14,23 +14,22 @@ pub(crate) struct Tick {
 }
 
 /// The finest spacing that still leaves `min_px` between marks at this
-/// scale. Alternating between x 5 and x 2.
+/// scale, off a ladder of one and five per power of ten.
 fn tick_step(px_per_second: f32, min_px: f32) -> i64 {
     let px_per_ms = px_per_second / 1000.0;
-    let mut step: i64 = 1;
-    let mut multiplier = 5;
+    // Milliseconds a gap has to cover.
+    let target = (min_px / px_per_ms).max(1.0);
+    // A zero scale makes `target` infinite, so cap the exponent.
+    let exp = target.log10().floor().clamp(0.0, 9.0) as u32;
+    let magnitude = 10i64.pow(exp);
 
-    while step as f32 * px_per_ms < min_px {
-        let next = step.saturating_mul(multiplier);
-        // The chain has nothing coarser left to offer.
-        if next <= step {
-            break;
-        }
-        step = next;
-        multiplier = if multiplier == 5 { 2 } else { 5 };
+    if target <= magnitude as f32 {
+        magnitude
+    } else if target <= 5.0 * magnitude as f32 {
+        5 * magnitude
+    } else {
+        10 * magnitude
     }
-
-    step
 }
 
 /// Decimal places follow the step and not the value to ensure one row never
