@@ -66,7 +66,7 @@ pub(crate) fn zoom_hotkey(
     view.zoom_to(anchor_x, playhead, factor);
 }
 
-/// Fit the whole animation to the panel on `\`.
+/// Fit the whole animation to the panel on `Shift+Z`.
 pub(crate) fn fit_hotkey(
     keys: Res<ButtonInput<KeyCode>>,
     focus: Res<InputFocus>,
@@ -75,7 +75,9 @@ pub(crate) fn fit_hotkey(
     state: Res<EditorState>,
     mut view: ResMut<TimelineView>,
 ) {
-    if !keys.just_pressed(KeyCode::Backslash) {
+    let shift =
+        keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
+    if !shift || !keys.just_pressed(KeyCode::KeyZ) {
         return;
     }
 
