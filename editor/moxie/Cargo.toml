@@ -14,7 +14,7 @@ motiongfx_scene = { workspace = true, features = ["std"] }
 moxie_ui = { workspace = true }
 moxie_asset = { workspace = true }
 bevy_fynix = { workspace = true }
-fynix_mock = { workspace = true }
+fynix = { workspace = true }
 bevy = { workspace = true, default-features = true, features = [
     "bevy_feathers",
     "bevy_ui_widgets",

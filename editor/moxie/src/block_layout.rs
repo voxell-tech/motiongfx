@@ -9,6 +9,7 @@
 //! rather than implying the relationship through indentation.
 
 use core::time::Duration;
+use std::collections::BTreeSet;
 
 use bevy_motiongfx::scene::backend::Backend;
 use motiongfx_scene::block::{Block, Combinator, Node};
@@ -22,8 +23,8 @@ const HEADER_HEIGHT: f32 = 20.0;
 const LANE_GAP: f32 = 4.0;
 const MIN_WIDTH: f32 = 2.0;
 
-/// One box to draw: a block header (its combinator, as a label) or an
-/// action leaf.
+/// One box to draw: a block header (its name, or its combinator if
+/// unnamed) or an action leaf.
 #[derive(Clone, PartialEq)]
 pub(crate) struct Placed {
     pub(crate) x: f32,
@@ -33,6 +34,15 @@ pub(crate) struct Placed {
     pub(crate) depth: usize,
     /// `Some` for a block header box; `None` for an action leaf.
     pub(crate) label: Option<String>,
+    /// An action leaf's own name, if set. `None` for a block - its
+    /// name, if any, is already folded into `label`.
+    pub(crate) name: Option<String>,
+    /// `true` when a block's children are folded away. Always `false`
+    /// for an action leaf.
+    pub(crate) folded: bool,
+    /// `true` for a `Node::Draft` leaf - an unassigned slot, styled
+    /// apart from a real action.
+    pub(crate) draft: bool,
     /// This node's position in `animation`'s tree: child index at
     /// each depth, root first. What [`crate::SelectedAction`] compares
     /// against, so a click can name exactly which node it landed on.
@@ -41,11 +51,20 @@ pub(crate) struct Placed {
 
 /// Every box in `animation`'s tree, depth-first. `animation` itself
 /// gets a box too, at depth `0`, as the timeline's outer frame.
+///
+/// `folded` names every block whose children are collapsed away - its
+/// duration is unaffected, only its height and its children's boxes.
 pub(crate) fn layout(
     animation: &Block<Backend>,
     view: TimelineView,
+    folded: &BTreeSet<Vec<usize>>,
 ) -> Vec<Placed> {
-    let root = measure_block(animation, Duration::ZERO);
+    let root = measure_block(
+        animation,
+        Duration::ZERO,
+        folded,
+        &mut Vec::new(),
+    );
     let mut out = Vec::new();
     flatten(&root, 0.0, 0, view, &mut Vec::new(), &mut out);
     out
@@ -57,34 +76,39 @@ pub(crate) fn layout(
 struct Measured {
     start: Duration,
     /// This node's own duration - `node_duration`/`block_duration` -
-    /// what its *own* box is drawn to. A block's box is only ever
-    /// this wide, `Any` included: it marks the group's boundary, not
-    /// how long its content happens to keep drawing past it.
+    /// what its box is drawn to.
     end: Duration,
-    /// The rightmost point any of this node's own content actually
-    /// draws to - used only to detect whether a following `Chain`
-    /// sibling needs to drop to a new row, never to size a box. Equal
-    /// to `end` everywhere except an `Any`, whose losing branch keeps
-    /// animating (and drawing) past it, and any block containing one,
-    /// recursively.
-    visual_end: Duration,
     height: f32,
     kind: MeasuredKind,
 }
 
 enum MeasuredKind {
-    Action,
+    Action {
+        name: Option<String>,
+    },
+    Draft {
+        name: Option<String>,
+    },
     Block {
         label: String,
+        folded: bool,
         children: Vec<(f32, Measured)>,
     },
+}
+
+/// A block's own header text: its name if set, its combinator
+/// otherwise.
+fn block_label(block: &Block<Backend>) -> String {
+    block
+        .name
+        .clone()
+        .unwrap_or_else(|| combinator_label(&block.combinator))
 }
 
 fn combinator_label(combinator: &Combinator) -> String {
     match combinator {
         Combinator::Chain => "Chain".into(),
         Combinator::All => "All".into(),
-        Combinator::Any => "Any".into(),
         Combinator::Flow(delay) => {
             format!("Flow {:.2}s", delay.as_secs_f32())
         }
@@ -93,13 +117,17 @@ fn combinator_label(combinator: &Combinator) -> String {
 
 /// A node's own duration, including its `delay`: how much it advances
 /// its parent block's chain/flow position. Mirrors the timing math
-/// `motiongfx::track`'s `chain`/`flow` apply at compile time.
+/// `motiongfx::track`'s `chain`/`flow` apply at compile time. Not
+/// affected by folding.
 fn node_duration(node: &Node<Backend>) -> Duration {
     let (delay, inner) = match node {
         Node::Action { delay, action } => (delay, action.duration),
         Node::Block { delay, block } => {
             (delay, block_duration(block))
         }
+        Node::Draft {
+            delay, duration, ..
+        } => (delay, *duration),
     };
     inner.saturating_add(delay.unwrap_or_default())
 }
@@ -118,10 +146,6 @@ fn block_duration(block: &Block<Backend>) -> Duration {
             { block.children.iter().map(node_duration).max() }
                 .unwrap_or_default()
         }
-        Combinator::Any => {
-            { block.children.iter().map(node_duration).min() }
-                .unwrap_or_default()
-        }
         Combinator::Flow(delay) => block
             .children
             .iter()
@@ -136,47 +160,65 @@ fn block_duration(block: &Block<Backend>) -> Duration {
     }
 }
 
-fn measure_node(node: &Node<Backend>, start: Duration) -> Measured {
+fn measure_node(
+    node: &Node<Backend>,
+    start: Duration,
+    folded: &BTreeSet<Vec<usize>>,
+    path: &mut Vec<usize>,
+) -> Measured {
     let delay = match node {
-        Node::Action { delay, .. } | Node::Block { delay, .. } => {
-            delay.unwrap_or_default()
-        }
+        Node::Action { delay, .. }
+        | Node::Block { delay, .. }
+        | Node::Draft { delay, .. } => delay.unwrap_or_default(),
     };
     let start = start.saturating_add(delay);
 
     match node {
-        Node::Action { action, .. } => {
-            let end = start.saturating_add(action.duration);
-            Measured {
-                start,
-                end,
-                visual_end: end,
-                height: ROW_HEIGHT,
-                kind: MeasuredKind::Action,
-            }
+        Node::Action { action, .. } => Measured {
+            start,
+            end: start.saturating_add(action.duration),
+            height: ROW_HEIGHT,
+            kind: MeasuredKind::Action {
+                name: action.name.clone(),
+            },
+        },
+        Node::Draft { duration, name, .. } => Measured {
+            start,
+            end: start.saturating_add(*duration),
+            height: ROW_HEIGHT,
+            kind: MeasuredKind::Draft { name: name.clone() },
+        },
+        Node::Block { block, .. } => {
+            measure_block(block, start, folded, path)
         }
-        Node::Block { block, .. } => measure_block(block, start),
     }
 }
 
 fn measure_block(
     block: &Block<Backend>,
     start: Duration,
+    folded: &BTreeSet<Vec<usize>>,
+    path: &mut Vec<usize>,
 ) -> Measured {
-    let (children, content_height) =
-        measure_children(&block.children, &block.combinator, start);
-    let visual_end = children
-        .iter()
-        .map(|(_, m)| m.visual_end)
-        .max()
-        .unwrap_or(start);
+    let is_folded = folded.contains(path.as_slice());
+    let (children, content_height) = if is_folded {
+        (Vec::new(), 0.0)
+    } else {
+        measure_children(
+            &block.children,
+            &block.combinator,
+            start,
+            folded,
+            path,
+        )
+    };
     Measured {
         start,
         end: start.saturating_add(block_duration(block)),
-        visual_end,
         height: HEADER_HEIGHT + content_height,
         kind: MeasuredKind::Block {
-            label: combinator_label(&block.combinator),
+            label: block_label(block),
+            folded: is_folded,
             children,
         },
     }
@@ -184,24 +226,20 @@ fn measure_block(
 
 /// Measures every child, then lays them into lanes (rows).
 ///
-/// `All`/`Any`/`Flow` give each child its own dedicated lane, always -
+/// `All`/`Flow` give each child its own dedicated lane, always -
 /// packing them would occasionally let two children share a lane (a
 /// `Flow`'s first and fifth child, say, once the first has finished),
 /// which reads as one fused bar instead of two separate actions.
 ///
-/// A `Chain`'s children share one row by default, since they never
-/// overlap by construction - except an `Any` child's visual extent
-/// can bleed past its official contribution to the chain (its losing
-/// branch keeps animating), reaching into where the next sibling
-/// starts. When it does, only *that* sibling drops below - directly
-/// under the one predecessor it actually overlaps, not under whatever
-/// else happens to share the row - since a chain's children are
-/// already time-ordered and only ever need to check the one right
-/// before them.
+/// A `Chain`'s children share one row, since they never overlap by
+/// construction: each one starts only once its predecessor's duration
+/// (plus its own `delay`) has elapsed.
 fn measure_children(
     children: &[Node<Backend>],
     combinator: &Combinator,
     block_start: Duration,
+    folded: &BTreeSet<Vec<usize>>,
+    path: &mut Vec<usize>,
 ) -> (Vec<(f32, Measured)>, f32) {
     if children.is_empty() {
         return (Vec::new(), 0.0);
@@ -219,7 +257,7 @@ fn measure_children(
                 })
                 .collect()
         }
-        Combinator::All | Combinator::Any => {
+        Combinator::All => {
             children.iter().map(|_| block_start).collect()
         }
         Combinator::Flow(delay) => (0..children.len())
@@ -233,28 +271,22 @@ fn measure_children(
     let measured: Vec<Measured> = children
         .iter()
         .zip(starts)
-        .map(|(child, start)| measure_node(child, start))
+        .enumerate()
+        .map(|(i, (child, start))| {
+            path.push(i);
+            let measured = measure_node(child, start, folded, path);
+            path.pop();
+            measured
+        })
         .collect();
 
     let ys: Vec<f32> = match combinator {
-        Combinator::Chain => {
-            let mut ys = Vec::with_capacity(measured.len());
-            let mut prev: Option<(Duration, f32, f32)> = None;
-            for m in &measured {
-                let y = match prev {
-                    Some((end, y, height)) if m.start < end => {
-                        y + height + LANE_GAP
-                    }
-                    _ => 0.0,
-                };
-                ys.push(y);
-                prev = Some((m.visual_end, y, m.height));
-            }
-            ys
-        }
-        // Every other combinator's children can genuinely overlap in
-        // time, so each always gets its own dedicated row.
-        Combinator::All | Combinator::Any | Combinator::Flow(_) => {
+        // Children never overlap in time by construction, so they all
+        // share one row.
+        Combinator::Chain => vec![0.0; measured.len()],
+        // `All`/`Flow` children can genuinely overlap in time, so each
+        // always gets its own dedicated row.
+        Combinator::All | Combinator::Flow(_) => {
             let mut y = 0.0;
             measured
                 .iter()
@@ -289,16 +321,35 @@ fn flatten(
     let w = (view.x_from_time(measured.end) - x).max(MIN_WIDTH);
 
     match &measured.kind {
-        MeasuredKind::Action => out.push(Placed {
+        MeasuredKind::Action { name } => out.push(Placed {
             x,
             y,
             w,
             h: measured.height,
             depth,
             label: None,
+            name: name.clone(),
+            folded: false,
+            draft: false,
             path: path.clone(),
         }),
-        MeasuredKind::Block { label, children } => {
+        MeasuredKind::Draft { name } => out.push(Placed {
+            x,
+            y,
+            w,
+            h: measured.height,
+            depth,
+            label: None,
+            name: name.clone(),
+            folded: false,
+            draft: true,
+            path: path.clone(),
+        }),
+        MeasuredKind::Block {
+            label,
+            folded,
+            children,
+        } => {
             out.push(Placed {
                 x,
                 y,
@@ -306,6 +357,9 @@ fn flatten(
                 h: measured.height,
                 depth,
                 label: Some(label.clone()),
+                name: None,
+                folded: *folded,
+                draft: false,
                 path: path.clone(),
             });
             let content_top = y + HEADER_HEIGHT;

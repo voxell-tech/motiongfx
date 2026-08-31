@@ -3,14 +3,22 @@ use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::element::{ElementVisual, element};
+use fynix::ui::{Build, Patch};
+
+use super::Label;
 
 /// One action's clip on the timeline: a colored, absolutely
-/// positioned, bordered hit area.
-#[derive(Element)]
+/// positioned, bordered hit area, its name (if any) pinned to its
+/// top-left corner exactly like [`TimelineBlock`](super::TimelineBlock)'s -
+/// clipped rather than measured, so a bar too narrow for it just
+/// shows nothing instead of overflowing its neighbor.
+#[element]
 pub struct TimelineAction {
+    /// Blank when the action has no name of its own.
+    #[elem(child)]
+    pub label: Label,
     pub top: f32,
     pub left: f32,
     pub width: f32,
@@ -32,6 +40,8 @@ impl TimelineAction {
             left: px(self.left),
             width: px(self.width),
             height: px(self.height),
+            padding: UiRect::new(px(4), Val::ZERO, px(2), Val::ZERO),
+            overflow: Overflow::clip(),
             border: UiRect::all(px(if self.selected {
                 2
             } else {

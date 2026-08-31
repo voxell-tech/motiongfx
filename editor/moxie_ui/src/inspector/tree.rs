@@ -12,13 +12,14 @@ use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::records::BuildFn;
-use fynix_mock::ui::{ElementHandle, ElementMut};
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::records::BuildFn;
+use fynix::ui::{ElementHandle, ElementMut};
+use fynix::{elem, val};
 
-use super::{Field, ReflectInspect, enums, field_row};
+use super::{Field, FieldRow, ReflectInspect, enums};
 use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
 use crate::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use crate::icons;
@@ -246,10 +247,12 @@ pub(crate) fn single_value(
 /// survives a value change; a rebuild would despawn it mid-edit. The
 /// tick is checked first so the walk only runs when something
 /// touched the component.
-fn shape_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
+fn shape_changed(
+    field: Field,
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     let mut seen_tick: Option<Tick> = None;
     let mut seen_shape: Option<Vec<Entry>> = None;
-    move |world, _| {
+    move |WorldNodeRef { world, .. }| {
         let tick = field.changed_tick(world);
         if seen_shape.is_some() && tick == seen_tick {
             return false;
@@ -267,7 +270,7 @@ fn shape_changed(field: Field) -> impl FnMut(&World, Entity) -> bool {
 /// whole component at the empty path.
 pub struct InspectorFields {
     pub root: Field,
-    /// How many [`Foldable`] bodies this sits under, for `field_row`
+    /// How many [`Foldable`] bodies this sits under, for `FieldRow`
     /// to keep its columns aligned. `0` for a call site with none of
     /// its own.
     pub depth: u32,
@@ -347,8 +350,12 @@ fn build_leaf(
     let muted = ui.theme.text_muted;
     let label = leaf_name(&path).to_string();
     let field = root.child(&path);
-    field_row(ui, label, muted, false, depth, move |ui| {
-        drawer.build(&field, ui);
+    ui.compose(FieldRow {
+        label,
+        color: muted,
+        bold: false,
+        depth,
+        value: move |ui: &mut BevyUi| drawer.build(&field, ui),
     });
 }
 
@@ -369,12 +376,18 @@ fn build_variant(
 
     if children.is_empty() {
         let label = leaf_name(&path).to_string();
-        field_row(ui, label, muted, false, depth, move |ui| {
-            ui.compose(enums::VariantPicker {
-                source: &field,
-                variants,
-                pick,
-            });
+        ui.compose(FieldRow {
+            label,
+            color: muted,
+            bold: false,
+            depth,
+            value: move |ui: &mut BevyUi| {
+                ui.compose(enums::VariantPicker {
+                    source: &field,
+                    variants,
+                    pick,
+                });
+            },
         });
         return;
     }

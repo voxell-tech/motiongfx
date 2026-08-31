@@ -1,6 +1,6 @@
 //! The raw Monokai Pro colours as `const`s, for what
 //! [`Palette`](crate::theme::Palette) cannot reach: a
-//! [`Style`](fynix_mock::style::Style) writes fields before a node
+//! [`Style`](fynix::style::Style) writes fields before a node
 //! exists, with no [`World`](bevy::prelude::World) to read
 //! [`EditorTheme`](crate::theme::EditorTheme) from. `Palette` builds
 //! its fields from these, so the two never drift apart.

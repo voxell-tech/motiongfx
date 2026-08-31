@@ -3,10 +3,10 @@ use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::style::Style;
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::element::{ElementVisual, element};
+use fynix::style::Style;
+use fynix::ui::{Build, Patch};
 
 use super::{Icon, IconCursor, Label, LabelCursor};
 use crate::motion::LitFrom as _;
@@ -31,7 +31,7 @@ pub enum Hover {
 /// A hit area holding an icon, a label, both, or whatever is built
 /// under it, with no look of its own. [`Button`] and [`GhostButton`]
 /// are two the editor gives it.
-#[derive(Element)]
+#[element]
 pub struct ButtonElem {
     /// A node of its own, so its image and colour can be bound
     /// without touching the button.
@@ -64,6 +64,11 @@ pub struct ButtonElem {
     pub padding: UiRect,
     #[default(::ZERO)]
     pub radius: Val,
+    /// Overrides `radius` with independent corners, for a button that
+    /// sits at one end of a row of others (a
+    /// [`SegmentedControl`](super::SegmentedControl)'s outer
+    /// segments). `None` rounds all four corners by `radius`.
+    pub corners: Option<BorderRadius>,
     /// Set by whichever [`Style`] built this - see [`Hover`]. Never
     /// patched: read once, in `build_fields`.
     #[elem(ignore)]
@@ -82,7 +87,9 @@ impl ButtonElem {
             align_items: AlignItems::Center,
             column_gap: self.column_gap,
             padding: self.padding,
-            border_radius: BorderRadius::all(self.radius),
+            border_radius: self
+                .corners
+                .unwrap_or(BorderRadius::all(self.radius)),
             ..default()
         }
     }
@@ -144,6 +151,34 @@ impl Style for MenuButton {
         button.height = percent(100);
         button.padding = UiRect::axes(px(10), Val::ZERO);
         button.hover = Hover::Fill(theme.hover_overlay);
+    }
+}
+
+/// One segment of a [`SegmentedControl`](super::SegmentedControl):
+/// filled solid with the theme's accent when `active`, its theme fill
+/// otherwise. Rounding is the control's own, not each segment's - it
+/// clips its row of children rather than rounding them individually.
+pub struct SegmentButton {
+    pub active: bool,
+}
+
+impl Style for SegmentButton {
+    type Host = BevyHost;
+    type Element = ButtonElem;
+
+    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+        button.height = px(24);
+        button.flex_grow = 1.0;
+        button.fill = if self.active {
+            theme.accent
+        } else {
+            theme.button_fill
+        };
+        button.hover = if self.active {
+            Hover::None
+        } else {
+            Hover::Fill(theme.hover_overlay)
+        };
     }
 }
 
@@ -238,7 +273,8 @@ impl ElementVisual<BevyHost> for ButtonElem {
             | ButtonElemField::Justify
             | ButtonElemField::ColumnGap
             | ButtonElemField::Padding
-            | ButtonElemField::Radius => {
+            | ButtonElemField::Radius
+            | ButtonElemField::Corners => {
                 patch.insert(self.node());
             }
         }

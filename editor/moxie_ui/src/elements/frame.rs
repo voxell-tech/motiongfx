@@ -1,12 +1,12 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::EntityExt;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut;
+use fynix::element::{ElementVisual, element};
+use fynix::ui::{Build, Patch};
 
 /// The sized, optionally filled container almost every other widget's
 /// root node turns out to be.
-#[derive(Element)]
+#[element]
 pub struct Frame {
     pub width: Val,
     pub height: Val,
@@ -87,7 +87,7 @@ impl Frame {
 impl Frame {
     /// Written whole, so that a frame going back into its parent's
     /// stack loses the component rather than keeping a stale one.
-    fn stack(&self, entity: &mut impl EntityExt) {
+    fn stack(&self, entity: &mut impl WorldEntityMut) {
         match self.z {
             Some(z) => entity.insert(GlobalZIndex(z)),
             None => entity.remove::<GlobalZIndex>(),

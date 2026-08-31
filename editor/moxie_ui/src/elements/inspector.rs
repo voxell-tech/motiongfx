@@ -18,11 +18,12 @@ use bevy::reflect::TypeRegistration;
 use bevy::reflect::std_traits::ReflectDefault;
 use bevy::ui_widgets::{Activate, ActivateOnPress, MenuButton};
 
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::records::{BuildFn, ChangedFn};
-use fynix_mock::ui::ElementHandle;
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::records::{BuildFn, ChangedFn};
+use fynix::ui::ElementHandle;
+use fynix::{elem, val};
 
 use super::{
     Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
@@ -30,7 +31,7 @@ use super::{
 };
 use crate::icons;
 use crate::inspector::{
-    Field, InspectorFields, ReflectInspectable, Section, field_row,
+    Field, FieldRow, InspectorFields, ReflectInspectable, Section,
     inspect_value, single_value,
 };
 use crate::motion::MotionExt;
@@ -42,7 +43,7 @@ pub struct ComponentInspector {
     pub entity: Entity,
     pub component: TypeId,
     /// How many [`Foldable`](crate::fold::Foldable) bodies this sits
-    /// under, for `field_row` to keep its columns aligned. `0` for
+    /// under, for `FieldRow` to keep its columns aligned. `0` for
     /// a call site with none of its own.
     pub depth: u32,
 }
@@ -334,8 +335,12 @@ fn single(ui: &mut BevyUi, name: &str, field: Field) {
     let name = name.to_string();
     let primary = ui.theme.text_primary;
 
-    field_row(ui, name, primary, true, 0, move |ui| {
-        inspect_value(ui, &field);
+    ui.compose(FieldRow {
+        label: name,
+        color: primary,
+        bold: true,
+        depth: 0,
+        value: move |ui: &mut BevyUi| inspect_value(ui, &field),
     });
 }
 
@@ -356,7 +361,7 @@ fn resource_entity(
 /// old bindings quietly re-pointed.
 fn entity_changed(
     resource: TypeId,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| resource_entity(world, resource))
 }
 
@@ -367,7 +372,7 @@ fn entity_changed(
 /// rebuilds when one is added, removed, or the entity goes.
 fn components_changed(
     entity: Entity,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| inspectable(world, entity))
 }
 
@@ -408,7 +413,7 @@ fn inspectable(
 
 /// What [`ReflectInspectable::name`] overrides to, or `T`'s own name
 /// split into words.
-fn display_name(
+pub fn display_name(
     registration: &TypeRegistration,
 ) -> Cow<'static, str> {
     if let Some(name) = registration
@@ -471,6 +476,6 @@ fn column(
 /// [`InspectorFields`]' own business, with its own watcher for that.
 fn presence_changed(
     field: Field,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| field.exists(world))
 }

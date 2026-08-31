@@ -4,11 +4,11 @@ use bevy_app::prelude::*;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::prelude::*;
 use bevy_fynix::host::BevyHost;
-use bevy_fynix::{FynixPlugin, watch_root};
+use bevy_fynix::{FynixPlugin, WorldEntityRef as _, watch_root};
 use bevy_ui::Node;
-use fynix_mock::elem;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use fynix::elem;
+use fynix::element::{ElementVisual, element};
+use fynix::ui::{Build, Patch};
 
 /// Nothing in these tests reads a theme - a host still needs one.
 #[derive(Resource, Clone, Default)]
@@ -21,7 +21,7 @@ type Host = BevyHost<NoTheme>;
 #[derive(Component, Debug, PartialEq)]
 struct Caption(String);
 
-#[derive(Element)]
+#[element]
 pub struct Label {
     #[default(String::from("Label"))]
     pub text: String,
@@ -119,10 +119,8 @@ fn binding_patches_the_node_it_built() {
     watch_root(app.world_mut(), root, |ui| {
         ui.elem(elem!(Label)).bind(
             |label| label.text(),
-            |world: &World, _| world.resource::<Source>().changed,
-            |world: &World, _| {
-                world.resource::<Source>().text.clone()
-            },
+            |world_node| world_node.resource::<Source>().changed,
+            |world_node| world_node.resource::<Source>().text.clone(),
         );
     });
 

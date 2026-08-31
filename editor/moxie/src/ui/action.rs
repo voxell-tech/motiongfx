@@ -12,17 +12,21 @@ use bevy::asset::uuid::Uuid;
 use bevy::prelude::*;
 use bevy::reflect::PartialReflect;
 use bevy_motiongfx::scene::backend::{AnimEase, AnimInterp, Backend};
-use bevy_motiongfx::scene::id::SceneUid;
-use fynix_mock::composer::Composer;
-use fynix_mock::elem;
-use fynix_mock::ui::ElementHandle;
+use bevy_motiongfx::scene::id::{SceneUid, SceneUidMap};
+use fynix::composer::Composer;
+use fynix::elem;
+use fynix::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
-use moxie_ui::elements::{Frame, Label, ScrollArea};
-use moxie_ui::inspector::{Source, inspect_value, reflect_changed};
+use motiongfx_scene::refs::FieldRef;
+use moxie_ui::elements::{
+    Frame, Label, ScrollArea, SegmentedControl, display_name,
+};
+use moxie_ui::inspector::{
+    FieldRow, Source, inspect_value, reflect_changed,
+};
 use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
-use moxie_ui::theme::EditorTheme;
 
-use super::PANEL_PADDING;
+use super::{PANEL_PADDING, hierarchy};
 use crate::{EditorScene, SelectedAction};
 
 /// The action panel, as kernel nodes.
@@ -49,7 +53,7 @@ impl Composer<BevyHost> for ActionPanel {
     }
 }
 
-/// One number in the selected node that an input writes back.
+/// One property of the selected node that an input writes back.
 ///
 /// Named, not captured: an input re-reads and rewrites it long after
 /// the panel was built.
@@ -65,6 +69,8 @@ enum Edit {
     Ease,
     /// How its values are blended.
     Interp,
+    /// The node's own name, block or action alike.
+    Name,
 }
 
 /// Everything a rebuild depends on. The numbers are deliberately
@@ -74,11 +80,27 @@ struct Shape {
     path: Option<Vec<usize>>,
     /// Empty when the path no longer lands on a node.
     kind: &'static str,
+    /// Set only for an action: a block has none to show.
+    subject: Option<Subject>,
+    /// Set only for a block: which of Chain/All/Flow it is, for the
+    /// Type row's picker. An action has none to show.
+    combinator: Option<&'static str>,
     rows: Vec<(String, String)>,
     edits: Vec<(String, Edit)>,
     /// The action's target value. Which widget draws it is the
     /// registry's business, not this panel's.
     value: Option<Pooled>,
+}
+
+/// An action's subject, split so its id can render muted where its
+/// name cannot.
+#[derive(Clone, PartialEq)]
+struct Subject {
+    /// Its [`Name`], if it still has an entity.
+    name: Option<String>,
+    /// The head of its id - a whole uuid is unreadable, but two
+    /// entities sharing a name still need telling apart.
+    head: String,
 }
 
 /// The action's target value, wherever the pool keeps it.
@@ -104,6 +126,8 @@ fn shape(world: &World, _: Entity) -> Shape {
         .unwrap_or(Shape {
             path,
             kind: "",
+            subject: None,
+            combinator: None,
             rows: Vec::new(),
             edits: Vec::new(),
             value: None,
@@ -115,68 +139,148 @@ fn build(ui: &mut BevyUi) {
     let shape = shape(ui.world, ui.parent());
 
     let Some(path) = shape.path else {
-        note(ui, theme, "Nothing selected");
+        note(ui, "Nothing selected");
         return;
     };
     if shape.kind.is_empty() {
-        note(ui, theme, "Selection is no longer in the scene");
+        note(ui, "Selection is no longer in the scene");
         return;
     }
 
-    heading(ui, theme, shape.kind);
+    heading(ui, path.clone());
+    if let Some(subject) = shape.subject {
+        let primary = theme.text_primary;
+        let muted = theme.text_muted;
+        ui.compose(FieldRow {
+            label: "Subject".to_string(),
+            color: muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| {
+                ui.elem(elem!(
+                    Frame,
+                    direction = FlexDirection::Row,
+                    align = AlignItems::Center,
+                    column_gap = px(4)
+                ))
+                .with(move |ui| {
+                    if let Some(name) = subject.name {
+                        ui.elem(elem!(
+                            Label,
+                            text = name,
+                            color = Some(primary),
+                            wrap = false
+                        ));
+                    }
+                    ui.elem(elem!(
+                        Label,
+                        text = format!("#{}", subject.head),
+                        color = Some(muted),
+                        wrap = false
+                    ));
+                });
+            },
+        });
+    }
+    if let Some(combinator) = shape.combinator {
+        let selected = match combinator {
+            "Chain" => 0,
+            "All" => 1,
+            _ => 2,
+        };
+        let path = path.clone();
+        ui.compose(FieldRow {
+            label: "Type".to_string(),
+            color: theme.text_muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| {
+                ui.compose(SegmentedControl {
+                    options: vec![
+                        "Chain".to_string(),
+                        "All".to_string(),
+                        "Flow".to_string(),
+                    ],
+                    selected,
+                    on_select:
+                        move |i: usize, commands: &mut Commands| {
+                            let path = path.clone();
+                            commands.queue(
+                                move |world: &mut World| {
+                                    set_combinator(world, &path, i);
+                                },
+                            );
+                        },
+                });
+            },
+        });
+    }
     for (name, value) in shape.rows {
-        row(ui, theme, &name, &value);
+        let primary = theme.text_primary;
+        ui.compose(FieldRow {
+            label: name,
+            color: theme.text_muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| {
+                ui.elem(elem!(
+                    Label,
+                    text = value,
+                    color = Some(primary),
+                    wrap = false
+                ));
+            },
+        });
     }
     for (name, edit) in shape.edits {
         let source = Property {
             path: path.clone(),
             edit,
         };
-        line(ui, name, theme.text_muted, move |ui| {
-            inspect_value(ui, &source);
+        ui.compose(FieldRow {
+            label: name,
+            color: theme.text_muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| inspect_value(ui, &source),
         });
     }
 
     // Whatever the registry has for the type it turns out to hold.
     if let Some(pooled) = shape.value {
-        line(ui, "Value".to_string(), theme.text_muted, move |ui| {
-            inspect_value(ui, &pooled);
+        ui.compose(FieldRow {
+            label: "Value".to_string(),
+            color: theme.text_muted,
+            bold: false,
+            depth: 0,
+            value: move |ui: &mut BevyUi| inspect_value(ui, &pooled),
         });
     }
 }
 
 /// The selected node, as what to show and what can be changed.
+///
+/// An empty `path` names the tree's own root - a block like any
+/// other, just never wrapped in a [`Node`] of its own, so it has no
+/// delay to show or edit.
 fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
     let scene = world.get_resource::<EditorScene>()?.scene();
-    let node = node_at(&scene.0.animation, path)?;
 
+    if path.is_empty() {
+        return Some(block_shape(
+            Vec::new(),
+            &scene.0.animation,
+            None,
+        ));
+    }
+
+    let node = node_at(&scene.0.animation, path)?;
     let (delay, action) = match node {
         Node::Block { block, delay } => {
-            let mut edits = Vec::new();
-            if matches!(block.combinator, Combinator::Flow(_)) {
-                edits.push(("Stagger".to_string(), Edit::Stagger));
-            }
-            if delay.is_some() {
-                edits.push(("Delay".to_string(), Edit::Delay));
-            }
-
-            return Some(Shape {
-                path: Some(path.to_vec()),
-                kind: "Block",
-                value: None,
-                rows: vec![
-                    (
-                        "Combinator".into(),
-                        combinator_name(&block.combinator)
-                            .to_string(),
-                    ),
-                    (
-                        "Children".into(),
-                        block.children.len().to_string(),
-                    ),
-                ],
-                edits,
-            });
+            return Some(block_shape(path.to_vec(), block, *delay));
+        }
+        Node::Draft { delay, .. } => {
+            return Some(draft_shape(path.to_vec(), *delay));
         }
         Node::Action { action, delay } => (delay, action),
     };
@@ -191,15 +295,65 @@ fn summarize(world: &World, path: &[usize]) -> Option<Shape> {
     Some(Shape {
         path: Some(path.to_vec()),
         kind: "Action",
+        subject: Some(subject_of(world, action)),
+        combinator: None,
         value: Some(Pooled(action.value)),
         rows: vec![
-            ("Subject".into(), subject_name(action)),
-            ("Type".into(), action.field.type_name().to_string()),
-            ("Field".into(), action.field.path().to_string()),
+            ("Field".into(), field_name(world, &action.field)),
             ("Operation".into(), format!("{:?}", action.op)),
         ],
         edits,
     })
+}
+
+/// A block's own row of info: its combinator, plus whatever of its
+/// timing the [`Node`] wrapping it (if any) lets through.
+fn block_shape(
+    path: Vec<usize>,
+    block: &Block<Backend>,
+    delay: Option<Duration>,
+) -> Shape {
+    let mut edits = Vec::new();
+    if matches!(block.combinator, Combinator::Flow(_)) {
+        edits.push(("Stagger".to_string(), Edit::Stagger));
+    }
+    if delay.is_some() {
+        edits.push(("Delay".to_string(), Edit::Delay));
+    }
+
+    Shape {
+        path: Some(path),
+        kind: "Block",
+        subject: None,
+        combinator: Some(combinator_name(&block.combinator)),
+        value: None,
+        rows: Vec::new(),
+        edits,
+    }
+}
+
+/// A draft's own row of info - a subject and field yet to be picked,
+/// so its Subject/Field rows are placeholder text for now rather than
+/// the pickers that will land alongside dragging a field onto the
+/// timeline.
+fn draft_shape(path: Vec<usize>, delay: Option<Duration>) -> Shape {
+    let mut edits = vec![("Duration".to_string(), Edit::Duration)];
+    if delay.is_some() {
+        edits.push(("Delay".to_string(), Edit::Delay));
+    }
+
+    Shape {
+        path: Some(path),
+        kind: "Draft",
+        subject: None,
+        combinator: None,
+        value: None,
+        rows: vec![
+            ("Subject".into(), "Unassigned".into()),
+            ("Field".into(), "Unassigned".into()),
+        ],
+        edits,
+    }
 }
 
 /// The node `path` names.
@@ -294,6 +448,25 @@ impl Source for Pooled {
 impl Source for Property {
     fn get(&self, world: &World) -> Option<Box<dyn PartialReflect>> {
         let scene = world.get_resource::<EditorScene>()?.scene();
+
+        // The root has no `Node` of its own, so no `Ease`, `Interp`,
+        // `Duration` or `Delay` - only ever reached for its own
+        // `Stagger` and `Name`.
+        if self.path.is_empty() {
+            return match self.edit {
+                Edit::Name => Some(Box::new(
+                    scene
+                        .0
+                        .animation
+                        .name
+                        .clone()
+                        .unwrap_or_default(),
+                )),
+                _ => Some(Box::new(stagger_seconds(
+                    &scene.0.animation,
+                )?)),
+            };
+        }
         let node = node_at(&scene.0.animation, &self.path)?;
 
         match (self.edit, node) {
@@ -305,6 +478,17 @@ impl Source for Property {
             (Edit::Interp, Node::Action { action, .. }) => Some(
                 Box::new(action.interp.unwrap_or(AnimInterp::Linear)),
             ),
+            // Unset shows as the widget's own empty state, not a
+            // missing row.
+            (Edit::Name, Node::Block { block, .. }) => {
+                Some(Box::new(block.name.clone().unwrap_or_default()))
+            }
+            (Edit::Name, Node::Action { action, .. }) => Some(
+                Box::new(action.name.clone().unwrap_or_default()),
+            ),
+            (Edit::Name, Node::Draft { name, .. }) => {
+                Some(Box::new(name.clone().unwrap_or_default()))
+            }
             _ => Some(Box::new(seconds(node, self.edit)?)),
         }
     }
@@ -316,6 +500,23 @@ impl Source for Property {
             return;
         };
         let scene = editor.edit();
+
+        if self.path.is_empty() {
+            match self.edit {
+                Edit::Name => {
+                    if let Some(value) = String::from_reflect(value) {
+                        scene.0.animation.name = named(value);
+                    }
+                }
+                _ => {
+                    if let Some(value) = f32::from_reflect(value) {
+                        scene.0.animation.combinator =
+                            Combinator::Flow(clamp_seconds(value));
+                    }
+                }
+            }
+            return;
+        }
         let Some(node) =
             node_at_mut(&mut scene.0.animation, &self.path)
         else {
@@ -328,6 +529,21 @@ impl Source for Property {
             }
             (Edit::Interp, Node::Action { action, .. }) => {
                 action.interp = AnimInterp::from_reflect(value);
+            }
+            (Edit::Name, Node::Block { block, .. }) => {
+                if let Some(value) = String::from_reflect(value) {
+                    block.name = named(value);
+                }
+            }
+            (Edit::Name, Node::Action { action, .. }) => {
+                if let Some(value) = String::from_reflect(value) {
+                    action.name = named(value);
+                }
+            }
+            (Edit::Name, Node::Draft { name, .. }) => {
+                if let Some(value) = String::from_reflect(value) {
+                    *name = named(value);
+                }
             }
             (edit, node) => {
                 if let Some(value) = f32::from_reflect(value) {
@@ -353,30 +569,52 @@ impl Source for Property {
 fn seconds(node: &Node<Backend>, edit: Edit) -> Option<f32> {
     match (edit, node) {
         (Edit::Delay, Node::Block { delay, .. })
-        | (Edit::Delay, Node::Action { delay, .. }) => {
+        | (Edit::Delay, Node::Action { delay, .. })
+        | (Edit::Delay, Node::Draft { delay, .. }) => {
             Some(delay.unwrap_or_default().as_secs_f32())
         }
         (Edit::Stagger, Node::Block { block, .. }) => {
-            match block.combinator {
-                Combinator::Flow(delay) => Some(delay.as_secs_f32()),
-                _ => None,
-            }
+            stagger_seconds(block)
         }
         (Edit::Duration, Node::Action { action, .. }) => {
             Some(action.duration.as_secs_f32())
+        }
+        (Edit::Duration, Node::Draft { duration, .. }) => {
+            Some(duration.as_secs_f32())
         }
         _ => None,
     }
 }
 
+/// A `Flow` block's own stagger, in seconds - `None` for any other
+/// combinator.
+fn stagger_seconds(block: &Block<Backend>) -> Option<f32> {
+    match block.combinator {
+        Combinator::Flow(delay) => Some(delay.as_secs_f32()),
+        _ => None,
+    }
+}
+
+/// Never negative: nothing here runs backwards.
+fn clamp_seconds(value: f32) -> Duration {
+    Duration::from_secs_f32(value.max(0.0))
+}
+
+/// Blank input clears a name back to `None`, rather than storing an
+/// empty string.
+fn named(value: String) -> Option<String> {
+    let value = value.trim();
+    (!value.is_empty()).then(|| value.to_string())
+}
+
 /// Writes one of the properties measured in seconds.
 fn set_seconds(node: &mut Node<Backend>, edit: Edit, value: f32) {
-    // Never negative: an action cannot run backwards.
-    let seconds = Duration::from_secs_f32(value.max(0.0));
+    let seconds = clamp_seconds(value);
 
     match (edit, node) {
         (Edit::Delay, Node::Block { delay, .. })
-        | (Edit::Delay, Node::Action { delay, .. }) => {
+        | (Edit::Delay, Node::Action { delay, .. })
+        | (Edit::Delay, Node::Draft { delay, .. }) => {
             *delay = Some(seconds);
         }
         (Edit::Stagger, Node::Block { block, .. }) => {
@@ -385,82 +623,111 @@ fn set_seconds(node: &mut Node<Backend>, edit: Edit, value: f32) {
         (Edit::Duration, Node::Action { action, .. }) => {
             action.duration = seconds;
         }
+        (Edit::Duration, Node::Draft { duration, .. }) => {
+            *duration = seconds;
+        }
         _ => {}
     }
 }
 
-fn subject_name(action: &ActionCmd<Backend>) -> String {
+/// The action's subject, as its own [`Name`] (if it still has an
+/// entity) and the head of its id.
+fn subject_of(world: &World, action: &ActionCmd<Backend>) -> Subject {
     let SceneUid::Entity(uid) = action.subject;
-    format!("{uid}")
+
+    let name = world
+        .get_resource::<SceneUidMap>()
+        .and_then(|map| map.entity(uid))
+        .and_then(|entity| world.get::<Name>(entity))
+        .map(|name| name.as_str().to_string());
+
+    Subject {
+        name,
+        head: hierarchy::uid_head(uid),
+    }
+}
+
+/// The type's own display name, the same [`ReflectInspectable`]-aware
+/// one the entity inspector shows it by, followed by the path to the
+/// field this action drives - `Transform::translation::x`. Falls back
+/// to the type path's own last segment when the registry has never
+/// heard of it.
+///
+/// [`ReflectInspectable`]: moxie_ui::inspector::ReflectInspectable
+fn field_name(world: &World, field: &FieldRef) -> String {
+    let type_name = field.type_name().to_string();
+    let registry = world.resource::<AppTypeRegistry>().read();
+
+    let name = registry
+        .get_with_type_path(&type_name)
+        .map(display_name)
+        .unwrap_or_else(|| {
+            type_name
+                .rsplit("::")
+                .next()
+                .unwrap_or(&type_name)
+                .to_string()
+                .into()
+        });
+
+    format!("{name}{}", field.path())
+}
+
+/// Writes the block at `path` (the tree's own root, if empty) onto
+/// whichever of Chain/All/Flow the Type picker's `index` names.
+/// Switching into Flow seeds a default stagger; switching out of it
+/// drops whatever stagger it had.
+fn set_combinator(world: &mut World, path: &[usize], index: usize) {
+    let Some(mut editor) = world.get_resource_mut::<EditorScene>()
+    else {
+        return;
+    };
+    let scene = editor.edit();
+
+    let combinator = match index {
+        0 => Combinator::Chain,
+        1 => Combinator::All,
+        _ => Combinator::Flow(Duration::from_secs_f32(0.15)),
+    };
+
+    if path.is_empty() {
+        scene.0.animation.combinator = combinator;
+        return;
+    }
+    if let Some(Node::Block { block, .. }) =
+        node_at_mut(&mut scene.0.animation, path)
+    {
+        block.combinator = combinator;
+    }
 }
 
 fn combinator_name(combinator: &Combinator) -> &'static str {
     match combinator {
         Combinator::Chain => "Chain",
         Combinator::All => "All",
-        Combinator::Any => "Any",
         // Its stagger is editable, so the row above only names it.
         Combinator::Flow(_) => "Flow",
     }
 }
 
-/// A section header, which is all this panel has by way of structure.
-fn heading(ui: &mut BevyUi, theme: &EditorTheme, text: &str) {
-    ui.elem(elem!(
-        Label,
-        text = text.to_string(),
-        bold = true,
-        color = Some(theme.text_primary)
-    ));
-}
-
-/// One `name: value` line, for what this panel cannot change.
-fn row(
-    ui: &mut BevyUi,
-    theme: &EditorTheme,
-    name: &str,
-    value: &str,
-) {
-    let value = value.to_string();
-    let primary = theme.text_primary;
-
-    line(ui, name.to_string(), theme.text_muted, move |ui| {
-        ui.elem(elem!(
-            Label,
-            text = value,
-            color = Some(primary),
-            wrap = false
-        ));
-    });
-}
-
-/// The name on the left, whatever it takes on the right.
-fn line(
-    ui: &mut BevyUi,
-    name: String,
-    muted: Color,
-    body: impl FnOnce(&mut BevyUi),
-) {
-    ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        direction = FlexDirection::Row,
-        justify = JustifyContent::SpaceBetween,
-        align = AlignItems::Center,
-        column_gap = px(8),
-        padding = UiRect::vertical(px(3))
-    ))
-    .with(move |ui| {
-        ui.elem(elem!(Label, text = name, color = Some(muted)));
-        body(ui);
-    });
+/// The panel's heading: the node's own name, editable directly rather
+/// than a read-only title plus a separate Name row beneath it -
+/// clicking it is what a text field already does. Reuses the same
+/// `Property`/`Edit::Name` source and the registered `String` widget
+/// every other text edit in this panel goes through.
+fn heading(ui: &mut BevyUi, path: Vec<usize>) {
+    let source = Property {
+        path,
+        edit: Edit::Name,
+    };
+    inspect_value(ui, &source);
 }
 
 /// What the panel says when there is nothing to show.
-fn note(ui: &mut BevyUi, theme: &EditorTheme, text: &str) {
+fn note(ui: &mut BevyUi, text: &str) {
     ui.elem(elem!(
         Label,
         text = text.to_string(),
-        color = Some(theme.text_muted)
+        color = Some(ui.theme.text_muted)
     ));
 }

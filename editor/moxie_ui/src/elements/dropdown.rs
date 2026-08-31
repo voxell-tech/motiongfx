@@ -17,9 +17,9 @@ use bevy::ui_widgets::{
     ActivateOnPress, Button as ButtonBehavior, MenuButton, MenuItem,
 };
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut;
+use fynix::element::{ElementVisual, element};
+use fynix::ui::{Build, Patch};
 
 use super::{Icon, Label};
 
@@ -28,16 +28,13 @@ use super::{Icon, Label};
 /// Carries the observer that opens and closes the list, found by
 /// looking through this node's children. Both must be built
 /// underneath it, in either order.
-#[derive(Element)]
+#[element]
 pub struct DropdownMenu;
 
 impl ElementVisual<BevyHost> for DropdownMenu {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
         if let Err(err) =
-            world.entity_mut(node).apply_scene(bsn! { @FeathersMenu })
+            build.entity_mut().apply_scene(bsn! { @FeathersMenu })
         {
             error!("failed to build a dropdown: {err}");
         }
@@ -53,7 +50,7 @@ impl ElementVisual<BevyHost> for DropdownMenu {
 }
 
 /// The shut control: what is chosen now, and a chevron.
-#[derive(Element)]
+#[element]
 pub struct Dropdown {
     /// A node of its own, so the choice showing can be bound without
     /// the control being rebuilt.
@@ -170,7 +167,7 @@ impl ElementVisual<BevyHost> for Dropdown {
 /// Placed by the popup scene it is built from, so it flips above the
 /// control rather than off the bottom of the window, and is not
 /// clipped by whatever it was opened inside.
-#[derive(Element)]
+#[element]
 pub struct DropdownList {
     /// Matched to the control's, so the two line up.
     #[default(px(160))]
@@ -185,7 +182,7 @@ impl DropdownList {
     /// Only the width and the corners. The rest of the node belongs to
     /// the popup scene, and writing it whole would undo the placement
     /// that came with it.
-    fn size(&self, entity: &mut impl EntityExt) {
+    fn size(&self, entity: &mut impl WorldEntityMut) {
         if let Some(mut layout) =
             entity.entity_mut().get_mut::<Node>()
         {
@@ -197,11 +194,8 @@ impl DropdownList {
 
 impl ElementVisual<BevyHost> for DropdownList {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-
         if let Err(err) = build
-            .world
-            .entity_mut(node)
+            .entity_mut()
             .apply_scene(bsn! { @FeathersMenuPopup })
         {
             error!("failed to build a dropdown list: {err}");
@@ -227,7 +221,7 @@ impl ElementVisual<BevyHost> for DropdownList {
 ///
 /// Picking one closes the list. It also has to be focusable, because
 /// focus is what keeps the list open at all.
-#[derive(Element)]
+#[element]
 pub struct DropdownItem {
     #[elem(child)]
     pub label: Label,

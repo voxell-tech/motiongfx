@@ -8,9 +8,9 @@
 
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::element::{ElementVisual, element};
+use fynix::ui::{Build, Patch};
 
 use super::Frame;
 use crate::widgets::dock::{
@@ -45,7 +45,7 @@ fn display(visible: bool) -> Display {
 }
 
 /// The node the whole tree is rendered underneath.
-#[derive(Element)]
+#[element]
 pub struct DockHost;
 
 impl ElementVisual<BevyHost> for DockHost {
@@ -73,7 +73,7 @@ impl ElementVisual<BevyHost> for DockHost {
 }
 
 /// A split: two panels and the handle between them.
-#[derive(Element)]
+#[element]
 pub struct SplitGroup {
     #[default(NodeId(0))]
     pub node: NodeId,
@@ -118,7 +118,7 @@ impl ElementVisual<BevyHost> for SplitGroup {
 /// What a split is dragged by: a full-sized hit area holding a
 /// slim, always-visible [`line`](Self::line) and a wider
 /// [`bar`](Self::bar) that only shows on hover.
-#[derive(Element)]
+#[element]
 pub struct SplitHandle {
     #[default(NodeId(0))]
     pub node: NodeId,
@@ -247,7 +247,7 @@ impl ElementVisual<BevyHost> for SplitHandle {
 /// One side of a split. The ratio is bound rather than built:
 /// dragging the handle rewrites it every frame, and must not rebuild
 /// what the panel holds.
-#[derive(Element)]
+#[element]
 pub struct SplitPanel {
     #[default(1.0)]
     pub ratio: f32,
@@ -293,7 +293,7 @@ impl ElementVisual<BevyHost> for SplitPanel {
 }
 
 /// A leaf of the tree: a tab bar, and the content of every tab.
-#[derive(Element)]
+#[element]
 pub struct Area {
     #[default(NodeId(0))]
     pub node: NodeId,
@@ -345,7 +345,7 @@ impl ElementVisual<BevyHost> for Area {
 /// One tab's content. Switching tabs flips `display` through a
 /// binding rather than rebuilding: the content owns cameras, scroll
 /// offsets and live edits that have to survive a tab switch.
-#[derive(Element)]
+#[element]
 pub struct TabContent {
     pub window_id: String,
     #[default(TabId(0))]

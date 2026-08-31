@@ -10,11 +10,11 @@ use bevy::picking::events::{
 };
 use bevy::prelude::*;
 use bevy_fynix::interact::OnExt;
-use fynix_mock::element::Element;
-use fynix_mock::host::Host;
-use fynix_mock::lenz::{Cursor, FieldPath, Identity};
-use fynix_mock::transition::Transition;
-use fynix_mock::ui::{Build, ElementMut};
+use fynix::element::Element;
+use fynix::host::Host;
+use fynix::lenz::{Cursor, FieldPath, Identity};
+use fynix::transition::Transition;
+use fynix::ui::{Build, ElementMut};
 use motiongfx_interp::ease;
 
 /// What `lit` can aim at: a colour itself, or a field that only wears
@@ -86,7 +86,7 @@ pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
 
 /// As [`MotionExt`], but given the base explicitly instead of
 /// reading it out of the kernel's table, for
-/// [`build_fields`](fynix_mock::element::ElementVisual::build_fields)
+/// [`build_fields`](fynix::element::ElementVisual::build_fields)
 /// whose node has no entry there yet. Both [`ElementMut`] and
 /// [`Build`] offer this.
 pub trait LitFrom<E: Element<Self::Host>> {

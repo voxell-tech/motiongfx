@@ -1,12 +1,12 @@
 use crate::reactive::BevyHost;
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::element::{ElementVisual, element};
+use fynix::ui::{Build, Patch};
 
 /// A theme-inheriting text label.
-#[derive(Element)]
+#[element]
 pub struct Label {
     pub text: String,
     #[default(12.0)]

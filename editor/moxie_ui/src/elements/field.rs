@@ -13,12 +13,12 @@ use bevy::text::EditableText;
 use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut;
+use fynix::element::{ElementVisual, element};
+use fynix::ui::{Build, Patch};
 
 /// A box that is ticked or not.
-#[derive(Element)]
+#[element]
 pub struct CheckBox {
     pub checked: bool,
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.08))]
@@ -33,7 +33,7 @@ pub struct CheckBox {
 struct CheckMark;
 
 impl CheckBox {
-    fn tick(&self, entity: &mut impl EntityExt) {
+    fn tick(&self, entity: &mut impl WorldEntityMut) {
         if self.checked {
             entity.insert(Checked);
         } else {
@@ -55,7 +55,7 @@ impl CheckBox {
         }
     }
 
-    fn paint(&self, entity: &mut impl EntityExt) {
+    fn paint(&self, entity: &mut impl WorldEntityMut) {
         let node = entity.id();
         let world = entity.world_mut();
 
@@ -127,7 +127,7 @@ impl ElementVisual<BevyHost> for CheckBox {
 }
 
 /// A number, typed or dragged.
-#[derive(Element)]
+#[element]
 pub struct NumberField {
     pub format: NumberFormat,
     /// What it shows. Pushed as an event rather than written as a
@@ -142,20 +142,22 @@ pub struct NumberField {
 impl NumberField {
     /// Feathers builds the input as a scene of its own: a container,
     /// the two steppers, and the text in between.
-    fn scene(&self, world: &mut World, node: Entity) {
+    fn scene(&self, entity: &mut impl WorldEntityMut) {
         let format = self.format;
         let scene = bsn! {
             @FeathersNumberInput { @number_format: {format} }
         };
 
-        if let Err(err) = world.entity_mut(node).apply_scene(scene) {
+        if let Err(err) = entity.entity_mut().apply_scene(scene) {
             error!("failed to build a number field: {err}");
         }
 
         // Widening the node feathers wrote, not replacing it: the
         // container carries the row's height, padding and rim, and an
         // input without them has nothing to type into.
-        if let Some(mut layout) = world.get_mut::<Node>(node) {
+        if let Some(mut layout) =
+            entity.entity_mut().get_mut::<Node>()
+        {
             layout.width = self.width;
             layout.flex_grow = 0.0;
         }
@@ -164,10 +166,7 @@ impl NumberField {
 
 impl ElementVisual<BevyHost> for NumberField {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        self.scene(world, node);
+        self.scene(build);
     }
 
     fn patch_fields(
@@ -176,18 +175,18 @@ impl ElementVisual<BevyHost> for NumberField {
         field: NumberFieldField,
     ) {
         let node = patch.id();
-        let world = &mut *patch.world;
 
         match field {
-            NumberFieldField::Format => self.scene(world, node),
+            NumberFieldField::Format => self.scene(patch),
             NumberFieldField::Value => {
-                world.trigger(UpdateNumberInput {
+                patch.world.trigger(UpdateNumberInput {
                     entity: node,
                     value: self.value,
                 });
             }
             NumberFieldField::Width => {
-                if let Some(mut layout) = world.get_mut::<Node>(node)
+                if let Some(mut layout) =
+                    patch.entity_mut().get_mut::<Node>()
                 {
                     layout.width = self.width;
                 }
@@ -197,7 +196,7 @@ impl ElementVisual<BevyHost> for NumberField {
 }
 
 /// A single-line string, edited in place.
-#[derive(Element)]
+#[element]
 pub struct TextField {
     pub value: String,
     #[default(px(110))]
@@ -208,7 +207,7 @@ impl TextField {
     /// Feathers wants its own child entity for the editable text -
     /// see the type's own docs - so this node is the container, and
     /// the widget beneath it what actually holds [`EditableText`].
-    fn scene(&self, world: &mut World, node: Entity) {
+    fn scene(&self, entity: &mut impl WorldEntityMut) {
         let scene = bsn! {
             @FeathersTextInputContainer
             Children [
@@ -216,20 +215,34 @@ impl TextField {
             ]
         };
 
-        if let Err(err) = world.entity_mut(node).apply_scene(scene) {
+        if let Err(err) = entity.entity_mut().apply_scene(scene) {
             error!("failed to build a text field: {err}");
         }
 
-        if let Some(mut layout) = world.get_mut::<Node>(node) {
+        if let Some(mut layout) =
+            entity.entity_mut().get_mut::<Node>()
+        {
             layout.width = self.width;
             layout.flex_grow = 0.0;
+
+            // `FeathersTextInputContainer` reserves its left inset as
+            // a colorless 3px *border* rather than padding (room for
+            // a leading icon we never add), which leaves the
+            // background unpainted there and the left corners looking
+            // square next to the fully rounded right ones. Folding it
+            // into padding instead paints the background - and so the
+            // radius - all the way around.
+            layout.border = UiRect::ZERO;
+            layout.padding = UiRect::horizontal(px(3.0));
         }
 
-        self.show(world, node);
+        self.show(entity);
     }
 
     /// Writes `self.value` into the child [`EditableText`].
-    fn show(&self, world: &mut World, node: Entity) {
+    fn show(&self, entity: &mut impl WorldEntityMut) {
+        let node = entity.id();
+        let world = entity.world_mut();
         let Some(text_input) = Self::text_input(world, node) else {
             return;
         };
@@ -256,10 +269,7 @@ impl TextField {
 
 impl ElementVisual<BevyHost> for TextField {
     fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        self.scene(world, node);
+        self.scene(build);
     }
 
     fn patch_fields(
@@ -267,13 +277,11 @@ impl ElementVisual<BevyHost> for TextField {
         patch: &mut Patch<BevyHost>,
         field: TextFieldField,
     ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
         match field {
-            TextFieldField::Value => self.show(world, node),
+            TextFieldField::Value => self.show(patch),
             TextFieldField::Width => {
-                if let Some(mut layout) = world.get_mut::<Node>(node)
+                if let Some(mut layout) =
+                    patch.entity_mut().get_mut::<Node>()
                 {
                     layout.width = self.width;
                 }

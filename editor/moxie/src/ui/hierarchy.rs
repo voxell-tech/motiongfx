@@ -15,11 +15,12 @@ pub(crate) use drag::Dragging;
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
 use bevy_motiongfx::scene::id::EntityUid;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::{ElementHandle, ElementMut};
-use fynix_mock::{elem, val};
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::ui::{ElementHandle, ElementMut};
+use fynix::{elem, val};
 use moxie_ui::elements::{
     ButtonElem, ButtonElemCursor, Frame, FrameCursor, GhostButton,
     Icon, Label, LabelCursor, Panel, ScrollArea, TintButton,
@@ -134,7 +135,7 @@ impl Composer<BevyHost> for Roots {
             scroll_x = false
         ))
         .watch(
-            move |world, _| {
+            move |WorldNodeRef { world, .. }| {
                 let query = match &mut query {
                     Some(query) => query,
                     slot => match QueryState::try_new(world) {
@@ -228,7 +229,7 @@ fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
             .bind(
                 |line| line.background(),
                 drop_changed(entity, at),
-                move |world, _| {
+                move |WorldNodeRef { world, .. }| {
                     if world
                         .resource::<drag::Dragging>()
                         .shows(entity, at)
@@ -298,14 +299,16 @@ impl Composer<BevyHost> for Subtree {
                     .bind(
                         |button| button.fill(),
                         highlight_changed(entity),
-                        move |world, _| {
+                        move |WorldNodeRef { world, .. }| {
                             highlight(world, entity, accent)
                         },
                     )
                     .bind(
                         |button| button.label().text(),
                         component_changed_on::<Name>(entity),
-                        move |world, _| name_of(world, entity),
+                        move |WorldNodeRef { world, .. }| {
+                            name_of(world, entity)
+                        },
                     );
             },
             body: move |ui: &mut BevyUi| {
@@ -368,7 +371,7 @@ fn highlight(world: &World, entity: Entity, accent: Color) -> Color {
 /// Fires when either half of what [`highlight`] reads moves.
 fn highlight_changed(
     entity: Entity,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| {
         (
             world.resource::<SelectedEntity>().0 == Some(entity),
@@ -383,7 +386,7 @@ fn highlight_changed(
 fn drop_changed(
     entity: Entity,
     at: drag::At,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
     value_changed(move |world, _| {
         world.resource::<drag::Dragging>().shows(entity, at)
     })
@@ -433,15 +436,19 @@ fn is_subject(world: &World, entity: Entity) -> bool {
 /// Its [`Name`], or the head of its id. A whole uuid is unreadable;
 /// the first characters tell two unnamed subjects apart.
 fn name_of(world: &World, entity: Entity) -> String {
-    /// How much of an id a row shows.
-    const HEAD: usize = 8;
-
     if let Some(name) = world.get::<Name>(entity) {
         return name.as_str().to_string();
     }
 
     match world.get::<EntityUid>(entity) {
-        Some(uid) => uid.to_string().chars().take(HEAD).collect(),
+        Some(uid) => uid_head(*uid),
         None => "?".to_string(),
     }
+}
+
+/// How much of an id a row shows. A whole uuid is unreadable; the
+/// first characters are enough to tell two subjects apart.
+pub(crate) fn uid_head(uid: EntityUid) -> String {
+    const HEAD: usize = 8;
+    uid.to_string().chars().take(HEAD).collect()
 }

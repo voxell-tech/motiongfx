@@ -16,8 +16,9 @@ use bevy::feathers::controls::{NumberFormat, NumberInputValue};
 use bevy::prelude::*;
 use bevy::ui_widgets::ValueChange;
 
-use bevy_fynix::EntityExt;
-use fynix_mock::elem;
+use bevy_fynix::WorldEntityMut;
+use fynix::WorldNodeRef;
+use fynix::elem;
 
 use super::{Inspect, Source, SourceExt, when_changed};
 use crate::elements::{Frame, Label, NumberField, NumberFieldCursor};
@@ -131,7 +132,9 @@ fn axis<T, V>(
     .bind(
         |input| input.value(),
         when_changed(source),
-        move |world, _| shown::<T>(&*read, world, index, to_input),
+        move |WorldNodeRef { world, .. }| {
+            shown::<T>(&*read, world, index, to_input)
+        },
     );
 }
 

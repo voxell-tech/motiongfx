@@ -2,92 +2,59 @@
   world: (
     resources: {},
     entities: {
-      4294966551: (
+      4294966390: (
         components: {
           "bevy_camera::visibility::Visibility": Inherited,
-          "bevy_ecs::hierarchy::Children": ([
-            4294966552,
-            4294966556,
-          ]),
-          "bevy_transform::components::transform::Transform": (
-            translation: (0.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 0.0, 1.0),
-            scale: (1.0, 1.0, 1.0),
-          ),
-          "moxie::SceneRoot": (),
-        },
-      ),
-      4294966552: (
-        components: {
-          "bevy_camera::visibility::Visibility": Inherited,
-          "bevy_ecs::hierarchy::ChildOf": (4294966551),
-          "bevy_ecs::hierarchy::Children": ([
-            4294966553,
-            4294966554,
-            4294966555,
-          ]),
-          "bevy_ecs::name::Name": "Solids",
-          "bevy_motiongfx::scene::id::EntityUid": ("59af9736-3ea8-49ad-adb2-88703abbf39d"),
-          "bevy_transform::components::transform::Transform": (
-            translation: (0.0, 1.2, 0.0),
-            rotation: (0.0, 0.0, 0.0, 1.0),
-            scale: (1.0, 1.0, 1.0),
-          ),
-        },
-      ),
-      4294966553: (
-        components: {
-          "bevy_camera::visibility::Visibility": Inherited,
-          "bevy_ecs::hierarchy::ChildOf": (4294966552),
-          "bevy_ecs::name::Name": "Solids 0",
-          "bevy_mesh::components::Mesh3d": (Path("meshes/cube.glb#Mesh0/Primitive0")),
-          "bevy_motiongfx::scene::id::EntityUid": ("90d72875-f1d4-4af4-bf0e-d19913343106"),
-          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
-          "bevy_transform::components::transform::Transform": (
-            translation: (-2.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 0.0, 1.0),
-            scale: (0.0, 0.0, 0.0),
-          ),
-        },
-      ),
-      4294966554: (
-        components: {
-          "bevy_camera::visibility::Visibility": Inherited,
-          "bevy_ecs::hierarchy::ChildOf": (4294966552),
-          "bevy_ecs::name::Name": "Solids 1",
-          "bevy_mesh::components::Mesh3d": (Path("meshes/sphere.glb#Mesh0/Primitive0")),
-          "bevy_motiongfx::scene::id::EntityUid": ("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
-          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
-          "bevy_transform::components::transform::Transform": (
-            translation: (0.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 0.0, 1.0),
-            scale: (0.0, 0.0, 0.0),
-          ),
-        },
-      ),
-      4294966555: (
-        components: {
-          "bevy_camera::visibility::Visibility": Inherited,
-          "bevy_ecs::hierarchy::ChildOf": (4294966552),
-          "bevy_ecs::name::Name": "Solids 2",
-          "bevy_mesh::components::Mesh3d": (Path("meshes/monkey.glb#Mesh0/Primitive0")),
-          "bevy_motiongfx::scene::id::EntityUid": ("15860121-b882-4dd0-94d5-6f8563c80178"),
+          "bevy_ecs::hierarchy::ChildOf": (4294966393),
+          "bevy_ecs::name::Name": "Flats 2",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/cylinder_flat.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("b8d1ffdc-abaa-4695-9f3a-e018e054bbb4"),
           "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
           "bevy_transform::components::transform::Transform": (
             translation: (2.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 0.0, 1.0),
-            scale: (0.0, 0.0, 0.0),
+            rotation: (0.0, 1.0, 0.0, -0.00000004371139),
+            scale: (1.0, 1.0, 1.0),
           ),
         },
       ),
-      4294966556: (
+      4294966391: (
         components: {
           "bevy_camera::visibility::Visibility": Inherited,
-          "bevy_ecs::hierarchy::ChildOf": (4294966551),
+          "bevy_ecs::hierarchy::ChildOf": (4294966393),
+          "bevy_ecs::name::Name": "Flats 1",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/sphere_flat.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("f13cccc6-fe99-4b08-83ea-8e2047a3081e"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (0.0, 0.0, 0.0),
+            rotation: (0.0, 1.0, 0.0, -0.00000004371139),
+            scale: (1.0, 1.0, 1.0),
+          ),
+        },
+      ),
+      4294966392: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966393),
+          "bevy_ecs::name::Name": "Flats 0",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/plane.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("a2ec0ac9-1cf4-4234-a11e-32bc673db0b4"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (-2.0, 0.0, 0.0),
+            rotation: (0.0, 1.0, 0.0, -0.00000004371139),
+            scale: (1.0, 1.0, 1.0),
+          ),
+        },
+      ),
+      4294966393: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966398),
           "bevy_ecs::hierarchy::Children": ([
-            4294966557,
-            4294966558,
-            4294966559,
+            4294966392,
+            4294966391,
+            4294966390,
           ]),
           "bevy_ecs::name::Name": "Flats",
           "bevy_motiongfx::scene::id::EntityUid": ("908e820e-55ce-42d0-9980-1251fe0de724"),
@@ -98,49 +65,82 @@
           ),
         },
       ),
-      4294966557: (
+      4294966394: (
         components: {
           "bevy_camera::visibility::Visibility": Inherited,
-          "bevy_ecs::hierarchy::ChildOf": (4294966556),
-          "bevy_ecs::name::Name": "Flats 0",
-          "bevy_mesh::components::Mesh3d": (Path("meshes/plane.glb#Mesh0/Primitive0")),
-          "bevy_motiongfx::scene::id::EntityUid": ("a2ec0ac9-1cf4-4234-a11e-32bc673db0b4"),
-          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
-          "bevy_transform::components::transform::Transform": (
-            translation: (-2.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 0.0, 1.0),
-            scale: (0.0, 0.0, 0.0),
-          ),
-        },
-      ),
-      4294966558: (
-        components: {
-          "bevy_camera::visibility::Visibility": Inherited,
-          "bevy_ecs::hierarchy::ChildOf": (4294966556),
-          "bevy_ecs::name::Name": "Flats 1",
-          "bevy_mesh::components::Mesh3d": (Path("meshes/sphere_flat.glb#Mesh0/Primitive0")),
-          "bevy_motiongfx::scene::id::EntityUid": ("f13cccc6-fe99-4b08-83ea-8e2047a3081e"),
-          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
-          "bevy_transform::components::transform::Transform": (
-            translation: (0.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 0.0, 1.0),
-            scale: (0.0, 0.0, 0.0),
-          ),
-        },
-      ),
-      4294966559: (
-        components: {
-          "bevy_camera::visibility::Visibility": Inherited,
-          "bevy_ecs::hierarchy::ChildOf": (4294966556),
-          "bevy_ecs::name::Name": "Flats 2",
-          "bevy_mesh::components::Mesh3d": (Path("meshes/cylinder_flat.glb#Mesh0/Primitive0")),
-          "bevy_motiongfx::scene::id::EntityUid": ("b8d1ffdc-abaa-4695-9f3a-e018e054bbb4"),
+          "bevy_ecs::hierarchy::ChildOf": (4294966397),
+          "bevy_ecs::name::Name": "Solids 2",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/monkey.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("15860121-b882-4dd0-94d5-6f8563c80178"),
           "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
           "bevy_transform::components::transform::Transform": (
             translation: (2.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 0.0, 1.0),
-            scale: (0.0, 0.0, 0.0),
+            rotation: (0.0, 1.0, 0.0, -0.00000004371139),
+            scale: (1.0, 1.0, 1.0),
           ),
+        },
+      ),
+      4294966395: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966397),
+          "bevy_ecs::name::Name": "Solids 1",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/sphere.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("8f231763-6ed4-45ee-8a0f-78d80ee3f8b0"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (0.0, 0.0, 0.0),
+            rotation: (0.0, 1.0, 0.0, -0.00000004371139),
+            scale: (1.0, 1.0, 1.0),
+          ),
+        },
+      ),
+      4294966396: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966397),
+          "bevy_ecs::name::Name": "Solids 0",
+          "bevy_mesh::components::Mesh3d": (Path("meshes/cube.glb#Mesh0/Primitive0")),
+          "bevy_motiongfx::scene::id::EntityUid": ("90d72875-f1d4-4af4-bf0e-d19913343106"),
+          "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>": (Path("materials/default.mat")),
+          "bevy_transform::components::transform::Transform": (
+            translation: (-2.0, 0.9711165, 0.0),
+            rotation: (0.0, 1.0, 0.0, -0.00000004371139),
+            scale: (1.0, 1.0, 1.0),
+          ),
+        },
+      ),
+      4294966397: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::ChildOf": (4294966398),
+          "bevy_ecs::hierarchy::Children": ([
+            4294966396,
+            4294966395,
+            4294966394,
+          ]),
+          "bevy_ecs::name::Name": "Solids",
+          "bevy_motiongfx::scene::id::EntityUid": ("59af9736-3ea8-49ad-adb2-88703abbf39d"),
+          "bevy_transform::components::transform::Transform": (
+            translation: (0.0, 1.2, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (1.0, 1.0, 1.0),
+          ),
+        },
+      ),
+      4294966398: (
+        components: {
+          "bevy_camera::visibility::Visibility": Inherited,
+          "bevy_ecs::hierarchy::Children": ([
+            4294966397,
+            4294966393,
+          ]),
+          "bevy_transform::components::transform::Transform": (
+            translation: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0, 1.0),
+            scale: (1.0, 1.0, 1.0),
+          ),
+          "moxie::SceneRoot": (),
         },
       ),
     },
@@ -605,7 +605,7 @@
         ),
         Block(
           block: (
-            combinator: Any,
+            combinator: All,
             children: [
               Action(
                 action: (

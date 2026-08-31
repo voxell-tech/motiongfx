@@ -12,9 +12,9 @@ use bevy::picking::events::{
 use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
 use bevy::ui::UiScale;
-use bevy_fynix::{BevyFynix, EntityExt};
-use fynix_mock::element::Element;
-use fynix_mock::ui::ElementMut;
+use bevy_fynix::{BevyFynix, WorldEntityMut};
+use fynix::element::Element;
+use fynix::ui::ElementMut;
 use moxie_ui::elements::ButtonElem;
 use moxie_ui::reactive::BevyHost;
 use moxie_ui::theme::EditorTheme;

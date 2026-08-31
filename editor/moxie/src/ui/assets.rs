@@ -18,10 +18,11 @@ use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::{ElementHandle, ElementMut};
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::ui::{ElementHandle, ElementMut};
+use fynix::{elem, val};
 use moxie_asset::AssetKinds;
 use moxie_ui::asset::draggable;
 use moxie_ui::elements::{
@@ -147,12 +148,15 @@ impl Composer<BevyHost> for Listing {
 /// Fires on either resource, since [`build_bookmarks`] draws from
 /// both.
 fn bookmarks_or_project_changed()
--> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+-> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut bookmarks = resource_changed::<ProjectBookmarks>();
     let mut project = resource_changed::<ProjectPath>();
-    move |world, node| {
-        let a = bookmarks(world, node);
-        let b = project(world, node);
+    move |WorldNodeRef { world, node }| {
+        let a = bookmarks(WorldNodeRef::new(world, node));
+        let b = project(WorldNodeRef::new(world, node));
         a || b
     }
 }

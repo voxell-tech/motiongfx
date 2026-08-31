@@ -4,10 +4,10 @@
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::settings::SaveSettingsSync;
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::composer::Composer;
+use fynix::ui::ElementHandle;
+use fynix::{elem, val};
 use moxie_ui::elements::{
     Button, Frame, Label, Panel, ResourceInspector,
 };

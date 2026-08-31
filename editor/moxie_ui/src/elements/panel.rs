@@ -1,12 +1,12 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::element::{ElementVisual, element};
+use fynix::ui::{Build, Patch};
 
 /// What a docked window fills its area with: the whole of it, and
 /// scrolling if what it holds does not fit.
-#[derive(Element)]
+#[element]
 pub struct Panel {
     pub direction: FlexDirection,
     /// Stretch, by default, which is what fills a docked area.

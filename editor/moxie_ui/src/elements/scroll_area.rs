@@ -1,14 +1,14 @@
 use crate::reactive::BevyHost;
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollArea as ScrollAreaBehavior;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::element::{ElementVisual, element};
+use fynix::ui::{Build, Patch};
 
 /// A sized container with real, interactive scrolling - trackpad and
 /// mouse-wheel input actually move it (`ScrollAreaBehavior`), not just
 /// a clipped overflow a caller has to drive by hand.
-#[derive(Element)]
+#[element]
 pub struct ScrollArea {
     pub width: Val,
     pub height: Val,
