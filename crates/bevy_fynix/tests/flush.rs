@@ -7,14 +7,14 @@ use bevy_fynix::host::BevyHost;
 use bevy_fynix::{FynixPlugin, WorldEntityRef as _, watch_root};
 use bevy_ui::Node;
 use fynix::elem;
-use fynix::element::{ElementVisual, element};
-use fynix::ui::{Build, Patch};
+use fynix::element::element;
+use fynix::ui::Patch;
 
 /// Nothing in these tests reads a theme - a host still needs one.
 #[derive(Resource, Clone, Default)]
 struct NoTheme;
 
-type Host = BevyHost<NoTheme>;
+type FynixHost = BevyHost<NoTheme>;
 
 /// What the element writes. A real one would write `bevy_ui`
 /// components; this only has to be visible from a test.
@@ -23,37 +23,17 @@ struct Caption(String);
 
 #[element]
 pub struct Label {
+    #[elem(patch = write_caption)]
     #[default(String::from("Label"))]
     pub text: String,
 }
 
-impl ElementVisual<Host> for Label {
-    fn build_fields(
-        &self,
-        build: &mut Build<BevyHost<NoTheme>, Self>,
-    ) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.entity_mut(node).insert(Caption(self.text.clone()));
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost<NoTheme>>,
-        field: LabelField,
-    ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        match field {
-            LabelField::Text => {
-                world
-                    .entity_mut(node)
-                    .insert(Caption(self.text.clone()));
-            }
-        }
-    }
+fn write_caption(patch: &mut Patch<FynixHost>, text: &str) {
+    let node = patch.id();
+    patch
+        .world
+        .entity_mut(node)
+        .insert(Caption(text.to_owned()));
 }
 
 /// The one child a build put under `root`.

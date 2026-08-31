@@ -35,7 +35,7 @@ use crate::inspector::{
     inspect_value, single_value,
 };
 use crate::motion::MotionExt;
-use crate::reactive::{BevyHost, BevyUi, value_changed};
+use crate::reactive::{BevyUi, FynixHost, value_changed};
 use crate::theme::EditorTheme;
 
 /// Inspector for a [`Component`].
@@ -60,13 +60,13 @@ impl ComponentInspector {
     }
 }
 
-impl Composer<BevyHost> for ComponentInspector {
+impl Composer<FynixHost> for ComponentInspector {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let field = Field::new(self.entity, self.component);
         let built = field.clone();
         let depth = self.depth;
@@ -97,13 +97,13 @@ impl ResourceInspector {
     }
 }
 
-impl Composer<BevyHost> for ResourceInspector {
+impl Composer<FynixHost> for ResourceInspector {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let resource = self.resource;
 
         column(ui, px(4), entity_changed(resource), move |ui| {
@@ -124,13 +124,13 @@ pub struct EntityInspector {
     pub entity: Entity,
 }
 
-impl Composer<BevyHost> for EntityInspector {
+impl Composer<FynixHost> for EntityInspector {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let entity = self.entity;
 
         column(ui, px(8), components_changed(entity), move |ui| {
@@ -173,13 +173,13 @@ struct AddComponent {
     entity: Entity,
 }
 
-impl Composer<BevyHost> for AddComponent {
+impl Composer<FynixHost> for AddComponent {
     type Element = DropdownMenu;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, DropdownMenu> {
+    ) -> ElementHandle<FynixHost, DropdownMenu> {
         let entity = self.entity;
         let theme = ui.theme;
         let options = addable(ui.world, entity);
@@ -361,7 +361,7 @@ fn resource_entity(
 /// old bindings quietly re-pointed.
 fn entity_changed(
     resource: TypeId,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
     value_changed(move |world, _| resource_entity(world, resource))
 }
 
@@ -372,7 +372,7 @@ fn entity_changed(
 /// rebuilds when one is added, removed, or the entity goes.
 fn components_changed(
     entity: Entity,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
     value_changed(move |world, _| inspectable(world, entity))
 }
 
@@ -456,9 +456,9 @@ fn humanize(name: &str) -> String {
 fn column(
     ui: &mut BevyUi,
     gap: Val,
-    changed: impl ChangedFn<BevyHost>,
-    build: impl BuildFn<BevyHost>,
-) -> ElementHandle<BevyHost, Frame> {
+    changed: impl ChangedFn<FynixHost>,
+    build: impl BuildFn<FynixHost>,
+) -> ElementHandle<FynixHost, Frame> {
     ui.elem(elem!(
         Frame,
         width = percent(100),
@@ -476,6 +476,6 @@ fn column(
 /// [`InspectorFields`]' own business, with its own watcher for that.
 fn presence_changed(
     field: Field,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
     value_changed(move |world, _| field.exists(world))
 }

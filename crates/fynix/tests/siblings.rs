@@ -3,10 +3,10 @@
 
 mod common;
 
-use common::{Label, LabelCursor, World};
-use fynix::element::{Element, ElementVisual, element};
+use common::{FynixHost, Label, LabelCursor, World};
+use fynix::element::{Element, element};
 use fynix::records::Records;
-use fynix::ui::{Build, Patch};
+use fynix::ui::Patch;
 
 /// Two labels that already say which is which, so a test can tell one
 /// node from the other without setting anything up.
@@ -18,30 +18,14 @@ pub struct Pair {
     #[elem(child)]
     #[default(text: String::from("down"), size: 2)]
     pub bottom: Label,
+    #[elem(patch = write_gap)]
     #[default(7)]
     pub gap: u32,
 }
 
-impl ElementVisual<common::Backend> for Pair {
-    fn build_fields(&self, build: &mut Build<common::Backend, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.node(node).padding = self.gap;
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<common::Backend>,
-        field: PairField,
-    ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        match field {
-            PairField::Gap => world.node(node).padding = self.gap,
-        }
-    }
+fn write_gap(patch: &mut Patch<FynixHost>, gap: &u32) {
+    let node = patch.id();
+    patch.world.node(node).padding = *gap;
 }
 
 #[test]

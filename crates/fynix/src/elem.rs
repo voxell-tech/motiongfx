@@ -21,6 +21,7 @@ use crate::elem;
 /// # use fynix::{elem, val};
 /// # use fynix::style::{Style, StyledElem};
 /// # use fynix::host::Host;
+/// # use fynix::element::ElementBase;
 /// # pub struct Backend;
 /// # impl Host for Backend {
 /// #     type Node = usize;
@@ -38,6 +39,10 @@ use crate::elem;
 ///
 /// #[derive(Default)]
 /// struct Label { text: String, size: u32, font: Font }
+///
+/// impl ElementBase<Backend> for Label {
+///     fn base(_theme: &()) -> Self { Self::default() }
+/// }
 ///
 /// struct Title;
 /// impl Style for Title {

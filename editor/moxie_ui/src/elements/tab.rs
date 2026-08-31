@@ -1,25 +1,27 @@
 //! A leaf's tab bar: the strip, the scrolling row, and one tab.
 
-use crate::reactive::BevyHost;
+use crate::reactive::{FynixBuild, FynixHost};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{ElementVisual, element};
-use fynix::ui::{Build, Patch};
+use fynix::element::element;
+use fynix::ui::Patch;
 
+use super::patch::{self, with};
 use super::{ButtonElem, Icon, Label};
 use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
 
 /// The strip across the top of a leaf.
-#[element]
+#[element(build = Self::build)]
 pub struct TabBar {
+    #[elem(patch = patch::background)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.03))]
     pub background: Color,
 }
 
-impl ElementVisual<BevyHost> for TabBar {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+impl TabBar {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             Node {
                 flex_direction: FlexDirection::Row,
@@ -40,26 +42,14 @@ impl ElementVisual<BevyHost> for TabBar {
             BackgroundColor(self.background),
         ));
     }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: TabBarField,
-    ) {
-        match field {
-            TabBarField::Background => {
-                patch.insert(BackgroundColor(self.background));
-            }
-        }
-    }
 }
 
 /// What the tabs themselves sit in, which scrolls when they overflow.
-#[element]
+#[element(build = Self::build)]
 pub struct TabRow;
 
-impl ElementVisual<BevyHost> for TabRow {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+impl TabRow {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             DockTabRow,
             Node {
@@ -75,14 +65,6 @@ impl ElementVisual<BevyHost> for TabRow {
             ScrollPosition::default(),
         ));
     }
-
-    fn patch_fields(
-        &self,
-        _patch: &mut Patch<BevyHost>,
-        field: TabRowField,
-    ) {
-        match field {}
-    }
 }
 
 /// One tab: its icon, its name, and the button that closes it.
@@ -90,7 +72,7 @@ impl ElementVisual<BevyHost> for TabRow {
 /// Which tab is active is a field rather than a rebuild, because
 /// switching tabs must not take the drag in progress or the row's
 /// scroll offset with it.
-#[element]
+#[element(build = Self::build)]
 pub struct Tab {
     #[elem(child)]
     pub icon: Option<Icon>,
@@ -98,33 +80,40 @@ pub struct Tab {
     pub label: Label,
     #[elem(child)]
     pub close: Option<ButtonElem>,
+    #[elem(patch = window_id)]
     pub window_id: String,
+    #[elem(patch = tab_id)]
     #[default(TabId(0))]
     pub tab: TabId,
+    #[elem(patch = active)]
     pub active: bool,
+    #[elem(patch = fill)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.06))]
     pub fill: Color,
 }
 
-impl Tab {
-    fn background(&self) -> BackgroundColor {
-        BackgroundColor(if self.active {
-            self.fill
-        } else {
-            Color::NONE
-        })
-    }
+/// The tab's fill, kept on the node whether or not it is showing, so
+/// [`patch_active`] can put it back when the tab becomes active
+/// again.
+#[derive(Component, Clone, Copy)]
+pub(super) struct TabFill(pub(super) Color);
+
+pub(super) fn tab_background(
+    active: bool,
+    fill: Color,
+) -> BackgroundColor {
+    BackgroundColor(if active { fill } else { Color::NONE })
 }
 
-impl ElementVisual<BevyHost> for Tab {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+impl Tab {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             DockTab {
                 window_id: self.window_id.clone(),
                 tab_id: self.tab,
             },
-            // A tab is dragged, so it says so at rest. The drag
-            // itself swaps in `Grabbing` through `OverrideCursor`.
+            // A tab is dragged, so it says so at rest. The drag itself
+            // swaps in `Grabbing` through `OverrideCursor`.
             EntityCursor::System(SystemCursorIcon::Grab),
             Node {
                 flex_direction: FlexDirection::Row,
@@ -136,25 +125,36 @@ impl ElementVisual<BevyHost> for Tab {
                 border_radius: BorderRadius::all(px(4)),
                 ..default()
             },
-            self.background(),
+            TabFill(self.fill),
+            tab_background(self.active, self.fill),
         ));
     }
+}
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: TabField,
-    ) {
-        match field {
-            TabField::Active | TabField::Fill => {
-                patch.insert(self.background());
-            }
-            TabField::WindowId | TabField::Tab => {
-                patch.insert(DockTab {
-                    window_id: self.window_id.clone(),
-                    tab_id: self.tab,
-                });
-            }
-        }
+fn active(patch: &mut Patch<FynixHost>, active: &bool) {
+    let fill = patch
+        .entity_mut()
+        .get::<TabFill>()
+        .map(|f| f.0)
+        .unwrap_or(Color::NONE);
+    patch.insert(tab_background(*active, fill));
+}
+
+fn fill(patch: &mut Patch<FynixHost>, fill: &Color) {
+    let active = patch
+        .entity_mut()
+        .get::<BackgroundColor>()
+        .is_some_and(|bg| bg.0 != Color::NONE);
+    patch.insert(TabFill(*fill));
+    if active {
+        patch.insert(BackgroundColor(*fill));
     }
+}
+
+fn window_id(patch: &mut Patch<FynixHost>, window_id: &String) {
+    with::<DockTab>(patch, |d| d.window_id.clone_from(window_id));
+}
+
+fn tab_id(patch: &mut Patch<FynixHost>, tab: &TabId) {
+    with::<DockTab>(patch, |d| d.tab_id = *tab);
 }

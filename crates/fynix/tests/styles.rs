@@ -8,9 +8,9 @@ use core::marker::PhantomData;
 
 mod common;
 
-use common::{Backend, Label, World};
+use common::{FynixHost, Label, World};
 use fynix::Fynix;
-use fynix::element::Element;
+use fynix::element::{Element, ElementBase};
 use fynix::host::Host;
 use fynix::records::Records;
 use fynix::style::{Raw, Style, StyledElem};
@@ -19,7 +19,7 @@ use fynix::{elem, val};
 /// What the cascade produced, for a test that only wants the value.
 /// `create` says nothing about a backend, but the type it is called on
 /// has to name one.
-fn create<S: StyledElem<Host = Backend>>(styled: S) -> S::Element {
+fn create<S: StyledElem<Host = FynixHost>>(styled: S) -> S::Element {
     styled.create(&())
 }
 
@@ -27,7 +27,7 @@ fn create<S: StyledElem<Host = Backend>>(styled: S) -> S::Element {
 struct Title;
 
 impl Style for Title {
-    type Host = Backend;
+    type Host = FynixHost;
     type Element = Label;
 
     fn apply(self, label: &mut Label, _theme: &()) {
@@ -63,7 +63,7 @@ fn the_style_can_be_any_expression() {
     struct Exactly(u32);
 
     impl Style for Exactly {
-        type Host = Backend;
+        type Host = FynixHost;
         type Element = Label;
 
         fn apply(self, label: &mut Label, _theme: &()) {
@@ -88,13 +88,19 @@ fn generic_elements_and_styles_both_carry_their_arguments() {
         look: L,
     }
 
+    impl<L: Default> ElementBase<FynixHost> for Themed<L> {
+        fn base(_theme: &()) -> Self {
+            Self::default()
+        }
+    }
+
     #[derive(Default, Debug, PartialEq)]
     struct Dark;
 
     struct Wide<L>(PhantomData<fn() -> L>);
 
     impl<L: Default> Style for Wide<L> {
-        type Host = Backend;
+        type Host = FynixHost;
         type Element = Themed<L>;
 
         fn apply(self, themed: &mut Themed<L>, _theme: &()) {
@@ -135,10 +141,16 @@ fn field_paths_reach_as_deep_as_they_go() {
         font: Font,
     }
 
+    impl ElementBase<FynixHost> for Card {
+        fn base(_theme: &()) -> Self {
+            Self::default()
+        }
+    }
+
     struct Wide;
 
     impl Style for Wide {
-        type Host = Backend;
+        type Host = FynixHost;
         type Element = Card;
 
         fn apply(self, card: &mut Card, _theme: &()) {
@@ -192,7 +204,7 @@ fn what_the_cascade_left_is_what_gets_built() {
     let mut records = Records::default();
 
     let label = create(elem!(!Title, text = "Save"));
-    let node = Element::<Backend>::build(
+    let node = Element::<FynixHost>::build(
         &label,
         &mut world,
         parent,
@@ -218,7 +230,7 @@ fn the_builder_takes_a_styled_element_whole() {
         &mut world,
     );
 
-    let children = Backend::children(&world, root);
+    let children = FynixHost::children(&world, root);
     assert_eq!(world.get(children[0]).text, "Save");
     assert_eq!(world.get(children[0]).size, 10);
 }

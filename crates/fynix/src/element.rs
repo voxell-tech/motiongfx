@@ -1,25 +1,32 @@
-//! What a struct is as a piece of UI, in two halves.
+//! What a struct is as a piece of UI.
 //!
-//! [`ElementVisual`] is the half you write. It only sees the fields
-//! this element draws itself. [`Element`] is the half
-//! `#[element]` writes. It owns the `#[elem(child)]`
-//! children, builds them first, and walks down to them when a change
-//! names one.
+//! `#[element]` writes it all: the [`ElementBase`] the cascade starts
+//! from, and the [`Element`] that owns the `#[elem(child)]` children,
+//! builds them first, and walks down to them when a change names one.
+//! A field's own value writer and the optional structural hook are
+//! named by `#[elem(patch = ...)]` and `#[element(build = ...)]`.
 
 use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::records::Records;
 use crate::store::Store;
-use crate::ui::{Build, Patch};
 
 /// Marks a struct as an element. See
 /// [`fynix_macros::element`](macro@fynix_macros::element).
 pub use fynix_macros::element;
 
+/// The value an element starts from, before a style and the call site.
+///
+/// Written by `#[element]`: the struct's `Default`, then each
+/// `#[elem(default = ...)]` override, with the backend's theme in hand.
+pub trait ElementBase<H: Host>: Sized {
+    fn base(theme: &H::Theme) -> Self;
+}
+
 /// An element and the `#[elem(child)]` children beneath it.
 ///
-/// Written by `#[element]`, once per backend.
-pub trait Element<H: Host>: ElementVisual<H> + Default {
+/// Written by `#[element]`, for one backend.
+pub trait Element<H: Host>: Fields {
     /// Build this element under `parent`, children and all.
     ///
     /// Each child's node is recorded in `records`, so
@@ -36,8 +43,7 @@ pub trait Element<H: Host>: ElementVisual<H> + Default {
     /// [`Cursor::hops`](crate::lenz::Cursor::hops) reports it.
     ///
     /// Walks down one hop per element until it reaches the field's
-    /// owner, then calls
-    /// [`patch_fields`](ElementVisual::patch_fields).
+    /// owner, then runs that field's `#[elem(patch = ...)]` writer.
     fn patch(
         &self,
         world: &mut H::World,
@@ -55,25 +61,6 @@ pub trait Element<H: Host>: ElementVisual<H> + Default {
         node: H::Node,
         store: &mut Store<H>,
     );
-}
-
-/// How an element draws its own fields on one backend.
-///
-/// Implemented by hand, once per struct and backend pair.
-pub trait ElementVisual<H: Host>: Fields {
-    /// Write this element's own fields onto `draw`'s own node.
-    ///
-    /// The node already exists, with its `#[elem(child)]` fields
-    /// already built under it. Reach one with [`Build::child`].
-    fn build_fields(&self, draw: &mut Build<H, Self>)
-    where
-        Self: Element<H> + Send + Sync;
-
-    /// Push one changed field into visuals that already exist.
-    ///
-    /// A plain struct field is written whole. Elements are reached
-    /// one hop at a time and never arrive here.
-    fn patch_fields(&self, patch: &mut Patch<H>, field: Self::Field);
 }
 
 /// A struct whose own fields can be named one by one.

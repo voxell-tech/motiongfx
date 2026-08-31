@@ -24,7 +24,7 @@ use moxie_ui::elements::{
 use moxie_ui::inspector::{
     FieldRow, Source, inspect_value, reflect_changed,
 };
-use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
+use moxie_ui::reactive::{BevyUi, FynixHost, value_changed};
 
 use super::{PANEL_PADDING, hierarchy};
 use crate::{EditorScene, SelectedAction};
@@ -32,13 +32,13 @@ use crate::{EditorScene, SelectedAction};
 /// The action panel, as kernel nodes.
 pub(super) struct ActionPanel;
 
-impl Composer<BevyHost> for ActionPanel {
+impl Composer<FynixHost> for ActionPanel {
     type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, ScrollArea> {
+    ) -> ElementHandle<FynixHost, ScrollArea> {
         ui.elem(elem!(
             ScrollArea,
             flex_grow = 1.0f32,

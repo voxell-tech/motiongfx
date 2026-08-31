@@ -7,11 +7,40 @@
 //! Run with `cargo run -p fynix --example field_ids`.
 
 use fynix::element::{Fields, element};
+use fynix::host::Host;
 use fynix::lenz::FieldId;
+use fynix::ui::Patch;
+
+/// A stand-in backend: this example inspects field ids, never builds
+/// anything, so nothing here is ever called.
+pub struct FynixHost;
+
+impl Host for FynixHost {
+    type Node = usize;
+    type World = ();
+    type Theme = ();
+    fn delta(_: &()) -> f32 {
+        0.0
+    }
+    fn spawn(_: &mut (), _: usize) -> usize {
+        0
+    }
+    fn exists(_: &(), _: usize) -> bool {
+        true
+    }
+    fn children(_: &(), _: usize) -> Vec<usize> {
+        Vec::new()
+    }
+    fn despawn(_: &mut (), _: usize) {}
+}
+
+fn noop<T>(_: &mut Patch<FynixHost>, _: &T) {}
 
 #[element]
 pub struct Label {
+    #[elem(patch = noop)]
     pub text: String,
+    #[elem(patch = noop)]
     pub size: u32,
 }
 
@@ -22,6 +51,7 @@ pub struct Pair {
     pub top: Label,
     #[elem(child)]
     pub bottom: Label,
+    #[elem(patch = noop)]
     pub gap: u32,
 }
 
@@ -30,6 +60,7 @@ pub struct Pair {
 pub struct Stack {
     #[elem(child)]
     pub top: Label,
+    #[elem(patch = noop)]
     pub gap: u32,
 }
 
@@ -62,6 +93,7 @@ impl Look for Light {}
 pub struct Themed<L: Look> {
     #[elem(child)]
     pub label: Label,
+    #[elem(patch = noop)]
     pub look: L,
 }
 

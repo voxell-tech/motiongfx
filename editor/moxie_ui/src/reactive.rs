@@ -3,7 +3,7 @@
 //! The kernel itself is [`bevy_fynix`]; what lives here is the
 //! predicates the editor asks it to watch, none of which know
 //! anything about the kernel: each is a
-//! `FnMut(WorldNodeRef<BevyHost>) -> bool` that answers "has this changed
+//! `FnMut(WorldNodeRef<FynixHost>) -> bool` that answers "has this changed
 //! since I last looked".
 
 use bevy::ecs::change_detection::{ComponentTicks, Tick};
@@ -18,14 +18,17 @@ pub use bevy_fynix::{FynixSet, watch_root};
 use crate::theme::EditorTheme;
 
 /// Fixes [`bevy_fynix::host::BevyHost`]'s theme to [`EditorTheme`].
-pub type BevyHost = bevy_fynix::host::BevyHost<EditorTheme>;
+pub type FynixHost = bevy_fynix::host::BevyHost<EditorTheme>;
+/// [`fynix::ui::Build`] against [`FynixHost`], for an element's own
+/// `fn build`.
+pub type FynixBuild<'a, E> = fynix::ui::Build<'a, FynixHost, E>;
 pub type BevyUi<'a> = bevy_fynix::BevyUi<'a, EditorTheme>;
 pub type FynixPlugin = bevy_fynix::FynixPlugin<EditorTheme>;
 
 /// Fires when `R` changed since the last poll. Also fires on the first
 /// poll, so a binding starts out in sync with the world.
 pub fn resource_changed<R: Resource>()
--> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
+-> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
 + Send
 + Sync
 + 'static {
@@ -51,7 +54,7 @@ pub fn resource_changed<R: Resource>()
 /// instead.
 pub fn structure_changed<R: Resource, K>(
     project: impl Fn(&R) -> K + Send + Sync + 'static,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
 + Send
 + Sync
 + 'static
@@ -77,7 +80,7 @@ where
 /// closure, since a predicate only has `&World` to scan with.
 pub fn value_changed<T>(
     read: impl Fn(&World, Entity) -> T + Send + Sync + 'static,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
 + Send
 + Sync
 + 'static
@@ -99,7 +102,7 @@ where
 /// Rides the tick. Reach for [`value_changed`] when the value itself
 /// is what matters.
 pub fn component_changed<C: Component>()
--> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
+-> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
 + Send
 + Sync
 + 'static {
@@ -115,7 +118,7 @@ pub fn component_changed<C: Component>()
 /// Same, for `C` on some other entity than the node.
 pub fn component_changed_on<C: Component>(
     entity: Entity,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
 + Send
 + Sync
 + 'static {
@@ -150,7 +153,7 @@ pub(crate) fn tick_changed(
 
 /// Fires when the current `S` differs from the last poll.
 pub fn state_changed<S: States>()
--> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
+-> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
 + Send
 + Sync
 + 'static {
