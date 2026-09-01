@@ -183,21 +183,29 @@ mod tests {
         let theme = EditorTheme::default();
 
         let node = world
-            .spawn((TabFill(Color::NONE), tab_background(true, Color::NONE)))
+            .spawn((
+                TabFill(Color::NONE),
+                tab_background(true, Color::NONE),
+            ))
             .id();
 
         let green = Color::srgb(0.0, 1.0, 0.0);
 
         {
-            let mut patch = Patch::<FynixHost>::new(&mut world, node, &theme);
+            let mut patch =
+                Patch::<FynixHost>::new(&mut world, node, &theme);
             active(&mut patch, &true);
         }
         {
-            let mut patch = Patch::<FynixHost>::new(&mut world, node, &theme);
+            let mut patch =
+                Patch::<FynixHost>::new(&mut world, node, &theme);
             fill(&mut patch, &green);
         }
 
-        assert_eq!(world.get::<BackgroundColor>(node).unwrap().0, green);
+        assert_eq!(
+            world.get::<BackgroundColor>(node).unwrap().0,
+            green
+        );
         assert_eq!(world.get::<TabFill>(node).unwrap().0, green);
     }
 }
