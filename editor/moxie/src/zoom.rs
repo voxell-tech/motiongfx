@@ -68,12 +68,11 @@ pub(crate) fn on_track_scroll(
         return;
     }
 
-    // Shift sends a vertical wheel sideways, the only pan a mouse
-    // without a horizontal one can reach.
+    // macOS puts a shifted wheel on x, Windows leaves it on y.
     let sideways =
         keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
     let (pan_x, scroll_y) = if sideways {
-        (delta.y, 0.0)
+        (if delta.x != 0.0 { delta.x } else { delta.y }, 0.0)
     } else {
         (delta.x, delta.y)
     };
