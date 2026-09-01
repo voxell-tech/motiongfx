@@ -183,7 +183,16 @@ impl SplitHandle {
         build.insert((
             PanelHandle,
             NodeBinding(self.node),
-            filled(self.axis),
+            // A small hit area centring `bar`; `axis` pulls it back
+            // onto the seam with a negative margin, `visible` toggles
+            // `display`.
+            Node {
+                min_width: px(HANDLE_SIZE),
+                min_height: px(HANDLE_SIZE),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
             // Overlaps both panels by design; without it the second one,
             // painted after it, would win the pointer.
             ZIndex(1),
