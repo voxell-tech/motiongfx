@@ -85,7 +85,6 @@ pub(crate) fn ticks(view: &TimelineView, width: f32) -> Vec<Tick> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PIXELS_PER_SECOND;
 
     /// Expected label spacing at different zoom levels.
     const SCALES: [(f32, i64); 6] = [
@@ -124,7 +123,10 @@ mod tests {
     /// Labels should use the expected number of decimal places.
     #[test]
     fn labels_read_as_expected_at_the_current_scale() {
-        let step = tick_step(PIXELS_PER_SECOND, MIN_LABEL_PX);
+        let step = tick_step(
+            TimelineView::default().px_per_second,
+            MIN_LABEL_PX,
+        );
         assert_eq!(label(0, step), "0.0");
         assert_eq!(label(500, step), "0.5");
         assert_eq!(label(1_000, step), "1.0");

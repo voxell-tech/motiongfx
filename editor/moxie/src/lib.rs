@@ -81,9 +81,6 @@ pub(crate) fn ensure_scene_root(
 #[reflect(Component, Default, Clone)]
 pub struct SceneRoot;
 
-/// Pixels per second of animation at the default zoom.
-pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
-
 /// Zoom range, spanning the scales the time axis is exercised at.
 const MIN_PX_PER_SECOND: f32 = 1.0;
 const MAX_PX_PER_SECOND: f32 = 20_000.0;
@@ -100,7 +97,7 @@ pub(crate) struct TimelineView {
 impl Default for TimelineView {
     fn default() -> Self {
         Self {
-            px_per_second: PIXELS_PER_SECOND,
+            px_per_second: 160.0,
             offset: 0.0,
         }
     }
