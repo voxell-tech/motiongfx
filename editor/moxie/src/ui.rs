@@ -17,7 +17,7 @@ use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 use crate::{
     EditorSettings, EditorState, PreviewImage, ProjectBookmarks,
     ProjectPath, SelectedAction, SelectedEntity, TimelineView,
-    playback, scene, view, zoom,
+    playback, scene, view,
 };
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
@@ -56,8 +56,6 @@ impl Plugin for UiPlugin {
                     ),
                     playback::track_first_timeline,
                     playback::play_pause_hotkey,
-                    zoom::zoom_hotkey,
-                    zoom::fit_hotkey,
                     playback::stop_at_track_end,
                     view::retarget_scene_cameras,
                 )
