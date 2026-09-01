@@ -16,7 +16,7 @@ use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_click_release,
     on_track_drag, on_track_press, on_track_release,
 };
-use crate::zoom::on_track_scroll;
+use crate::zoom::{FitTimeline, on_track_scroll};
 use crate::{
     EditorScene, EditorState, SelectedAction, TimelineView, time_axis,
 };
@@ -147,6 +147,23 @@ impl Composer<BevyHost> for ControlBar {
                         "{:.2}s",
                         current_time(world, entity).as_secs_f32()
                     )
+                },
+            );
+
+            // Fit button.
+            ui.elem(elem!(Frame, flex_grow = 1.0f32));
+
+            ui.elem(elem!(
+                !Button,
+                label = val!(Label, text = "Fit"),
+                width = px(44),
+                height = px(24)
+            ))
+            .observe(
+                |mut click: On<Pointer<Click>>,
+                 mut commands: Commands| {
+                    click.propagate(false);
+                    commands.trigger(FitTimeline);
                 },
             );
         })

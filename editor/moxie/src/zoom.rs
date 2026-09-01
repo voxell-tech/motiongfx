@@ -5,11 +5,31 @@ use bevy::picking::events::{Pointer, Scroll};
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 
-use crate::TimelineView;
 use crate::playback::x_from_cursor;
+use crate::ui::timeline::TrackViewport;
+use crate::{EditorState, TimelineView};
 
 /// Zoom factor per wheel notch.
 const WHEEL_STEP: f32 = 1.1;
+
+/// Command to fit the animation to the panel, dispatched from the fit
+/// button and handled in [`on_fit_timeline`].
+#[derive(Event)]
+pub(crate) struct FitTimeline;
+
+/// Scale the view so the animation spans the track viewport.
+pub(crate) fn on_fit_timeline(
+    _fit: On<FitTimeline>,
+    q_viewport: Query<&ComputedNode, With<TrackViewport>>,
+    state: Res<EditorState>,
+    mut view: ResMut<TimelineView>,
+) {
+    let Some(computed) = q_viewport.iter().next() else {
+        return;
+    };
+    let width = computed.size().x * computed.inverse_scale_factor();
+    view.fit(width, state.duration);
+}
 
 /// Zoom on Alt+wheel, pan sideways on Shift+wheel or a
 /// horizontal wheel, and scroll the tracks otherwise.
