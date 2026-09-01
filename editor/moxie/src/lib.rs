@@ -89,16 +89,15 @@ const MAX_PX_PER_SECOND: f32 = 20_000.0;
 #[derive(Resource, Clone, Copy, PartialEq)]
 pub(crate) struct TimelineView {
     px_per_second: f32,
-    /// Seconds of animation at the timeline's left edge. Held as a
-    /// time so zooming does not move it.
-    offset: f32,
+    /// Where the timeline's left edge sits.
+    offset: Duration,
 }
 
 impl Default for TimelineView {
     fn default() -> Self {
         Self {
             px_per_second: 160.0,
-            offset: 0.0,
+            offset: Duration::ZERO,
         }
     }
 }
@@ -107,15 +106,28 @@ impl TimelineView {
     /// Horizontal pixel offset for a point `t` into the timeline.
     #[inline]
     pub(crate) fn x_from_time(&self, t: Duration) -> f32 {
-        (t.as_secs_f32() - self.offset) * self.px_per_second
+        let secs = if t >= self.offset {
+            (t - self.offset).as_secs_f32()
+        } else {
+            -(self.offset - t).as_secs_f32()
+        };
+        secs * self.px_per_second
     }
 
     /// Point into the timeline at `x`, clamped to a non-negative
     /// time.
     #[inline]
     pub(crate) fn time_from_x(&self, x: f32) -> Duration {
-        let secs = (x / self.px_per_second + self.offset).max(0.0);
-        Duration::from_secs_f32(secs)
+        let secs = x / self.px_per_second;
+        if !secs.is_finite() {
+            return self.offset;
+        }
+        let step = Duration::from_secs_f32(secs.abs());
+        if secs >= 0.0 {
+            self.offset.saturating_add(step)
+        } else {
+            self.offset.saturating_sub(step)
+        }
     }
 
     /// Scale the zoom by `factor` and leave `anchor_time` sitting at
@@ -131,16 +143,16 @@ impl TimelineView {
         }
         self.px_per_second = (self.px_per_second * factor)
             .clamp(MIN_PX_PER_SECOND, MAX_PX_PER_SECOND);
-        self.offset = (anchor_time.as_secs_f32()
-            - anchor_x / self.px_per_second)
-            .max(0.0);
+        // Put the anchor at the left edge, then push it back to
+        // `anchor_x`.
+        self.offset = anchor_time;
+        self.pan_by(anchor_x);
     }
 
     /// Slide the view `delta_x` pixels along the timeline, stopping at
     /// the start.
     pub(crate) fn pan_by(&mut self, delta_x: f32) {
-        self.offset =
-            (self.offset - delta_x / self.px_per_second).max(0.0);
+        self.offset = self.time_from_x(-delta_x);
     }
 
     /// Scale the view so a `duration` long animation spans a `width`
@@ -152,7 +164,7 @@ impl TimelineView {
         }
         self.px_per_second = (width / (secs * 1.02))
             .clamp(MIN_PX_PER_SECOND, MAX_PX_PER_SECOND);
-        self.offset = 0.0;
+        self.offset = Duration::ZERO;
     }
 }
 
