@@ -183,8 +183,8 @@ impl SplitHandle {
         build.insert((
             PanelHandle,
             NodeBinding(self.node),
-            self.node(),
-            // Overlaps both panels by design; without self the second one,
+            filled(self.axis),
+            // Overlaps both panels by design; without it the second one,
             // painted after it, would win the pointer.
             ZIndex(1),
         ));

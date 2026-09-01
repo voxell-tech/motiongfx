@@ -93,8 +93,7 @@ pub struct Tab {
 }
 
 /// The tab's fill, kept on the node whether or not it is showing, so
-/// [`patch_active`] can put it back when the tab becomes active
-/// again.
+/// [`active`] can put it back when the tab becomes active again.
 #[derive(Component, Clone, Copy)]
 pub(super) struct TabFill(pub(super) Color);
 

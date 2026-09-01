@@ -86,6 +86,64 @@ pub struct ButtonElem {
     hover: Hover,
 }
 
+impl ButtonElem {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        build.insert((
+            Node {
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            ButtonBehavior,
+            EntityCursor::System(SystemCursorIcon::Pointer),
+        ));
+
+        // Wired against a base already in hand as `self`: the node
+        // has no entry in the kernel's table yet for `.lit()` to read
+        // one from. Both stops light to the same colour: `Hover`
+        // carries one shade, not separate hover/press ones.
+        let (fill, icon_label) = match self.hover {
+            Hover::None => (None, None),
+            Hover::Fill(color) => (Some(color), None),
+            Hover::IconLabel(color) => (None, Some(color)),
+        };
+
+        if let Some(color) = fill {
+            build.lit_from(
+                |button| button.fill(),
+                self.fill,
+                color,
+                color,
+            );
+        }
+
+        if let Some(tint) = icon_label {
+            // Read straight from `self`: an absent icon/label is
+            // skipped, same as if it were never lit at all.
+            if let Some(icon) = &self.icon {
+                build.lit_from(
+                    |button| button.icon().color(),
+                    icon.color,
+                    tint,
+                    tint,
+                );
+            }
+            // `label().color()` hops through the `Option`
+            // transparently, so its base is `Color`. A label with no
+            // colour of its own has nowhere for that hop to land.
+            if let Some(color) =
+                self.label.as_ref().and_then(|label| label.color)
+            {
+                build.lit_from(
+                    |button| button.label().color(),
+                    color,
+                    tint,
+                    tint,
+                );
+            }
+        }
+    }
+}
+
 /// The editor's own button: a filled, rounded pill sized for a
 /// toolbar, that lights up under the cursor.
 pub struct Button;
@@ -181,64 +239,6 @@ impl Style for GhostButton {
         button.hover = Hover::Fill(theme.hover_overlay);
         button.padding = UiRect::axes(px(8), px(4));
         button.radius = px(4);
-    }
-}
-
-impl ButtonElem {
-    fn build(&self, build: &mut FynixBuild<'_, Self>) {
-        build.insert((
-            Node {
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            ButtonBehavior,
-            EntityCursor::System(SystemCursorIcon::Pointer),
-        ));
-
-        // Wired against a base already in hand as `self`: the node
-        // has no entry in the kernel's table yet for `.lit()` to read
-        // one from. Both stops light to the same colour: `Hover`
-        // carries one shade, not separate hover/press ones.
-        let (fill, icon_label) = match self.hover {
-            Hover::None => (None, None),
-            Hover::Fill(color) => (Some(color), None),
-            Hover::IconLabel(color) => (None, Some(color)),
-        };
-
-        if let Some(color) = fill {
-            build.lit_from(
-                |button| button.fill(),
-                self.fill,
-                color,
-                color,
-            );
-        }
-
-        if let Some(tint) = icon_label {
-            // Read straight from `self`: an absent icon/label is
-            // skipped, same as if it were never lit at all.
-            if let Some(icon) = &self.icon {
-                build.lit_from(
-                    |button| button.icon().color(),
-                    icon.color,
-                    tint,
-                    tint,
-                );
-            }
-            // `label().color()` hops through the `Option`
-            // transparently, so its base is `Color`. A label with no
-            // colour of its own has nowhere for that hop to land.
-            if let Some(color) =
-                self.label.as_ref().and_then(|label| label.color)
-            {
-                build.lit_from(
-                    |button| button.label().color(),
-                    color,
-                    tint,
-                    tint,
-                );
-            }
-        }
     }
 }
 
