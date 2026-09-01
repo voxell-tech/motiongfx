@@ -3,10 +3,8 @@
 use core::time::Duration;
 
 use bevy::input::mouse::MouseScrollUnit;
-use bevy::input_focus::InputFocus;
 use bevy::picking::events::{Pointer, Scroll};
 use bevy::prelude::*;
-use bevy::text::EditableText;
 use bevy::ui::UiGlobalTransform;
 use bevy_motiongfx::prelude::MotionGfxManager;
 
@@ -23,8 +21,6 @@ const WHEEL_STEP: f32 = 1.1;
 /// Zoom in on `=` and out on `-`, about the playhead.
 pub(crate) fn zoom_hotkey(
     keys: Res<ButtonInput<KeyCode>>,
-    focus: Res<InputFocus>,
-    q_editable: Query<(), With<EditableText>>,
     q_viewport: Query<&ComputedNode, With<TrackViewport>>,
     state: Res<EditorState>,
     manager: Res<MotionGfxManager>,
@@ -37,13 +33,6 @@ pub(crate) fn zoom_hotkey(
     } else {
         return;
     };
-
-    if focus
-        .get()
-        .is_some_and(|entity| q_editable.contains(entity))
-    {
-        return;
-    }
 
     let Some(computed) = q_viewport.iter().next() else {
         return;
@@ -69,8 +58,6 @@ pub(crate) fn zoom_hotkey(
 /// Fit the whole animation to the panel on `Shift+Z`.
 pub(crate) fn fit_hotkey(
     keys: Res<ButtonInput<KeyCode>>,
-    focus: Res<InputFocus>,
-    q_editable: Query<(), With<EditableText>>,
     q_viewport: Query<&ComputedNode, With<TrackViewport>>,
     state: Res<EditorState>,
     mut view: ResMut<TimelineView>,
@@ -78,13 +65,6 @@ pub(crate) fn fit_hotkey(
     let shift =
         keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
     if !shift || !keys.just_pressed(KeyCode::KeyZ) {
-        return;
-    }
-
-    if focus
-        .get()
-        .is_some_and(|entity| q_editable.contains(entity))
-    {
         return;
     }
 
