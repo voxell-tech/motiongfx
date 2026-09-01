@@ -97,6 +97,12 @@ pub struct Tab {
 #[derive(Component, Clone, Copy)]
 pub(super) struct TabFill(pub(super) Color);
 
+/// Marks the tab as active. Kept on the node so [`fill`] knows whether
+/// to show a new fill without reading it back off [`BackgroundColor`],
+/// which an active tab with a [`Color::NONE`] fill reports as inactive.
+#[derive(Component)]
+pub(super) struct TabActive;
+
 pub(super) fn tab_background(
     active: bool,
     fill: Color,
@@ -127,6 +133,9 @@ impl Tab {
             TabFill(self.fill),
             tab_background(self.active, self.fill),
         ));
+        if self.active {
+            build.insert(TabActive);
+        }
     }
 }
 
@@ -137,13 +146,15 @@ fn active(patch: &mut Patch<FynixHost>, active: &bool) {
         .map(|f| f.0)
         .unwrap_or(Color::NONE);
     patch.insert(tab_background(*active, fill));
+    if *active {
+        patch.insert(TabActive);
+    } else {
+        patch.remove::<TabActive>();
+    }
 }
 
 fn fill(patch: &mut Patch<FynixHost>, fill: &Color) {
-    let active = patch
-        .entity_mut()
-        .get::<BackgroundColor>()
-        .is_some_and(|bg| bg.0 != Color::NONE);
+    let active = patch.entity_mut().contains::<TabActive>();
     patch.insert(TabFill(*fill));
     if active {
         patch.insert(BackgroundColor(*fill));
@@ -156,4 +167,37 @@ fn window_id(patch: &mut Patch<FynixHost>, window_id: &String) {
 
 fn tab_id(patch: &mut Patch<FynixHost>, tab: &TabId) {
     with::<DockTab>(patch, |d| d.tab_id = *tab);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::theme::EditorTheme;
+
+    /// An active tab whose fill is [`Color::NONE`] still picks up a
+    /// later non-transparent fill: `fill` reads [`TabActive`], not the
+    /// (transparent) [`BackgroundColor`] left behind by activation.
+    #[test]
+    fn fill_updates_active_tab_with_none_fill() {
+        let mut world = World::new();
+        let theme = EditorTheme::default();
+
+        let node = world
+            .spawn((TabFill(Color::NONE), tab_background(true, Color::NONE)))
+            .id();
+
+        let green = Color::srgb(0.0, 1.0, 0.0);
+
+        {
+            let mut patch = Patch::<FynixHost>::new(&mut world, node, &theme);
+            active(&mut patch, &true);
+        }
+        {
+            let mut patch = Patch::<FynixHost>::new(&mut world, node, &theme);
+            fill(&mut patch, &green);
+        }
+
+        assert_eq!(world.get::<BackgroundColor>(node).unwrap().0, green);
+        assert_eq!(world.get::<TabFill>(node).unwrap().0, green);
+    }
 }
