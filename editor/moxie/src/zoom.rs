@@ -38,16 +38,15 @@ pub(crate) fn on_track_scroll(
     keys: Res<ButtonInput<KeyCode>>,
     ui_scale: Res<UiScale>,
     mut view: ResMut<TimelineView>,
-    mut q_viewport: Query<(
-        &ComputedNode,
-        &UiGlobalTransform,
-        &mut ScrollPosition,
-    )>,
+    mut q_viewport: Query<
+        (&ComputedNode, &UiGlobalTransform, &mut ScrollPosition),
+        With<TrackViewport>,
+    >,
 ) {
     scroll.propagate(false);
 
-    let Ok((computed, transform, mut position)) =
-        q_viewport.get_mut(scroll.entity)
+    let Some((computed, transform, mut position)) =
+        q_viewport.iter_mut().next()
     else {
         return;
     };

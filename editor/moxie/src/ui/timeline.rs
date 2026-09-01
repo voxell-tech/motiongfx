@@ -259,6 +259,7 @@ impl Composer<BevyHost> for TrackArea {
         .observe(on_track_release)
         .observe(on_track_click_release)
         .observe(on_track_cancel)
+        .observe(on_track_scroll)
         .with(|ui| {
             ui.elem(elem!(PlayheadLine)).bind(
                 |line| line.left(),
@@ -281,7 +282,6 @@ impl Composer<BevyHost> for TrackArea {
             ))
             .insert(TrackViewport)
             .remove::<ScrollAreaBehavior>()
-            .observe(on_track_scroll)
             .watch(value_changed(block_view), build_block_boxes);
         })
         .handle()
