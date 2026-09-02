@@ -1,32 +1,35 @@
+use core::time::Duration;
+
+use crate::TimelineView;
+
 const MIN_TICK_PX: f32 = 10.0;
 /// Minimum spacing between labelled ticks.
 const MIN_LABEL_PX: f32 = 48.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Tick {
-    /// Pixels from the start of the timeline.
+    /// Pixels from the left edge of the view.
     pub(crate) x: f32,
     pub(crate) label: Option<String>,
 }
 
 /// The finest spacing that still leaves `min_px` between marks at this
-/// scale. Alternating between x 5 and x 2.
+/// scale, off a ladder of one and five per power of ten.
 fn tick_step(px_per_second: f32, min_px: f32) -> i64 {
     let px_per_ms = px_per_second / 1000.0;
-    let mut step: i64 = 1;
-    let mut multiplier = 5;
+    // Milliseconds a gap has to cover.
+    let target = (min_px / px_per_ms).max(1.0);
+    // A zero scale makes `target` infinite, so cap the exponent.
+    let exp = target.log10().floor().clamp(0.0, 9.0) as u32;
+    let magnitude = 10i64.pow(exp);
 
-    while step as f32 * px_per_ms < min_px {
-        let next = step.saturating_mul(multiplier);
-        // The chain has nothing coarser left to offer.
-        if next <= step {
-            break;
-        }
-        step = next;
-        multiplier = if multiplier == 5 { 2 } else { 5 };
+    if target <= magnitude as f32 {
+        magnitude
+    } else if target <= 5.0 * magnitude as f32 {
+        5 * magnitude
+    } else {
+        10 * magnitude
     }
-
-    step
 }
 
 /// Decimal places follow the step and not the value to ensure one row never
@@ -44,12 +47,9 @@ fn label(ms: i64, major_ms: i64) -> String {
     format!("{secs:.decimals$}")
 }
 
-/// Every mark covering `from_px..to_px` in timeline viewport in order.
-pub(crate) fn ticks(
-    px_per_second: f32,
-    from_px: f32,
-    to_px: f32,
-) -> Vec<Tick> {
+/// Every mark visible across a timeline `width` px wide in order.
+pub(crate) fn ticks(view: &TimelineView, width: f32) -> Vec<Tick> {
+    let px_per_second = view.px_per_second;
     // A zero scale has no marks to give.
     if !(px_per_second.is_finite() && px_per_second > 0.0) {
         return Vec::new();
@@ -60,9 +60,10 @@ pub(crate) fn ticks(
     let major_ms = tick_step(px_per_second, MIN_LABEL_PX);
     // `major_ms` is always a multiple of `minor_ms`.
     let ticks_per_label = major_ms / minor_ms;
+    let offset_ms = view.offset.as_millis() as i64;
     // Pad the range for labels near the edges.
-    let from_ms = (from_px / px_per_ms) as i64 - major_ms;
-    let to_ms = (to_px / px_per_ms) as i64 + major_ms;
+    let from_ms = offset_ms - major_ms;
+    let to_ms = offset_ms + (width / px_per_ms) as i64 + major_ms;
     // Find the first and last tick indices in the padded range.
     let first_tick = from_ms.div_euclid(minor_ms).max(0);
     let last_tick = to_ms.div_euclid(minor_ms);
@@ -71,7 +72,7 @@ pub(crate) fn ticks(
         .map(|tick_index| {
             let ms = tick_index * minor_ms;
             Tick {
-                x: ms as f32 * px_per_ms,
+                x: view.x_from_time(Duration::from_millis(ms as u64)),
                 label: (tick_index.rem_euclid(ticks_per_label) == 0)
                     .then(|| label(ms, major_ms)),
             }
@@ -82,7 +83,6 @@ pub(crate) fn ticks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PIXELS_PER_SECOND;
 
     /// Expected label spacing at different zoom levels.
     const SCALES: [(f32, i64); 6] = [
@@ -93,6 +93,14 @@ mod tests {
         (5_000.0, 10),
         (20_000.0, 5),
     ];
+
+    /// A view at `px_per_second`, parked `offset_secs` in.
+    fn view(px_per_second: f32, offset_secs: f32) -> TimelineView {
+        TimelineView {
+            px_per_second,
+            offset: Duration::from_secs_f32(offset_secs),
+        }
+    }
 
     /// Adjacent labels should always display different values.
     #[test]
@@ -113,7 +121,10 @@ mod tests {
     /// Labels should use the expected number of decimal places.
     #[test]
     fn labels_read_as_expected_at_the_current_scale() {
-        let step = tick_step(PIXELS_PER_SECOND, MIN_LABEL_PX);
+        let step = tick_step(
+            TimelineView::default().px_per_second,
+            MIN_LABEL_PX,
+        );
         assert_eq!(label(0, step), "0.0");
         assert_eq!(label(500, step), "0.5");
         assert_eq!(label(1_000, step), "1.0");
@@ -123,7 +134,7 @@ mod tests {
     #[test]
     fn marks_span_the_range_and_label_every_nth() {
         for (scale, _) in SCALES {
-            let marks = ticks(scale, 0.0, 800.0);
+            let marks = ticks(&view(scale, 0.0), 800.0);
             assert!(!marks.is_empty(), "no marks at {scale}");
 
             // Zero is always the first mark, and always labelled.
@@ -157,6 +168,28 @@ mod tests {
                     "scale {scale} labels are uneven: {labelled:?}"
                 );
             }
+        }
+    }
+
+    /// A panned view is covered edge to edge, same as an unpanned one.
+    #[test]
+    fn marks_cover_a_panned_view() {
+        let width = 800.0;
+        for (scale, _) in SCALES {
+            // Two screens in, so the pan bites at every scale rather
+            // than washing out against the clamp at the coarse end.
+            let offset_secs = 2.0 * width / scale;
+            let marks = ticks(&view(scale, offset_secs), width);
+            assert!(!marks.is_empty(), "no marks at {scale}");
+
+            assert!(
+                marks.first().unwrap().x <= 0.0,
+                "scale {scale} starts inside the view"
+            );
+            assert!(
+                marks.last().unwrap().x >= width,
+                "scale {scale} stops short"
+            );
         }
     }
 }

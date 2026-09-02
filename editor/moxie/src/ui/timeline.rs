@@ -5,9 +5,8 @@
 use core::time::Duration;
 use std::collections::BTreeSet;
 
-use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
+use bevy::ui_widgets::{Activate, ScrollArea as ScrollAreaBehavior};
 use bevy_motiongfx::prelude::MotionGfxManager;
 
 use super::PANEL_PADDING;
@@ -16,9 +15,9 @@ use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_click_release,
     on_track_drag, on_track_press, on_track_release,
 };
+use crate::zoom::{FitTimeline, on_track_scroll};
 use crate::{
-    EditorScene, EditorState, PIXELS_PER_SECOND, SelectedAction,
-    time_axis,
+    EditorScene, EditorState, SelectedAction, TimelineView, time_axis,
 };
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
@@ -56,7 +55,7 @@ const LABEL_SIZE: f32 = 10.0;
 
 /// Viewport where the timeline, track and action UI is displayed.
 #[derive(Component, Default, Clone)]
-struct TrackViewport;
+pub(crate) struct TrackViewport;
 
 /// The timeline panel, as kernel nodes.
 ///
@@ -117,13 +116,9 @@ impl Composer<BevyHost> for ControlBar {
                     size = px(14)
                 )
             ))
-            .observe(
-                |mut click: On<Pointer<Click>>,
-                 mut commands: Commands| {
-                    click.propagate(false);
-                    commands.trigger(TogglePlayback);
-                },
-            )
+            .observe(|_: On<Activate>, mut commands: Commands| {
+                commands.trigger(TogglePlayback);
+            })
             .bind(
                 |button| button.icon().image(),
                 resource_changed::<EditorState>(),
@@ -149,6 +144,21 @@ impl Composer<BevyHost> for ControlBar {
                     )
                 },
             );
+
+            // Fit button.
+            ui.elem(elem!(Frame, flex_grow = 1.0f32));
+
+            ui.elem(elem!(
+                !Button,
+                label = val!(Label, text = "Fit"),
+                width = px(44),
+                height = px(24)
+            ))
+            .observe(
+                |_: On<Activate>, mut commands: Commands| {
+                    commands.trigger(FitTimeline);
+                },
+            );
         })
         .handle()
     }
@@ -169,27 +179,30 @@ impl Composer<BevyHost> for TimeAxis {
             width = percent(100),
             height = px(TIME_AXIS_HEIGHT),
         ))
-        .watch(value_changed(axis_width), build_ticks)
+        .watch(value_changed(axis_view), build_ticks)
         .handle()
     }
 }
 
-/// Time axis's width, rounded so sub-pixel jitter cannot
-/// retrigger the watch.
-fn axis_width(world: &World, node: Entity) -> u32 {
-    world
+/// The time axis's width and the view it draws, so a change to
+/// either retriggers the watch. Width is rounded so sub-pixel
+/// jitter cannot.
+fn axis_view(world: &World, node: Entity) -> (u32, TimelineView) {
+    let width = world
         .get::<ComputedNode>(node)
         .map(|computed| {
             (computed.size().x * computed.inverse_scale_factor())
                 as u32
         })
-        .unwrap_or(0)
+        .unwrap_or(0);
+
+    (width, *world.resource::<TimelineView>())
 }
 
 fn build_ticks(ui: &mut BevyUi) {
-    let width = axis_width(ui.world, ui.parent()) as f32;
+    let (width, view) = axis_view(ui.world, ui.parent());
     let color = ui.theme.text_muted;
-    let marks = time_axis::ticks(PIXELS_PER_SECOND, 0.0, width);
+    let marks = time_axis::ticks(&view, width as f32);
 
     for tick in marks {
         let major = tick.label.is_some();
@@ -239,12 +252,15 @@ impl Composer<BevyHost> for TrackArea {
         .observe(on_track_release)
         .observe(on_track_click_release)
         .observe(on_track_cancel)
+        .observe(on_track_scroll)
         .with(|ui| {
             ui.elem(elem!(PlayheadLine)).bind(
                 |line| line.left(),
                 resource_changed::<MotionGfxManager>(),
                 |WorldNodeRef { world, node }| {
-                    crate::px_for(current_time(world, node))
+                    world
+                        .resource::<TimelineView>()
+                        .x_from_time(current_time(world, node))
                 },
             );
         })
@@ -258,6 +274,7 @@ impl Composer<BevyHost> for TrackArea {
                 flex_grow = 1.0f32
             ))
             .insert(TrackViewport)
+            .remove::<ScrollAreaBehavior>()
             .watch(value_changed(block_view), build_block_boxes);
         })
         .handle()
@@ -279,6 +296,7 @@ fn current_time(world: &World, _: Entity) -> Duration {
 
 /// The editor scene's animation tree, laid out as nested boxes.
 fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
+    let view = *world.resource::<TimelineView>();
     let empty = BTreeSet::new();
     let folded = world
         .get_resource::<BlockFoldState>()
@@ -289,6 +307,7 @@ fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
         .map(|editor_scene| {
             block_layout::layout(
                 &editor_scene.scene().0.animation,
+                view,
                 folded,
             )
         })

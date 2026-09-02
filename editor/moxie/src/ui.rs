@@ -3,7 +3,7 @@ mod assets;
 mod hierarchy;
 mod inspector;
 mod settings;
-mod timeline;
+pub(crate) mod timeline;
 mod top_bar;
 
 use bevy::camera::Hdr;
@@ -16,8 +16,8 @@ use bevy::ui::{IsDefaultUiCamera, UiTargetCamera};
 
 use crate::{
     EditorSettings, EditorState, PreviewImage, ProjectBookmarks,
-    ProjectPath, SelectedAction, SelectedEntity, playback, scene,
-    view,
+    ProjectPath, SelectedAction, SelectedEntity, TimelineView,
+    playback, scene, view, zoom,
 };
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
@@ -42,6 +42,7 @@ impl Plugin for UiPlugin {
             .init_resource::<SelectedEntity>()
             .init_resource::<ProjectBookmarks>()
             .init_resource::<ProjectPath>()
+            .init_resource::<TimelineView>()
             .init_resource::<assets::AssetFoldState>()
             .init_resource::<timeline::BlockFoldState>()
             .init_resource::<hierarchy::Dragging>()
@@ -61,7 +62,8 @@ impl Plugin for UiPlugin {
                     .chain()
                     .before(FynixSet),
             )
-            .add_observer(playback::on_toggle_playback);
+            .add_observer(playback::on_toggle_playback)
+            .add_observer(zoom::on_fit_timeline);
     }
 }
 
