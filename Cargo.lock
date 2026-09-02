@@ -3758,6 +3758,7 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 [[package]]
 name = "lenz"
 version = "0.1.0"
+source = "git+https://github.com/nixonyh/lenz#8c4ffaf0bad1dd42c2ffafccc0f91d737fc45d9b"
 dependencies = [
  "lenz_macros",
 ]
@@ -3765,6 +3766,7 @@ dependencies = [
 [[package]]
 name = "lenz_macros"
 version = "0.1.0"
+source = "git+https://github.com/nixonyh/lenz#8c4ffaf0bad1dd42c2ffafccc0f91d737fc45d9b"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
