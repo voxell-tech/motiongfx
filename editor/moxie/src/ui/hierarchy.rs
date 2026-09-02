@@ -33,17 +33,15 @@ use moxie_ui::reactive::{
 use super::PANEL_PADDING;
 use crate::{SceneRoot, SelectedEntity};
 
-/// The line marking where a drop would land a row.
-const GAP: f32 = 2.0;
+/// The line marking where a drop would land a row, beside it. Drawn
+/// over the seam between rows, taking no layout space of its own, so
+/// the rows do not shift as it appears.
+const DROP_LINE: f32 = 2.0;
 
-/// What that line answers to. Twice its own thickness, so aiming
-/// between two rows does not ask for the pixels the line is drawn in -
-/// the way a split's handle is wider than the seam it draws.
-///
-/// It holds that space whether or not a drag is happening, which is
-/// also what separates one row from the next: a line that appeared
-/// only when aimed at would shift every row below it as it did.
-const GAP_HIT: f32 = GAP * 2.0;
+/// A subject's own row, without anything folded out under it. The
+/// drop-after line hangs at its foot, which is the next sibling's
+/// place when the row is shut and its first child's when it is open.
+const ROW_HEIGHT: f32 = 18.0;
 
 /// Room below the last row for the button that floats over it.
 const BUTTON_CLEARANCE: f32 = 34.0;
@@ -195,52 +193,47 @@ fn build_roots(ui: &mut BevyUi) {
     listing(ui, roots);
 }
 
-/// One list of rows, with the gaps a drop can land between them.
-///
-/// A gap above each row and one below the last, so every place a row
-/// could go gets exactly one, not a doubled-up pair between rows.
+/// One list of subtrees, each carrying the lines a drop can land
+/// before or after it.
 fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
-    let accent = ui.theme.accent;
-
-    for &entity in &entities {
-        gap(ui, entity, accent, drag::At::Before);
+    for entity in entities {
         ui.compose(Subtree { entity });
-    }
-
-    if let Some(&last) = entities.last() {
-        gap(ui, last, accent, drag::At::After);
     }
 }
 
-/// Where a drop lands a row beside another, as a hit area wider than
-/// the line it commits to, like a split's handle is wider than the
-/// seam it draws.
-fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
-    let mut marker = ui.elem(elem!(
-        Frame,
-        width = percent(100),
-        height = px(GAP_HIT),
-        justify = JustifyContent::Center,
-        direction = FlexDirection::Column
-    ));
+/// The line a drop would land on to place a row beside `entity`, at
+/// `at`. Absolutely positioned against the subject's own row, so it
+/// costs no height, the rows do not shift as it shows, and it stays at
+/// that row's edge whether or not children are folded out below it.
+fn drop_line(ui: &mut BevyUi, entity: Entity, at: drag::At) {
+    let accent = ui.theme.accent;
+    let top = match at {
+        drag::At::Before => px(-DROP_LINE / 2.0),
+        _ => px(ROW_HEIGHT - DROP_LINE / 2.0),
+    };
 
-    drag::drops(&mut marker, entity, at).with(move |ui| {
-        ui.elem(elem!(Frame, width = percent(100), height = px(GAP)))
-            .bind(
-                |line| line.background(),
-                drop_changed(entity, at),
-                move |WorldNodeRef { world, .. }| {
-                    if world
-                        .resource::<drag::Dragging>()
-                        .shows(entity, at)
-                    {
-                        accent
-                    } else {
-                        Color::NONE
-                    }
-                },
-            );
-    });
+    ui.elem(elem!(
+        Frame,
+        position = PositionType::Absolute,
+        inset = UiRect {
+            left: px(0),
+            right: px(0),
+            top,
+            bottom: auto()
+        },
+        height = px(DROP_LINE)
+    ))
+    .bind(
+        |line| line.background(),
+        drop_changed(entity, at),
+        move |WorldNodeRef { world, .. }| {
+            if world.resource::<drag::Dragging>().shows(entity, at) {
+                accent
+            } else {
+                Color::NONE
+            }
+        },
+    );
 }
 
 /// One subject, and everything under it.
@@ -256,91 +249,108 @@ impl Composer<FynixHost> for Subtree {
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Frame> {
         let entity = self.entity;
-        let name = name_of(ui.world, entity);
-        let text = ui.theme.text_primary;
-        let accent = ui.theme.accent;
 
-        ui.compose(Foldable {
-            header: elem!(
-                !GhostButton,
-                width = percent(100),
-                height = px(18),
-                justify = JustifyContent::FlexStart,
-                padding = UiRect::axes(px(4), Val::ZERO),
-                radius = px(3),
-                label = val!(
-                    Label,
-                    text = name,
-                    wrap = false,
-                    color = Some(text)
-                )
-            ),
-            // The row is the subject's, to select; only the
-            // chevron beside it folds.
-            folds_on: FoldsOn::Chevron,
-            enabled: has_children(ui.world, entity),
-            on_header: move |mut header: ElementMut<
-                '_,
-                '_,
-                FynixHost,
-                ButtonElem,
-            >| {
-                drag::rows(&mut header, entity)
-                    .observe(
-                        move |_: On<Activate>,
-                              mut selected: ResMut<
-                            SelectedEntity,
-                        >| {
-                            selected.0 = Some(entity);
-                        },
+        // A relative wrapper the drop lines anchor to, so they mark
+        // this subject's own row without being spaced apart from it.
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            direction = FlexDirection::Column
+        ))
+        .with(move |ui| {
+            drop_line(ui, entity, drag::At::Before);
+
+            let name = name_of(ui.world, entity);
+            let text = ui.theme.text_primary;
+            let accent = ui.theme.accent;
+
+            ui.compose(Foldable {
+                header: elem!(
+                    !GhostButton,
+                    width = percent(100),
+                    height = px(ROW_HEIGHT),
+                    justify = JustifyContent::FlexStart,
+                    padding = UiRect::axes(px(4), Val::ZERO),
+                    radius = px(3),
+                    label = val!(
+                        Label,
+                        text = name,
+                        wrap = false,
+                        color = Some(text)
                     )
-                    // One bind, not two: a second on the same
-                    // field would fight this one every flush.
-                    .bind(
-                        |button| button.fill(),
-                        highlight_changed(entity),
-                        move |WorldNodeRef { world, .. }| {
-                            highlight(world, entity, accent)
-                        },
-                    )
-                    .bind(
-                        |button| button.label().text(),
-                        component_changed_on::<Name>(entity),
-                        move |WorldNodeRef { world, .. }| {
-                            name_of(world, entity)
+                ),
+                // The row is the subject's, to select; only the
+                // chevron beside it folds.
+                folds_on: FoldsOn::Chevron,
+                enabled: has_children(ui.world, entity),
+                on_header: move |mut header: ElementMut<
+                    '_,
+                    '_,
+                    FynixHost,
+                    ButtonElem,
+                >| {
+                    drag::rows(&mut header, entity)
+                        .observe(
+                            move |_: On<Activate>,
+                                  mut selected: ResMut<
+                                SelectedEntity,
+                            >| {
+                                selected.0 = Some(entity);
+                            },
+                        )
+                        // One bind, not two: a second on the same
+                        // field would fight this one every flush.
+                        .bind(
+                            |button| button.fill(),
+                            highlight_changed(entity),
+                            move |WorldNodeRef { world, .. }| {
+                                highlight(world, entity, accent)
+                            },
+                        )
+                        .bind(
+                            |button| button.label().text(),
+                            component_changed_on::<Name>(entity),
+                            move |WorldNodeRef { world, .. }| {
+                                name_of(world, entity)
+                            },
+                        );
+                },
+                body: move |ui: &mut BevyUi| {
+                    ui.elem(elem!(
+                        Frame,
+                        width = percent(100),
+                        direction = FlexDirection::Column
+                    ))
+                    .watch(
+                        component_changed_on::<Children>(entity),
+                        move |ui| {
+                            listing(
+                                ui,
+                                children_of(ui.world, entity),
+                            );
                         },
                     );
-            },
-            body: move |ui: &mut BevyUi| {
-                ui.elem(elem!(
-                    Frame,
-                    width = percent(100),
-                    direction = FlexDirection::Column
-                ))
-                .watch(
-                    component_changed_on::<Children>(entity),
-                    move |ui| {
-                        listing(ui, children_of(ui.world, entity));
-                    },
-                );
-            },
-            // Read off the subject's own entity, not this row's node.
-            // The row rebuilds fresh on a reorder or a sibling
-            // added, but the entity, and `Collapsed` on it, does not.
-            // Nothing to clean up when a subject is deleted either.
-            // `Collapsed` goes with it.
-            open: ui.world.get::<Collapsed>(entity).is_none(),
-            on_toggle: move |world: &mut World, open: bool| {
-                let Ok(mut entity) = world.get_entity_mut(entity)
-                else {
-                    return;
-                };
-                if open {
-                    entity.remove::<Collapsed>();
-                } else {
-                    entity.insert(Collapsed);
-                }
-            },
+                },
+                // Read off the subject's own entity, not this row's node.
+                // The row rebuilds fresh on a reorder or a sibling
+                // added, but the entity, and `Collapsed` on it, does not.
+                // Nothing to clean up when a subject is deleted either.
+                // `Collapsed` goes with it.
+                open: ui.world.get::<Collapsed>(entity).is_none(),
+                on_toggle: move |world: &mut World, open: bool| {
+                    let Ok(mut entity) = world.get_entity_mut(entity)
+                    else {
+                        return;
+                    };
+                    if open {
+                        entity.remove::<Collapsed>();
+                    } else {
+                        entity.insert(Collapsed);
+                    }
+                },
+            });
+
+            drop_line(ui, entity, drag::At::After);
         })
         .handle()
     }

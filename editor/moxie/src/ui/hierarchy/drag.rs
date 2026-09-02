@@ -2,22 +2,27 @@
 //!
 //! Reordering and reparenting are the same edit: every subject sits in
 //! some parent's [`Children`], so both are a matter of which list a row
-//! lands in and where. A row itself means inside it; the gaps either
-//! side of one mean beside it, and are their own drop targets so that
-//! what commits to a hair-thin line is not itself hair-thin.
+//! lands in and where. One row is the whole drop target: aiming at its
+//! top edge means before it, its middle means inside it, its bottom
+//! edge means after it. What commits to a hair-thin line is a band a
+//! quarter of the row tall, not itself hair-thin.
 
 use bevy::picking::events::{
     Drag, DragDrop, DragEnd, DragLeave, DragOver, DragStart, Pointer,
 };
 use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
-use bevy::ui::UiScale;
+use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy_fynix::{BevyFynix, WorldEntityMut};
-use fynix::element::Element;
 use fynix::ui::ElementMut;
 use moxie_ui::elements::ButtonElem;
+use moxie_ui::layout::logical_rect;
 use moxie_ui::reactive::FynixHost;
 use moxie_ui::theme::EditorTheme;
+
+/// How much of a row's height, at each end, aims beside it rather than
+/// into it. The middle half is the drop-inside band.
+const EDGE: f32 = 0.25;
 
 /// Where the ghost sits relative to the cursor, so the cursor lands
 /// just inside it rather than on its corner.
@@ -52,14 +57,79 @@ pub(crate) enum At {
     After,
 }
 
-/// Makes `header` a row that can be picked up, and dropped into.
+/// Makes `header` a row that can be picked up, and one that a drop can
+/// land before, into, or after depending on where in its height it is
+/// aimed.
 pub(super) fn rows<'r, 'u, 'a>(
     header: &'r mut ElementMut<'u, 'a, FynixHost, ButtonElem>,
     subject: Entity,
 ) -> &'r mut ElementMut<'u, 'a, FynixHost, ButtonElem> {
-    drops(header, subject, At::Into);
+    let row = header.id();
 
     header
+        .observe(
+            move |over: On<Pointer<DragOver>>,
+                  scale: Res<UiScale>,
+                  rects: Query<(
+                &ComputedNode,
+                &UiGlobalTransform,
+            )>,
+                  mut dragging: ResMut<Dragging>| {
+                if over.button != PointerButton::Primary {
+                    return;
+                }
+                if dragging.subject.is_none() {
+                    return;
+                }
+                let Ok((computed, transform)) = rects.get(row) else {
+                    return;
+                };
+                let rect = logical_rect(computed, transform);
+                let cursor = over.pointer_location.position / scale.0;
+                let frac = (cursor.y - rect.min.y) / rect.height();
+
+                let at = if frac < EDGE {
+                    At::Before
+                } else if frac > 1.0 - EDGE {
+                    At::After
+                } else {
+                    At::Into
+                };
+                dragging.target = Some((subject, at));
+            },
+        )
+        .observe(
+            move |_: On<Pointer<DragLeave>>,
+                  mut dragging: ResMut<Dragging>| {
+                if matches!(
+                    dragging.target,
+                    Some((aimed, _)) if aimed == subject
+                ) {
+                    dragging.target = None;
+                }
+            },
+        )
+        .observe(
+            move |drop: On<Pointer<DragDrop>>,
+                  dragging: Res<Dragging>,
+                  mut commands: Commands| {
+                // Read rather than taken: the drop lands before the
+                // drag ends, which is what clears it.
+                let Some(dragged) = dragging.subject else {
+                    return;
+                };
+                if drop.button != PointerButton::Primary {
+                    return;
+                }
+                let Some((target_row, at)) = dragging.target else {
+                    return;
+                };
+
+                commands.queue(move |world: &mut World| {
+                    apply(world, dragged, target_row, at);
+                });
+            },
+        )
         .observe(
             move |start: On<Pointer<DragStart>>,
                   names: Query<&Name>,
@@ -114,49 +184,6 @@ pub(super) fn rows<'r, 'u, 'a>(
                 dragging.target = None;
             },
         )
-}
-
-/// Makes `elem` somewhere a row can be dropped, landing it at `at`
-/// relative to `subject`.
-pub(super) fn drops<'r, 'u, 'a, E: Element<FynixHost>>(
-    elem: &'r mut ElementMut<'u, 'a, FynixHost, E>,
-    subject: Entity,
-    at: At,
-) -> &'r mut ElementMut<'u, 'a, FynixHost, E> {
-    elem.observe(
-        move |over: On<Pointer<DragOver>>,
-              mut dragging: ResMut<Dragging>| {
-            if over.button == PointerButton::Primary {
-                dragging.target = Some((subject, at));
-            }
-        },
-    )
-    .observe(
-        move |_: On<Pointer<DragLeave>>,
-              mut dragging: ResMut<Dragging>| {
-            if dragging.target == Some((subject, at)) {
-                dragging.target = None;
-            }
-        },
-    )
-    .observe(
-        move |drop: On<Pointer<DragDrop>>,
-              dragging: Res<Dragging>,
-              mut commands: Commands| {
-            // Read rather than taken: the drop lands before the drag
-            // ends, which is what clears it.
-            let Some(dragged) = dragging.subject else {
-                return;
-            };
-            if drop.button != PointerButton::Primary {
-                return;
-            }
-
-            commands.queue(move |world: &mut World| {
-                apply(world, dragged, subject, at);
-            });
-        },
-    )
 }
 
 /// What follows the cursor while a row is being dragged.
@@ -230,6 +257,11 @@ fn destination(
     let (parent, index) = match at {
         // Past the end, for a place at the end of the list.
         At::Into => (row, usize::MAX),
+        // Below an open branch, the space belongs to its children:
+        // the drop lands as the first of them, not as a sibling
+        // stranded past the whole subtree. A shut or childless row
+        // has no such space, so there it means the next sibling.
+        At::After if is_open_branch(world, row) => (row, 0),
         _ => {
             let parent = world.get::<ChildOf>(row)?.parent();
             let index = world
@@ -273,6 +305,14 @@ fn settle(
     let shifted = if index > current { index - 1 } else { index };
 
     shifted.min(children.len() - 1)
+}
+
+/// Whether `row` is a branch whose children are on screen: it has some,
+/// and it is not collapsed. Only then is the strip below its own row
+/// standing in for the top of its child list.
+fn is_open_branch(world: &World, row: Entity) -> bool {
+    world.get::<super::Collapsed>(row).is_none()
+        && super::has_children(world, row)
 }
 
 /// Whether `entity` is somewhere above `row`.
