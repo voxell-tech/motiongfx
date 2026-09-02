@@ -1,11 +1,10 @@
-use crate::reactive::{FynixBuild, FynixHost};
+use crate::reactive::FynixBuild;
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
-use fynix::ui::Patch;
 
-use super::patch::{self, with};
+use super::patch::*;
 
 /// An image at a size of its own, which is what a [`Button`] shows.
 ///
@@ -13,15 +12,15 @@ use super::patch::{self, with};
 #[element(build = Self::build)]
 pub struct Icon {
     /// Asset path.
-    #[elem(patch = image)]
+    #[elem(patch = PatchImage)]
     pub image: String,
-    #[elem(patch = color)]
+    #[elem(patch = PatchColor)]
     pub color: Color,
-    #[elem(patch = patch::icon_size)]
+    #[elem(patch = PatchIconSize)]
     #[default(px(11))]
     pub size: Val,
     /// Clockwise, in degrees.
-    #[elem(patch = rotation)]
+    #[elem(patch = PatchRotation)]
     pub rotation: f32,
 }
 
@@ -37,15 +36,15 @@ impl Icon {
     }
 }
 
-fn image(patch: &mut Patch<FynixHost>, image: &str) {
-    let handle = patch.world.load_asset(image.to_owned());
+field_patch!(PatchImage, String, |patch, v| {
+    let handle = patch.world.load_asset(v.to_owned());
     with::<ImageNode>(patch, move |img| img.image = handle);
-}
+});
 
-fn color(patch: &mut Patch<FynixHost>, color: &Color) {
-    with::<ImageNode>(patch, |img| img.color = *color);
-}
+field_patch!(PatchColor, Color, |patch, v| {
+    with::<ImageNode>(patch, |img| img.color = *v);
+});
 
-fn rotation(patch: &mut Patch<FynixHost>, rotation: &f32) {
-    patch.insert(icon_transform(*rotation));
-}
+field_patch!(PatchRotation, f32, |patch, v| {
+    patch.insert(icon_transform(*v));
+});

@@ -3,20 +3,20 @@ use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
-use super::patch;
+use super::patch::*;
 
 /// One mark on the time axis.
 #[element(build = Self::build)]
 pub struct TimeTick {
     /// Pixels from the time axis's left edge.
-    #[elem(patch = patch::left)]
+    #[elem(patch = PatchLeft)]
     pub x: Val,
     /// Grown upward from the time axis's bottom edge, so marks of
     /// different lengths share a baseline.
-    #[elem(patch = patch::height)]
+    #[elem(patch = PatchHeight)]
     #[default(px(4))]
     pub height: Val,
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.25))]
     pub color: Color,
 }

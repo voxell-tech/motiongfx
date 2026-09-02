@@ -11,8 +11,33 @@ use fynix::Fynix;
 use fynix::element::{Element, element};
 use fynix::host::Host;
 use fynix::lenz::{Cursor, FieldPath, Identity};
-use fynix::ui::{Build, ElementMut, Patch};
+use fynix::ui::{Build, ElementMut};
 use hashbrown::HashMap;
+
+/// Defines a `#[elem(patch = ...)]` tag for the tests - a unit struct
+/// plus its [`FieldPatch`](fynix::ui::FieldPatch) impl against
+/// [`FynixHost`].
+#[macro_export]
+macro_rules! test_patch {
+    ($name:ident, $ty:ty, |$p:ident, $v:ident| $body:expr) => {
+        pub struct $name;
+
+        impl ::fynix::ui::FieldPatch<$crate::common::FynixHost>
+            for $name
+        {
+            type Target = $ty;
+
+            fn patch(
+                $p: &mut ::fynix::ui::Patch<
+                    $crate::common::FynixHost,
+                >,
+                $v: &$ty,
+            ) {
+                $body
+            }
+        }
+    };
+}
 
 /// What this test stands in for a pointer with: not fynix's concern,
 /// so it is defined here rather than imported.
@@ -221,20 +246,20 @@ impl Host for FynixHost {
 /// there, so nothing has to spell one out.
 #[element(host = FynixHost)]
 pub struct Label {
-    #[elem(patch = write_label_text)]
+    #[elem(patch = WriteLabelText)]
     #[default(String::from("Label"))]
     pub text: String,
-    #[elem(patch = write_label_size)]
+    #[elem(patch = WriteLabelSize)]
     #[default(13)]
     pub size: u32,
 }
 
-fn write_label_text(patch: &mut Patch<FynixHost>, text: &str) {
+test_patch!(WriteLabelText, String, |patch, v| {
     let node = patch.id();
-    patch.world.node(node).text = text.to_owned();
-}
+    patch.world.node(node).text = v.clone();
+});
 
-fn write_label_size(patch: &mut Patch<FynixHost>, size: &u32) {
+test_patch!(WriteLabelSize, u32, |patch, v| {
     let node = patch.id();
-    patch.world.node(node).size = *size;
-}
+    patch.world.node(node).size = *v;
+});

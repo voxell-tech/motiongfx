@@ -323,7 +323,7 @@ impl<F: FnOnce(&mut BevyUi)> Composer<FynixHost> for FieldRow<F> {
                     Label,
                     text = label,
                     size = LABEL_SIZE,
-                    color = Some(color),
+                    color = color,
                     bold = bold,
                     wrap = false
                 ));

@@ -6,13 +6,12 @@
 //!
 //! [`DockTree`]: crate::widgets::dock::DockTree
 
-use crate::reactive::{FynixBuild, FynixHost};
+use crate::reactive::FynixBuild;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
-use fynix::ui::Patch;
 
-use super::patch::{node, with};
+use super::patch::*;
 
 use super::Frame;
 use crate::widgets::dock::{
@@ -70,51 +69,43 @@ impl DockHost {
 /// writes its own component whole, so it needs no build hook.
 #[element]
 pub struct SplitGroup {
-    #[elem(patch = patch_group_node)]
+    #[elem(patch = PatchGroupNode)]
     #[default(NodeId(0))]
     pub node: NodeId,
-    #[elem(patch = patch_group_min_ratio)]
+    #[elem(patch = PatchGroupMinRatio)]
     #[default(0.05)]
     pub min_ratio: f32,
-    #[elem(patch = patch_group_axis)]
+    #[elem(patch = PatchGroupAxis)]
     #[default(::Row)]
     pub axis: FlexDirection,
 }
 
-fn patch_group_node(patch: &mut Patch<FynixHost>, node: &NodeId) {
-    patch.insert(NodeBinding(*node));
-}
+field_patch!(PatchGroupNode, NodeId, |patch, v| {
+    patch.insert(NodeBinding(*v));
+});
 
-fn patch_group_min_ratio(
-    patch: &mut Patch<FynixHost>,
-    min_ratio: &f32,
-) {
-    patch.insert(PanelGroup {
-        min_ratio: *min_ratio,
-    });
-}
+field_patch!(PatchGroupMinRatio, f32, |patch, v| {
+    patch.insert(PanelGroup { min_ratio: *v });
+});
 
-fn patch_group_axis(
-    patch: &mut Patch<FynixHost>,
-    axis: &FlexDirection,
-) {
-    patch.insert(filled(*axis));
-}
+field_patch!(PatchGroupAxis, FlexDirection, |patch, v| {
+    patch.insert(filled(*v));
+});
 
 /// What a split is dragged by: a full-sized hit area holding a
 /// slim, always-visible [`line`](Self::line) and a wider
 /// [`bar`](Self::bar) that only shows on hover.
 #[element(build = Self::build)]
 pub struct SplitHandle {
-    #[elem(patch = patch_handle_node)]
+    #[elem(patch = PatchHandleNode)]
     #[default(NodeId(0))]
     pub node: NodeId,
-    #[elem(patch = patch_handle_axis)]
+    #[elem(patch = PatchHandleAxis)]
     #[default(::Row)]
     pub axis: FlexDirection,
     /// Hidden when either side of the split has collapsed: there is
     /// nothing left to drag between.
-    #[elem(patch = patch_handle_visible)]
+    #[elem(patch = PatchHandleVisible)]
     #[default(true)]
     pub visible: bool,
     /// Marks the seam at rest. Never interactive, and never lit -
@@ -214,36 +205,30 @@ pub(super) fn handle_margin(axis: FlexDirection) -> UiRect {
     }
 }
 
-fn patch_handle_node(patch: &mut Patch<FynixHost>, node: &NodeId) {
-    patch.insert(NodeBinding(*node));
-}
+field_patch!(PatchHandleNode, NodeId, |patch, v| {
+    patch.insert(NodeBinding(*v));
+});
 
-fn patch_handle_axis(
-    patch: &mut Patch<FynixHost>,
-    axis: &FlexDirection,
-) {
-    let margin = handle_margin(*axis);
+field_patch!(PatchHandleAxis, FlexDirection, |patch, v| {
+    let margin = handle_margin(*v);
     node(patch, move |n| n.margin = margin);
-}
+});
 
-fn patch_handle_visible(
-    patch: &mut Patch<FynixHost>,
-    visible: &bool,
-) {
-    let display = display(*visible);
+field_patch!(PatchHandleVisible, bool, |patch, v| {
+    let display = display(*v);
     node(patch, move |n| n.display = display);
-}
+});
 
 /// One side of a split. The ratio is bound rather than built:
 /// dragging the handle rewrites it every frame, and must not rebuild
 /// what the panel holds.
 #[element(build = Self::build)]
 pub struct SplitPanel {
-    #[elem(patch = patch_panel_ratio)]
+    #[elem(patch = PatchPanelRatio)]
     #[default(1.0)]
     pub ratio: f32,
     /// A collapsed panel takes no space, so its sibling reclaims it.
-    #[elem(patch = patch_panel_visible)]
+    #[elem(patch = PatchPanelVisible)]
     #[default(true)]
     pub visible: bool,
 }
@@ -258,36 +243,36 @@ impl SplitPanel {
     }
 }
 
-fn patch_panel_ratio(patch: &mut Patch<FynixHost>, ratio: &f32) {
-    patch.insert(Panel { ratio: *ratio });
-}
+field_patch!(PatchPanelRatio, f32, |patch, v| {
+    patch.insert(Panel { ratio: *v });
+});
 
-fn patch_panel_visible(patch: &mut Patch<FynixHost>, visible: &bool) {
-    let size = if *visible { percent(100) } else { px(0) };
-    let display = display(*visible);
+field_patch!(PatchPanelVisible, bool, |patch, v| {
+    let size = if *v { percent(100) } else { px(0) };
+    let display = display(*v);
     node(patch, move |n| {
         n.width = size;
         n.height = size;
         n.display = display;
     });
-}
+});
 
 /// A leaf of the tree: a tab bar, and the content of every tab.
 #[element(build = Self::build)]
 pub struct Area {
-    #[elem(patch = patch_area_node)]
+    #[elem(patch = PatchAreaNode)]
     #[default(NodeId(0))]
     pub node: NodeId,
-    #[elem(patch = patch_area_id)]
+    #[elem(patch = PatchAreaId)]
     pub id: String,
-    #[elem(patch = patch_area_style)]
+    #[elem(patch = PatchAreaStyle)]
     #[default(::TabBar)]
     pub style: DockAreaStyle,
     /// Which tab is showing, which a binding keeps up to date. The
     /// component itself, because a walk hops *into* an `Option`
     /// rather than naming it, and `None` is a value this has to
     /// carry.
-    #[elem(patch = patch_area_active)]
+    #[elem(patch = PatchAreaActive)]
     pub active: ActiveDockWindow,
 }
 
@@ -305,39 +290,33 @@ impl Area {
     }
 }
 
-fn patch_area_active(
-    patch: &mut Patch<FynixHost>,
-    active: &ActiveDockWindow,
-) {
-    patch.insert(active.clone());
-}
+field_patch!(PatchAreaActive, ActiveDockWindow, |patch, v| {
+    patch.insert(v.clone());
+});
 
-fn patch_area_node(patch: &mut Patch<FynixHost>, node: &NodeId) {
-    patch.insert(NodeBinding(*node));
-}
+field_patch!(PatchAreaNode, NodeId, |patch, v| {
+    patch.insert(NodeBinding(*v));
+});
 
-fn patch_area_id(patch: &mut Patch<FynixHost>, id: &String) {
-    with::<DockArea>(patch, |area| area.id.clone_from(id));
-}
+field_patch!(PatchAreaId, String, |patch, v| {
+    with::<DockArea>(patch, |area| area.id.clone_from(v));
+});
 
-fn patch_area_style(
-    patch: &mut Patch<FynixHost>,
-    style: &DockAreaStyle,
-) {
-    with::<DockArea>(patch, |area| area.style = style.clone());
-}
+field_patch!(PatchAreaStyle, DockAreaStyle, |patch, v| {
+    with::<DockArea>(patch, |area| area.style = v.clone());
+});
 
 /// One tab's content. Switching tabs flips `display` through a
 /// binding rather than rebuilding: the content owns cameras, scroll
 /// offsets and live edits that have to survive a tab switch.
 #[element(build = Self::build)]
 pub struct TabContent {
-    #[elem(patch = patch_content_window_id)]
+    #[elem(patch = PatchContentWindowId)]
     pub window_id: String,
-    #[elem(patch = patch_content_tab)]
+    #[elem(patch = PatchContentTab)]
     #[default(TabId(0))]
     pub tab: TabId,
-    #[elem(patch = patch_content_showing)]
+    #[elem(patch = PatchContentShowing)]
     pub showing: bool,
 }
 
@@ -366,29 +345,19 @@ impl TabContent {
     }
 }
 
-/// Only `display`: the content pane's own layout is its business, and
-/// writing the whole `Node` would clobber whatever it did to itself.
-fn patch_content_showing(
-    patch: &mut Patch<FynixHost>,
-    showing: &bool,
-) {
-    let display = display(*showing);
+// Only `display`: the content pane's own layout is its business, and
+// writing the whole `Node` would clobber whatever it did to itself.
+field_patch!(PatchContentShowing, bool, |patch, v| {
+    let display = display(*v);
     node(patch, move |n| n.display = display);
-}
+});
 
-fn patch_content_window_id(
-    patch: &mut Patch<FynixHost>,
-    window_id: &String,
-) {
-    with::<DockWindow>(patch, |w| {
-        w.descriptor_id.clone_from(window_id)
-    });
-    with::<DockTabContent>(patch, |c| {
-        c.window_id.clone_from(window_id)
-    });
-}
+field_patch!(PatchContentWindowId, String, |patch, v| {
+    with::<DockWindow>(patch, |w| w.descriptor_id.clone_from(v));
+    with::<DockTabContent>(patch, |c| c.window_id.clone_from(v));
+});
 
-fn patch_content_tab(patch: &mut Patch<FynixHost>, tab: &TabId) {
-    with::<DockWindow>(patch, |w| w.tab_id = *tab);
-    with::<DockTabContent>(patch, |c| c.tab_id = *tab);
-}
+field_patch!(PatchContentTab, TabId, |patch, v| {
+    with::<DockWindow>(patch, |w| w.tab_id = *v);
+    with::<DockTabContent>(patch, |c| c.tab_id = *v);
+});

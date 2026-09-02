@@ -40,7 +40,7 @@ fn build(ui: &mut BevyUi) {
         ui.elem(elem!(
             Label,
             text = "Nothing selected",
-            color = Some(muted)
+            color = muted
         ));
         return;
     };

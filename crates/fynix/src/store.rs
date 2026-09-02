@@ -73,10 +73,16 @@ impl<H: Host> Store<H> {
     where
         P: FieldPath<Source = S>,
     {
-        field(Cursor::new())
-            .hops()
-            .into_iter()
-            .try_fold(node, |node, hop| self.get(node, hop))
+        self.resolve(node, &field(Cursor::new()).hops())
+    }
+
+    /// The node `hops` reach from `node`, child by child.
+    pub fn resolve(
+        &self,
+        node: H::Node,
+        hops: &[FieldId],
+    ) -> Option<H::Node> {
+        hops.iter().try_fold(node, |node, hop| self.get(node, *hop))
     }
 
     pub fn len(&self) -> usize {

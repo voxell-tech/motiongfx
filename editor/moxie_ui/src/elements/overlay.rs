@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
-use super::patch;
+use super::patch::*;
 
 /// A node the size of the window, for something that positions itself
 /// against the window rather than against a parent.
@@ -12,9 +12,9 @@ pub struct Overlay {
     /// Whether the pointer sees it. Off unless it is there to catch
     /// something: seen, it is the target of every press, and a press
     /// on it takes focus from whatever is underneath.
-    #[elem(patch = patch::overlay_pickable)]
+    #[elem(patch = PatchOverlayPickable)]
     pub catches: bool,
-    #[elem(patch = patch::z_index)]
+    #[elem(patch = PatchZIndex)]
     pub z: i32,
 }
 

@@ -3,12 +3,12 @@ use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
-use super::patch;
+use super::patch::*;
 
 /// The playhead line, positioned by the editor's playhead system.
 #[element(build = Self::build)]
 pub struct PlayheadLine {
-    #[elem(patch = patch::left)]
+    #[elem(patch = PatchLeft)]
     pub left: Val,
 }
 

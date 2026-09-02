@@ -6,10 +6,12 @@
 //!
 //! Run with `cargo run -p fynix --example field_ids`.
 
+use core::marker::PhantomData;
+
 use fynix::element::{Fields, element};
 use fynix::host::Host;
 use fynix::lenz::FieldId;
-use fynix::ui::Patch;
+use fynix::ui::{FieldPatch, Patch};
 
 /// A stand-in backend: this example inspects field ids, never builds
 /// anything, so nothing here is ever called.
@@ -34,13 +36,21 @@ impl Host for FynixHost {
     fn despawn(_: &mut (), _: usize) {}
 }
 
-fn noop<T>(_: &mut Patch<FynixHost>, _: &T) {}
+/// This example inspects field ids, never builds anything, so no tag
+/// here ever writes.
+pub struct Noop<T>(PhantomData<fn() -> T>);
+
+impl<T: 'static> FieldPatch<FynixHost> for Noop<T> {
+    type Target = T;
+
+    fn patch(_: &mut Patch<FynixHost>, _: &T) {}
+}
 
 #[element]
 pub struct Label {
-    #[elem(patch = noop)]
+    #[elem(patch = Noop::<String>)]
     pub text: String,
-    #[elem(patch = noop)]
+    #[elem(patch = Noop::<u32>)]
     pub size: u32,
 }
 
@@ -51,7 +61,7 @@ pub struct Pair {
     pub top: Label,
     #[elem(child)]
     pub bottom: Label,
-    #[elem(patch = noop)]
+    #[elem(patch = Noop::<u32>)]
     pub gap: u32,
 }
 
@@ -60,7 +70,7 @@ pub struct Pair {
 pub struct Stack {
     #[elem(child)]
     pub top: Label,
-    #[elem(patch = noop)]
+    #[elem(patch = Noop::<u32>)]
     pub gap: u32,
 }
 
@@ -93,7 +103,7 @@ impl Look for Light {}
 pub struct Themed<L: Look> {
     #[elem(child)]
     pub label: Label,
-    #[elem(patch = noop)]
+    #[elem(patch = Noop::<L>)]
     pub look: L,
 }
 

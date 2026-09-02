@@ -211,7 +211,7 @@ fn name(
         Label,
         text = current,
         wrap = false,
-        color = Some(theme.text_primary)
+        color = theme.text_primary
     ))
     .bind(
         |label| label.text(),
@@ -240,7 +240,7 @@ fn control(
             Label,
             text = current,
             wrap = false,
-            color = Some(theme.text_primary)
+            color = theme.text_primary
         ),
         chevron = val!(
             Icon,
@@ -296,7 +296,7 @@ fn option(
             Label,
             text = variant,
             wrap = false,
-            color = Some(theme.text_primary)
+            color = theme.text_primary
         )
     ))
     .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)

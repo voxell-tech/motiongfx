@@ -93,7 +93,7 @@ fn build_tab(
         label = val!(
             Label,
             text = label,
-            color = Some(lit),
+            color = lit,
             bold = true,
             wrap = false
         ),

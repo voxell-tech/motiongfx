@@ -80,7 +80,7 @@ fn axes<T, V>(
             ui.elem(elem!(
                 Label,
                 text = name.to_uppercase(),
-                color = Some(axis_color(ui.theme, name)),
+                color = axis_color(ui.theme, name),
                 bold = true
             ));
             axis::<T, V>(

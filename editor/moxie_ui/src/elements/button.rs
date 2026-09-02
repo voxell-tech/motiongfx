@@ -6,9 +6,8 @@ use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 use fynix::style::Style;
-use fynix::ui::Patch;
 
-use super::patch::{self, node};
+use super::patch::*;
 use super::{Icon, IconCursor, Label, LabelCursor};
 use crate::motion::LitFrom as _;
 use crate::theme::EditorTheme;
@@ -43,42 +42,42 @@ pub struct ButtonElem {
     pub label: Option<Label>,
     /// Between the icon and the label, when both are there.
     #[default(px(6))]
-    #[elem(patch = patch::column_gap)]
+    #[elem(patch = PatchColumnGap)]
     pub column_gap: Val,
     /// What the background shows. Nothing by default, which is a
     /// [`GhostButton`]; [`Button`] rests at the theme's own fill, and
     /// interaction lights either of them up.
     #[default(::NONE)]
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     pub fill: Color,
-    #[elem(patch = patch::width)]
+    #[elem(patch = PatchWidth)]
     pub width: Val,
-    #[elem(patch = patch::height)]
+    #[elem(patch = PatchHeight)]
     pub height: Val,
     /// Share of a flex row's remaining space this button claims, for
     /// one that should fill a row rather than size to its own content.
-    #[elem(patch = patch::flex_grow)]
+    #[elem(patch = PatchFlexGrow)]
     pub flex_grow: f32,
     #[default(px(18))]
-    #[elem(patch = patch::min_width)]
+    #[elem(patch = PatchMinWidth)]
     pub min_width: Val,
     #[default(px(18))]
-    #[elem(patch = patch::min_height)]
+    #[elem(patch = PatchMinHeight)]
     pub min_height: Val,
     /// Centred, for a button that is only as big as what it holds.
     #[default(::Center)]
-    #[elem(patch = patch::justify)]
+    #[elem(patch = PatchJustify)]
     pub justify: JustifyContent,
-    #[elem(patch = patch::padding)]
+    #[elem(patch = PatchPadding)]
     pub padding: UiRect,
     #[default(::ZERO)]
-    #[elem(patch = patch::radius)]
+    #[elem(patch = PatchRadius)]
     pub radius: Val,
     /// Overrides `radius` with independent corners, for a button that
     /// sits at one end of a row of others (a
     /// [`SegmentedControl`](super::SegmentedControl)'s outer
     /// segments). `None` rounds all four corners by `radius`.
-    #[elem(patch = corners)]
+    #[elem(patch = PatchCorners)]
     pub corners: Option<BorderRadius>,
     /// Set by whichever [`Style`] built this - see [`Hover`]. Never
     /// patched: read once, when the lanes are wired.
@@ -127,11 +126,13 @@ impl ButtonElem {
                     tint,
                 );
             }
-            // `label().color()` hops through the `Option`
-            // transparently, so its base is `Color`. A label with no
-            // colour of its own has nowhere for that hop to land.
-            if let Some(color) =
-                self.label.as_ref().and_then(|label| label.color)
+            // `Color::NONE` is the themed default, no base to lerp
+            // from.
+            if let Some(color) = self
+                .label
+                .as_ref()
+                .map(|label| label.color)
+                .filter(|color| *color != Color::NONE)
             {
                 build.lit_from(
                     |button| button.label().color(),
@@ -242,13 +243,10 @@ impl Style for GhostButton {
     }
 }
 
-/// Overrides `radius` when set; leaves it be when `None`, so the two
-/// can be patched independently.
-fn corners(
-    patch: &mut Patch<FynixHost>,
-    corners: &Option<BorderRadius>,
-) {
-    if let Some(radius) = *corners {
+// Overrides `radius` when set; leaves it be when `None`, so the two
+// can be patched independently.
+field_patch!(PatchCorners, Option<BorderRadius>, |patch, v| {
+    if let Some(radius) = *v {
         node(patch, move |n| n.border_radius = radius);
     }
-}
+});

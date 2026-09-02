@@ -72,7 +72,7 @@ where
                         size = 11.0f32,
                         bold = active,
                         wrap = false,
-                        color = Some(text_color)
+                        color = text_color
                     )
                 ))
                 .observe(

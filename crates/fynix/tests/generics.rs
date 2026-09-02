@@ -3,10 +3,12 @@
 
 mod common;
 
+use core::marker::PhantomData;
+
 use common::{FynixHost, Label, LabelCursor, World};
 use fynix::element::{Element, Fields, element};
 use fynix::records::Records;
-use fynix::ui::Patch;
+use fynix::ui::{FieldPatch, Patch};
 
 /// `Default`, so an element generic over its look starts from one.
 /// `Send`/`Sync` too, since `Themed<L>` is an `Element`.
@@ -27,13 +29,19 @@ impl Look for Dark {
 pub struct Themed<L: Look> {
     #[elem(child)]
     pub label: Label,
-    #[elem(patch = write_look::<L>)]
+    #[elem(patch = WriteLook::<L>)]
     pub look: L,
 }
 
-fn write_look<L: Look>(patch: &mut Patch<FynixHost>, look: &L) {
-    let node = patch.id();
-    patch.world.node(node).glyph = look.glyph();
+pub struct WriteLook<L>(PhantomData<fn() -> L>);
+
+impl<L: Look> FieldPatch<FynixHost> for WriteLook<L> {
+    type Target = L;
+
+    fn patch(patch: &mut Patch<FynixHost>, look: &L) {
+        let node = patch.id();
+        patch.world.node(node).glyph = look.glyph();
+    }
 }
 
 #[test]

@@ -1,21 +1,20 @@
 //! A leaf's tab bar: the strip, the scrolling row, and one tab.
 
-use crate::reactive::{FynixBuild, FynixHost};
+use crate::reactive::FynixBuild;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
-use fynix::ui::Patch;
 
-use super::patch::{self, with};
+use super::patch::*;
 use super::{ButtonElem, Icon, Label};
 use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
 
 /// The strip across the top of a leaf.
 #[element(build = Self::build)]
 pub struct TabBar {
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.03))]
     pub background: Color,
 }
@@ -80,26 +79,27 @@ pub struct Tab {
     pub label: Label,
     #[elem(child)]
     pub close: Option<ButtonElem>,
-    #[elem(patch = window_id)]
+    #[elem(patch = PatchWindowId)]
     pub window_id: String,
-    #[elem(patch = tab_id)]
+    #[elem(patch = PatchTabId)]
     #[default(TabId(0))]
     pub tab: TabId,
-    #[elem(patch = active)]
+    #[elem(patch = PatchActive)]
     pub active: bool,
-    #[elem(patch = fill)]
+    #[elem(patch = PatchTabFill)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.06))]
     pub fill: Color,
 }
 
 /// The tab's fill, kept on the node whether or not it is showing, so
-/// [`active`] can put it back when the tab becomes active again.
+/// [`PatchActive`] can put it back when the tab becomes active again.
 #[derive(Component, Clone, Copy)]
 pub(super) struct TabFill(pub(super) Color);
 
-/// Marks the tab as active. Kept on the node so [`fill`] knows whether
-/// to show a new fill without reading it back off [`BackgroundColor`],
-/// which an active tab with a [`Color::NONE`] fill reports as inactive.
+/// Marks the tab as active. Kept on the node so [`PatchTabFill`] knows
+/// whether to show a new fill without reading it back off
+/// [`BackgroundColor`], which an active tab with a [`Color::NONE`] fill
+/// reports as inactive.
 #[derive(Component)]
 pub(super) struct TabActive;
 
@@ -139,44 +139,48 @@ impl Tab {
     }
 }
 
-fn active(patch: &mut Patch<FynixHost>, active: &bool) {
+field_patch!(PatchActive, bool, |patch, v| {
     let fill = patch
         .entity_mut()
         .get::<TabFill>()
         .map(|f| f.0)
         .unwrap_or(Color::NONE);
-    patch.insert(tab_background(*active, fill));
-    if *active {
+    patch.insert(tab_background(*v, fill));
+    if *v {
         patch.insert(TabActive);
     } else {
         patch.remove::<TabActive>();
     }
-}
+});
 
-fn fill(patch: &mut Patch<FynixHost>, fill: &Color) {
+field_patch!(PatchTabFill, Color, |patch, v| {
     let active = patch.entity_mut().contains::<TabActive>();
-    patch.insert(TabFill(*fill));
+    patch.insert(TabFill(*v));
     if active {
-        patch.insert(BackgroundColor(*fill));
+        patch.insert(BackgroundColor(*v));
     }
-}
+});
 
-fn window_id(patch: &mut Patch<FynixHost>, window_id: &String) {
-    with::<DockTab>(patch, |d| d.window_id.clone_from(window_id));
-}
+field_patch!(PatchWindowId, String, |patch, v| {
+    with::<DockTab>(patch, |d| d.window_id.clone_from(v));
+});
 
-fn tab_id(patch: &mut Patch<FynixHost>, tab: &TabId) {
-    with::<DockTab>(patch, |d| d.tab_id = *tab);
-}
+field_patch!(PatchTabId, TabId, |patch, v| {
+    with::<DockTab>(patch, |d| d.tab_id = *v);
+});
 
 #[cfg(test)]
 mod tests {
+    use fynix::ui::{FieldPatch, Patch};
+
     use super::*;
+    use crate::reactive::FynixHost;
     use crate::theme::EditorTheme;
 
     /// An active tab whose fill is [`Color::NONE`] still picks up a
-    /// later non-transparent fill: `fill` reads [`TabActive`], not the
-    /// (transparent) [`BackgroundColor`] left behind by activation.
+    /// later non-transparent fill: [`PatchTabFill`] reads [`TabActive`],
+    /// not the (transparent) [`BackgroundColor`] left behind by
+    /// activation.
     #[test]
     fn fill_updates_active_tab_with_none_fill() {
         let mut world = World::new();
@@ -194,12 +198,12 @@ mod tests {
         {
             let mut patch =
                 Patch::<FynixHost>::new(&mut world, node, &theme);
-            active(&mut patch, &true);
+            PatchActive::patch(&mut patch, &true);
         }
         {
             let mut patch =
                 Patch::<FynixHost>::new(&mut world, node, &theme);
-            fill(&mut patch, &green);
+            PatchTabFill::patch(&mut patch, &green);
         }
 
         assert_eq!(

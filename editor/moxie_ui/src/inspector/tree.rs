@@ -499,7 +499,7 @@ impl<F: BuildFn<FynixHost>> Composer<FynixHost> for Section<F> {
                 label = val!(
                     Label,
                     text = name,
-                    color = Some(ui.theme.text_primary),
+                    color = ui.theme.text_primary,
                     bold = true
                 )
             ),

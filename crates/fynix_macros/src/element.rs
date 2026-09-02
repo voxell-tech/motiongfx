@@ -54,7 +54,7 @@ impl ElementArgs {
 struct FieldConfig {
     child: bool,
     ignore: bool,
-    patch: Option<Expr>,
+    patch: Option<Path>,
     default: Option<Expr>,
 }
 
@@ -240,7 +240,9 @@ pub fn expand(
                 let mut __patch = #root::ui::Patch::new(
                     world, node, theme,
                 );
-                (#patch)(&mut __patch, &self.#field_name);
+                <#patch as #root::ui::FieldPatch<#host>>::patch(
+                    &mut __patch, &self.#field_name,
+                );
             }
         });
 
@@ -249,7 +251,9 @@ pub fn expand(
                 let mut __patch = #root::ui::Patch::new(
                     world, node, theme,
                 );
-                (#patch)(&mut __patch, &self.#field_name);
+                <#patch as #root::ui::FieldPatch<#host>>::patch(
+                    &mut __patch, &self.#field_name,
+                );
                 return;
             }
         });
@@ -369,11 +373,10 @@ pub fn expand(
     })
 }
 
-/// The struct itself, re-emitted for the path system to derive off:
-/// `#[elem(...)]` markers dropped, `#[elem(ignore)]` swapped for
-/// `#[lenz(ignore)]`, and `Lenz`/`OverrideDefault` derived - the
-/// dispatch names a field by the id `Lenz` gives it, and `base` starts
-/// from the `Default` `OverrideDefault` writes.
+/// The struct, re-emitted for the path system to derive off.
+/// `#[elem(...)]` markers become `#[lenz(...)]` ones (`ignore` stays,
+/// `patch = X` becomes `tag = X`), with `Lenz` / `OverrideDefault`
+/// derived.
 fn rewrite_struct(
     ast: &DeriveInput,
     root: &TokenStream2,
@@ -404,6 +407,8 @@ fn rewrite_struct(
         field.attrs = kept.into_iter().collect();
         if cfg.ignore {
             field.attrs.push(parse_quote!(#[lenz(ignore)]));
+        } else if let Some(patch) = &cfg.patch {
+            field.attrs.push(parse_quote!(#[lenz(tag = #patch)]));
         }
     }
 

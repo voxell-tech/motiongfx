@@ -1,6 +1,6 @@
 //! What an inspector row is edited with.
 
-use crate::reactive::{FynixBuild, FynixHost};
+use crate::reactive::FynixBuild;
 use bevy::feathers::controls::{
     FeathersNumberInput, FeathersTextInput,
     FeathersTextInputContainer, NumberFormat, NumberInputValue,
@@ -15,19 +15,18 @@ use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut;
 use fynix::element::element;
-use fynix::ui::Patch;
 
-use super::patch;
+use super::patch::*;
 
 /// A box that is ticked or not.
 #[element(build = Self::build)]
 pub struct CheckBox {
-    #[elem(patch = checked)]
+    #[elem(patch = PatchChecked)]
     pub checked: bool,
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.08))]
     pub fill: Color,
-    #[elem(patch = mark)]
+    #[elem(patch = PatchMark)]
     #[default(Color::srgb(0.47, 0.86, 0.91))]
     pub mark: Color,
 }
@@ -110,26 +109,22 @@ impl CheckBox {
     }
 }
 
-fn checked(patch: &mut Patch<FynixHost>, checked: &bool) {
-    tick(*checked, patch);
-}
+field_patch!(PatchChecked, bool, |patch, v| tick(*v, patch));
 
-fn mark(patch: &mut Patch<FynixHost>, mark: &Color) {
-    paint(*mark, patch);
-}
+field_patch!(PatchMark, Color, |patch, v| paint(*v, patch));
 
 /// A number, typed or dragged.
 #[element(build = Self::build)]
 pub struct NumberField {
-    #[elem(patch = number_format)]
+    #[elem(patch = PatchNumberFormat)]
     pub format: NumberFormat,
     /// What it shows. Pushed as an event rather than written as a
     /// component, so an input being typed into ignores it and a live
     /// edit wins.
-    #[elem(patch = number_value)]
+    #[elem(patch = PatchNumberValue)]
     #[default(NumberInputValue::F32(0.0))]
     pub value: NumberInputValue,
-    #[elem(patch = patch::width)]
+    #[elem(patch = PatchWidth)]
     #[default(px(80))]
     pub width: Val,
 }
@@ -161,35 +156,29 @@ impl NumberField {
     }
 }
 
-fn number_format(
-    patch: &mut Patch<FynixHost>,
-    format: &NumberFormat,
-) {
+field_patch!(PatchNumberFormat, NumberFormat, |patch, v| {
     let width = patch
         .entity_mut()
         .get::<Node>()
         .map(|node| node.width)
         .unwrap_or(px(80));
-    number_scene(*format, width, patch);
-}
+    number_scene(*v, width, patch);
+});
 
-fn number_value(
-    patch: &mut Patch<FynixHost>,
-    value: &NumberInputValue,
-) {
+field_patch!(PatchNumberValue, NumberInputValue, |patch, v| {
     let node = patch.id();
     patch.world.trigger(UpdateNumberInput {
         entity: node,
-        value: *value,
+        value: *v,
     });
-}
+});
 
 /// A single-line string, edited in place.
 #[element(build = Self::build)]
 pub struct TextField {
-    #[elem(patch = text_value)]
+    #[elem(patch = PatchTextValue)]
     pub value: String,
-    #[elem(patch = patch::width)]
+    #[elem(patch = PatchWidth)]
     #[default(px(110))]
     pub width: Val,
 }
@@ -266,6 +255,4 @@ impl TextField {
     }
 }
 
-fn text_value(patch: &mut Patch<FynixHost>, value: &str) {
-    set_text(value, patch);
-}
+field_patch!(PatchTextValue, String, |patch, v| set_text(v, patch));

@@ -168,14 +168,14 @@ fn build(ui: &mut BevyUi) {
                         ui.elem(elem!(
                             Label,
                             text = name,
-                            color = Some(primary),
+                            color = primary,
                             wrap = false
                         ));
                     }
                     ui.elem(elem!(
                         Label,
                         text = format!("#{}", subject.head),
-                        color = Some(muted),
+                        color = muted,
                         wrap = false
                     ));
                 });
@@ -226,7 +226,7 @@ fn build(ui: &mut BevyUi) {
                 ui.elem(elem!(
                     Label,
                     text = value,
-                    color = Some(primary),
+                    color = primary,
                     wrap = false
                 ));
             },
@@ -728,6 +728,6 @@ fn note(ui: &mut BevyUi, text: &str) {
     ui.elem(elem!(
         Label,
         text = text.to_string(),
-        color = Some(ui.theme.text_muted)
+        color = ui.theme.text_muted
     ));
 }

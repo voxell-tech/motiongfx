@@ -164,7 +164,7 @@ fn panel(
             text = title,
             size = 14.0f32,
             bold = true,
-            color = Some(text_color)
+            color = text_color
         ));
         body(ui);
     });

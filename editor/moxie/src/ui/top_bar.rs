@@ -102,7 +102,7 @@ fn title(ui: &mut BevyUi, theme: &EditorTheme, name: &str) {
             Label,
             text = name.to_string(),
             wrap = false,
-            color = Some(theme.text_primary)
+            color = theme.text_primary
         )
     ))
     // What the menu's own observer reaches this through to open the
@@ -125,7 +125,7 @@ fn item(
             Label,
             text = entry.to_string(),
             wrap = false,
-            color = Some(theme.text_primary)
+            color = theme.text_primary
         )
     ))
     .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)

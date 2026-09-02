@@ -11,7 +11,7 @@ use fynix::element::element;
 use fynix::host::Host;
 use fynix::style::Style;
 use fynix::transition::Transition;
-use fynix::ui::{Build, Patch};
+use fynix::ui::Build;
 use fynix::{Fynix, WorldNodeRef, elem};
 use motiongfx_interp::ease;
 use motiongfx_interp::interpolation::Interpolation;
@@ -154,10 +154,10 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
     /// on.
     #[element(build = Self::build)]
     pub struct Grower {
-        #[elem(patch = write_text)]
+        #[elem(patch = WriteText)]
         #[default(String::from("Label"))]
         pub text: String,
-        #[elem(patch = write_size)]
+        #[elem(patch = WriteSize)]
         #[default(13)]
         pub size: u32,
         /// What a style asks this to grow to under the pointer, if
@@ -166,15 +166,15 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
         pub grows_to: Option<u32>,
     }
 
-    fn write_text(patch: &mut Patch<FynixHost>, text: &str) {
+    test_patch!(WriteText, String, |patch, v| {
         let node = patch.id();
-        patch.world.node(node).text = text.to_owned();
-    }
+        patch.world.node(node).text = v.clone();
+    });
 
-    fn write_size(patch: &mut Patch<FynixHost>, size: &u32) {
+    test_patch!(WriteSize, u32, |patch, v| {
         let node = patch.id();
-        patch.world.node(node).size = *size;
-    }
+        patch.world.node(node).size = *v;
+    });
 
     impl Grower {
         fn build(&self, build: &mut Build<FynixHost, Self>) {

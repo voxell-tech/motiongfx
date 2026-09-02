@@ -8,7 +8,7 @@ use bevy_fynix::{FynixPlugin, WorldEntityRef as _, watch_root};
 use bevy_ui::Node;
 use fynix::elem;
 use fynix::element::element;
-use fynix::ui::Patch;
+use fynix::ui::{FieldPatch, Patch};
 
 /// Nothing in these tests reads a theme - a host still needs one.
 #[derive(Resource, Clone, Default)]
@@ -23,17 +23,20 @@ struct Caption(String);
 
 #[element]
 pub struct Label {
-    #[elem(patch = write_caption)]
+    #[elem(patch = WriteCaption)]
     #[default(String::from("Label"))]
     pub text: String,
 }
 
-fn write_caption(patch: &mut Patch<FynixHost>, text: &str) {
-    let node = patch.id();
-    patch
-        .world
-        .entity_mut(node)
-        .insert(Caption(text.to_owned()));
+pub struct WriteCaption;
+
+impl FieldPatch<FynixHost> for WriteCaption {
+    type Target = String;
+
+    fn patch(patch: &mut Patch<FynixHost>, text: &String) {
+        let node = patch.id();
+        patch.world.entity_mut(node).insert(Caption(text.clone()));
+    }
 }
 
 /// The one child a build put under `root`.

@@ -215,7 +215,7 @@ impl Composer<FynixHost> for AddComponent {
                                     Label,
                                     text = "Nothing left to add"
                                         .to_string(),
-                                    color = Some(theme.text_muted)
+                                    color = theme.text_muted
                                 )
                             ));
                             return;
@@ -248,7 +248,7 @@ fn add_component_item(
             Label,
             text = name.to_string(),
             wrap = false,
-            color = Some(theme.text_primary)
+            color = theme.text_primary
         )
     ))
     .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
