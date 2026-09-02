@@ -1,83 +1,51 @@
-use crate::reactive::BevyHost;
+use crate::reactive::{FynixBuild, FynixHost};
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{ElementVisual, element};
-use fynix::ui::{Build, Patch};
+use fynix::element::element;
+use fynix::ui::Patch;
+
+use super::patch::{self, with};
 
 /// An image at a size of its own, which is what a [`Button`] shows.
 ///
 /// [`Button`]: super::Button
-#[element]
+#[element(build = Self::build)]
 pub struct Icon {
     /// Asset path.
+    #[elem(patch = image)]
     pub image: String,
+    #[elem(patch = color)]
     pub color: Color,
+    #[elem(patch = patch::icon_size)]
     #[default(px(11))]
     pub size: Val,
     /// Clockwise, in degrees.
+    #[elem(patch = rotation)]
     pub rotation: f32,
 }
 
+pub(super) fn icon_transform(rotation: f32) -> UiTransform {
+    UiTransform::from_rotation(Rot2::degrees(rotation))
+}
+
 impl Icon {
-    fn transform(&self) -> UiTransform {
-        UiTransform::from_rotation(Rot2::degrees(self.rotation))
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        // The handle and colour land through `image` / `color`; this
+        // just gives them an `ImageNode` to write into.
+        build.insert(ImageNode::default());
     }
 }
 
-impl ElementVisual<BevyHost> for Icon {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let image = build.world.load_asset(self.image.clone());
+fn image(patch: &mut Patch<FynixHost>, image: &str) {
+    let handle = patch.world.load_asset(image.to_owned());
+    with::<ImageNode>(patch, move |img| img.image = handle);
+}
 
-        build.insert((
-            ImageNode {
-                image,
-                color: self.color,
-                ..default()
-            },
-            Node {
-                width: self.size,
-                height: self.size,
-                ..default()
-            },
-            self.transform(),
-        ));
-    }
+fn color(patch: &mut Patch<FynixHost>, color: &Color) {
+    with::<ImageNode>(patch, |img| img.color = *color);
+}
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: IconField,
-    ) {
-        match field {
-            IconField::Image => {
-                let image =
-                    patch.world.load_asset(self.image.clone());
-
-                if let Some(mut node) =
-                    patch.entity_mut().get_mut::<ImageNode>()
-                {
-                    node.image = image;
-                }
-            }
-            IconField::Color => {
-                if let Some(mut image) =
-                    patch.entity_mut().get_mut::<ImageNode>()
-                {
-                    image.color = self.color;
-                }
-            }
-            IconField::Size => {
-                if let Some(mut layout) =
-                    patch.entity_mut().get_mut::<Node>()
-                {
-                    layout.width = self.size;
-                    layout.height = self.size;
-                }
-            }
-            IconField::Rotation => {
-                patch.insert(self.transform());
-            }
-        }
-    }
+fn rotation(patch: &mut Patch<FynixHost>, rotation: &f32) {
+    patch.insert(icon_transform(*rotation));
 }

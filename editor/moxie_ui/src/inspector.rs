@@ -32,7 +32,7 @@ use moxie_asset::AssetKindAppExt;
 
 use crate::elements::{Frame, Label};
 use crate::fold;
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::{BevyUi, FynixHost};
 pub use field::Field;
 pub(crate) use tree::single_value;
 pub use tree::{InspectorFields, Section};
@@ -193,7 +193,7 @@ impl<S: Source + ?Sized> SourceExt for S {}
 /// about a source depends on the node asking.
 pub fn when_changed(
     source: &dyn Source,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
 + Send
 + Sync
 + 'static {
@@ -281,13 +281,13 @@ pub struct FieldRow<F: FnOnce(&mut BevyUi)> {
     pub value: F,
 }
 
-impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for FieldRow<F> {
+impl<F: FnOnce(&mut BevyUi)> Composer<FynixHost> for FieldRow<F> {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let Self {
             label,
             color,

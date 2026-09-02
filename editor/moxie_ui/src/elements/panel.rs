@@ -1,82 +1,49 @@
-use crate::reactive::BevyHost;
+use crate::reactive::FynixBuild;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{ElementVisual, element};
-use fynix::ui::{Build, Patch};
+use fynix::element::element;
+
+use super::patch;
 
 /// What a docked window fills its area with: the whole of it, and
 /// scrolling if what it holds does not fit.
-#[element]
+#[element(build = Self::build)]
 pub struct Panel {
+    #[elem(patch = patch::direction)]
     pub direction: FlexDirection,
     /// Stretch, by default, which is what fills a docked area.
+    #[elem(patch = patch::align)]
     pub align: AlignItems,
+    #[elem(patch = patch::justify)]
     pub justify: JustifyContent,
+    #[elem(patch = patch::padding)]
     pub padding: UiRect,
     /// Between rows, and between columns: a row of things wants the
     /// second, a column the first.
+    #[elem(patch = patch::row_gap)]
     #[default(Val::ZERO)]
     pub row_gap: Val,
+    #[elem(patch = patch::column_gap)]
     #[default(Val::ZERO)]
     pub column_gap: Val,
+    #[elem(patch = patch::panel_scrolls)]
     pub scrolls: bool,
     /// How far down it is scrolled, for a panel whose scroll follows
     /// something else.
+    #[elem(patch = patch::panel_scroll)]
     pub scroll: f32,
 }
 
 impl Panel {
-    fn node(&self) -> Node {
-        Node {
-            flex_grow: 1.0,
-            min_width: px(0),
-            min_height: px(0),
-            flex_direction: self.direction,
-            align_items: self.align,
-            justify_content: self.justify,
-            padding: self.padding,
-            row_gap: self.row_gap,
-            column_gap: self.column_gap,
-            overflow: if self.scrolls {
-                Overflow::scroll_y()
-            } else {
-                Overflow::clip()
-            },
-            ..default()
-        }
-    }
-}
-
-impl ElementVisual<BevyHost> for Panel {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
-            self.node(),
-            ScrollPosition(Vec2::new(0.0, self.scroll)),
+            Node {
+                flex_grow: 1.0,
+                min_width: px(0),
+                min_height: px(0),
+                ..default()
+            },
+            ScrollPosition::default(),
         ));
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: PanelField,
-    ) {
-        match field {
-            PanelField::Scroll => {
-                if let Some(mut scroll) =
-                    patch.entity_mut().get_mut::<ScrollPosition>()
-                {
-                    scroll.0.y = self.scroll;
-                }
-            }
-            PanelField::Direction
-            | PanelField::Align
-            | PanelField::Justify
-            | PanelField::Padding
-            | PanelField::RowGap
-            | PanelField::ColumnGap
-            | PanelField::Scrolls => {
-                patch.insert(self.node());
-            }
-        }
     }
 }

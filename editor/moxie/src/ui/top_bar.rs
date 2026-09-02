@@ -14,20 +14,20 @@ use moxie_ui::elements::{
     DropdownMenu, Frame, Label, MenuButton,
 };
 use moxie_ui::motion::MotionExt;
-use moxie_ui::reactive::{BevyHost, BevyUi};
+use moxie_ui::reactive::{BevyUi, FynixHost};
 use moxie_ui::theme::EditorTheme;
 
 use crate::project;
 
 pub(super) struct TopBar;
 
-impl Composer<BevyHost> for TopBar {
+impl Composer<FynixHost> for TopBar {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             width = percent(100),
@@ -53,13 +53,13 @@ struct Menu {
     entries: Vec<(&'static str, fn(&mut World))>,
 }
 
-impl Composer<BevyHost> for Menu {
+impl Composer<FynixHost> for Menu {
     type Element = DropdownMenu;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, DropdownMenu> {
+    ) -> ElementHandle<FynixHost, DropdownMenu> {
         let Self { name, entries } = self;
         let theme = ui.theme;
         // Sized to the longest entry, so the list clears its own text

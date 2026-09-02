@@ -6,11 +6,13 @@
 //!
 //! [`DockTree`]: crate::widgets::dock::DockTree
 
-use crate::reactive::BevyHost;
+use crate::reactive::{FynixBuild, FynixHost};
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{ElementVisual, element};
-use fynix::ui::{Build, Patch};
+use fynix::element::element;
+use fynix::ui::Patch;
+
+use super::patch::{node, with};
 
 use super::Frame;
 use crate::widgets::dock::{
@@ -24,7 +26,7 @@ use crate::widgets::dock::{
 /// `min_width`/`min_height` at `0`, not `Node`'s own default `Auto`,
 /// which floors a node at its content's size regardless of the `100%`
 /// above.
-fn filled(direction: FlexDirection) -> Node {
+pub(super) fn filled(direction: FlexDirection) -> Node {
     Node {
         width: percent(100),
         height: percent(100),
@@ -36,7 +38,7 @@ fn filled(direction: FlexDirection) -> Node {
     }
 }
 
-fn display(visible: bool) -> Display {
+pub(super) fn display(visible: bool) -> Display {
     if visible {
         Display::Flex
     } else {
@@ -45,11 +47,11 @@ fn display(visible: bool) -> Display {
 }
 
 /// The node the whole tree is rendered underneath.
-#[element]
+#[element(build = Self::build)]
 pub struct DockHost;
 
-impl ElementVisual<BevyHost> for DockHost {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+impl DockHost {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             DockTreeHost,
             Node {
@@ -62,70 +64,57 @@ impl ElementVisual<BevyHost> for DockHost {
             },
         ));
     }
-
-    fn patch_fields(
-        &self,
-        _patch: &mut Patch<BevyHost>,
-        field: DockHostField,
-    ) {
-        match field {}
-    }
 }
 
-/// A split: two panels and the handle between them.
+/// A split: two panels and the handle between them. Each field
+/// writes its own component whole, so it needs no build hook.
 #[element]
 pub struct SplitGroup {
+    #[elem(patch = patch_group_node)]
     #[default(NodeId(0))]
     pub node: NodeId,
+    #[elem(patch = patch_group_min_ratio)]
     #[default(0.05)]
     pub min_ratio: f32,
+    #[elem(patch = patch_group_axis)]
     #[default(::Row)]
     pub axis: FlexDirection,
 }
 
-impl ElementVisual<BevyHost> for SplitGroup {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        build.insert((
-            NodeBinding(self.node),
-            PanelGroup {
-                min_ratio: self.min_ratio,
-            },
-            filled(self.axis),
-        ));
-    }
+fn patch_group_node(patch: &mut Patch<FynixHost>, node: &NodeId) {
+    patch.insert(NodeBinding(*node));
+}
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: SplitGroupField,
-    ) {
-        match field {
-            SplitGroupField::Node => {
-                patch.insert(NodeBinding(self.node));
-            }
-            SplitGroupField::MinRatio => {
-                patch.insert(PanelGroup {
-                    min_ratio: self.min_ratio,
-                });
-            }
-            SplitGroupField::Axis => {
-                patch.insert(filled(self.axis));
-            }
-        }
-    }
+fn patch_group_min_ratio(
+    patch: &mut Patch<FynixHost>,
+    min_ratio: &f32,
+) {
+    patch.insert(PanelGroup {
+        min_ratio: *min_ratio,
+    });
+}
+
+fn patch_group_axis(
+    patch: &mut Patch<FynixHost>,
+    axis: &FlexDirection,
+) {
+    patch.insert(filled(*axis));
 }
 
 /// What a split is dragged by: a full-sized hit area holding a
 /// slim, always-visible [`line`](Self::line) and a wider
 /// [`bar`](Self::bar) that only shows on hover.
-#[element]
+#[element(build = Self::build)]
 pub struct SplitHandle {
+    #[elem(patch = patch_handle_node)]
     #[default(NodeId(0))]
     pub node: NodeId,
+    #[elem(patch = patch_handle_axis)]
     #[default(::Row)]
     pub axis: FlexDirection,
     /// Hidden when either side of the split has collapsed: there is
     /// nothing left to drag between.
+    #[elem(patch = patch_handle_visible)]
     #[default(true)]
     pub visible: bool,
     /// Marks the seam at rest. Never interactive, and never lit -
@@ -137,33 +126,6 @@ pub struct SplitHandle {
     /// colors the handle.
     #[elem(child)]
     pub bar: Frame,
-}
-
-impl SplitHandle {
-    /// Full-sized hit area, pulled back onto the seam by a matching
-    /// negative margin so the panels read as touching. Centers
-    /// [`bar`](Self::bar), which carries its own thinner size.
-    fn node(&self) -> Node {
-        let pull = px(-HANDLE_SIZE / 2.0);
-        let margin = match self.axis {
-            FlexDirection::Row | FlexDirection::RowReverse => {
-                UiRect::horizontal(pull)
-            }
-            FlexDirection::Column | FlexDirection::ColumnReverse => {
-                UiRect::vertical(pull)
-            }
-        };
-
-        Node {
-            min_width: px(HANDLE_SIZE),
-            min_height: px(HANDLE_SIZE),
-            margin,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            display: display(self.visible),
-            ..default()
-        }
-    }
 }
 
 /// The bar's own size: thin on the split's axis, full-length across
@@ -216,99 +178,121 @@ pub fn handle_line(axis: FlexDirection, color: Color) -> Frame {
     }
 }
 
-impl ElementVisual<BevyHost> for SplitHandle {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+impl SplitHandle {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             PanelHandle,
             NodeBinding(self.node),
-            self.node(),
-            // Overlaps both panels by design; without this the
-            // second one, painted after it, would win the pointer.
+            // A small hit area centring `bar`; `axis` pulls it back
+            // onto the seam with a negative margin, `visible` toggles
+            // `display`.
+            Node {
+                min_width: px(HANDLE_SIZE),
+                min_height: px(HANDLE_SIZE),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            // Overlaps both panels by design; without it the second one,
+            // painted after it, would win the pointer.
             ZIndex(1),
         ));
     }
+}
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: SplitHandleField,
-    ) {
-        match field {
-            SplitHandleField::Node => {
-                patch.insert(NodeBinding(self.node));
-            }
-            SplitHandleField::Axis | SplitHandleField::Visible => {
-                patch.insert(self.node());
-            }
+/// The negative pull that lands the hit area back on the seam, on the
+/// axis the split runs along.
+pub(super) fn handle_margin(axis: FlexDirection) -> UiRect {
+    let pull = px(-HANDLE_SIZE / 2.0);
+    match axis {
+        FlexDirection::Row | FlexDirection::RowReverse => {
+            UiRect::horizontal(pull)
+        }
+        FlexDirection::Column | FlexDirection::ColumnReverse => {
+            UiRect::vertical(pull)
         }
     }
+}
+
+fn patch_handle_node(patch: &mut Patch<FynixHost>, node: &NodeId) {
+    patch.insert(NodeBinding(*node));
+}
+
+fn patch_handle_axis(
+    patch: &mut Patch<FynixHost>,
+    axis: &FlexDirection,
+) {
+    let margin = handle_margin(*axis);
+    node(patch, move |n| n.margin = margin);
+}
+
+fn patch_handle_visible(
+    patch: &mut Patch<FynixHost>,
+    visible: &bool,
+) {
+    let display = display(*visible);
+    node(patch, move |n| n.display = display);
 }
 
 /// One side of a split. The ratio is bound rather than built:
 /// dragging the handle rewrites it every frame, and must not rebuild
 /// what the panel holds.
-#[element]
+#[element(build = Self::build)]
 pub struct SplitPanel {
+    #[elem(patch = patch_panel_ratio)]
     #[default(1.0)]
     pub ratio: f32,
     /// A collapsed panel takes no space, so its sibling reclaims it.
+    #[elem(patch = patch_panel_visible)]
     #[default(true)]
     pub visible: bool,
 }
 
 impl SplitPanel {
-    fn node(&self) -> Node {
-        let size = if self.visible { percent(100) } else { px(0) };
-
-        Node {
-            width: size,
-            height: size,
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        build.insert(Node {
             flex_direction: FlexDirection::Column,
             overflow: Overflow::clip(),
-            display: display(self.visible),
             ..default()
-        }
+        });
     }
 }
 
-impl ElementVisual<BevyHost> for SplitPanel {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        build.insert((Panel { ratio: self.ratio }, self.node()));
-    }
+fn patch_panel_ratio(patch: &mut Patch<FynixHost>, ratio: &f32) {
+    patch.insert(Panel { ratio: *ratio });
+}
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: SplitPanelField,
-    ) {
-        match field {
-            SplitPanelField::Ratio => {
-                patch.insert(Panel { ratio: self.ratio });
-            }
-            SplitPanelField::Visible => {
-                patch.insert(self.node());
-            }
-        }
-    }
+fn patch_panel_visible(patch: &mut Patch<FynixHost>, visible: &bool) {
+    let size = if *visible { percent(100) } else { px(0) };
+    let display = display(*visible);
+    node(patch, move |n| {
+        n.width = size;
+        n.height = size;
+        n.display = display;
+    });
 }
 
 /// A leaf of the tree: a tab bar, and the content of every tab.
-#[element]
+#[element(build = Self::build)]
 pub struct Area {
+    #[elem(patch = patch_area_node)]
     #[default(NodeId(0))]
     pub node: NodeId,
+    #[elem(patch = patch_area_id)]
     pub id: String,
+    #[elem(patch = patch_area_style)]
     #[default(::TabBar)]
     pub style: DockAreaStyle,
     /// Which tab is showing, which a binding keeps up to date. The
     /// component itself, because a walk hops *into* an `Option`
     /// rather than naming it, and `None` is a value this has to
     /// carry.
+    #[elem(patch = patch_area_active)]
     pub active: ActiveDockWindow,
 }
 
-impl ElementVisual<BevyHost> for Area {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+impl Area {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             DockArea {
                 id: self.id.clone(),
@@ -319,42 +303,46 @@ impl ElementVisual<BevyHost> for Area {
             filled(FlexDirection::Column),
         ));
     }
+}
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: AreaField,
-    ) {
-        match field {
-            AreaField::Active => {
-                patch.insert(self.active.clone());
-            }
-            AreaField::Node => {
-                patch.insert(NodeBinding(self.node));
-            }
-            AreaField::Id | AreaField::Style => {
-                patch.insert(DockArea {
-                    id: self.id.clone(),
-                    style: self.style.clone(),
-                });
-            }
-        }
-    }
+fn patch_area_active(
+    patch: &mut Patch<FynixHost>,
+    active: &ActiveDockWindow,
+) {
+    patch.insert(active.clone());
+}
+
+fn patch_area_node(patch: &mut Patch<FynixHost>, node: &NodeId) {
+    patch.insert(NodeBinding(*node));
+}
+
+fn patch_area_id(patch: &mut Patch<FynixHost>, id: &String) {
+    with::<DockArea>(patch, |area| area.id.clone_from(id));
+}
+
+fn patch_area_style(
+    patch: &mut Patch<FynixHost>,
+    style: &DockAreaStyle,
+) {
+    with::<DockArea>(patch, |area| area.style = style.clone());
 }
 
 /// One tab's content. Switching tabs flips `display` through a
 /// binding rather than rebuilding: the content owns cameras, scroll
 /// offsets and live edits that have to survive a tab switch.
-#[element]
+#[element(build = Self::build)]
 pub struct TabContent {
+    #[elem(patch = patch_content_window_id)]
     pub window_id: String,
+    #[elem(patch = patch_content_tab)]
     #[default(TabId(0))]
     pub tab: TabId,
+    #[elem(patch = patch_content_showing)]
     pub showing: bool,
 }
 
-impl ElementVisual<BevyHost> for TabContent {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+impl TabContent {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             DockWindow {
                 descriptor_id: self.window_id.clone(),
@@ -376,35 +364,31 @@ impl ElementVisual<BevyHost> for TabContent {
             },
         ));
     }
+}
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: TabContentField,
-    ) {
-        match field {
-            // Only `display`: the content pane's own layout is its
-            // business, and writing the whole `Node` would clobber
-            // whatever it did to itself.
-            TabContentField::Showing => {
-                if let Some(mut layout) =
-                    patch.entity_mut().get_mut::<Node>()
-                {
-                    layout.display = display(self.showing);
-                }
-            }
-            TabContentField::WindowId | TabContentField::Tab => {
-                patch.insert((
-                    DockWindow {
-                        descriptor_id: self.window_id.clone(),
-                        tab_id: self.tab,
-                    },
-                    DockTabContent {
-                        window_id: self.window_id.clone(),
-                        tab_id: self.tab,
-                    },
-                ));
-            }
-        }
-    }
+/// Only `display`: the content pane's own layout is its business, and
+/// writing the whole `Node` would clobber whatever it did to itself.
+fn patch_content_showing(
+    patch: &mut Patch<FynixHost>,
+    showing: &bool,
+) {
+    let display = display(*showing);
+    node(patch, move |n| n.display = display);
+}
+
+fn patch_content_window_id(
+    patch: &mut Patch<FynixHost>,
+    window_id: &String,
+) {
+    with::<DockWindow>(patch, |w| {
+        w.descriptor_id.clone_from(window_id)
+    });
+    with::<DockTabContent>(patch, |c| {
+        c.window_id.clone_from(window_id)
+    });
+}
+
+fn patch_content_tab(patch: &mut Patch<FynixHost>, tab: &TabId) {
+    with::<DockWindow>(patch, |w| w.tab_id = *tab);
+    with::<DockTabContent>(patch, |c| c.tab_id = *tab);
 }

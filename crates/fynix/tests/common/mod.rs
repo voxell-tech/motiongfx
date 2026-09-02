@@ -8,7 +8,7 @@
 #![allow(dead_code)]
 
 use fynix::Fynix;
-use fynix::element::{Element, ElementVisual, element};
+use fynix::element::{Element, element};
 use fynix::host::Host;
 use fynix::lenz::{Cursor, FieldPath, Identity};
 use fynix::ui::{Build, ElementMut, Patch};
@@ -24,7 +24,7 @@ pub enum Interact {
 
 /// What a backend does when an interaction fires: point a lane
 /// somewhere. Only needs the kernel, since [`Fynix::aim`] does too.
-type Aim = Box<dyn Fn(&mut Fynix<Backend>) + Send + Sync>;
+type Aim = Box<dyn Fn(&mut Fynix<FynixHost>) + Send + Sync>;
 
 /// The `aim_on` a real backend would build for itself, over whatever
 /// events it actually has. This one is a stand-in for a pointer.
@@ -40,8 +40,8 @@ pub trait TestAim<E> {
         P::Target: Clone + Send + Sync;
 }
 
-impl<E: Element<Backend>> TestAim<E>
-    for ElementMut<'_, '_, Backend, E>
+impl<E: Element<FynixHost>> TestAim<E>
+    for ElementMut<'_, '_, FynixHost, E>
 {
     fn aim_on<P>(
         &mut self,
@@ -57,7 +57,7 @@ impl<E: Element<Backend>> TestAim<E>
         self.ui.world.interactions.push((
             node,
             on,
-            Box::new(move |kernel: &mut Fynix<Backend>| {
+            Box::new(move |kernel: &mut Fynix<FynixHost>| {
                 kernel.aim(node, field, target.clone());
             }),
         ));
@@ -65,10 +65,10 @@ impl<E: Element<Backend>> TestAim<E>
     }
 }
 
-/// As above, from [`build_fields`](ElementVisual::build_fields):
-/// [`Build`] carries `world` directly rather than through a [`Ui`], but
-/// otherwise wires the same interaction the same way.
-impl<E: Element<Backend>> TestAim<E> for Build<'_, Backend, E> {
+/// As above, from a `#[element(build = ...)]` hook: [`Build`] carries
+/// `world` directly rather than through a [`Ui`], but otherwise wires
+/// the same interaction the same way.
+impl<E: Element<FynixHost>> TestAim<E> for Build<'_, FynixHost, E> {
     fn aim_on<P>(
         &mut self,
         on: Interact,
@@ -83,7 +83,7 @@ impl<E: Element<Backend>> TestAim<E> for Build<'_, Backend, E> {
         self.world.interactions.push((
             node,
             on,
-            Box::new(move |kernel: &mut Fynix<Backend>| {
+            Box::new(move |kernel: &mut Fynix<FynixHost>| {
                 kernel.aim(node, field, target.clone());
             }),
         ));
@@ -154,7 +154,7 @@ impl World {
     /// hear about it.
     pub fn interact(
         &mut self,
-        kernel: &mut Fynix<Backend>,
+        kernel: &mut Fynix<FynixHost>,
         node: usize,
         on: Interact,
     ) {
@@ -172,9 +172,9 @@ impl World {
     }
 }
 
-pub struct Backend;
+pub struct FynixHost;
 
-impl Host for Backend {
+impl Host for FynixHost {
     type Node = usize;
     type World = World;
     /// Nothing in these tests reads a theme.
@@ -219,36 +219,22 @@ impl Host for Backend {
 
 /// The default is what a test gets when it only cares that a label is
 /// there, so nothing has to spell one out.
-#[element]
+#[element(host = FynixHost)]
 pub struct Label {
+    #[elem(patch = write_label_text)]
     #[default(String::from("Label"))]
     pub text: String,
+    #[elem(patch = write_label_size)]
     #[default(13)]
     pub size: u32,
 }
 
-impl ElementVisual<Backend> for Label {
-    fn build_fields(&self, draw: &mut Build<Backend, Self>) {
-        let node = draw.id();
-        let world = &mut *draw.world;
+fn write_label_text(patch: &mut Patch<FynixHost>, text: &str) {
+    let node = patch.id();
+    patch.world.node(node).text = text.to_owned();
+}
 
-        world.node(node).text = self.text.clone();
-        world.node(node).size = self.size;
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<Backend>,
-        field: LabelField,
-    ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        match field {
-            LabelField::Text => {
-                world.node(node).text = self.text.clone()
-            }
-            LabelField::Size => world.node(node).size = self.size,
-        }
-    }
+fn write_label_size(patch: &mut Patch<FynixHost>, size: &u32) {
+    let node = patch.id();
+    patch.world.node(node).size = *size;
 }

@@ -3,22 +3,23 @@
 
 mod common;
 
-use common::{Backend, Label, LabelCursor, World};
-use fynix::element::{Element, ElementVisual, Fields, element};
+use common::{FynixHost, Label, LabelCursor, World};
+use fynix::element::{Element, Fields, element};
 use fynix::host::Host;
-use fynix::lenz::FieldPath;
+use fynix::lenz::{FieldPath, Lenz};
 use fynix::records::Records;
-use fynix::ui::{Build, Patch};
+use fynix::ui::Patch;
 
 #[element]
 pub struct Icon {
+    #[elem(patch = write_glyph)]
     #[default('+')]
     pub glyph: char,
 }
 
 /// Plain data, not an element: no node of its own, so `Button` draws
 /// it.
-#[element]
+#[derive(Debug, Default, Lenz)]
 pub struct Border {
     pub width: u32,
     pub radius: u32,
@@ -33,65 +34,29 @@ pub struct Button {
     #[elem(child)]
     #[default(..)]
     pub icon: Option<Icon>,
+    #[elem(patch = write_padding)]
     #[default(4)]
     pub padding: u32,
+    #[elem(patch = write_border)]
     pub border: Border,
 }
 
-impl ElementVisual<Backend> for Icon {
-    fn build_fields(&self, build: &mut Build<common::Backend, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.node(node).glyph = self.glyph;
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<Backend>,
-        field: IconField,
-    ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        match field {
-            IconField::Glyph => world.node(node).glyph = self.glyph,
-        }
-    }
+fn write_glyph(patch: &mut Patch<FynixHost>, glyph: &char) {
+    let node = patch.id();
+    patch.world.node(node).glyph = *glyph;
 }
 
-impl ElementVisual<Backend> for Button {
-    /// Only what `Button` draws. Nothing here mentions `label` or
-    /// `icon`: the derive builds and patches those.
-    fn build_fields(&self, build: &mut Build<common::Backend, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
+fn write_padding(patch: &mut Patch<FynixHost>, padding: &u32) {
+    let node = patch.id();
+    patch.world.node(node).padding = *padding;
+}
 
-        world.node(node).padding = self.padding;
-        world.node(node).border_width = self.border.width;
-        world.node(node).border_radius = self.border.radius;
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<Backend>,
-        field: ButtonField,
-    ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        match field {
-            ButtonField::Padding => {
-                world.node(node).padding = self.padding
-            }
-            // Plain data, so it goes on whole. Only elements are
-            // worth reaching into one field at a time.
-            ButtonField::Border => {
-                world.node(node).border_width = self.border.width;
-                world.node(node).border_radius = self.border.radius;
-            }
-        }
-    }
+/// Plain data, so it goes on whole. Only elements are worth reaching
+/// into one field at a time.
+fn write_border(patch: &mut Patch<FynixHost>, border: &Border) {
+    let node = patch.id();
+    patch.world.node(node).border_width = border.width;
+    patch.world.node(node).border_radius = border.radius;
 }
 
 #[test]
@@ -221,11 +186,11 @@ fn despawn_takes_the_children_and_their_entries() {
 
     button.despawn(&mut world, node, records.store_mut());
 
-    assert!(!Backend::exists(&world, node));
-    assert!(!Backend::exists(&world, label));
-    assert!(!Backend::exists(&world, icon));
+    assert!(!FynixHost::exists(&world, node));
+    assert!(!FynixHost::exists(&world, label));
+    assert!(!FynixHost::exists(&world, icon));
     assert!(records.store().is_empty());
-    assert!(Backend::exists(&world, parent));
+    assert!(FynixHost::exists(&world, parent));
 }
 
 #[test]
@@ -238,7 +203,7 @@ fn pruning_drops_what_the_app_despawned() {
     assert_eq!(records.store().len(), 2);
 
     // Behind our back, so nothing cleared the store as it went.
-    Backend::despawn(&mut world, node);
+    FynixHost::despawn(&mut world, node);
     records.store_mut().prune(&world);
 
     assert!(records.store().is_empty());

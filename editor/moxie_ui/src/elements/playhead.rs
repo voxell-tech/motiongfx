@@ -1,16 +1,18 @@
-use crate::reactive::BevyHost;
+use crate::reactive::FynixBuild;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{ElementVisual, element};
-use fynix::ui::{Build, Patch};
+use fynix::element::element;
+
+use super::patch;
 
 const LINE_WIDTH: f32 = 2.0;
 const HEAD_WIDTH: f32 = 10.0;
 
 /// The playhead line, positioned by the editor's playhead system.
-#[element]
+#[element(build = Self::build)]
 pub struct PlayheadLine {
-    pub left: f32,
+    #[elem(patch = patch::left)]
+    pub left: Val,
 }
 
 impl PlayheadLine {
@@ -27,25 +29,18 @@ impl PlayheadLine {
         }
     }
 
-    fn node(&self) -> Node {
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(0),
-            bottom: px(0),
-            left: px(self.left),
-            width: px(LINE_WIDTH),
-            flex_grow: 1.0,
-            ..default()
-        }
-    }
-}
-
-impl ElementVisual<BevyHost> for PlayheadLine {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         let color = build.theme.palette.orange;
 
         build.insert((
-            self.node(),
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(0),
+                bottom: px(0),
+                width: px(LINE_WIDTH),
+                flex_grow: 1.0,
+                ..default()
+            },
             ZIndex(10),
             BackgroundColor(color),
             Pickable::IGNORE,
@@ -57,21 +52,5 @@ impl ElementVisual<BevyHost> for PlayheadLine {
             Pickable::IGNORE,
             ChildOf(build.id()),
         ));
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: PlayheadLineField,
-    ) {
-        match field {
-            PlayheadLineField::Left => {
-                if let Some(mut node) =
-                    patch.entity_mut().get_mut::<Node>()
-                {
-                    node.left = px(self.left);
-                }
-            }
-        }
     }
 }

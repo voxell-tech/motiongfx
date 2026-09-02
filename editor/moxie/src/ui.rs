@@ -57,11 +57,7 @@ impl Plugin for UiPlugin {
                         resource_changed::<scene::EditorScene>,
                     ),
                     playback::track_first_timeline,
-                    (
-                        playback::play_pause_hotkey,
-                        zoom::zoom_hotkey,
-                        zoom::fit_hotkey,
-                    )
+                    playback::play_pause_hotkey
                         .run_if(not(text_field_focused)),
                     playback::stop_at_track_end,
                     view::retarget_scene_cameras,
@@ -69,12 +65,13 @@ impl Plugin for UiPlugin {
                     .chain()
                     .before(FynixSet),
             )
-            .add_observer(playback::on_toggle_playback);
+            .add_observer(playback::on_toggle_playback)
+            .add_observer(zoom::on_fit_timeline);
     }
 }
 
-/// True while a text field holds focus. The hotkeys run behind
-/// [`not`] of this, leaving the keystroke to the field.
+/// True while a text field holds focus. The spacebar hotkey runs
+/// behind [`not`] of this, leaving the keystroke to the field.
 fn text_field_focused(
     focus: Res<InputFocus>,
     q_editable: Query<(), With<EditableText>>,

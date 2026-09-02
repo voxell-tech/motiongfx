@@ -55,17 +55,15 @@ pub(crate) fn ticks(view: &TimelineView, width: f32) -> Vec<Tick> {
         return Vec::new();
     }
     let px_per_ms = px_per_second / 1000.0;
-    // Absolute pixels from t = 0 that the view's two edges land on.
-    let from_px = view.offset * px_per_second;
-    let to_px = from_px + width;
 
     let minor_ms = tick_step(px_per_second, MIN_TICK_PX);
     let major_ms = tick_step(px_per_second, MIN_LABEL_PX);
     // `major_ms` is always a multiple of `minor_ms`.
     let ticks_per_label = major_ms / minor_ms;
+    let offset_ms = view.offset.as_millis() as i64;
     // Pad the range for labels near the edges.
-    let from_ms = (from_px / px_per_ms) as i64 - major_ms;
-    let to_ms = (to_px / px_per_ms) as i64 + major_ms;
+    let from_ms = offset_ms - major_ms;
+    let to_ms = offset_ms + (width / px_per_ms) as i64 + major_ms;
     // Find the first and last tick indices in the padded range.
     let first_tick = from_ms.div_euclid(minor_ms).max(0);
     let last_tick = to_ms.div_euclid(minor_ms);
@@ -85,7 +83,6 @@ pub(crate) fn ticks(view: &TimelineView, width: f32) -> Vec<Tick> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PIXELS_PER_SECOND;
 
     /// Expected label spacing at different zoom levels.
     const SCALES: [(f32, i64); 6] = [
@@ -97,11 +94,11 @@ mod tests {
         (20_000.0, 5),
     ];
 
-    /// A view at `px_per_second`, parked `offset` seconds in.
-    fn view(px_per_second: f32, offset: f32) -> TimelineView {
+    /// A view at `px_per_second`, parked `offset_secs` in.
+    fn view(px_per_second: f32, offset_secs: f32) -> TimelineView {
         TimelineView {
             px_per_second,
-            offset,
+            offset: Duration::from_secs_f32(offset_secs),
         }
     }
 
@@ -124,7 +121,10 @@ mod tests {
     /// Labels should use the expected number of decimal places.
     #[test]
     fn labels_read_as_expected_at_the_current_scale() {
-        let step = tick_step(PIXELS_PER_SECOND, MIN_LABEL_PX);
+        let step = tick_step(
+            TimelineView::default().px_per_second,
+            MIN_LABEL_PX,
+        );
         assert_eq!(label(0, step), "0.0");
         assert_eq!(label(500, step), "0.5");
         assert_eq!(label(1_000, step), "1.0");
@@ -178,8 +178,8 @@ mod tests {
         for (scale, _) in SCALES {
             // Two screens in, so the pan bites at every scale rather
             // than washing out against the clamp at the coarse end.
-            let offset = 2.0 * width / scale;
-            let marks = ticks(&view(scale, offset), width);
+            let offset_secs = 2.0 * width / scale;
+            let marks = ticks(&view(scale, offset_secs), width);
             assert!(!marks.is_empty(), "no marks at {scale}");
 
             assert!(

@@ -16,7 +16,7 @@ use bevy_fynix::{BevyFynix, WorldEntityMut};
 use fynix::element::Element;
 use fynix::ui::ElementMut;
 use moxie_ui::elements::ButtonElem;
-use moxie_ui::reactive::BevyHost;
+use moxie_ui::reactive::FynixHost;
 use moxie_ui::theme::EditorTheme;
 
 /// Where the ghost sits relative to the cursor, so the cursor lands
@@ -54,9 +54,9 @@ pub(crate) enum At {
 
 /// Makes `header` a row that can be picked up, and dropped into.
 pub(super) fn rows<'r, 'u, 'a>(
-    header: &'r mut ElementMut<'u, 'a, BevyHost, ButtonElem>,
+    header: &'r mut ElementMut<'u, 'a, FynixHost, ButtonElem>,
     subject: Entity,
-) -> &'r mut ElementMut<'u, 'a, BevyHost, ButtonElem> {
+) -> &'r mut ElementMut<'u, 'a, FynixHost, ButtonElem> {
     drops(header, subject, At::Into);
 
     header
@@ -118,11 +118,11 @@ pub(super) fn rows<'r, 'u, 'a>(
 
 /// Makes `elem` somewhere a row can be dropped, landing it at `at`
 /// relative to `subject`.
-pub(super) fn drops<'r, 'u, 'a, E: Element<BevyHost>>(
-    elem: &'r mut ElementMut<'u, 'a, BevyHost, E>,
+pub(super) fn drops<'r, 'u, 'a, E: Element<FynixHost>>(
+    elem: &'r mut ElementMut<'u, 'a, FynixHost, E>,
     subject: Entity,
     at: At,
-) -> &'r mut ElementMut<'u, 'a, BevyHost, E> {
+) -> &'r mut ElementMut<'u, 'a, FynixHost, E> {
     elem.observe(
         move |over: On<Pointer<DragOver>>,
               mut dragging: ResMut<Dragging>| {

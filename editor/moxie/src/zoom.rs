@@ -1,73 +1,29 @@
 //! Horizontal zoom for the timeline.
 
-use core::time::Duration;
-
 use bevy::input::mouse::MouseScrollUnit;
 use bevy::picking::events::{Pointer, Scroll};
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
-use bevy_motiongfx::prelude::MotionGfxManager;
 
 use crate::playback::x_from_cursor;
 use crate::ui::timeline::TrackViewport;
 use crate::{EditorState, TimelineView};
 
-/// Zoom factor per keypress.
-const KEY_STEP: f32 = 1.25;
-
 /// Zoom factor per wheel notch.
 const WHEEL_STEP: f32 = 1.1;
 
-/// Zoom in on `=` and out on `-`, about the playhead.
-pub(crate) fn zoom_hotkey(
-    keys: Res<ButtonInput<KeyCode>>,
-    q_viewport: Query<&ComputedNode, With<TrackViewport>>,
-    state: Res<EditorState>,
-    manager: Res<MotionGfxManager>,
-    mut view: ResMut<TimelineView>,
-) {
-    let factor = if keys.just_pressed(KeyCode::Equal) {
-        KEY_STEP
-    } else if keys.just_pressed(KeyCode::Minus) {
-        1.0 / KEY_STEP
-    } else {
-        return;
-    };
+/// Command to fit the animation to the panel, dispatched from the fit
+/// button and handled in [`on_fit_timeline`].
+#[derive(Event)]
+pub(crate) struct FitTimeline;
 
-    let Some(computed) = q_viewport.iter().next() else {
-        return;
-    };
-    let width = computed.size().x * computed.inverse_scale_factor();
-
-    let playhead = state
-        .timeline
-        .and_then(|id| manager.get_timeline(&id))
-        .map(|timeline| timeline.target_time())
-        .unwrap_or(Duration::ZERO);
-    let playhead_x = view.x_from_time(playhead);
-    // A playhead left off screen is pulled back to the middle, since
-    // pinning it would keep it off screen at every zoom.
-    let anchor_x = if (0.0..=width).contains(&playhead_x) {
-        playhead_x
-    } else {
-        width / 2.0
-    };
-    view.zoom_to(anchor_x, playhead, factor);
-}
-
-/// Fit the whole animation to the panel on `Shift+Z`.
-pub(crate) fn fit_hotkey(
-    keys: Res<ButtonInput<KeyCode>>,
+/// Scale the view so the animation spans the track viewport.
+pub(crate) fn on_fit_timeline(
+    _fit: On<FitTimeline>,
     q_viewport: Query<&ComputedNode, With<TrackViewport>>,
     state: Res<EditorState>,
     mut view: ResMut<TimelineView>,
 ) {
-    let shift =
-        keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
-    if !shift || !keys.just_pressed(KeyCode::KeyZ) {
-        return;
-    }
-
     let Some(computed) = q_viewport.iter().next() else {
         return;
     };
@@ -82,16 +38,15 @@ pub(crate) fn on_track_scroll(
     keys: Res<ButtonInput<KeyCode>>,
     ui_scale: Res<UiScale>,
     mut view: ResMut<TimelineView>,
-    mut q_viewport: Query<(
-        &ComputedNode,
-        &UiGlobalTransform,
-        &mut ScrollPosition,
-    )>,
+    mut q_viewport: Query<
+        (&ComputedNode, &UiGlobalTransform, &mut ScrollPosition),
+        With<TrackViewport>,
+    >,
 ) {
     scroll.propagate(false);
 
-    let Ok((computed, transform, mut position)) =
-        q_viewport.get_mut(scroll.entity)
+    let Some((computed, transform, mut position)) =
+        q_viewport.iter_mut().next()
     else {
         return;
     };
@@ -112,12 +67,11 @@ pub(crate) fn on_track_scroll(
         return;
     }
 
-    // Shift sends a vertical wheel sideways, the only pan a mouse
-    // without a horizontal one can reach.
+    // Normalize Shift+wheel into horizontal scrolling across platforms.
     let sideways =
         keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
     let (pan_x, scroll_y) = if sideways {
-        (delta.y, 0.0)
+        (if delta.x != 0.0 { delta.x } else { delta.y }, 0.0)
     } else {
         (delta.x, delta.y)
     };
