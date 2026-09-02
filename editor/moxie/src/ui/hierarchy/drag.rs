@@ -2,10 +2,10 @@
 //!
 //! Reordering and reparenting are the same edit: every subject sits in
 //! some parent's [`Children`], so both are a matter of which list a row
-//! lands in and where. One row is the whole drop target: aiming at its
-//! top edge means before it, its middle means inside it, its bottom
-//! edge means after it. What commits to a hair-thin line is a band a
-//! quarter of the row tall, not itself hair-thin.
+//! lands in and where. One row is the whole drop target: its middle
+//! means inside it, its top and bottom edges beside it. What commits to
+//! a hair-thin line is a band a quarter of the row tall, not itself
+//! hair-thin.
 
 use bevy::picking::events::{
     Drag, DragDrop, DragEnd, DragLeave, DragOver, DragStart, Pointer,
@@ -24,6 +24,9 @@ use moxie_ui::theme::EditorTheme;
 /// How much of a row's height, at each end, aims beside it rather than
 /// into it. The middle half is the drop-inside band.
 const EDGE: f32 = 0.25;
+
+/// What [`logical_rect`] reads off a node to place it in pointer space.
+type NodeRect = (&'static ComputedNode, &'static UiGlobalTransform);
 
 /// Where the ghost sits relative to the cursor, so the cursor lands
 /// just inside it rather than on its corner.
@@ -58,8 +61,8 @@ pub(crate) enum At {
     After,
 }
 
-/// Makes `header` a row that can be picked up, and one that a drop can
-/// land before, into, or after depending on where in its height it is
+/// Makes `header` a row that can be picked up, and one a drop can land
+/// on: before it, into it, or after it, by where in its height it is
 /// aimed.
 pub(super) fn rows<'r, 'u, 'a>(
     header: &'r mut ElementMut<'u, 'a, FynixHost, ButtonElem>,
@@ -71,13 +74,10 @@ pub(super) fn rows<'r, 'u, 'a>(
         .observe(
             move |over: On<Pointer<DragOver>>,
                   scale: Res<UiScale>,
-                  rects: Query<(
-                &ComputedNode,
-                &UiGlobalTransform,
-            )>,
+                  rects: Query<NodeRect>,
                   kids: Query<&Children>,
                   is_subject: Query<(), With<EntityUid>>,
-                  is_shut: Query<(), With<super::Collapsed>>,
+                  is_collapsed: Query<(), With<super::Collapsed>>,
                   mut dragging: ResMut<Dragging>| {
                 if over.button != PointerButton::Primary {
                     return;
@@ -104,16 +104,18 @@ pub(super) fn rows<'r, 'u, 'a>(
                 // the drop lands as the first of them, which is the
                 // same slot, and the same line, as before that child.
                 let target = match at {
-                    At::After if !is_shut.contains(subject) => kids
-                        .get(subject)
-                        .ok()
-                        .and_then(|kids| {
-                            kids.iter()
-                                .find(|&kid| is_subject.contains(kid))
-                        })
-                        .map_or((subject, At::After), |first| {
-                            (first, At::Before)
-                        }),
+                    At::After if !is_collapsed.contains(subject) => {
+                        kids.get(subject)
+                            .ok()
+                            .and_then(|kids| {
+                                kids.iter().find(|&kid| {
+                                    is_subject.contains(kid)
+                                })
+                            })
+                            .map_or((subject, At::After), |first| {
+                                (first, At::Before)
+                            })
+                    }
                     _ => (subject, at),
                 };
                 dragging.target = Some(target);

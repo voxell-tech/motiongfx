@@ -33,9 +33,8 @@ use moxie_ui::reactive::{
 use super::PANEL_PADDING;
 use crate::{SceneRoot, SelectedEntity};
 
-/// The line marking where a drop would land a row, beside it. Drawn
-/// straddling the seam between two rows, its own height cancelled by
-/// matching negative margins, so the rows do not shift as it appears.
+/// Thickness of the line marking where a drop would land a row beside
+/// another.
 const DROP_LINE: f32 = 2.0;
 
 /// Room below the last row for the button that floats over it.
@@ -200,12 +199,8 @@ fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
     seam(ui, prev, None);
 }
 
-/// The seam between two rows, and the line a drop lights on it.
-///
-/// A frame of no height at all, so it adds nothing to the list and the
-/// rails that stretch to it keep their length; the line is a child that
-/// overflows it, centred on the seam, running the full width of the
-/// list so it is exactly as wide as the rows.
+/// The seam between two rows, and the line a drop lights on it. Full
+/// width of the list, so the line is exactly as wide as the rows.
 ///
 /// One seam answers for both sides of it: a drop after `above` and one
 /// before `below` land in the same place, so either lights this line.
@@ -219,9 +214,12 @@ fn seam(
     ui.elem(elem!(
         Frame,
         width = percent(100),
+        // No height, and the line overflows it: the seam then adds
+        // nothing to the list, and the indent rails, which stretch to
+        // the list's height, are not dragged past its last row.
         height = px(0),
         // Or a flex item's auto floor grows it back to the line's own
-        // height, and the seam is not free after all.
+        // height.
         min_height = px(0),
         justify = JustifyContent::Center,
         direction = FlexDirection::Column
