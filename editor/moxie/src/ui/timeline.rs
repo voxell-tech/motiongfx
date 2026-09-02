@@ -5,7 +5,6 @@
 use core::time::Duration;
 use std::collections::BTreeSet;
 
-use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::{Activate, ScrollArea as ScrollAreaBehavior};
 use bevy_motiongfx::prelude::MotionGfxManager;
@@ -117,13 +116,9 @@ impl Composer<BevyHost> for ControlBar {
                     size = px(14)
                 )
             ))
-            .observe(
-                |mut click: On<Pointer<Click>>,
-                 mut commands: Commands| {
-                    click.propagate(false);
-                    commands.trigger(TogglePlayback);
-                },
-            )
+            .observe(|_: On<Activate>, mut commands: Commands| {
+                commands.trigger(TogglePlayback);
+            })
             .bind(
                 |button| button.icon().image(),
                 resource_changed::<EditorState>(),
@@ -160,9 +155,7 @@ impl Composer<BevyHost> for ControlBar {
                 height = px(24)
             ))
             .observe(
-                |mut click: On<Pointer<Click>>,
-                 mut commands: Commands| {
-                    click.propagate(false);
+                |_: On<Activate>, mut commands: Commands| {
                     commands.trigger(FitTimeline);
                 },
             );
