@@ -1,4 +1,4 @@
-//! What a build registers as it runs: watchers, bindings, lanes, and
+//! What a build registers as it runs: watchers, bindings, overlays, and
 //! the elements themselves - kept beside the world so both can be
 //! borrowed at once.
 
@@ -9,8 +9,8 @@ use hashbrown::{HashMap, HashSet};
 use typarena::type_table::TypeTable;
 
 use crate::host::Host;
-use crate::lanes::Lanes;
 use crate::lenz::FieldId;
+use crate::overlay::Overlays;
 use crate::store::Store;
 use crate::ui::Ui;
 use crate::world_node::WorldNodeRef;
@@ -56,6 +56,7 @@ type BoxedBuild<H> =
 type BoxedApply<H> = Box<
     dyn Fn(
             &mut Elements<H>,
+            &mut Overlays<H>,
             &mut <H as Host>::World,
             <H as Host>::Node,
             &mut Store<H>,
@@ -91,7 +92,7 @@ pub struct Records<H: Host> {
     /// Keyed by the whole walk. Binding a field twice replaces it.
     pub(crate) bindings: HashMap<(H::Node, FieldId), Binding<H>>,
     /// Keyed like `bindings`, one per field.
-    pub(crate) lanes: Lanes<H>,
+    pub(crate) overlays: Overlays<H>,
     pub(crate) elements: Elements<H>,
     /// Which nodes have a row in `elements`. Lets a sweep know what
     /// to drop without asking `elements` what it holds.
@@ -105,7 +106,7 @@ impl<H: Host> Default for Records<H> {
     fn default() -> Self {
         Self {
             bindings: HashMap::new(),
-            lanes: Lanes::default(),
+            overlays: Overlays::default(),
             elements: Elements::<H>::new(),
             element_nodes: HashSet::new(),
             store: Store::new(),
@@ -125,9 +126,11 @@ impl<H: Host> Records<H> {
         &mut self.store
     }
 
-    /// The store and the lanes together, borrowed at once.
+    /// The store and the overlays together, borrowed at once.
     #[doc(hidden)]
-    pub fn build_parts(&mut self) -> (&mut Lanes<H>, &mut Store<H>) {
-        (&mut self.lanes, &mut self.store)
+    pub fn build_parts(
+        &mut self,
+    ) -> (&mut Overlays<H>, &mut Store<H>) {
+        (&mut self.overlays, &mut self.store)
     }
 }

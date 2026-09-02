@@ -12,8 +12,8 @@ use core::marker::PhantomData;
 use crate::composer::Composer;
 use crate::element::Element;
 use crate::host::Host;
-use crate::lanes::{Lanes, insert_lane, insert_travel};
 use crate::lenz::{Cursor, FieldPath, Identity, Tagged};
+use crate::overlay::{Overlays, insert_overlay};
 use crate::records::{
     Binding, BuildFn, ChangedFn, Elements, Records, Watcher,
 };
@@ -119,8 +119,8 @@ impl<'a, H: Host> Ui<'a, H> {
 }
 
 /// What a `#[element(build = ...)]` hook writes through: this
-/// element's own node, `world`, `theme`, and the store and lanes for
-/// wiring children and transitions.
+/// element's own node, `world`, `theme`, and the store and overlays
+/// for wiring children and transitions.
 ///
 /// Not [`ElementMut`]: a node running its own build hook has not
 /// finished existing yet, so `bind`/`watch`/`with` would not mean
@@ -129,7 +129,7 @@ pub struct Build<'a, H: Host, E: Element<H>> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
     node: H::Node,
-    lanes: &'a mut Lanes<H>,
+    overlays: &'a mut Overlays<H>,
     store: &'a mut Store<H>,
     element: PhantomData<fn() -> E>,
 }
@@ -140,7 +140,7 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
     pub fn new(
         world: &'a mut H::World,
         node: H::Node,
-        lanes: &'a mut Lanes<H>,
+        overlays: &'a mut Overlays<H>,
         store: &'a mut Store<H>,
         theme: &'a H::Theme,
     ) -> Self {
@@ -148,7 +148,7 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
             world,
             theme,
             node,
-            lanes,
+            overlays,
             store,
             element: PhantomData,
         }
@@ -183,11 +183,23 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
     ) -> &mut Self
     where
         E: Send + Sync,
-        P: FieldPath<Source = E>,
-        P::Target: PartialEq + Clone + Send + Sync,
+        P: FieldPath<Source = E> + Bindable<H>,
+        P::Target: Clone + Send + Sync,
     {
-        insert_lane::<H, E, P>(
-            self.lanes, self.node, field, base, transition,
+        let cursor = field(Cursor::new());
+        let mut parents = cursor.hops();
+        parents.pop();
+        let Some(owner) = self.store.resolve(self.node, &parents)
+        else {
+            return self;
+        };
+        insert_overlay(
+            self.overlays,
+            owner,
+            cursor.key(),
+            <P as Bindable<H>>::patch,
+            base,
+            transition,
         );
         self
     }
@@ -196,8 +208,8 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
 /// What a `#[elem(patch = ...)]` writer writes through: the node the
 /// value lands on, `world`, and `theme`.
 ///
-/// No [`Store`]/[`Lanes`] here. A patch writes a value; it never wires
-/// a child or a lane.
+/// No [`Store`]/[`Overlays`] here. A patch writes a value; it never
+/// wires a child or an overlay.
 pub struct Patch<'a, H: Host> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
@@ -362,7 +374,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
 
     /// Let this field travel rather than snap.
     ///
-    /// Declares the lane and its curve.
+    /// Declares the overlay and its curve.
     /// [`Fynix::aim`](crate::Fynix::aim) points it; until then the
     /// base shows.
     pub fn transition<P>(
@@ -372,8 +384,8 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     ) -> &mut Self
     where
         E: Send + Sync,
-        P: FieldPath<Source = E>,
-        P::Target: PartialEq + Clone + Send + Sync,
+        P: FieldPath<Source = E> + Bindable<H>,
+        P::Target: Clone + Send + Sync,
     {
         let cursor = field(Cursor::new());
         let accessor = cursor.accessor();
@@ -390,12 +402,19 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             return self;
         };
 
-        insert_travel(
-            &mut self.ui.records.lanes,
-            self.node,
+        let mut parents = cursor.hops();
+        parents.pop();
+        let Some(owner) =
+            self.ui.records.store.resolve(self.node, &parents)
+        else {
+            return self;
+        };
+
+        insert_overlay(
+            &mut self.ui.records.overlays,
+            owner,
             cursor.key(),
-            accessor,
-            cursor.hops(),
+            <P as Bindable<H>>::patch,
             base,
             transition,
         );
@@ -414,13 +433,23 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     ) -> &mut Self
     where
         E: Send + Sync,
-        P: FieldPath<Source = E>,
-        P::Target: PartialEq + Clone + Send + Sync,
+        P: FieldPath<Source = E> + Bindable<H>,
+        P::Target: Clone + Send + Sync,
     {
-        insert_lane::<H, E, P>(
-            &mut self.ui.records.lanes,
-            self.node,
-            field,
+        let cursor = field(Cursor::new());
+        let mut parents = cursor.hops();
+        parents.pop();
+        let Some(owner) =
+            self.ui.records.store.resolve(self.node, &parents)
+        else {
+            return self;
+        };
+
+        insert_overlay(
+            &mut self.ui.records.overlays,
+            owner,
+            cursor.key(),
+            <P as Bindable<H>>::patch,
             base,
             transition,
         );
@@ -443,10 +472,11 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     ) -> &mut Self
     where
         P: FieldPath<Source = E> + Bindable<H>,
-        P::Target: Send + Sync,
+        P::Target: Clone + Send + Sync,
     {
         let cursor = field(Cursor::new());
         let accessor = cursor.accessor();
+        let key = cursor.key();
 
         // The terminal hop is the field; the rest reach its owner.
         let mut parents = cursor.hops();
@@ -458,11 +488,20 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         };
 
         let apply = move |elements: &mut Elements<H>,
+                          overlays: &mut Overlays<H>,
                           world: &mut H::World,
                           node: H::Node,
                           _store: &mut Store<H>,
                           theme: &H::Theme| {
             let new = value(WorldNodeRef::new(world, node));
+
+            // An overlay on the same field takes the new base, so a
+            // release still heads to the right resting value.
+            if let Some(tween) =
+                overlays.tween::<P::Target>(owner, key)
+            {
+                tween.rebase(&new);
+            }
 
             // The struct keeps the value too, for `Fynix::element`.
             if let Some(element) = elements.get_mut::<E>(&node)

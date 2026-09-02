@@ -312,10 +312,15 @@ every writer in `patch.rs`.
       `*field = new` for `Fynix::element`. Needed `Label.color:
       Option<Color>` -> `Color` (`NONE` = themed) so the only bound
       `Option` field matched its tag's `Target`.
-- [ ] New `Travel` repr; `Lane::advance` drops `elements` / `store` /
-      the `Element` bound.
-- [ ] `Binding` -> `Lane` rebase notification keyed on
-      `(node, field_id)`.
+- [x] `lanes.rs` -> `overlay.rs`. `Travel` -> `Tween<H, T>` (6 fields:
+      `write` fn pointer, `curve`, `base`, `target`, `from`, `elapsed`
+      - no `accessor` / `hops` / `Element` bound). Trait `Lane` ->
+      `Overlay<H>: Any`; `advance` is `(dt, world, node, theme)`, no
+      `elements` / `store`. `transition` resolves the owner node once
+      and stores `<P as Bindable<H>>::patch` as the writer. `aim`
+      downcasts to `Tween<H, P::Target>` - no `dyn Any` param.
+- [x] `bind` -> overlay `rebase` notification: the apply closure
+      downcasts a co-located overlay and calls `Tween::rebase`.
 - [ ] Delete `Element::patch`'s own-field walk once both callers are
       off it; keep child-hop only if still needed, keep `despawn`.
 - [ ] Audit `records.elements` readers; leave the table for

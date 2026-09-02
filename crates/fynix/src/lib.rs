@@ -19,7 +19,7 @@ pub mod composer;
 mod elem;
 pub mod element;
 pub mod host;
-pub mod lanes;
+pub mod overlay;
 pub mod records;
 pub mod store;
 pub mod style;
@@ -224,7 +224,7 @@ impl<H: Host> Fynix<H> {
         records
             .bindings
             .retain(|(node, _), _| H::exists(world, *node));
-        records.lanes.retain(|node| H::exists(world, node));
+        records.overlays.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
         // `elements` is keyed by type as well as node, so it cannot
@@ -239,7 +239,7 @@ impl<H: Host> Fynix<H> {
 
         let Records {
             bindings,
-            lanes,
+            overlays,
             elements,
             store,
             ..
@@ -249,26 +249,22 @@ impl<H: Host> Fynix<H> {
             if !(binding.changed)(WorldNodeRef::new(world, *node)) {
                 continue;
             }
-            (binding.apply)(elements, world, *node, store, theme);
+            (binding.apply)(
+                elements, overlays, world, *node, store, theme,
+            );
         }
 
-        // After the bindings, so a lane gets the last word over the
-        // base they left.
+        // After the bindings, so an overlay gets the last word over
+        // the base they left.
         let delta = H::delta(world);
 
-        for (node, lane) in lanes.iter_mut() {
-            lane.advance(
-                delta,
-                elements,
-                WorldNodeMut::new(world, node),
-                store,
-                theme,
-            );
+        for (node, overlay) in overlays.iter_mut() {
+            overlay.advance(delta, world, node, theme);
         }
     }
 
     /// Point a transitioning field at `target`, or release it back to
-    /// its base with `None`. Aiming a field with no lane does
+    /// its base with `None`. Aiming a field with no overlay does
     /// nothing.
     pub fn aim<E, P>(
         &mut self,
@@ -278,19 +274,20 @@ impl<H: Host> Fynix<H> {
     ) where
         E: 'static,
         P: FieldPath<Source = E>,
-        P::Target: 'static,
+        P::Target: Clone + Send + Sync + 'static,
     {
         let key = field(Cursor::new()).key();
 
-        if let Some(lane) = self.records.lanes.get_mut(node, key) {
-            let mut target = target;
-            lane.aim(&mut target);
+        if let Some(tween) =
+            self.records.overlays.tween::<P::Target>(node, key)
+        {
+            tween.aim(target);
         }
     }
 
     /// How many transitioning fields the kernel is holding.
-    pub fn lane_len(&self) -> usize {
-        self.records.lanes.len()
+    pub fn overlay_len(&self) -> usize {
+        self.records.overlays.len()
     }
 }
 
