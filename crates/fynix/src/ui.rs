@@ -221,18 +221,15 @@ impl<'a, H: Host> Patch<'a, H> {
     }
 }
 
-/// How one field is written to the backend. Implemented on the tag a
-/// `#[elem(patch = ...)]` field carries.
+/// One field's writer, implemented on the tag a `#[elem(patch = ...)]`
+/// field carries.
 pub trait FieldPatch<H: Host> {
     type Target;
 
     fn patch(patch: &mut Patch<H>, value: &Self::Target);
 }
 
-/// A field path that ends on a `#[elem(patch = ...)]` field, so its
-/// value can be pushed straight to the backend without walking the
-/// element tree. The bound [`bind`](ElementMut::bind) and
-/// [`transition`](ElementMut::transition) name.
+/// A field path whose terminal hop is a `#[elem(patch = ...)]` field.
 pub trait Bindable<H: Host>: FieldPath {
     fn patch(patch: &mut Patch<H>, value: &Self::Target);
 }
@@ -431,11 +428,10 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     }
 
     /// Write `value` into `cursor` whenever `changed` fires, then push
-    /// that one field out to the backend.
+    /// that one field straight to the backend.
     ///
-    /// Both halves come from the same walk, so the write and the
-    /// patch always address the same field. An absent `Option` along
-    /// the way skips both, no panic.
+    /// An absent `#[elem(child)]` on the path leaves the binding
+    /// unregistered.
     pub fn bind<P>(
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
@@ -446,32 +442,40 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         + 'static,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E>,
+        P: FieldPath<Source = E> + Bindable<H>,
         P::Target: Send + Sync,
     {
         let cursor = field(Cursor::new());
-
         let accessor = cursor.accessor();
-        let hops = cursor.hops();
+
+        // The terminal hop is the field; the rest reach its owner.
+        let mut parents = cursor.hops();
+        parents.pop();
+        let Some(owner) =
+            self.ui.records.store.resolve(self.node, &parents)
+        else {
+            return self;
+        };
 
         let apply = move |elements: &mut Elements<H>,
                           world: &mut H::World,
                           node: H::Node,
-                          store: &mut Store<H>,
+                          _store: &mut Store<H>,
                           theme: &H::Theme| {
             let new = value(WorldNodeRef::new(world, node));
 
-            // `E` is still in hand here, so the element comes back as
-            // itself. A node holding something else simply misses.
-            let Some(element) = elements.get_mut::<E>(&node) else {
+            // The struct keeps the value too, for `Fynix::element`.
+            if let Some(element) = elements.get_mut::<E>(&node)
+                && let Some(field) = accessor.get_mut(element)
+            {
+                *field = new;
+                let mut patch = Patch::new(world, owner, theme);
+                <P as Bindable<H>>::patch(&mut patch, field);
                 return;
-            };
-            let Some(field) = accessor.get_mut(element) else {
-                return;
-            };
-            *field = new;
+            }
 
-            element.patch(world, node, &hops, store, theme);
+            let mut patch = Patch::new(world, owner, theme);
+            <P as Bindable<H>>::patch(&mut patch, &new);
         };
 
         self.ui.records.bindings.insert(

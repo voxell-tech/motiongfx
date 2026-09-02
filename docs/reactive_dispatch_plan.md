@@ -306,8 +306,12 @@ every writer in `patch.rs`.
       `FieldPatch` impls; all ~34 shared writers and ~30 element
       one-offs converted; fynix mock tests use `test_patch!`. All green
       on the old `Element::patch` dispatch.
-- [ ] `bind` resolves `(owner_node, tag)` at bind time; fire path calls
-      `P::patch`; keep `*field = new` for `Fynix::element`.
+- [x] `bind` resolves the owner node once (`Store::resolve` over
+      `hops()` minus the terminal); fire path calls
+      `<P as Bindable<H>>::patch` - no `Element::patch` walk. Keeps
+      `*field = new` for `Fynix::element`. Needed `Label.color:
+      Option<Color>` -> `Color` (`NONE` = themed) so the only bound
+      `Option` field matched its tag's `Target`.
 - [ ] New `Travel` repr; `Lane::advance` drops `elements` / `store` /
       the `Element` bound.
 - [ ] `Binding` -> `Lane` rebase notification keyed on

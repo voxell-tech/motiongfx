@@ -126,11 +126,13 @@ impl ButtonElem {
                     tint,
                 );
             }
-            // `label().color()` hops through the `Option`
-            // transparently, so its base is `Color`. A label with no
-            // colour of its own has nowhere for that hop to land.
-            if let Some(color) =
-                self.label.as_ref().and_then(|label| label.color)
+            // `Color::NONE` is the themed default, no base to lerp
+            // from.
+            if let Some(color) = self
+                .label
+                .as_ref()
+                .map(|label| label.color)
+                .filter(|color| *color != Color::NONE)
             {
                 build.lit_from(
                     |button| button.label().color(),

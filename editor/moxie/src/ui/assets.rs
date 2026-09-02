@@ -221,7 +221,7 @@ impl Composer<FynixHost> for BookmarkRow {
                 label = val!(
                     Label,
                     text = name.clone(),
-                    color = Some(primary),
+                    color = primary,
                     wrap = false
                 )
             ),
@@ -340,7 +340,7 @@ impl Composer<FynixHost> for FolderRow {
                 label = val!(
                     Label,
                     text = name.clone(),
-                    color = Some(primary),
+                    color = primary,
                     wrap = false
                 )
             ),
@@ -466,7 +466,7 @@ fn file_row(ui: &mut BevyUi, path: &Path) {
         ui.elem(elem!(
             Label,
             text = name,
-            color = Some(color),
+            color = color,
             wrap = false
         ));
     });

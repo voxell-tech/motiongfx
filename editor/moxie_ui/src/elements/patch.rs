@@ -32,9 +32,9 @@ pub(super) fn node(
     with(patch, f);
 }
 
-/// Defines a `#[elem(patch = ...)]` tag: a unit struct that writes one
-/// field value to the backend. Always `pub` - a lenz marker is `pub`
-/// and its `type Tag` cannot be less visible.
+/// Defines a `#[elem(patch = ...)]` tag - a unit struct that writes
+/// one field to the backend. `pub`, since a lenz marker's `type Tag`
+/// cannot be less visible than the marker.
 macro_rules! field_patch {
     (
         $(#[$meta:meta])*

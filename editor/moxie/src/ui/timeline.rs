@@ -222,7 +222,7 @@ fn build_ticks(ui: &mut BevyUi) {
                     text = text,
                     size = LABEL_SIZE,
                     wrap = false,
-                    color = Some(color.with_alpha(0.7))
+                    color = color.with_alpha(0.7)
                 )
             ));
         }
@@ -348,7 +348,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                         Label,
                         text = label,
                         size = 10.0f32,
-                        color = Some(theme.text_primary.with_alpha(0.8))
+                        color = theme.text_primary.with_alpha(0.8)
                     ),
                     top = px(placed.y),
                     left = px(placed.x),
@@ -439,11 +439,11 @@ fn build_block_boxes(ui: &mut BevyUi) {
                                 String::new()
                             }),
                         size = 10.0f32,
-                        color = Some(if placed.draft {
+                        color = if placed.draft {
                             theme.critical.with_alpha(0.9)
                         } else {
                             theme.palette.blue.with_alpha(0.9)
-                        })
+                        }
                     ),
                     top = px(placed.y),
                     left = px(placed.x),

@@ -182,7 +182,7 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
         ui.elem(elem!(
             Label,
             text = "Nothing left to add",
-            color = Some(muted)
+            color = muted
         ));
         return;
     }
@@ -207,8 +207,7 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
                 color = icon_color,
                 size = px(12)
             ),
-            label =
-                val!(Label, text = name, color = Some(text_color))
+            label = val!(Label, text = name, color = text_color)
         ))
         .insert(AddsWindow { area, window_id })
         .observe(on_pick);

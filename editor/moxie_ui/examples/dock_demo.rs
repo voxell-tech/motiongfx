@@ -117,7 +117,7 @@ fn filled(ui: &mut BevyUi, label: &str, color: Color) {
             Label,
             text = label,
             size = 20.0f32,
-            color = Some(Color::srgb(0.9, 0.9, 0.92))
+            color = Color::srgb(0.9, 0.9, 0.92)
         ));
     });
 }

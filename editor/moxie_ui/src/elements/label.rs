@@ -14,9 +14,10 @@ pub struct Label {
     #[elem(patch = PatchTextSize)]
     #[default(12.0)]
     pub size: f32,
-    /// `None` leaves the colour to the theme.
+    /// [`Color::NONE`] leaves the colour to the theme.
+    #[default(::NONE)]
     #[elem(patch = PatchTextColor)]
-    pub color: Option<Color>,
+    pub color: Color,
     #[elem(patch = PatchBold)]
     pub bold: bool,
     #[elem(patch = PatchWrap)]
@@ -80,14 +81,16 @@ field_patch!(PatchWrap, bool, |patch, v| {
     patch.insert(layout(*v));
 });
 
-field_patch!(PatchTextColor, Option<Color>, |patch, v| {
+field_patch!(PatchTextColor, Color, |patch, v| {
     set_color(*v, patch);
 });
 
-/// A colour of its own opts out of the theme's.
-fn set_color(color: Option<Color>, entity: &mut impl WorldEntityMut) {
-    match color {
-        Some(color) => entity.insert(TextColor(color)),
-        None => entity.insert(ThemedText),
-    };
+/// Insert an explicit [`TextColor`], or [`ThemedText`] for
+/// [`Color::NONE`].
+fn set_color(color: Color, entity: &mut impl WorldEntityMut) {
+    if color == Color::NONE {
+        entity.insert(ThemedText);
+    } else {
+        entity.insert(TextColor(color));
+    }
 }

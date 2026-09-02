@@ -14,8 +14,9 @@ use fynix::lenz::{Cursor, FieldPath, Identity};
 use fynix::ui::{Build, ElementMut};
 use hashbrown::HashMap;
 
-/// Test-side `#[elem(patch = ...)]` tag: a unit struct plus its
-/// [`FieldPatch`](fynix::ui::FieldPatch) impl against [`FynixHost`].
+/// Defines a `#[elem(patch = ...)]` tag for the tests - a unit struct
+/// plus its [`FieldPatch`](fynix::ui::FieldPatch) impl against
+/// [`FynixHost`].
 #[macro_export]
 macro_rules! test_patch {
     ($name:ident, $ty:ty, |$p:ident, $v:ident| $body:expr) => {

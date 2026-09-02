@@ -373,11 +373,10 @@ pub fn expand(
     })
 }
 
-/// The struct itself, re-emitted for the path system to derive off:
-/// `#[elem(...)]` markers dropped, `#[elem(ignore)]` swapped for
-/// `#[lenz(ignore)]`, and `Lenz`/`OverrideDefault` derived - the
-/// dispatch names a field by the id `Lenz` gives it, and `base` starts
-/// from the `Default` `OverrideDefault` writes.
+/// The struct, re-emitted for the path system to derive off.
+/// `#[elem(...)]` markers become `#[lenz(...)]` ones (`ignore` stays,
+/// `patch = X` becomes `tag = X`), with `Lenz` / `OverrideDefault`
+/// derived.
 fn rewrite_struct(
     ast: &DeriveInput,
     root: &TokenStream2,

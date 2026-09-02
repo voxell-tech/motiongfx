@@ -41,7 +41,7 @@ impl<T: Asset + TypePath> Inspect for Handle<T> {
             label = val!(
                 Label,
                 text = label,
-                color = Some(muted),
+                color = muted,
                 wrap = false
             )
         ))

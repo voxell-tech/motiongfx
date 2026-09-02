@@ -272,7 +272,7 @@ impl Composer<FynixHost> for Subtree {
                     Label,
                     text = name,
                     wrap = false,
-                    color = Some(text)
+                    color = text
                 )
             ),
             // The row is the subject's, to select; only the

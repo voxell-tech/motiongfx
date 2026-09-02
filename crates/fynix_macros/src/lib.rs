@@ -24,14 +24,13 @@ use syn::{DeriveInput, parse_macro_input};
 ///   points it at the element's own inherent `fn build`.
 /// - `#[elem(child)]` - a field that is an element in its own right.
 ///   Built first, walked into one hop at a time.
-/// - `#[elem(patch = <fn>)]` - an own field's value writer,
-///   `fn(&mut Patch<Host>, &FieldTy)`, given a reference to that one
-///   field. Run for every field at build and for the changed field on
-///   patch.
+/// - `#[elem(patch = <tag>)]` - a type implementing
+///   `FieldPatch<Host, Target = FieldTy>`. Its `patch` writes the
+///   field, at build and on change.
 /// - `#[elem(default = <expr>)]` - the value the field starts from,
 ///   with `theme` in scope. Layered over the `#[default(...)]` the
 ///   re-emitted struct still takes.
-/// - `#[elem(ignore)]` - a field no path can name; read only by the
+/// - `#[elem(ignore)]` - a field no path can name, read only by the
 ///   `build =` hook.
 #[proc_macro_attribute]
 pub fn element(args: TokenStream, input: TokenStream) -> TokenStream {
