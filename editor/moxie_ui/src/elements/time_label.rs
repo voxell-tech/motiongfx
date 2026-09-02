@@ -4,7 +4,7 @@ use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
 use super::Label;
-use super::patch;
+use super::patch::*;
 
 /// A time reading on the time axis, placing above the mark it reads
 /// for.
@@ -13,7 +13,7 @@ pub struct TimeLabel {
     #[elem(child)]
     pub label: Label,
     /// Pixels from the time axis's left edge.
-    #[elem(patch = patch::time_label_x)]
+    #[elem(patch = PatchTimeLabelX)]
     pub x: Val,
 }
 

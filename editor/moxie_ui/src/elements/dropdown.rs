@@ -7,7 +7,7 @@
 //! window edge, dismissal on focus loss, Escape, and arrow-key
 //! navigation.
 
-use crate::reactive::{FynixBuild, FynixHost};
+use crate::reactive::FynixBuild;
 use bevy::feathers::controls::{FeathersMenu, FeathersMenuPopup};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::input_focus::tab_navigation::TabIndex;
@@ -19,9 +19,8 @@ use bevy::ui_widgets::{
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
-use fynix::ui::Patch;
 
-use super::patch::{self, node};
+use super::patch::*;
 use super::{Icon, Label};
 
 /// What a [`Dropdown`] and its [`DropdownList`] hang from.
@@ -52,21 +51,21 @@ pub struct Dropdown {
     #[elem(child)]
     pub chevron: Icon,
     /// Wide enough to stay readable when the choice is a short word.
-    #[elem(patch = patch::min_width)]
+    #[elem(patch = PatchMinWidth)]
     #[default(px(72))]
     pub min_width: Val,
     /// Past this the label is clipped rather than the row growing:
     /// a column of these has to line up.
-    #[elem(patch = patch::max_width)]
+    #[elem(patch = PatchMaxWidth)]
     #[default(px(160))]
     pub max_width: Val,
-    #[elem(patch = patch::height)]
+    #[elem(patch = PatchHeight)]
     #[default(px(22))]
     pub height: Val,
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.06))]
     pub fill: Color,
-    #[elem(patch = patch::radius)]
+    #[elem(patch = PatchRadius)]
     #[default(px(4))]
     pub radius: Val,
 }
@@ -141,12 +140,12 @@ impl Dropdown {
 #[element(build = Self::build)]
 pub struct DropdownList {
     /// Matched to the control's, so the two line up.
-    #[elem(patch = list_width)]
+    #[elem(patch = PatchListWidth)]
     #[default(px(160))]
     pub width: Val,
     /// What the popup scene rounds its own corners to, so leaving this
     /// alone keeps the look feathers gave it.
-    #[elem(patch = patch::radius)]
+    #[elem(patch = PatchRadius)]
     #[default(px(4))]
     pub radius: Val,
 }
@@ -170,11 +169,11 @@ impl DropdownList {
     }
 }
 
-/// The list is placed by its popup scene, so only its own width lands
-/// on `min_width`.
-fn list_width(patch: &mut Patch<FynixHost>, width: &Val) {
-    node(patch, |n| n.min_width = *width);
-}
+// The list is placed by its popup scene, so only its own width lands
+// on `min_width`.
+field_patch!(PatchListWidth, Val, |patch, v| {
+    node(patch, |n| n.min_width = *v);
+});
 
 /// One row of a [`DropdownList`].
 ///
@@ -184,13 +183,13 @@ fn list_width(patch: &mut Patch<FynixHost>, width: &Val) {
 pub struct DropdownItem {
     #[elem(child)]
     pub label: Label,
-    #[elem(patch = patch::height)]
+    #[elem(patch = PatchHeight)]
     #[default(px(20))]
     pub height: Val,
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     #[default(::NONE)]
     pub fill: Color,
-    #[elem(patch = patch::radius)]
+    #[elem(patch = PatchRadius)]
     #[default(px(3))]
     pub radius: Val,
 }

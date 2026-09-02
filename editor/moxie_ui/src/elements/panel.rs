@@ -3,34 +3,34 @@ use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
-use super::patch;
+use super::patch::*;
 
 /// What a docked window fills its area with: the whole of it, and
 /// scrolling if what it holds does not fit.
 #[element(build = Self::build)]
 pub struct Panel {
-    #[elem(patch = patch::direction)]
+    #[elem(patch = PatchDirection)]
     pub direction: FlexDirection,
     /// Stretch, by default, which is what fills a docked area.
-    #[elem(patch = patch::align)]
+    #[elem(patch = PatchAlign)]
     pub align: AlignItems,
-    #[elem(patch = patch::justify)]
+    #[elem(patch = PatchJustify)]
     pub justify: JustifyContent,
-    #[elem(patch = patch::padding)]
+    #[elem(patch = PatchPadding)]
     pub padding: UiRect,
     /// Between rows, and between columns: a row of things wants the
     /// second, a column the first.
-    #[elem(patch = patch::row_gap)]
+    #[elem(patch = PatchRowGap)]
     #[default(Val::ZERO)]
     pub row_gap: Val,
-    #[elem(patch = patch::column_gap)]
+    #[elem(patch = PatchColumnGap)]
     #[default(Val::ZERO)]
     pub column_gap: Val,
-    #[elem(patch = patch::panel_scrolls)]
+    #[elem(patch = PatchPanelScrolls)]
     pub scrolls: bool,
     /// How far down it is scrolled, for a panel whose scroll follows
     /// something else.
-    #[elem(patch = patch::panel_scroll)]
+    #[elem(patch = PatchPanelScroll)]
     pub scroll: f32,
 }
 

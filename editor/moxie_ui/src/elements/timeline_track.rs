@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
-use super::patch;
+use super::patch::*;
 
 /// The scrubbable timeline track: a plain node sized to the track's
 /// duration. The consuming app resolves its own pixels per second
@@ -11,7 +11,7 @@ use super::patch;
 /// at `t * pixels_per_second` from the track's left edge.
 #[element(build = Self::build)]
 pub struct TimelineTrack {
-    #[elem(patch = patch::track_width)]
+    #[elem(patch = PatchTrackWidth)]
     pub width: Val,
 }
 

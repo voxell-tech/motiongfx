@@ -54,7 +54,7 @@ impl ElementArgs {
 struct FieldConfig {
     child: bool,
     ignore: bool,
-    patch: Option<Expr>,
+    patch: Option<Path>,
     default: Option<Expr>,
 }
 
@@ -240,7 +240,9 @@ pub fn expand(
                 let mut __patch = #root::ui::Patch::new(
                     world, node, theme,
                 );
-                (#patch)(&mut __patch, &self.#field_name);
+                <#patch as #root::ui::FieldPatch<#host>>::patch(
+                    &mut __patch, &self.#field_name,
+                );
             }
         });
 
@@ -249,7 +251,9 @@ pub fn expand(
                 let mut __patch = #root::ui::Patch::new(
                     world, node, theme,
                 );
-                (#patch)(&mut __patch, &self.#field_name);
+                <#patch as #root::ui::FieldPatch<#host>>::patch(
+                    &mut __patch, &self.#field_name,
+                );
                 return;
             }
         });
@@ -404,6 +408,8 @@ fn rewrite_struct(
         field.attrs = kept.into_iter().collect();
         if cfg.ignore {
             field.attrs.push(parse_quote!(#[lenz(ignore)]));
+        } else if let Some(patch) = &cfg.patch {
+            field.attrs.push(parse_quote!(#[lenz(tag = #patch)]));
         }
     }
 

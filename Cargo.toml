@@ -58,6 +58,12 @@ vello = "0.9.0"
 winit = "0.30"
 pollster = "0.4"
 
+# Local checkout of lenz while the `Tagged` / `#[lenz(tag)]` work lands.
+# Swap back to a git ref once it is on the lenz remote.
+[patch."https://github.com/nixonyh/lenz"]
+lenz = { path = "../lenz/crates/lenz" }
+lenz_macros = { path = "../lenz/crates/lenz_macros" }
+
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
 

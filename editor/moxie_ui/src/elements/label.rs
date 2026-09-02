@@ -1,26 +1,25 @@
-use crate::reactive::{FynixBuild, FynixHost};
+use crate::reactive::FynixBuild;
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut;
 use fynix::element::element;
-use fynix::ui::Patch;
 
-use super::patch::with;
+use super::patch::*;
 
 /// A theme-inheriting text label.
 #[element(build = Self::build)]
 pub struct Label {
-    #[elem(patch = text)]
+    #[elem(patch = PatchText)]
     pub text: String,
-    #[elem(patch = size)]
+    #[elem(patch = PatchTextSize)]
     #[default(12.0)]
     pub size: f32,
     /// `None` leaves the colour to the theme.
-    #[elem(patch = color)]
+    #[elem(patch = PatchTextColor)]
     pub color: Option<Color>,
-    #[elem(patch = bold)]
+    #[elem(patch = PatchBold)]
     pub bold: bool,
-    #[elem(patch = wrap)]
+    #[elem(patch = PatchWrap)]
     #[default(true)]
     pub wrap: bool,
 }
@@ -60,30 +59,30 @@ impl Label {
     }
 }
 
-fn text(patch: &mut Patch<FynixHost>, text: &String) {
-    with::<Text>(patch, |t| t.0.clone_from(text));
-}
+field_patch!(PatchText, String, |patch, v| {
+    with::<Text>(patch, |t| t.0.clone_from(v));
+});
 
-fn size(patch: &mut Patch<FynixHost>, size: &f32) {
-    with::<TextFont>(patch, |f| f.font_size = FontSize::Px(*size));
-}
+field_patch!(PatchTextSize, f32, |patch, v| {
+    with::<TextFont>(patch, |f| f.font_size = FontSize::Px(*v));
+});
 
-fn bold(patch: &mut Patch<FynixHost>, bold: &bool) {
-    let weight = if *bold {
+field_patch!(PatchBold, bool, |patch, v| {
+    let weight = if *v {
         FontWeight::BOLD
     } else {
         FontWeight::NORMAL
     };
     with::<TextFont>(patch, move |f| f.weight = weight);
-}
+});
 
-fn wrap(patch: &mut Patch<FynixHost>, wrap: &bool) {
-    patch.insert(layout(*wrap));
-}
+field_patch!(PatchWrap, bool, |patch, v| {
+    patch.insert(layout(*v));
+});
 
-fn color(patch: &mut Patch<FynixHost>, color: &Option<Color>) {
-    set_color(*color, patch);
-}
+field_patch!(PatchTextColor, Option<Color>, |patch, v| {
+    set_color(*v, patch);
+});
 
 /// A colour of its own opts out of the theme's.
 fn set_color(color: Option<Color>, entity: &mut impl WorldEntityMut) {

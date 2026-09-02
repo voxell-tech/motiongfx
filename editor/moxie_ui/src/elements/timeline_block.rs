@@ -7,7 +7,7 @@ use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
 use super::Label;
-use super::patch;
+use super::patch::*;
 
 /// A block's header box: an absolutely positioned, bordered container
 /// with its label pinned to its top-left corner, left padded to leave
@@ -26,18 +26,18 @@ use super::patch;
 pub struct TimelineBlock {
     #[elem(child)]
     pub label: Label,
-    #[elem(patch = patch::top)]
+    #[elem(patch = PatchTop)]
     pub top: Val,
-    #[elem(patch = patch::left)]
+    #[elem(patch = PatchLeft)]
     pub left: Val,
-    #[elem(patch = patch::width)]
+    #[elem(patch = PatchWidth)]
     pub width: Val,
-    #[elem(patch = patch::height)]
+    #[elem(patch = PatchHeight)]
     pub height: Val,
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     #[default(Color::NONE)]
     pub background: Color,
-    #[elem(patch = patch::border_color)]
+    #[elem(patch = PatchBorderColor)]
     #[default(Color::NONE)]
     pub border: Color,
 }

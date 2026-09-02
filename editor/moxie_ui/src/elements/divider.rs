@@ -1,26 +1,24 @@
-use crate::reactive::FynixHost;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::ControlOrientation;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
-use fynix::ui::Patch;
 
-use super::patch::{self, node};
+use super::patch::*;
 
 const DIVIDER_WIDTH: f32 = 6.0;
 
 /// The draggable line between two panes.
 #[element]
 pub struct Divider {
-    #[elem(patch = thickness)]
+    #[elem(patch = PatchThickness)]
     #[default(px(DIVIDER_WIDTH))]
     pub thickness: Val,
-    #[elem(patch = orientation)]
+    #[elem(patch = PatchOrientation)]
     #[default(::Horizontal)]
     pub orientation: ControlOrientation,
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.08))]
     pub color: Color,
 }
@@ -31,25 +29,22 @@ fn horizontal(node: &Node) -> bool {
     node.width == percent(100)
 }
 
-fn thickness(patch: &mut Patch<FynixHost>, thickness: &Val) {
+field_patch!(PatchThickness, Val, |patch, v| {
     node(patch, |n| {
         if horizontal(n) {
-            n.height = *thickness;
+            n.height = *v;
         } else {
-            n.width = *thickness;
+            n.width = *v;
         }
     });
-}
+});
 
-fn orientation(
-    patch: &mut Patch<FynixHost>,
-    orientation: &ControlOrientation,
-) {
-    let cursor = match orientation {
+field_patch!(PatchOrientation, ControlOrientation, |patch, v| {
+    let cursor = match v {
         ControlOrientation::Horizontal => SystemCursorIcon::NsResize,
         ControlOrientation::Vertical => SystemCursorIcon::EwResize,
     };
-    let orientation = *orientation;
+    let orientation = *v;
     node(patch, move |n| {
         let thickness =
             if horizontal(n) { n.height } else { n.width };
@@ -66,4 +61,4 @@ fn orientation(
         n.flex_shrink = 0.0;
     });
     patch.insert(EntityCursor::System(cursor));
-}
+});

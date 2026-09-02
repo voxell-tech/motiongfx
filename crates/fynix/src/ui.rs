@@ -13,7 +13,7 @@ use crate::composer::Composer;
 use crate::element::Element;
 use crate::host::Host;
 use crate::lanes::{Lanes, insert_lane, insert_travel};
-use crate::lenz::{Cursor, FieldPath, Identity};
+use crate::lenz::{Cursor, FieldPath, Identity, Tagged};
 use crate::records::{
     Binding, BuildFn, ChangedFn, Elements, Records, Watcher,
 };
@@ -218,6 +218,33 @@ impl<'a, H: Host> Patch<'a, H> {
     /// This element's own node.
     pub fn id(&self) -> H::Node {
         self.node
+    }
+}
+
+/// How one field is written to the backend. Implemented on the tag a
+/// `#[elem(patch = ...)]` field carries.
+pub trait FieldPatch<H: Host> {
+    type Target;
+
+    fn patch(patch: &mut Patch<H>, value: &Self::Target);
+}
+
+/// A field path that ends on a `#[elem(patch = ...)]` field, so its
+/// value can be pushed straight to the backend without walking the
+/// element tree. The bound [`bind`](ElementMut::bind) and
+/// [`transition`](ElementMut::transition) name.
+pub trait Bindable<H: Host>: FieldPath {
+    fn patch(patch: &mut Patch<H>, value: &Self::Target);
+}
+
+impl<P, H> Bindable<H> for P
+where
+    H: Host,
+    P: FieldPath + Tagged,
+    P::Tag: FieldPatch<H, Target = P::Target>,
+{
+    fn patch(patch: &mut Patch<H>, value: &P::Target) {
+        <P::Tag as FieldPatch<H>>::patch(patch, value)
     }
 }
 

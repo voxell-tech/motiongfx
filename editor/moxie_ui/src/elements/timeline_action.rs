@@ -7,7 +7,7 @@ use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
 use super::Label;
-use super::patch;
+use super::patch::*;
 
 /// One action's clip on the timeline: a colored, absolutely
 /// positioned, bordered hit area, its name (if any) pinned to its
@@ -19,23 +19,23 @@ pub struct TimelineAction {
     /// Blank when the action has no name of its own.
     #[elem(child)]
     pub label: Label,
-    #[elem(patch = patch::top)]
+    #[elem(patch = PatchTop)]
     pub top: Val,
-    #[elem(patch = patch::left)]
+    #[elem(patch = PatchLeft)]
     pub left: Val,
-    #[elem(patch = patch::width)]
+    #[elem(patch = PatchWidth)]
     pub width: Val,
-    #[elem(patch = patch::height)]
+    #[elem(patch = PatchHeight)]
     pub height: Val,
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     #[default(Color::NONE)]
     pub fill: Color,
-    #[elem(patch = patch::border_color)]
+    #[elem(patch = PatchBorderColor)]
     #[default(Color::NONE)]
     pub border: Color,
     /// Thickens the border - the caller still chooses `border`'s
     /// color (the theme's accent, typically).
-    #[elem(patch = patch::selected)]
+    #[elem(patch = PatchSelected)]
     pub selected: bool,
 }
 

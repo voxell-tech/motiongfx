@@ -4,49 +4,49 @@ use bevy::ui_widgets::ScrollArea as ScrollAreaBehavior;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
-use super::patch;
+use super::patch::*;
 
 /// A sized container with real, interactive scrolling - trackpad and
 /// mouse-wheel input actually move it (`ScrollAreaBehavior`), not just
 /// a clipped overflow a caller has to drive by hand.
 #[element(build = Self::build)]
 pub struct ScrollArea {
-    #[elem(patch = patch::width)]
+    #[elem(patch = PatchWidth)]
     pub width: Val,
-    #[elem(patch = patch::height)]
+    #[elem(patch = PatchHeight)]
     pub height: Val,
     /// How much of its parent's remaining space this area claims -
     /// almost always `1.0` for one that should fill what's left.
-    #[elem(patch = patch::flex_grow)]
+    #[elem(patch = PatchFlexGrow)]
     #[default(0.0)]
     pub flex_grow: f32,
-    #[elem(patch = patch::direction)]
+    #[elem(patch = PatchDirection)]
     #[default(::Column)]
     pub direction: FlexDirection,
-    #[elem(patch = patch::align)]
+    #[elem(patch = PatchAlign)]
     pub align: AlignItems,
-    #[elem(patch = patch::justify)]
+    #[elem(patch = PatchJustify)]
     pub justify: JustifyContent,
-    #[elem(patch = patch::padding)]
+    #[elem(patch = PatchPadding)]
     pub padding: UiRect,
     /// Between rows, and between columns: a row of things wants the
     /// second, a column the first.
-    #[elem(patch = patch::row_gap)]
+    #[elem(patch = PatchRowGap)]
     #[default(::ZERO)]
     pub row_gap: Val,
-    #[elem(patch = patch::column_gap)]
+    #[elem(patch = PatchColumnGap)]
     #[default(::ZERO)]
     pub column_gap: Val,
-    #[elem(patch = patch::radius)]
+    #[elem(patch = PatchRadius)]
     #[default(::ZERO)]
     pub radius: Val,
-    #[elem(patch = patch::background)]
+    #[elem(patch = PatchBackground)]
     #[default(::NONE)]
     pub background: Color,
-    #[elem(patch = patch::scroll_x)]
+    #[elem(patch = PatchScrollX)]
     #[default(true)]
     pub scroll_x: bool,
-    #[elem(patch = patch::scroll_y)]
+    #[elem(patch = PatchScrollY)]
     #[default(true)]
     pub scroll_y: bool,
 }

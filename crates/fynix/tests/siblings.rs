@@ -6,7 +6,6 @@ mod common;
 use common::{FynixHost, Label, LabelCursor, World};
 use fynix::element::{Element, element};
 use fynix::records::Records;
-use fynix::ui::Patch;
 
 /// Two labels that already say which is which, so a test can tell one
 /// node from the other without setting anything up.
@@ -18,15 +17,15 @@ pub struct Pair {
     #[elem(child)]
     #[default(text: String::from("down"), size: 2)]
     pub bottom: Label,
-    #[elem(patch = write_gap)]
+    #[elem(patch = WriteGap)]
     #[default(7)]
     pub gap: u32,
 }
 
-fn write_gap(patch: &mut Patch<FynixHost>, gap: &u32) {
+test_patch!(WriteGap, u32, |patch, v| {
     let node = patch.id();
-    patch.world.node(node).padding = *gap;
-}
+    patch.world.node(node).padding = *v;
+});
 
 #[test]
 fn two_children_of_one_type_keep_separate_nodes() {

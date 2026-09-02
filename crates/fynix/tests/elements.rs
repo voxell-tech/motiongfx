@@ -8,11 +8,10 @@ use fynix::element::{Element, Fields, element};
 use fynix::host::Host;
 use fynix::lenz::{FieldPath, Lenz};
 use fynix::records::Records;
-use fynix::ui::Patch;
 
 #[element]
 pub struct Icon {
-    #[elem(patch = write_glyph)]
+    #[elem(patch = WriteGlyph)]
     #[default('+')]
     pub glyph: char,
 }
@@ -34,30 +33,30 @@ pub struct Button {
     #[elem(child)]
     #[default(..)]
     pub icon: Option<Icon>,
-    #[elem(patch = write_padding)]
+    #[elem(patch = WritePadding)]
     #[default(4)]
     pub padding: u32,
-    #[elem(patch = write_border)]
+    #[elem(patch = WriteBorder)]
     pub border: Border,
 }
 
-fn write_glyph(patch: &mut Patch<FynixHost>, glyph: &char) {
+test_patch!(WriteGlyph, char, |patch, v| {
     let node = patch.id();
-    patch.world.node(node).glyph = *glyph;
-}
+    patch.world.node(node).glyph = *v;
+});
 
-fn write_padding(patch: &mut Patch<FynixHost>, padding: &u32) {
+test_patch!(WritePadding, u32, |patch, v| {
     let node = patch.id();
-    patch.world.node(node).padding = *padding;
-}
+    patch.world.node(node).padding = *v;
+});
 
-/// Plain data, so it goes on whole. Only elements are worth reaching
-/// into one field at a time.
-fn write_border(patch: &mut Patch<FynixHost>, border: &Border) {
+// Plain data, so it goes on whole. Only elements are worth reaching
+// into one field at a time.
+test_patch!(WriteBorder, Border, |patch, v| {
     let node = patch.id();
-    patch.world.node(node).border_width = border.width;
-    patch.world.node(node).border_radius = border.radius;
-}
+    patch.world.node(node).border_width = v.width;
+    patch.world.node(node).border_radius = v.radius;
+});
 
 #[test]
 fn build_writes_the_element_and_its_children() {
