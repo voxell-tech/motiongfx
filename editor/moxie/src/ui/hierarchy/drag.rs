@@ -14,6 +14,7 @@ use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
 use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy_fynix::{BevyFynix, WorldEntityMut};
+use bevy_motiongfx::scene::id::EntityUid;
 use fynix::ui::ElementMut;
 use moxie_ui::elements::ButtonElem;
 use moxie_ui::layout::logical_rect;
@@ -74,6 +75,9 @@ pub(super) fn rows<'r, 'u, 'a>(
                 &ComputedNode,
                 &UiGlobalTransform,
             )>,
+                  kids: Query<&Children>,
+                  is_subject: Query<(), With<EntityUid>>,
+                  is_shut: Query<(), With<super::Collapsed>>,
                   mut dragging: ResMut<Dragging>| {
                 if over.button != PointerButton::Primary {
                     return;
@@ -95,7 +99,24 @@ pub(super) fn rows<'r, 'u, 'a>(
                 } else {
                     At::Into
                 };
-                dragging.target = Some((subject, at));
+
+                // Below an open branch, the space is its children's:
+                // the drop lands as the first of them, which is the
+                // same slot, and the same line, as before that child.
+                let target = match at {
+                    At::After if !is_shut.contains(subject) => kids
+                        .get(subject)
+                        .ok()
+                        .and_then(|kids| {
+                            kids.iter()
+                                .find(|&kid| is_subject.contains(kid))
+                        })
+                        .map_or((subject, At::After), |first| {
+                            (first, At::Before)
+                        }),
+                    _ => (subject, at),
+                };
+                dragging.target = Some(target);
             },
         )
         .observe(
@@ -257,11 +278,6 @@ fn destination(
     let (parent, index) = match at {
         // Past the end, for a place at the end of the list.
         At::Into => (row, usize::MAX),
-        // Below an open branch, the space belongs to its children:
-        // the drop lands as the first of them, not as a sibling
-        // stranded past the whole subtree. A shut or childless row
-        // has no such space, so there it means the next sibling.
-        At::After if is_open_branch(world, row) => (row, 0),
         _ => {
             let parent = world.get::<ChildOf>(row)?.parent();
             let index = world
@@ -305,14 +321,6 @@ fn settle(
     let shifted = if index > current { index - 1 } else { index };
 
     shifted.min(children.len() - 1)
-}
-
-/// Whether `row` is a branch whose children are on screen: it has some,
-/// and it is not collapsed. Only then is the strip below its own row
-/// standing in for the top of its child list.
-fn is_open_branch(world: &World, row: Entity) -> bool {
-    world.get::<super::Collapsed>(row).is_none()
-        && super::has_children(world, row)
 }
 
 /// Whether `entity` is somewhere above `row`.

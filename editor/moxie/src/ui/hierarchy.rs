@@ -34,14 +34,9 @@ use super::PANEL_PADDING;
 use crate::{SceneRoot, SelectedEntity};
 
 /// The line marking where a drop would land a row, beside it. Drawn
-/// over the seam between rows, taking no layout space of its own, so
-/// the rows do not shift as it appears.
+/// straddling the seam between two rows, its own height cancelled by
+/// matching negative margins, so the rows do not shift as it appears.
 const DROP_LINE: f32 = 2.0;
-
-/// A subject's own row, without anything folded out under it. The
-/// drop-after line hangs at its foot, which is the next sibling's
-/// place when the row is shut and its first child's when it is open.
-const ROW_HEIGHT: f32 = 18.0;
 
 /// Room below the last row for the button that floats over it.
 const BUTTON_CLEARANCE: f32 = 34.0;
@@ -193,47 +188,82 @@ fn build_roots(ui: &mut BevyUi) {
     listing(ui, roots);
 }
 
-/// One list of subtrees, each carrying the lines a drop can land
-/// before or after it.
+/// One list of subtrees, with a seam between each and at either end
+/// where a drop can land a row beside its neighbours.
 fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
-    for entity in entities {
+    let mut prev = None;
+    for &entity in &entities {
+        seam(ui, prev, Some(entity));
         ui.compose(Subtree { entity });
+        prev = Some(entity);
     }
+    seam(ui, prev, None);
 }
 
-/// The line a drop would land on to place a row beside `entity`, at
-/// `at`. Absolutely positioned against the subject's own row, so it
-/// costs no height, the rows do not shift as it shows, and it stays at
-/// that row's edge whether or not children are folded out below it.
-fn drop_line(ui: &mut BevyUi, entity: Entity, at: drag::At) {
+/// The seam between two rows, and the line a drop lights on it.
+///
+/// A frame of no height at all, so it adds nothing to the list and the
+/// rails that stretch to it keep their length; the line is a child that
+/// overflows it, centred on the seam, running the full width of the
+/// list so it is exactly as wide as the rows.
+///
+/// One seam answers for both sides of it: a drop after `above` and one
+/// before `below` land in the same place, so either lights this line.
+fn seam(
+    ui: &mut BevyUi,
+    above: Option<Entity>,
+    below: Option<Entity>,
+) {
     let accent = ui.theme.accent;
-    let top = match at {
-        drag::At::Before => px(-DROP_LINE / 2.0),
-        _ => px(ROW_HEIGHT - DROP_LINE / 2.0),
-    };
 
     ui.elem(elem!(
         Frame,
-        position = PositionType::Absolute,
-        inset = UiRect {
-            left: px(0),
-            right: px(0),
-            top,
-            bottom: auto()
-        },
-        height = px(DROP_LINE)
+        width = percent(100),
+        height = px(0),
+        // Or a flex item's auto floor grows it back to the line's own
+        // height, and the seam is not free after all.
+        min_height = px(0),
+        justify = JustifyContent::Center,
+        direction = FlexDirection::Column
     ))
-    .bind(
-        |line| line.background(),
-        drop_changed(entity, at),
-        move |WorldNodeRef { world, .. }| {
-            if world.resource::<drag::Dragging>().shows(entity, at) {
-                accent
-            } else {
-                Color::NONE
-            }
-        },
-    );
+    .with(move |ui| {
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            height = px(DROP_LINE)
+        ))
+        .bind(
+            |line| line.background(),
+            seam_changed(above, below),
+            move |WorldNodeRef { world, .. }| {
+                if seam_lit(world, above, below) {
+                    accent
+                } else {
+                    Color::NONE
+                }
+            },
+        );
+    });
+}
+
+/// Whether a drop is aimed at the seam between `above` and `below`.
+fn seam_lit(
+    world: &World,
+    above: Option<Entity>,
+    below: Option<Entity>,
+) -> bool {
+    let dragging = world.resource::<drag::Dragging>();
+    above.is_some_and(|e| dragging.shows(e, drag::At::After))
+        || below.is_some_and(|e| dragging.shows(e, drag::At::Before))
+}
+
+/// Fires when whether the seam between `above` and `below` is aimed at
+/// moves.
+fn seam_changed(
+    above: Option<Entity>,
+    below: Option<Entity>,
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
+    value_changed(move |world, _| seam_lit(world, above, below))
 }
 
 /// One subject, and everything under it.
@@ -249,108 +279,91 @@ impl Composer<FynixHost> for Subtree {
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Frame> {
         let entity = self.entity;
+        let name = name_of(ui.world, entity);
+        let text = ui.theme.text_primary;
+        let accent = ui.theme.accent;
 
-        // A relative wrapper the drop lines anchor to, so they mark
-        // this subject's own row without being spaced apart from it.
-        ui.elem(elem!(
-            Frame,
-            width = percent(100),
-            direction = FlexDirection::Column
-        ))
-        .with(move |ui| {
-            drop_line(ui, entity, drag::At::Before);
-
-            let name = name_of(ui.world, entity);
-            let text = ui.theme.text_primary;
-            let accent = ui.theme.accent;
-
-            ui.compose(Foldable {
-                header: elem!(
-                    !GhostButton,
-                    width = percent(100),
-                    height = px(ROW_HEIGHT),
-                    justify = JustifyContent::FlexStart,
-                    padding = UiRect::axes(px(4), Val::ZERO),
-                    radius = px(3),
-                    label = val!(
-                        Label,
-                        text = name,
-                        wrap = false,
-                        color = Some(text)
+        ui.compose(Foldable {
+            header: elem!(
+                !GhostButton,
+                width = percent(100),
+                height = px(18),
+                justify = JustifyContent::FlexStart,
+                padding = UiRect::axes(px(4), Val::ZERO),
+                radius = px(3),
+                label = val!(
+                    Label,
+                    text = name,
+                    wrap = false,
+                    color = Some(text)
+                )
+            ),
+            // The row is the subject's, to select; only the
+            // chevron beside it folds.
+            folds_on: FoldsOn::Chevron,
+            enabled: has_children(ui.world, entity),
+            on_header: move |mut header: ElementMut<
+                '_,
+                '_,
+                FynixHost,
+                ButtonElem,
+            >| {
+                drag::rows(&mut header, entity)
+                    .observe(
+                        move |_: On<Activate>,
+                              mut selected: ResMut<
+                            SelectedEntity,
+                        >| {
+                            selected.0 = Some(entity);
+                        },
                     )
-                ),
-                // The row is the subject's, to select; only the
-                // chevron beside it folds.
-                folds_on: FoldsOn::Chevron,
-                enabled: has_children(ui.world, entity),
-                on_header: move |mut header: ElementMut<
-                    '_,
-                    '_,
-                    FynixHost,
-                    ButtonElem,
-                >| {
-                    drag::rows(&mut header, entity)
-                        .observe(
-                            move |_: On<Activate>,
-                                  mut selected: ResMut<
-                                SelectedEntity,
-                            >| {
-                                selected.0 = Some(entity);
-                            },
-                        )
-                        // One bind, not two: a second on the same
-                        // field would fight this one every flush.
-                        .bind(
-                            |button| button.fill(),
-                            highlight_changed(entity),
-                            move |WorldNodeRef { world, .. }| {
-                                highlight(world, entity, accent)
-                            },
-                        )
-                        .bind(
-                            |button| button.label().text(),
-                            component_changed_on::<Name>(entity),
-                            move |WorldNodeRef { world, .. }| {
-                                name_of(world, entity)
-                            },
-                        );
-                },
-                body: move |ui: &mut BevyUi| {
-                    ui.elem(elem!(
-                        Frame,
-                        width = percent(100),
-                        direction = FlexDirection::Column
-                    ))
-                    .watch(
-                        component_changed_on::<Children>(entity),
-                        move |ui| {
-                            listing(
-                                ui,
-                                children_of(ui.world, entity),
-                            );
+                    // One bind, not two: a second on the same
+                    // field would fight this one every flush.
+                    .bind(
+                        |button| button.fill(),
+                        highlight_changed(entity),
+                        move |WorldNodeRef { world, .. }| {
+                            highlight(world, entity, accent)
+                        },
+                    )
+                    .bind(
+                        |button| button.label().text(),
+                        component_changed_on::<Name>(entity),
+                        move |WorldNodeRef { world, .. }| {
+                            name_of(world, entity)
                         },
                     );
-                },
-                // Read off the subject's own entity, not this row's node.
-                // The row rebuilds fresh on a reorder or a sibling
-                // added, but the entity, and `Collapsed` on it, does not.
-                // Nothing to clean up when a subject is deleted either.
-                // `Collapsed` goes with it.
-                open: ui.world.get::<Collapsed>(entity).is_none(),
-                on_toggle: move |world: &mut World, open: bool| {
-                    let Ok(mut entity) = world.get_entity_mut(entity)
-                    else {
-                        return;
-                    };
-                    if open {
-                        entity.remove::<Collapsed>();
-                    } else {
-                        entity.insert(Collapsed);
-                    }
-                },
-            });
-
-            drop_line(ui, entity, drag::At::After);
+            },
+            body: move |ui: &mut BevyUi| {
+                ui.elem(elem!(
+                    Frame,
+                    width = percent(100),
+                    direction = FlexDirection::Column
+                ))
+                .watch(
+                    component_changed_on::<Children>(entity),
+                    move |ui| {
+                        listing(ui, children_of(ui.world, entity));
+                    },
+                );
+            },
+            // Read off the subject's own entity, not this row's node.
+            // The row rebuilds fresh on a reorder or a sibling
+            // added, but the entity, and `Collapsed` on it, does not.
+            // Nothing to clean up when a subject is deleted either.
+            // `Collapsed` goes with it.
+            open: ui.world.get::<Collapsed>(entity).is_none(),
+            on_toggle: move |world: &mut World, open: bool| {
+                let Ok(mut entity) = world.get_entity_mut(entity)
+                else {
+                    return;
+                };
+                if open {
+                    entity.remove::<Collapsed>();
+                } else {
+                    entity.insert(Collapsed);
+                }
+            },
         })
         .handle()
     }
@@ -389,16 +402,6 @@ fn highlight_changed(
                 .resource::<drag::Dragging>()
                 .shows(entity, drag::At::Into),
         )
-    })
-}
-
-/// Fires when whether a drop would land at `at` beside `entity` moves.
-fn drop_changed(
-    entity: Entity,
-    at: drag::At,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
-    value_changed(move |world, _| {
-        world.resource::<drag::Dragging>().shows(entity, at)
     })
 }
 
