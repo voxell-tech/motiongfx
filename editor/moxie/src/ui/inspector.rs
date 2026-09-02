@@ -6,7 +6,7 @@ use fynix::composer::Composer;
 use fynix::elem;
 use fynix::ui::ElementHandle;
 use moxie_ui::elements::{EntityInspector, Label, ScrollArea};
-use moxie_ui::reactive::{BevyHost, BevyUi, resource_changed};
+use moxie_ui::reactive::{BevyUi, FynixHost, resource_changed};
 
 use super::PANEL_PADDING;
 use crate::SelectedEntity;
@@ -14,13 +14,13 @@ use crate::SelectedEntity;
 /// The inspector panel, as kernel nodes.
 pub(super) struct InspectorPanel;
 
-impl Composer<BevyHost> for InspectorPanel {
+impl Composer<FynixHost> for InspectorPanel {
     type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, ScrollArea> {
+    ) -> ElementHandle<FynixHost, ScrollArea> {
         ui.elem(elem!(
             ScrollArea,
             width = percent(100),

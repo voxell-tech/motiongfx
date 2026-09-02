@@ -23,7 +23,7 @@ use super::{Field, FieldRow, ReflectInspect, enums};
 use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
 use crate::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use crate::icons;
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::{BevyUi, FynixHost};
 
 /// Which of an inspected entity's sections were folded shut, keyed by
 /// component and path. A section absent here is open. Goes when the
@@ -249,7 +249,7 @@ pub(crate) fn single_value(
 /// touched the component.
 fn shape_changed(
     field: Field,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
     let mut seen_tick: Option<Tick> = None;
     let mut seen_shape: Option<Vec<Entry>> = None;
     move |WorldNodeRef { world, .. }| {
@@ -276,13 +276,13 @@ pub struct InspectorFields {
     pub depth: u32,
 }
 
-impl Composer<BevyHost> for InspectorFields {
+impl Composer<FynixHost> for InspectorFields {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let walked = self.root.clone();
         let depth = self.depth;
 
@@ -462,13 +462,13 @@ pub struct Section<F> {
     pub section: (Entity, TypeId, String),
 }
 
-impl<F: BuildFn<BevyHost>> Composer<BevyHost> for Section<F> {
+impl<F: BuildFn<FynixHost>> Composer<FynixHost> for Section<F> {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let Self {
             name,
             body,
@@ -509,7 +509,7 @@ impl<F: BuildFn<BevyHost>> Composer<BevyHost> for Section<F> {
             on_header: |_: ElementMut<
                 '_,
                 '_,
-                BevyHost,
+                FynixHost,
                 ButtonElem,
             >| {},
             body,

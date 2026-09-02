@@ -39,7 +39,7 @@ use crate::elements::{
 };
 use crate::icons;
 use crate::motion::MotionExt;
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::{BevyUi, FynixHost};
 use crate::theme::EditorTheme;
 
 /// Every variant of `value`'s type, if it is an enum at all.
@@ -161,13 +161,13 @@ pub(super) struct VariantPicker<'a> {
     pub pick: bool,
 }
 
-impl Composer<BevyHost> for VariantPicker<'_> {
+impl Composer<FynixHost> for VariantPicker<'_> {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let Self {
             source,
             variants,

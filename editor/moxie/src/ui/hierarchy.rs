@@ -27,7 +27,7 @@ use moxie_ui::elements::{
 };
 use moxie_ui::fold::{Foldable, FoldsOn};
 use moxie_ui::reactive::{
-    BevyHost, BevyUi, component_changed_on, value_changed,
+    BevyUi, FynixHost, component_changed_on, value_changed,
 };
 
 use super::PANEL_PADDING;
@@ -52,13 +52,13 @@ const BUTTON_CLEARANCE: f32 = 34.0;
 /// as a whole.
 pub(super) struct HierarchyPanel;
 
-impl Composer<BevyHost> for HierarchyPanel {
+impl Composer<FynixHost> for HierarchyPanel {
     type Element = Panel;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Panel> {
+    ) -> ElementHandle<FynixHost, Panel> {
         ui.elem(elem!(Panel))
             .with(|ui| {
                 ui.compose(Roots);
@@ -74,13 +74,13 @@ impl Composer<BevyHost> for HierarchyPanel {
 /// stays put however far the list is scrolled.
 struct AddButton;
 
-impl Composer<BevyHost> for AddButton {
+impl Composer<FynixHost> for AddButton {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             position = PositionType::Absolute,
@@ -109,13 +109,13 @@ impl Composer<BevyHost> for AddButton {
 /// The subjects themselves, scrolling under the button.
 struct Roots;
 
-impl Composer<BevyHost> for Roots {
+impl Composer<FynixHost> for Roots {
     type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, ScrollArea> {
+    ) -> ElementHandle<FynixHost, ScrollArea> {
         // Roots only: a branch minds itself. The query is kept
         // because this polls every flush, and the build (which
         // makes its own) runs far less often.
@@ -248,13 +248,13 @@ struct Subtree {
     entity: Entity,
 }
 
-impl Composer<BevyHost> for Subtree {
+impl Composer<FynixHost> for Subtree {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let entity = self.entity;
         let name = name_of(ui.world, entity);
         let text = ui.theme.text_primary;
@@ -282,7 +282,7 @@ impl Composer<BevyHost> for Subtree {
             on_header: move |mut header: ElementMut<
                 '_,
                 '_,
-                BevyHost,
+                FynixHost,
                 ButtonElem,
             >| {
                 drag::rows(&mut header, entity)
@@ -371,7 +371,7 @@ fn highlight(world: &World, entity: Entity, accent: Color) -> Color {
 /// Fires when either half of what [`highlight`] reads moves.
 fn highlight_changed(
     entity: Entity,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
     value_changed(move |world, _| {
         (
             world.resource::<SelectedEntity>().0 == Some(entity),
@@ -386,7 +386,7 @@ fn highlight_changed(
 fn drop_changed(
     entity: Entity,
     at: drag::At,
-) -> impl for<'w> FnMut(WorldNodeRef<'w, BevyHost>) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
     value_changed(move |world, _| {
         world.resource::<drag::Dragging>().shows(entity, at)
     })

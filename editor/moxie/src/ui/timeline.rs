@@ -33,7 +33,7 @@ use moxie_ui::elements::{
 use moxie_ui::fold::{CHEVRON_OPEN, CHEVRON_SHUT};
 use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{
-    BevyHost, BevyUi, resource_changed, value_changed,
+    BevyUi, FynixHost, resource_changed, value_changed,
 };
 
 /// Folded blocks, by path.
@@ -65,13 +65,13 @@ pub(crate) struct TrackViewport;
 /// `bsn!` tree.
 pub(super) struct TimelinePanel;
 
-impl Composer<BevyHost> for TimelinePanel {
+impl Composer<FynixHost> for TimelinePanel {
     type Element = Panel;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Panel> {
+    ) -> ElementHandle<FynixHost, Panel> {
         ui.elem(elem!(Panel))
             .with(|ui| {
                 ui.elem(elem!(
@@ -92,13 +92,13 @@ impl Composer<BevyHost> for TimelinePanel {
 /// Play/pause + time readout.
 struct ControlBar;
 
-impl Composer<BevyHost> for ControlBar {
+impl Composer<FynixHost> for ControlBar {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             width = percent(100),
@@ -167,13 +167,13 @@ impl Composer<BevyHost> for ControlBar {
 /// The time axis ruler above the tracks.
 struct TimeAxis;
 
-impl Composer<BevyHost> for TimeAxis {
+impl Composer<FynixHost> for TimeAxis {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             width = percent(100),
@@ -208,15 +208,15 @@ fn build_ticks(ui: &mut BevyUi) {
         let major = tick.label.is_some();
         ui.elem(elem!(
             TimeTick,
-            x = tick.x,
-            height = if major { MAJOR_TICK } else { MINOR_TICK },
+            x = px(tick.x),
+            height = px(if major { MAJOR_TICK } else { MINOR_TICK }),
             color = color.with_alpha(if major { 0.6 } else { 0.3 })
         ));
 
         if let Some(text) = tick.label {
             ui.elem(elem!(
                 TimeLabel,
-                x = tick.x,
+                x = px(tick.x),
                 label = val!(
                     Label,
                     text = text,
@@ -234,13 +234,13 @@ fn build_ticks(ui: &mut BevyUi) {
 /// [`ScrollArea`] neither scrolls nor clips it.
 struct TrackArea;
 
-impl Composer<BevyHost> for TrackArea {
+impl Composer<FynixHost> for TrackArea {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             width = percent(100),
@@ -258,9 +258,9 @@ impl Composer<BevyHost> for TrackArea {
                 |line| line.left(),
                 resource_changed::<MotionGfxManager>(),
                 |WorldNodeRef { world, node }| {
-                    world
+                    px(world
                         .resource::<TimelineView>()
-                        .x_from_time(current_time(world, node))
+                        .x_from_time(current_time(world, node)))
                 },
             );
         })
@@ -350,10 +350,10 @@ fn build_block_boxes(ui: &mut BevyUi) {
                         size = 10.0f32,
                         color = Some(theme.text_primary.with_alpha(0.8))
                     ),
-                    top = placed.y,
-                    left = placed.x,
-                    width = placed.w,
-                    height = placed.h,
+                    top = px(placed.y),
+                    left = px(placed.x),
+                    width = px(placed.w),
+                    height = px(placed.h),
                     background = theme.text_primary.with_alpha(0.04),
                     border = if is_selected {
                         theme.accent
@@ -445,10 +445,10 @@ fn build_block_boxes(ui: &mut BevyUi) {
                             theme.palette.blue.with_alpha(0.9)
                         })
                     ),
-                    top = placed.y,
-                    left = placed.x,
-                    width = placed.w,
-                    height = placed.h,
+                    top = px(placed.y),
+                    left = px(placed.x),
+                    width = px(placed.w),
+                    height = px(placed.h),
                     fill = fill,
                     border = if is_selected {
                         theme.accent

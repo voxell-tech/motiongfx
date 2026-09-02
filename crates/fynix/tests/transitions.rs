@@ -4,8 +4,10 @@
 
 mod common;
 
-use common::{Backend, Interact, Label, LabelCursor, TestAim, World};
-use fynix::element::{ElementVisual, element};
+use common::{
+    FynixHost, Interact, Label, LabelCursor, TestAim, World,
+};
+use fynix::element::element;
 use fynix::host::Host;
 use fynix::style::Style;
 use fynix::transition::Transition;
@@ -15,7 +17,7 @@ use motiongfx_interp::ease;
 use motiongfx_interp::interpolation::Interpolation;
 
 /// Fires on the first flush and never again.
-fn once() -> impl for<'w> FnMut(WorldNodeRef<'w, Backend>) -> bool
+fn once() -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
 + Send
 + Sync
 + 'static {
@@ -24,14 +26,14 @@ fn once() -> impl for<'w> FnMut(WorldNodeRef<'w, Backend>) -> bool
 }
 
 fn only_child(world: &World, root: usize) -> usize {
-    let children = Backend::children(world, root);
+    let children = FynixHost::children(world, root);
     assert_eq!(children.len(), 1, "one element was built");
     children[0]
 }
 
 /// A label whose size travels over a second, and the world it is in.
 /// The delta is a quarter of that, so a flush is a quarter of the way.
-fn travelling() -> (World, usize, Fynix<Backend>, usize) {
+fn travelling() -> (World, usize, Fynix<FynixHost>, usize) {
     let (mut world, root) = World::with_root();
     world.delta = 0.25;
     let mut kernel = Fynix::new(());
@@ -150,60 +152,46 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
     /// element's own business - `Grower` leaves a slot for a style to
     /// fill, and wires the lane itself once it has a node to put it
     /// on.
-    #[element]
+    #[element(build = Self::build)]
     pub struct Grower {
+        #[elem(patch = write_text)]
         #[default(String::from("Label"))]
         pub text: String,
+        #[elem(patch = write_size)]
         #[default(13)]
         pub size: u32,
         /// What a style asks this to grow to under the pointer, if
-        /// anything.
+        /// anything. Read once, when the lane is wired.
+        #[elem(ignore)]
         pub grows_to: Option<u32>,
     }
 
-    impl ElementVisual<Backend> for Grower {
-        fn build_fields(&self, build: &mut Build<Backend, Self>) {
-            let node = build.id();
-            build.world.node(node).text = self.text.clone();
-            build.world.node(node).size = self.size;
+    fn write_text(patch: &mut Patch<FynixHost>, text: &str) {
+        let node = patch.id();
+        patch.world.node(node).text = text.to_owned();
+    }
 
-            if let Some(target) = self.grows_to {
-                build
-                    .transition_from(
-                        |g| g.size(),
-                        self.size,
-                        Transition::secs(
-                            1.0,
-                            <u32 as Interpolation<()>>::interp,
-                        ),
-                    )
-                    .aim_on(
-                        Interact::Enter,
-                        |g| g.size(),
-                        Some(target),
-                    )
-                    .aim_on(Interact::Leave, |g| g.size(), None);
-            }
-        }
+    fn write_size(patch: &mut Patch<FynixHost>, size: &u32) {
+        let node = patch.id();
+        patch.world.node(node).size = *size;
+    }
 
-        fn patch_fields(
-            &self,
-            patch: &mut Patch<Backend>,
-            field: GrowerField,
-        ) {
-            let node = patch.id();
-            let world = &mut *patch.world;
-
-            match field {
-                GrowerField::Text => {
-                    world.node(node).text = self.text.clone()
-                }
-                GrowerField::Size => {
-                    world.node(node).size = self.size
-                }
-                // Read once, at build - see build_fields.
-                GrowerField::GrowsTo => {}
-            }
+    impl Grower {
+        fn build(&self, build: &mut Build<FynixHost, Self>) {
+            let Some(target) = self.grows_to else {
+                return;
+            };
+            build
+                .transition_from(
+                    |g| g.size(),
+                    self.size,
+                    Transition::secs(
+                        1.0,
+                        <u32 as Interpolation<()>>::interp,
+                    ),
+                )
+                .aim_on(Interact::Enter, |g| g.size(), Some(target))
+                .aim_on(Interact::Leave, |g| g.size(), None);
         }
     }
 
@@ -212,7 +200,7 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
     struct Grows;
 
     impl Style for Grows {
-        type Host = Backend;
+        type Host = FynixHost;
         type Element = Grower;
 
         fn apply(self, grower: &mut Grower, _theme: &()) {
@@ -254,7 +242,7 @@ fn lane_goes_with_the_node_it_was_declared_on() {
 
     assert_eq!(kernel.lane_len(), 1);
 
-    Backend::despawn(&mut world, label);
+    FynixHost::despawn(&mut world, label);
     kernel.flush(&mut world);
 
     assert_eq!(kernel.lane_len(), 0);

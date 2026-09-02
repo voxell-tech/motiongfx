@@ -11,6 +11,7 @@
 
 use core::marker::PhantomData;
 
+use crate::element::ElementBase;
 use crate::host::Host;
 
 /// A look, as a mutation of an element that already has its defaults.
@@ -21,6 +22,7 @@ use crate::host::Host;
 /// ```
 /// use fynix::style::{Style, StyledElem};
 /// # use fynix::host::Host;
+/// # use fynix::element::ElementBase;
 /// # pub struct Backend;
 /// # impl Host for Backend {
 /// #     type Node = usize;
@@ -35,6 +37,10 @@ use crate::host::Host;
 ///
 /// #[derive(Default)]
 /// pub struct Label { size: u32, weight: u32 }
+///
+/// impl ElementBase<Backend> for Label {
+///     fn base(_theme: &()) -> Self { Self::default() }
+/// }
 ///
 /// pub struct Heading { level: u32 }
 ///
@@ -61,7 +67,7 @@ pub trait Style {
     /// The backend it moves on. A style that only writes fields moves
     /// on all of them and says so with a parameter of its own.
     type Host: Host;
-    type Element: Default;
+    type Element: ElementBase<Self::Host>;
 
     /// Called once, so it consumes rather than borrows: a style
     /// meant to be applied more than once is implemented for `&Self`.
@@ -98,7 +104,8 @@ impl<S: Style> StyledElem for S {
     type Element = S::Element;
 
     fn create(self, theme: &<S::Host as Host>::Theme) -> S::Element {
-        let mut elem = S::Element::default();
+        let mut elem =
+            <S::Element as ElementBase<S::Host>>::base(theme);
         self.apply(&mut elem, theme);
 
         elem
@@ -186,7 +193,7 @@ impl<H, E> Default for NoStyle<H, E> {
     }
 }
 
-impl<H: Host, E: Default> Style for NoStyle<H, E> {
+impl<H: Host, E: ElementBase<H>> Style for NoStyle<H, E> {
     type Host = H;
     type Element = E;
 }

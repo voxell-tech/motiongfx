@@ -49,8 +49,7 @@ impl<'a, H: Host> Ui<'a, H> {
     }
 
     /// The node these children are being built under, or the
-    /// element's own node from inside
-    /// [`build_fields`](crate::element::ElementVisual::build_fields).
+    /// element's own node from inside a `#[element(build = ...)]` hook.
     pub fn parent(&self) -> H::Node {
         self.parent
     }
@@ -119,10 +118,11 @@ impl<'a, H: Host> Ui<'a, H> {
     }
 }
 
-/// What [`build_fields`](crate::element::ElementVisual::build_fields)
-/// writes through: this element's own node, `world`, and `theme`.
+/// What a `#[element(build = ...)]` hook writes through: this
+/// element's own node, `world`, `theme`, and the store and lanes for
+/// wiring children and transitions.
 ///
-/// Not [`ElementMut`]: a node running its own `build_fields` has not
+/// Not [`ElementMut`]: a node running its own build hook has not
 /// finished existing yet, so `bind`/`watch`/`with` would not mean
 /// what they mean anywhere else.
 pub struct Build<'a, H: Host, E: Element<H>> {
@@ -193,10 +193,10 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
     }
 }
 
-/// What [`patch_fields`](crate::element::ElementVisual::patch_fields)
-/// writes through: the node a change landed on, `world`, and `theme`.
+/// What a `#[elem(patch = ...)]` writer writes through: the node the
+/// value lands on, `world`, and `theme`.
 ///
-/// No [`Store`]/[`Lanes`] here. A patch writes fields; it never wires
+/// No [`Store`]/[`Lanes`] here. A patch writes a value; it never wires
 /// a child or a lane.
 pub struct Patch<'a, H: Host> {
     pub world: &'a mut H::World,
@@ -378,10 +378,10 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         self
     }
 
-    /// As [`transition`](Self::transition), for
-    /// [`build_fields`](crate::element::ElementVisual::build_fields):
-    /// the element has no entry in the kernel's table yet, so `base`
-    /// is passed in rather than read back.
+    /// As [`transition`](Self::transition), for a
+    /// `#[element(build = ...)]` hook: the element has no entry in the
+    /// kernel's table yet, so `base` is passed in rather than read
+    /// back.
     pub fn transition_from<P>(
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,

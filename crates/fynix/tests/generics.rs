@@ -3,15 +3,13 @@
 
 mod common;
 
-use common::{Label, LabelCursor, World};
-use fynix::element::{Element, ElementVisual, Fields, element};
+use common::{FynixHost, Label, LabelCursor, World};
+use fynix::element::{Element, Fields, element};
 use fynix::records::Records;
-use fynix::ui::{Build, Patch};
+use fynix::ui::Patch;
 
-/// `Default`, so an element generic over its look has one too.
-/// `Send`/`Sync` too, since `Themed<L>` is an `Element`, and
-/// `build_fields` takes one by `Build`, which asks the same of every
-/// element it names.
+/// `Default`, so an element generic over its look starts from one.
+/// `Send`/`Sync` too, since `Themed<L>` is an `Element`.
 pub trait Look: Default + Send + Sync + 'static {
     fn glyph(&self) -> char;
 }
@@ -29,31 +27,13 @@ impl Look for Dark {
 pub struct Themed<L: Look> {
     #[elem(child)]
     pub label: Label,
+    #[elem(patch = write_look::<L>)]
     pub look: L,
 }
 
-impl<L: Look> ElementVisual<common::Backend> for Themed<L> {
-    fn build_fields(&self, build: &mut Build<common::Backend, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        world.node(node).glyph = self.look.glyph();
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<common::Backend>,
-        field: ThemedField,
-    ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        match field {
-            ThemedField::Look => {
-                world.node(node).glyph = self.look.glyph()
-            }
-        }
-    }
+fn write_look<L: Look>(patch: &mut Patch<FynixHost>, look: &L) {
+    let node = patch.id();
+    patch.world.node(node).glyph = look.glyph();
 }
 
 #[test]

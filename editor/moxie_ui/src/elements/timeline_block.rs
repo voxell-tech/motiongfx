@@ -1,13 +1,13 @@
-use crate::reactive::BevyHost;
+use crate::reactive::FynixBuild;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::{ElementVisual, element};
-use fynix::ui::{Build, Patch};
+use fynix::element::element;
 
 use super::Label;
+use super::patch;
 
 /// A block's header box: an absolutely positioned, bordered container
 /// with its label pinned to its top-left corner, left padded to leave
@@ -22,68 +22,46 @@ use super::Label;
 /// Clickable exactly like [`TimelineAction`](super::TimelineAction):
 /// it carries the same [`ButtonBehavior`], so a click fires
 /// `Activate` the caller can select it on.
-#[element]
+#[element(build = Self::build)]
 pub struct TimelineBlock {
     #[elem(child)]
     pub label: Label,
-    pub top: f32,
-    pub left: f32,
-    pub width: f32,
-    pub height: f32,
+    #[elem(patch = patch::top)]
+    pub top: Val,
+    #[elem(patch = patch::left)]
+    pub left: Val,
+    #[elem(patch = patch::width)]
+    pub width: Val,
+    #[elem(patch = patch::height)]
+    pub height: Val,
+    #[elem(patch = patch::background)]
     #[default(Color::NONE)]
     pub background: Color,
+    #[elem(patch = patch::border_color)]
     #[default(Color::NONE)]
     pub border: Color,
 }
 
 impl TimelineBlock {
-    fn node(&self) -> Node {
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(self.top),
-            left: px(self.left),
-            width: px(self.width),
-            height: px(self.height),
-            // The label sits in normal flow rather than absolute, so
-            // this padding alone is what pins it to the top-left
-            // corner - left wide enough to clear the chevron drawn
-            // over it.
-            padding: UiRect::new(px(16), Val::ZERO, px(2), Val::ZERO),
-            border: UiRect::all(px(1)),
-            ..default()
-        }
-    }
-}
-
-impl ElementVisual<BevyHost> for TimelineBlock {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
-            self.node(),
-            BackgroundColor(self.background),
-            BorderColor::all(self.border),
+            Node {
+                position_type: PositionType::Absolute,
+                // The label sits in normal flow rather than absolute,
+                // so this padding alone is what pins it to the
+                // top-left corner - left wide enough to clear the
+                // chevron drawn over it.
+                padding: UiRect::new(
+                    px(16),
+                    Val::ZERO,
+                    px(2),
+                    Val::ZERO,
+                ),
+                border: UiRect::all(px(1)),
+                ..default()
+            },
             ButtonBehavior,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: TimelineBlockField,
-    ) {
-        match field {
-            TimelineBlockField::Top
-            | TimelineBlockField::Left
-            | TimelineBlockField::Width
-            | TimelineBlockField::Height => {
-                patch.insert(self.node());
-            }
-            TimelineBlockField::Background => {
-                patch.insert(BackgroundColor(self.background));
-            }
-            TimelineBlockField::Border => {
-                patch.insert(BorderColor::all(self.border));
-            }
-        }
     }
 }

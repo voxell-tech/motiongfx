@@ -1,14 +1,113 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Field, parse_quote};
+use syn::{
+    Data, DeriveInput, Expr, Field, Path, parse_quote,
+    punctuated::Punctuated,
+};
 
 use crate::common::{
     crate_path, generics, named_fields, option_inner, pascal_case,
     snake_case,
 };
 
-pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
+/// What `#[element(...)]` carries: the backend to build against and an
+/// optional structural hook.
+///
+/// `build` holds whatever expression `#[element(build = ...)]` names -
+/// a free `fn(&Self, &mut Build)`, or `Self::build` for the element's
+/// own inherent method.
+pub struct ElementArgs {
+    pub host: Path,
+    pub build: Option<Expr>,
+}
+
+impl ElementArgs {
+    pub fn parse(args: TokenStream2) -> syn::Result<Self> {
+        let mut host: Option<Path> = None;
+        let mut build: Option<Expr> = None;
+
+        if !args.is_empty() {
+            let parser = syn::meta::parser(|meta| {
+                if meta.path.is_ident("host") {
+                    host = Some(meta.value()?.parse()?);
+                    Ok(())
+                } else if meta.path.is_ident("build") {
+                    build = Some(meta.value()?.parse()?);
+                    Ok(())
+                } else {
+                    Err(meta.error("expected `host` or `build`"))
+                }
+            });
+            syn::parse::Parser::parse2(parser, args)?;
+        }
+
+        Ok(Self {
+            host: host
+                .unwrap_or_else(|| parse_quote!(crate::FynixHost)),
+            build,
+        })
+    }
+}
+
+/// What `#[elem(...)]` says about one field.
+#[derive(Default)]
+struct FieldConfig {
+    child: bool,
+    ignore: bool,
+    patch: Option<Expr>,
+    default: Option<Expr>,
+}
+
+fn field_config(field: &Field) -> syn::Result<FieldConfig> {
+    let mut cfg = FieldConfig::default();
+
+    for attr in &field.attrs {
+        if !attr.path().is_ident("elem") {
+            continue;
+        }
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("child") {
+                cfg.child = true;
+            } else if meta.path.is_ident("ignore") {
+                cfg.ignore = true;
+            } else if meta.path.is_ident("patch") {
+                cfg.patch = Some(meta.value()?.parse()?);
+            } else if meta.path.is_ident("default") {
+                cfg.default = Some(meta.value()?.parse()?);
+            } else {
+                return Err(meta.error(
+                    "expected `child`, `ignore`, `patch = ...`, or \
+                     `default = ...`",
+                ));
+            }
+            Ok(())
+        })?;
+    }
+
+    if cfg.child && (cfg.ignore || cfg.patch.is_some()) {
+        return Err(syn::Error::new_spanned(
+            field,
+            "`#[elem(child)]` takes no other directive",
+        ));
+    }
+    if cfg.ignore && cfg.patch.is_some() {
+        return Err(syn::Error::new_spanned(
+            field,
+            "`#[elem(ignore)]` and `#[elem(patch)]` are exclusive",
+        ));
+    }
+
+    Ok(cfg)
+}
+
+pub fn expand(
+    args: TokenStream2,
+    ast: &DeriveInput,
+) -> syn::Result<TokenStream2> {
     let root = crate_path();
+    let opts = ElementArgs::parse(args)?;
+    let host = &opts.host;
+
     let name = &ast.ident;
     let fields = named_fields(ast, "element")?;
 
@@ -21,27 +120,39 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
     let path_mod = format_ident!("{}_path", snake_case(name));
     let field_enum = format_ident!("{}Field", name);
 
+    let host_node = quote!(<#host as #root::host::Host>::Node);
+    let host_world = quote!(<#host as #root::host::Host>::World);
+    let host_theme = quote!(<#host as #root::host::Host>::Theme);
+
     let mut variants = Vec::new();
     let mut ids = Vec::new();
     let mut lookups = Vec::new();
 
     let mut elem_bounds = Vec::new();
     let mut builds = Vec::new();
-    let mut patches = Vec::new();
+    let mut child_patches = Vec::new();
+    let mut own_patches = Vec::new();
+    let mut field_writes = Vec::new();
     let mut despawns = Vec::new();
+    let mut default_overrides = Vec::new();
 
     for field in fields.iter() {
         let field_name =
             field.ident.as_ref().expect("named fields checked above");
+        let cfg = field_config(field)?;
+
         let marker = quote!(#path_mod::#field_name #ty);
         let id = quote!(<#marker as #root::lenz::FieldPath>::id());
 
-        // A field marked `#[elem(child)]` is an element in its own
-        // right. It is absent from the enum, because naming it there
-        // would offer a second, redundant way in.
-        if is_child(field)? {
-            // `Option<T>` builds nothing when absent, so the store
-            // simply has no entry and the walk stops there.
+        if let Some(default) = &cfg.default {
+            default_overrides
+                .push(quote!(__elem.#field_name = #default;));
+        }
+
+        // A `#[elem(child)]` field is an element in its own right. It
+        // is absent from the enum: naming it there would offer a
+        // second, redundant way in.
+        if cfg.child {
             let (elem_ty, elem) = match option_inner(&field.ty) {
                 Some(inner) => {
                     (inner, quote!(self.#field_name.as_ref()))
@@ -52,13 +163,13 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 ),
             };
 
-            elem_bounds
-                .push(quote!(#elem_ty: #root::element::Element<H>));
+            elem_bounds.push(
+                quote!(#elem_ty: #root::element::Element<#host>),
+            );
 
-            // Fully qualified throughout, so a user of the derive
-            // need not have our traits in scope.
-            let as_elem =
-                quote!(<#elem_ty as #root::element::Element<H>>);
+            let as_elem = quote!(
+                <#elem_ty as #root::element::Element<#host>>
+            );
 
             builds.push(quote! {
                 if let ::core::option::Option::Some(elem) = #elem {
@@ -69,7 +180,7 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 }
             });
 
-            patches.push(quote! {
+            child_patches.push(quote! {
                 if *head == #id {
                     if let (
                         ::core::option::Option::Some(elem),
@@ -97,19 +208,23 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             continue;
         }
 
-        // A field marked `#[elem(ignore)]` only ever changes at
-        // build. Leaving it out of the enum the same way `child` does
-        // makes that true rather than merely asked for: nothing can
-        // name it to walk a path there, so a stray `.bind()` writes
-        // the field and has no way to tell the backend. The struct is
-        // re-emitted with `#[lenz(ignore)]` in its place, so the
-        // cursor has no `.field()` for it either.
-        if is_ignore(field)? {
+        // A `#[elem(ignore)]` field only ever changes at build. It is
+        // left out of the enum and, through `#[lenz(ignore)]` on the
+        // re-emitted struct, out of the cursor: nothing can name a
+        // path there.
+        if cfg.ignore {
             continue;
         }
 
-        let variant = format_ident!("{}", pascal_case(field_name));
+        let Some(patch) = &cfg.patch else {
+            return Err(syn::Error::new_spanned(
+                field,
+                "an own field needs `#[elem(patch = ...)]` or \
+                 `#[elem(ignore)]`",
+            ));
+        };
 
+        let variant = format_ident!("{}", pascal_case(field_name));
         variants.push(quote!(#variant,));
         ids.push(quote!(#field_enum::#variant => #id,));
         lookups.push(quote! {
@@ -119,9 +234,40 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                 );
             }
         });
+
+        field_writes.push(quote! {
+            {
+                let mut __patch = #root::ui::Patch::new(
+                    world, node, theme,
+                );
+                (#patch)(&mut __patch, &self.#field_name);
+            }
+        });
+
+        own_patches.push(quote! {
+            if *head == #id {
+                let mut __patch = #root::ui::Patch::new(
+                    world, node, theme,
+                );
+                (#patch)(&mut __patch, &self.#field_name);
+                return;
+            }
+        });
     }
 
     let subject = rewrite_struct(ast, &root)?;
+
+    let build_hook = opts.build.map(|build_fn| {
+        quote! {
+            {
+                let (__lanes, __store) = records.build_parts();
+                let mut __draw = #root::ui::Build::new(
+                    world, node, __lanes, __store, theme,
+                );
+                (#build_fn)(self, &mut __draw);
+            }
+        }
+    });
 
     Ok(quote! {
         #subject
@@ -148,44 +294,52 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
             }
         }
 
-        impl<H, #decl> #root::element::Element<H> for #name #ty
+        impl<#decl> #root::element::ElementBase<#host> for #name #ty
         where
-            H: #root::host::Host,
-            Self: #root::element::ElementVisual<H>
-                + ::core::marker::Send
-                + ::core::marker::Sync,
+            Self: ::core::default::Default,
+            #predicates
+        {
+            fn base(theme: &#host_theme) -> Self {
+                let _ = theme;
+                let mut __elem =
+                    <Self as ::core::default::Default>::default();
+                #(#default_overrides)*
+                __elem
+            }
+        }
+
+        impl<#decl> #root::element::Element<#host> for #name #ty
+        where
+            Self: ::core::marker::Send + ::core::marker::Sync,
             #(#elem_bounds,)*
             #predicates
         {
             fn build(
                 &self,
-                world: &mut H::World,
-                parent: H::Node,
-                records: &mut #root::records::Records<H>,
-                theme: &H::Theme,
-            ) -> H::Node {
-                let node = <H as #root::host::Host>::spawn(
-                    world, parent,
-                );
+                world: &mut #host_world,
+                parent: #host_node,
+                records: &mut #root::records::Records<#host>,
+                theme: &#host_theme,
+            ) -> #host_node {
+                let node =
+                    <#host as #root::host::Host>::spawn(world, parent);
 
                 #(#builds)*
 
-                let (lanes, store) = records.build_parts();
-                let mut draw = #root::ui::Build::new(
-                    world, node, lanes, store, theme,
-                );
-                <Self as #root::element::ElementVisual<H>>
-                    ::build_fields(self, &mut draw);
+                #build_hook
+
+                #(#field_writes)*
+
                 node
             }
 
             fn patch(
                 &self,
-                world: &mut H::World,
-                node: H::Node,
+                world: &mut #host_world,
+                node: #host_node,
                 path: &[#root::lenz::FieldId],
-                store: &mut #root::store::Store<H>,
-                theme: &H::Theme,
+                store: &mut #root::store::Store<#host>,
+                theme: &#host_theme,
             ) {
                 let ::core::option::Option::Some((head, rest)) =
                     path.split_first()
@@ -193,40 +347,33 @@ pub fn expand(ast: &DeriveInput) -> syn::Result<TokenStream2> {
                     return;
                 };
 
-                #(#patches)*
+                #(#child_patches)*
 
-                // Whatever else the walk had in mind, this element
-                // draws the field whole.
+                // An own field is drawn whole, whatever else the walk
+                // had in mind.
                 let _ = rest;
 
-                if let ::core::option::Option::Some(field) =
-                    <Self as #root::element::Fields>::field(*head)
-                {
-                    let mut patch =
-                        #root::ui::Patch::new(world, node, theme);
-                    <Self as #root::element::ElementVisual<H>>
-                        ::patch_fields(self, &mut patch, field);
-                }
+                #(#own_patches)*
             }
 
             fn despawn(
                 &self,
-                world: &mut H::World,
-                node: H::Node,
-                store: &mut #root::store::Store<H>,
+                world: &mut #host_world,
+                node: #host_node,
+                store: &mut #root::store::Store<#host>,
             ) {
                 #(#despawns)*
-                <H as #root::host::Host>::despawn(world, node);
+                <#host as #root::host::Host>::despawn(world, node);
             }
         }
     })
 }
 
-/// The struct itself, re-emitted for the field/patch system to derive
-/// off: `#[elem(child)]` markers dropped, `#[elem(ignore)]` swapped
-/// for `#[lenz(ignore)]`, and `Lenz`/`OverrideDefault` derived - the
-/// dispatch below names a field by the id `Lenz` gives it, and an
-/// element's own fields almost always want `#[default(...)]`.
+/// The struct itself, re-emitted for the path system to derive off:
+/// `#[elem(...)]` markers dropped, `#[elem(ignore)]` swapped for
+/// `#[lenz(ignore)]`, and `Lenz`/`OverrideDefault` derived - the
+/// dispatch names a field by the id `Lenz` gives it, and `base` starts
+/// from the `Default` `OverrideDefault` writes.
 fn rewrite_struct(
     ast: &DeriveInput,
     root: &TokenStream2,
@@ -246,50 +393,19 @@ fn rewrite_struct(
     };
 
     for field in &mut data.fields {
-        let mut kept = Vec::with_capacity(field.attrs.len());
+        let cfg = field_config(field)?;
+        let mut kept: Punctuated<syn::Attribute, syn::Token![,]> =
+            Punctuated::new();
         for attr in field.attrs.drain(..) {
             if !attr.path().is_ident("elem") {
                 kept.push(attr);
-                continue;
-            }
-            match attr.parse_args::<syn::Ident>() {
-                Ok(directive) if directive == "child" => {}
-                Ok(directive) if directive == "ignore" => {
-                    kept.push(parse_quote!(#[lenz(ignore)]));
-                }
-                _ => {
-                    return Err(syn::Error::new_spanned(
-                        attr,
-                        "expected `#[elem(child)]` or \
-                         `#[elem(ignore)]`",
-                    ));
-                }
             }
         }
-        field.attrs = kept;
+        field.attrs = kept.into_iter().collect();
+        if cfg.ignore {
+            field.attrs.push(parse_quote!(#[lenz(ignore)]));
+        }
     }
 
     Ok(out)
-}
-
-/// What `#[elem(...)]` says about this field: `child` for one that is
-/// an element in its own right, `ignore` for one that only ever
-/// changes at build.
-fn elem_directive(field: &Field) -> syn::Result<Option<syn::Ident>> {
-    let Some(attr) =
-        field.attrs.iter().find(|attr| attr.path().is_ident("elem"))
-    else {
-        return Ok(None);
-    };
-    attr.parse_args::<syn::Ident>().map(Some)
-}
-
-fn is_child(field: &Field) -> syn::Result<bool> {
-    Ok(elem_directive(field)?
-        .is_some_and(|directive| directive == "child"))
-}
-
-fn is_ignore(field: &Field) -> syn::Result<bool> {
-    Ok(elem_directive(field)?
-        .is_some_and(|directive| directive == "ignore"))
 }

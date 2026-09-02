@@ -3,7 +3,7 @@
 
 mod common;
 
-use common::{Backend, Label, LabelCursor, World};
+use common::{FynixHost, Label, LabelCursor, World};
 use fynix::Fynix;
 use fynix::WorldNodeRef;
 use fynix::elem;
@@ -11,7 +11,7 @@ use fynix::host::Host;
 
 /// Fires on the first call and never again, the way a bootstrap
 /// build does. A stateful predicate consumes its own signal.
-fn once() -> impl for<'w> FnMut(WorldNodeRef<'w, Backend>) -> bool
+fn once() -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
 + Send
 + Sync
 + 'static {
@@ -21,7 +21,7 @@ fn once() -> impl for<'w> FnMut(WorldNodeRef<'w, Backend>) -> bool
 
 /// The one child a watcher built under `root`.
 fn only_child(world: &World, root: usize) -> usize {
-    let children = Backend::children(world, root);
+    let children = FynixHost::children(world, root);
     assert_eq!(children.len(), 1, "one element was built");
     children[0]
 }
@@ -64,11 +64,11 @@ fn watch_builds_nothing_when_its_predicate_never_fires() {
         &mut world,
     );
 
-    assert!(Backend::children(&world, root).is_empty());
+    assert!(FynixHost::children(&world, root).is_empty());
 
     kernel.flush(&mut world);
 
-    assert!(Backend::children(&world, root).is_empty());
+    assert!(FynixHost::children(&world, root).is_empty());
 }
 
 #[test]
@@ -145,7 +145,7 @@ fn rebuild_replaces_the_children() {
     // set below.
     kernel.watch(
         root,
-        |WorldNodeRef { world, .. }: WorldNodeRef<Backend>| {
+        |WorldNodeRef { world, .. }: WorldNodeRef<FynixHost>| {
             world.source.changed
         },
         |ui| {
@@ -153,7 +153,7 @@ fn rebuild_replaces_the_children() {
         },
         &mut world,
     );
-    assert!(Backend::children(&world, root).is_empty());
+    assert!(FynixHost::children(&world, root).is_empty());
 
     world.source.changed = true;
     kernel.flush(&mut world);
@@ -165,7 +165,7 @@ fn rebuild_replaces_the_children() {
     // The old subtree went, rather than a second one appearing
     // beside it.
     assert_ne!(first, second, "rebuilt, not added to");
-    assert!(!Backend::exists(&world, first));
+    assert!(!FynixHost::exists(&world, first));
     assert_eq!(world.get(second).text, "Label");
 }
 
@@ -193,14 +193,14 @@ fn dead_node_is_not_patched() {
 
     // Despawned behind the kernel's back. A binding kept against a
     // dead handle would patch a node the host has already freed.
-    Backend::despawn(&mut world, label);
+    FynixHost::despawn(&mut world, label);
 
     world.source.text = "Saved".into();
     world.source.changed = true;
     kernel.flush(&mut world);
 
-    assert!(!Backend::exists(&world, label));
-    assert!(Backend::exists(&world, root));
+    assert!(!FynixHost::exists(&world, label));
+    assert!(FynixHost::exists(&world, root));
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn swept_node_takes_its_element_with_it() {
     // set below.
     kernel.watch(
         root,
-        |WorldNodeRef { world, .. }: WorldNodeRef<Backend>| {
+        |WorldNodeRef { world, .. }: WorldNodeRef<FynixHost>| {
             world.source.changed
         },
         |ui| {
@@ -235,7 +235,7 @@ fn swept_node_takes_its_element_with_it() {
     // Nothing to rebuild it now, so the last one goes too.
     world.source.changed = false;
     let last = only_child(&world, root);
-    Backend::despawn(&mut world, last);
+    FynixHost::despawn(&mut world, last);
     kernel.flush(&mut world);
 
     assert_eq!(kernel.element_len(), 0);
@@ -248,7 +248,7 @@ fn dead_root_takes_its_watcher_with_it() {
 
     // Under the root, so the watcher's own root can be despawned
     // without taking the whole world with it.
-    let branch = Backend::spawn(&mut world, root);
+    let branch = FynixHost::spawn(&mut world, root);
 
     kernel.watch(
         branch,
@@ -263,7 +263,7 @@ fn dead_root_takes_its_watcher_with_it() {
     kernel.flush(&mut world);
     assert_eq!(kernel.watcher_len(), 1, "its root is still there");
 
-    Backend::despawn(&mut world, branch);
+    FynixHost::despawn(&mut world, branch);
     kernel.flush(&mut world);
 
     assert_eq!(kernel.watcher_len(), 0, "nothing left to rebuild");
@@ -292,7 +292,7 @@ fn dead_node_takes_its_bindings_with_it() {
     let label = only_child(&world, root);
     assert_eq!(kernel.binding_len(), 1);
 
-    Backend::despawn(&mut world, label);
+    FynixHost::despawn(&mut world, label);
     kernel.flush(&mut world);
 
     assert_eq!(kernel.binding_len(), 0, "the binding went with it");
