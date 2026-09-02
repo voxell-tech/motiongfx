@@ -21,6 +21,7 @@ mod scene;
 mod time_axis;
 mod ui;
 mod view;
+mod zoom;
 
 use core::time::Duration;
 use std::path::PathBuf;
@@ -80,13 +81,91 @@ pub(crate) fn ensure_scene_root(
 #[reflect(Component, Default, Clone)]
 pub struct SceneRoot;
 
-/// Pixels per second of animation (horizontal zoom).
-pub(crate) const PIXELS_PER_SECOND: f32 = 160.0;
+/// Zoom range, spanning the scales the time axis is exercised at.
+const MIN_PX_PER_SECOND: f32 = 1.0;
+const MAX_PX_PER_SECOND: f32 = 20_000.0;
 
-/// Horizontal pixel offset for a point `t` into the timeline.
-#[inline]
-pub(crate) fn px_for(t: Duration) -> f32 {
-    t.as_secs_f32() * PIXELS_PER_SECOND
+/// Maps animation time to timeline pixels.
+#[derive(Resource, Clone, Copy, PartialEq)]
+pub(crate) struct TimelineView {
+    px_per_second: f32,
+    /// Where the timeline's left edge sits.
+    offset: Duration,
+}
+
+impl Default for TimelineView {
+    fn default() -> Self {
+        Self {
+            px_per_second: 160.0,
+            offset: Duration::ZERO,
+        }
+    }
+}
+
+impl TimelineView {
+    /// Horizontal pixel offset for a point `t` into the timeline.
+    #[inline]
+    pub(crate) fn x_from_time(&self, t: Duration) -> f32 {
+        let secs = if t >= self.offset {
+            (t - self.offset).as_secs_f32()
+        } else {
+            -(self.offset - t).as_secs_f32()
+        };
+        secs * self.px_per_second
+    }
+
+    /// Point into the timeline at `x`, clamped to a non-negative
+    /// time.
+    #[inline]
+    pub(crate) fn time_from_x(&self, x: f32) -> Duration {
+        let secs = x / self.px_per_second;
+        if !secs.is_finite() {
+            return self.offset;
+        }
+        let step = Duration::from_secs_f32(secs.abs());
+        if secs >= 0.0 {
+            self.offset.saturating_add(step)
+        } else {
+            self.offset.saturating_sub(step)
+        }
+    }
+
+    /// Scale the zoom by `factor` and leave `anchor_time` sitting at
+    /// `anchor_x`, saturating at the ends of the range.
+    pub(crate) fn zoom_to(
+        &mut self,
+        anchor_x: f32,
+        anchor_time: Duration,
+        factor: f32,
+    ) {
+        if !(factor.is_finite() && factor > 0.0) {
+            return;
+        }
+        self.px_per_second = (self.px_per_second * factor)
+            .clamp(MIN_PX_PER_SECOND, MAX_PX_PER_SECOND);
+        // Put the anchor at the left edge, then push it back to
+        // `anchor_x`.
+        self.offset = anchor_time;
+        self.pan_by(anchor_x);
+    }
+
+    /// Slide the view `delta_x` pixels along the timeline, stopping at
+    /// the start.
+    pub(crate) fn pan_by(&mut self, delta_x: f32) {
+        self.offset = self.time_from_x(-delta_x);
+    }
+
+    /// Scale the view so a `duration` long animation spans a `width`
+    /// px panel, leaving a little room after it.
+    pub(crate) fn fit(&mut self, width: f32, duration: Duration) {
+        let secs = duration.as_secs_f32();
+        if secs <= 0.0 {
+            return;
+        }
+        self.px_per_second = (width / (secs * 1.02))
+            .clamp(MIN_PX_PER_SECOND, MAX_PX_PER_SECOND);
+        self.offset = Duration::ZERO;
+    }
 }
 
 /// The offscreen texture the composition's scene cameras render into.
