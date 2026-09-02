@@ -67,7 +67,7 @@ pub(crate) fn on_track_scroll(
         return;
     }
 
-    // macOS puts a shifted wheel on x, Windows leaves it on y.
+    // Normalize Shift+wheel into horizontal scrolling across platforms.
     let sideways =
         keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
     let (pan_x, scroll_y) = if sideways {
