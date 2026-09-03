@@ -13,6 +13,7 @@ use typarena::type_table::TypeTable;
 
 use crate::host::Host;
 use crate::lenz::FieldId;
+use crate::records::FieldKey;
 use crate::transition::Transition;
 use crate::ui::Patch;
 
@@ -91,14 +92,14 @@ impl<H: Host, T: Clone> Tween<H, T> {
 
 /// Advances every [`Tween<H, T>`] in the table's column for one `T`.
 type TickFn<H> = fn(
-    &mut TypeTable<(<H as Host>::Node, FieldId)>,
+    &mut TypeTable<FieldKey<H>>,
     f32,
     &mut <H as Host>::World,
     &<H as Host>::Theme,
 );
 
 fn tick<H, T>(
-    table: &mut TypeTable<(H::Node, FieldId)>,
+    table: &mut TypeTable<FieldKey<H>>,
     dt: f32,
     world: &mut H::World,
     theme: &H::Theme,
@@ -106,8 +107,8 @@ fn tick<H, T>(
     H: Host,
     T: Clone + Send + Sync + 'static,
 {
-    for ((node, _), tween) in table.iter_mut::<Tween<H, T>>() {
-        let node = *node;
+    for (key, tween) in table.iter_mut::<Tween<H, T>>() {
+        let node = key.node;
         tween.advance(dt, world, node, theme);
     }
 }
@@ -120,8 +121,8 @@ fn tick<H, T>(
 /// per field. `keys` is the set to sweep; `ticks` holds one advance
 /// function per value type seen.
 pub struct Overlays<H: Host> {
-    table: TypeTable<(H::Node, FieldId)>,
-    keys: HashSet<(H::Node, FieldId)>,
+    table: TypeTable<FieldKey<H>>,
+    keys: HashSet<FieldKey<H>>,
     ticks: Vec<(TypeId, TickFn<H>)>,
 }
 
@@ -149,10 +150,11 @@ impl<H: Host> Overlays<H> {
             self.ticks.push((id, tick::<H, T>));
         }
 
+        let key = FieldKey::new(node, key);
         // Drop any overlay already on this field, whatever its type.
-        self.table.remove_row(&(node, key));
-        self.table.insert((node, key), tween);
-        self.keys.insert((node, key));
+        self.table.remove_row(&key);
+        self.table.insert(key, tween);
+        self.keys.insert(key);
     }
 
     /// The overlay on `(node, key)` as the `Tween<H, T>` it must be.
@@ -162,7 +164,7 @@ impl<H: Host> Overlays<H> {
         node: H::Node,
         key: FieldId,
     ) -> Option<&mut Tween<H, T>> {
-        self.table.get_mut::<Tween<H, T>>(&(node, key))
+        self.table.get_mut::<Tween<H, T>>(&FieldKey::new(node, key))
     }
 
     pub(crate) fn retain(
@@ -170,10 +172,10 @@ impl<H: Host> Overlays<H> {
         mut keep: impl FnMut(H::Node) -> bool,
     ) {
         let table = &mut self.table;
-        self.keys.retain(|&(node, key)| {
-            let live = keep(node);
+        self.keys.retain(|key| {
+            let live = keep(key.node);
             if !live {
-                table.remove_row(&(node, key));
+                table.remove_row(key);
             }
             live
         });

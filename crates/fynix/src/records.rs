@@ -4,6 +4,7 @@
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::hash::{Hash, Hasher};
 
 use hashbrown::{HashMap, HashSet};
 use typarena::type_table::TypeTable;
@@ -14,6 +15,41 @@ use crate::overlay::Overlays;
 use crate::store::Store;
 use crate::ui::Ui;
 use crate::world_node::WorldNodeRef;
+
+/// A field on a node: what a binding and an overlay are both keyed by.
+pub(crate) struct FieldKey<H: Host> {
+    pub(crate) node: H::Node,
+    pub(crate) field: FieldId,
+}
+
+impl<H: Host> FieldKey<H> {
+    pub(crate) fn new(node: H::Node, field: FieldId) -> Self {
+        Self { node, field }
+    }
+}
+
+impl<H: Host> Clone for FieldKey<H> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<H: Host> Copy for FieldKey<H> {}
+
+impl<H: Host> PartialEq for FieldKey<H> {
+    fn eq(&self, other: &Self) -> bool {
+        self.node == other.node && self.field == other.field
+    }
+}
+
+impl<H: Host> Eq for FieldKey<H> {}
+
+impl<H: Host> Hash for FieldKey<H> {
+    fn hash<S: Hasher>(&self, state: &mut S) {
+        self.node.hash(state);
+        self.field.hash(state);
+    }
+}
 
 /// Predicate over a node's world, polled once per flush.
 ///
@@ -90,7 +126,7 @@ pub type Elements<H> = TypeTable<<H as Host>::Node>;
 /// can be borrowed at once.
 pub struct Records<H: Host> {
     /// Keyed by the whole walk. Binding a field twice replaces it.
-    pub(crate) bindings: HashMap<(H::Node, FieldId), Binding<H>>,
+    pub(crate) bindings: HashMap<FieldKey<H>, Binding<H>>,
     /// Keyed like `bindings`, one per field.
     pub(crate) overlays: Overlays<H>,
     pub(crate) elements: Elements<H>,

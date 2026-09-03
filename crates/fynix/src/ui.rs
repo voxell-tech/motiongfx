@@ -15,7 +15,7 @@ use crate::host::Host;
 use crate::lenz::{Cursor, FieldPath, Identity, Tagged};
 use crate::overlay::{Overlays, insert_overlay};
 use crate::records::{
-    Binding, BuildFn, ChangedFn, Elements, Records, Watcher,
+    Binding, BuildFn, ChangedFn, Elements, FieldKey, Records, Watcher,
 };
 use crate::store::Store;
 use crate::style::StyledElem;
@@ -518,7 +518,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         };
 
         self.ui.records.bindings.insert(
-            (self.node, cursor.key()),
+            FieldKey::new(self.node, cursor.key()),
             Binding {
                 changed: Box::new(changed),
                 apply: Box::new(apply),

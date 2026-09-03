@@ -221,9 +221,7 @@ impl<H: Host> Fynix<H> {
         // A node can die at any time: a rebuild above cleared one, or
         // the app despawned another. Sweep both before touching any
         // dead handle.
-        records
-            .bindings
-            .retain(|(node, _), _| H::exists(world, *node));
+        records.bindings.retain(|key, _| H::exists(world, key.node));
         records.overlays.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
@@ -245,12 +243,13 @@ impl<H: Host> Fynix<H> {
             ..
         } = records;
 
-        for ((node, _), binding) in bindings.iter_mut() {
-            if !(binding.changed)(WorldNodeRef::new(world, *node)) {
+        for (key, binding) in bindings.iter_mut() {
+            let node = key.node;
+            if !(binding.changed)(WorldNodeRef::new(world, node)) {
                 continue;
             }
             (binding.apply)(
-                elements, overlays, world, *node, store, theme,
+                elements, overlays, world, node, store, theme,
             );
         }
 
