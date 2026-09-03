@@ -46,6 +46,8 @@ impl Plugin for UiPlugin {
             .init_resource::<assets::AssetFoldState>()
             .init_resource::<timeline::BlockFoldState>()
             .init_resource::<hierarchy::Dragging>()
+            .init_resource::<timeline::Dragging>()
+            .init_resource::<timeline::DelayPattern>()
             .init_resource::<scene::EditorScene>()
             .add_systems(Startup, setup_editor_ui)
             .add_systems(
@@ -62,6 +64,7 @@ impl Plugin for UiPlugin {
                     .chain()
                     .before(FynixSet),
             )
+            .add_systems(Update, timeline::cancel_on_escape)
             .add_observer(playback::on_toggle_playback)
             .add_observer(zoom::on_fit_timeline);
     }

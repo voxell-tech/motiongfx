@@ -17,10 +17,10 @@ use motiongfx_scene::block::{Block, Combinator, Node};
 use crate::TimelineView;
 
 /// Height of an action leaf's bar, and of a block's header strip.
-const ROW_HEIGHT: f32 = 20.0;
-const HEADER_HEIGHT: f32 = 20.0;
+const ROW_HEIGHT: f32 = 26.0;
+const HEADER_HEIGHT: f32 = 24.0;
 /// Vertical gap between lanes that would otherwise overlap in time.
-const LANE_GAP: f32 = 4.0;
+const LANE_GAP: f32 = 2.0;
 const MIN_WIDTH: f32 = 2.0;
 
 /// One box to draw: a block header (its name, or its combinator if
@@ -43,6 +43,10 @@ pub(crate) struct Placed {
     /// `true` for a `Node::Draft` leaf - an unassigned slot, styled
     /// apart from a real action.
     pub(crate) draft: bool,
+    /// Where this node's own `delay` begins, if it has one - the
+    /// stretch from here to `x` is time reserved but not yet running.
+    /// `None` when there's no delay to show.
+    pub(crate) gap_x: Option<f32>,
     /// This node's position in `animation`'s tree: child index at
     /// each depth, root first. What [`crate::SelectedAction`] compares
     /// against, so a click can name exactly which node it landed on.
@@ -50,7 +54,9 @@ pub(crate) struct Placed {
 }
 
 /// Every box in `animation`'s tree, depth-first. `animation` itself
-/// gets a box too, at depth `0`, as the timeline's outer frame.
+/// gets a box too, at depth `0`, as the timeline's outer frame - an
+/// empty root skips even that, since a combinator with nothing under
+/// it yet has nothing worth a box of its own.
 ///
 /// `folded` names every block whose children are collapsed away - its
 /// duration is unaffected, only its height and its children's boxes.
@@ -59,6 +65,10 @@ pub(crate) fn layout(
     view: TimelineView,
     folded: &BTreeSet<Vec<usize>>,
 ) -> Vec<Placed> {
+    if animation.children.is_empty() {
+        return Vec::new();
+    }
+
     let root = measure_block(
         animation,
         Duration::ZERO,
@@ -78,6 +88,9 @@ struct Measured {
     /// This node's own duration - `node_duration`/`block_duration` -
     /// what its box is drawn to.
     end: Duration,
+    /// This node's own `delay` - zero for the tree's root, which has
+    /// no `Node` of its own to carry one.
+    gap: Duration,
     height: f32,
     kind: MeasuredKind,
 }
@@ -177,6 +190,7 @@ fn measure_node(
         Node::Action { action, .. } => Measured {
             start,
             end: start.saturating_add(action.duration),
+            gap: delay,
             height: ROW_HEIGHT,
             kind: MeasuredKind::Action {
                 name: action.name.clone(),
@@ -185,12 +199,14 @@ fn measure_node(
         Node::Draft { duration, name, .. } => Measured {
             start,
             end: start.saturating_add(*duration),
+            gap: delay,
             height: ROW_HEIGHT,
             kind: MeasuredKind::Draft { name: name.clone() },
         },
-        Node::Block { block, .. } => {
-            measure_block(block, start, folded, path)
-        }
+        Node::Block { block, .. } => Measured {
+            gap: delay,
+            ..measure_block(block, start, folded, path)
+        },
     }
 }
 
@@ -215,6 +231,10 @@ fn measure_block(
     Measured {
         start,
         end: start.saturating_add(block_duration(block)),
+        // Overwritten by `measure_node` for anything but the tree's
+        // root, which calls this directly with no `Node::Block`
+        // delay to carry.
+        gap: Duration::ZERO,
         height: HEADER_HEIGHT + content_height,
         kind: MeasuredKind::Block {
             label: block_label(block),
@@ -319,6 +339,9 @@ fn flatten(
 ) {
     let x = view.x_from_time(measured.start);
     let w = (view.x_from_time(measured.end) - x).max(MIN_WIDTH);
+    let gap_x = (measured.gap > Duration::ZERO).then(|| {
+        view.x_from_time(measured.start.saturating_sub(measured.gap))
+    });
 
     match &measured.kind {
         MeasuredKind::Action { name } => out.push(Placed {
@@ -331,6 +354,7 @@ fn flatten(
             name: name.clone(),
             folded: false,
             draft: false,
+            gap_x,
             path: path.clone(),
         }),
         MeasuredKind::Draft { name } => out.push(Placed {
@@ -343,6 +367,7 @@ fn flatten(
             name: name.clone(),
             folded: false,
             draft: true,
+            gap_x,
             path: path.clone(),
         }),
         MeasuredKind::Block {
@@ -360,6 +385,7 @@ fn flatten(
                 name: None,
                 folded: *folded,
                 draft: false,
+                gap_x,
                 path: path.clone(),
             });
             let content_top = y + HEADER_HEIGHT;

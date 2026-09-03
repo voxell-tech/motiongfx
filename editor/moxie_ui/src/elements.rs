@@ -27,6 +27,7 @@ mod time_label;
 mod time_tick;
 mod timeline_action;
 mod timeline_block;
+mod timeline_gap;
 mod timeline_track;
 
 // The cursor traits come too: a binding names a field by walking to
@@ -74,6 +75,9 @@ pub use timeline_action::{
 };
 pub use timeline_block::{
     TimelineBlock, TimelineBlockCursor, TimelineBlockField,
+};
+pub use timeline_gap::{
+    TimelineGap, TimelineGapCursor, TimelineGapField,
 };
 pub use timeline_track::{
     TimelineTrack, TimelineTrackCursor, TimelineTrackField,

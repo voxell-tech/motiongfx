@@ -357,7 +357,7 @@ fn draft_shape(path: Vec<usize>, delay: Option<Duration>) -> Shape {
 }
 
 /// The node `path` names.
-fn node_at<'a>(
+pub(super) fn node_at<'a>(
     root: &'a Block<Backend>,
     path: &[usize],
 ) -> Option<&'a Node<Backend>> {
@@ -374,7 +374,7 @@ fn node_at<'a>(
 }
 
 /// The same walk, to change what it lands on.
-fn node_at_mut<'a>(
+pub(super) fn node_at_mut<'a>(
     root: &'a mut Block<Backend>,
     path: &[usize],
 ) -> Option<&'a mut Node<Backend>> {

@@ -114,6 +114,14 @@ impl TimelineView {
         secs * self.px_per_second
     }
 
+    /// Seconds spanned by a horizontal distance of `dx`. Unlike
+    /// [`time_from_x`](Self::time_from_x) this is a plain scale, for
+    /// a drag's delta rather than a position.
+    #[inline]
+    pub(crate) fn secs_from_dx(&self, dx: f32) -> f32 {
+        dx / self.px_per_second
+    }
+
     /// Point into the timeline at `x`, clamped to a non-negative
     /// time.
     #[inline]

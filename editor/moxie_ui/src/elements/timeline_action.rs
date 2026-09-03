@@ -11,9 +11,9 @@ use super::patch::*;
 
 /// One action's clip on the timeline: a colored, absolutely
 /// positioned, bordered hit area, its name (if any) pinned to its
-/// top-left corner exactly like [`TimelineBlock`](super::TimelineBlock)'s -
-/// clipped rather than measured, so a bar too narrow for it just
-/// shows nothing instead of overflowing its neighbor.
+/// top-left corner - clipped rather than measured, so a bar too
+/// narrow for it just shows nothing instead of overflowing its
+/// neighbor.
 #[element(build = Self::build)]
 pub struct TimelineAction {
     /// Blank when the action has no name of its own.

@@ -25,6 +25,35 @@ those as moxie_ui elements styled off `EditorTheme`, then drop
       `Button`/`GhostButton`/`MenuButton`/`SegmentButton` each pick
       their own `px(N)` constant right now.
 
+## Unify icon size across icon-only buttons
+
+Every icon-only button (a fold chevron, a variant picker's, a
+toolbar-style button) currently sets its own `size` on the `Icon` it
+carries, and they disagree: `fold::Foldable` uses `px(8)`, `inspector/
+enums.rs`'s `VariantPicker` chevron `px(9)`, `ui/timeline.rs`'s block
+chevron `px(4)`, and `ui/assets.rs`'s two folder-row chevrons plus
+`inspector/tree.rs`'s leave it unset, falling through to `Icon`'s own
+default of `px(11)`.
+
+A style can't fix this from `ButtonElem`'s side: fynix_mock's cascade
+is element `Default` -> `Style` -> call site (`style.rs`), and the
+call site's own `icon = val!(Icon, ...)` assignment replaces the whole
+field, style-applied or not - a `Style for ButtonElem` (`TintButton`
+and friends) runs before that and gets overwritten regardless. The fix
+has to be a `Style for Icon` instead, used at the icon assignment
+itself: `icon = val!(!SomeIconStyle, image = ..., color = ...,
+rotation = ...)`, dropping each call site's own `size = px(N)`. `val!`
+already supports the same `!style` form `elem!` does.
+
+- [ ] Add a `Style for Icon` in `moxie_ui/elements` fixing `size` to
+      one constant.
+- [ ] Convert every icon-only button's `icon = val!(Icon, ...)` to the
+      new styled form, across `fold.rs`, `inspector/enums.rs`,
+      `ui/timeline.rs`, `ui/assets.rs` (two spots), and
+      `inspector/tree.rs`.
+- [ ] Pick the actual size - `px(8)` (`Foldable`'s current value) is
+      the closest thing to an existing default among them.
+
 ## Open a `.mox` by double-clicking it
 
 Needs moxie shipped as an installed app: the OS only routes a document
@@ -69,6 +98,32 @@ would be worth wiring up on its own.
 - [ ] Windows and Linux: register the type, and decide whether that is
       an installer's job or something moxie does for itself on first
       run.
+
+## "Open" dialog never remembers the last-used location
+
+Reported: "Open" should start wherever a project was last opened or
+saved from, but doesn't - not a case of another picker's state leaking
+in, there's simply no last-used-location memory at all today.
+
+`project.rs`'s `ask_for_path` unconditionally calls
+`.set_directory(&scenes)`, `scenes` being the fixed
+`CARGO_MANIFEST_DIR/../assets/scenes` - every Open and every Save
+starts there, every time, regardless of what was picked last (this
+session or a previous one). `ProjectPath` (already updated by both
+`save_scene` and `load_scene` on success) is the obvious source of
+truth for "last used" - `ask_for_path` just doesn't read it, and isn't
+even passed `world` today to be able to.
+
+- [ ] Thread `world: &World` (or just the resolved `Option<PathBuf>`)
+      into `ask_for_path`, and seed `.set_directory(...)` from
+      `ProjectPath.0`'s parent when set, falling back to `scenes` only
+      when nothing has been opened or saved yet.
+- [ ] Decide whether Open and Save should track the same "last
+      location", or diverge (e.g. Save defaulting to the current
+      project's own folder, Open to wherever was last opened).
+- [ ] Persisting this across app restarts (not just within one running
+      session) would need somewhere durable to keep it -
+      `EditorSettings` is the existing precedent for that.
 
 ## `BevyElementVisual` boilerplate
 
