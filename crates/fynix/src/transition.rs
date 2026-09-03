@@ -4,7 +4,7 @@
 //! The element carries the *base*, the cascade's own value. A
 //! transition carries what the backend is showing and writes it every
 //! frame, straight through the field's `#[elem(patch = ...)]` tag. Its
-//! shape comes from a [`Tween`](crate::tween::Tween).
+//! shape comes from a [`Tween`].
 
 use alloc::vec::Vec;
 use core::any::TypeId;
@@ -116,8 +116,8 @@ fn tick<H, T>(
 
 /// Every field with a transition over it, at most one per field.
 ///
-/// One `Transition<H, T>` column per value type; [`Self::advance`]
-/// walks each column through its matching `ticks` entry.
+/// One `Transition<H, T>` column per value type; `advance` walks each
+/// column through its matching `ticks` entry.
 pub struct TransitionTable<H: Host> {
     table: TypeTable<FieldKey<H>>,
     /// The rows to sweep when their nodes die.
@@ -152,7 +152,8 @@ impl<H: Host> TransitionTable<H> {
         }
 
         let key = FieldKey::new(node, key);
-        // Drop any transition already on this field, whatever its type.
+        // Drop any transition already on this field, whatever its
+        // value type.
         self.table.remove_row(&key);
         self.table.insert(key, transition);
         self.keys.insert(key);

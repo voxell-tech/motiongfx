@@ -1,9 +1,7 @@
 //! The shape of a field's move to a new value: how long, along what
-//! curve, and how the value itself is walked. A [`Transition`] plays
-//! one out. See
+//! curve, and how the value itself is walked. A transition plays one
+//! out. See
 //! [`ElementMut::transition`](crate::ui::ElementMut::transition).
-//!
-//! [`Transition`]: crate::transition::Transition
 
 /// Interpolates between two `T` by a factor in `0..=1`.
 pub type LerpFn<T> = fn(&T, &T, f32) -> T;

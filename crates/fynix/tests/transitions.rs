@@ -119,15 +119,16 @@ fn releasing_travels_back_to_the_base() {
 }
 
 #[test]
-fn element_keeps_the_base_while_a_transition_is_in_flight() {
+fn element_keeps_the_base_while_transition_is_in_flight() {
     let (mut world, root, mut kernel, label) = travelling();
 
     kernel.aim::<Label, _>(label, |label| label.size(), Some(100));
     kernel.flush(&mut world);
     assert_eq!(world.get(label).size, 25, "the backend moved");
 
-    // Whatever the transition shows, the element is still what the cascade
-    // left: a rebuild starts from the base, not from mid flight.
+    // Whatever the transition shows, the element is still what the
+    // cascade left: a rebuild starts from the base, not from mid
+    // flight.
     kernel.unwatch(root);
     kernel.watch(
         root,
@@ -145,10 +146,10 @@ fn element_keeps_the_base_while_a_transition_is_in_flight() {
 
 #[test]
 fn style_carries_what_moves_as_well_as_what_it_looks_like() {
-    /// A style has no node to wire a transition onto, so what moves is the
-    /// element's own business - `Grower` leaves a slot for a style to
-    /// fill, and wires the transition itself once it has a node to put it
-    /// on.
+    /// A style has no node to wire a transition onto, so what moves is
+    /// the element's own business - `Grower` leaves a slot for a style
+    /// to fill, and wires the transition itself once it has a node to
+    /// put it on.
     #[element(build = Self::build)]
     pub struct Grower {
         #[elem(patch = WriteText)]

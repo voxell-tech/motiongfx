@@ -120,8 +120,8 @@ impl<'a, H: Host> Ui<'a, H> {
 }
 
 /// What a `#[element(build = ...)]` hook writes through: this
-/// element's own node, `world`, `theme`, and the store and transition
-/// table for wiring children and transitions.
+/// element's own node, `world`, `theme`, the child store, and the
+/// transition table.
 ///
 /// Not [`ElementMut`]: a node running its own build hook has not
 /// finished existing yet, so `bind`/`watch`/`with` would not mean
@@ -209,8 +209,8 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
 /// What a `#[elem(patch = ...)]` writer writes through: the node the
 /// value lands on, `world`, and `theme`.
 ///
-/// No [`Store`]/[`TransitionTable`] here. A patch writes a value; it never
-/// wires a child or a transition.
+/// No [`Store`] or [`TransitionTable`] here. A patch writes a value;
+/// it wires nothing.
 pub struct Patch<'a, H: Host> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
