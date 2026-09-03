@@ -59,7 +59,7 @@ pub struct Dropdown {
     pub max_width: Val,
     #[elem(default = px(22), patch = PatchHeight)]
     pub height: Val,
-    #[elem(default = Color::srgba(1.0, 1.0, 1.0, 0.06), patch = PatchBackground)]
+    #[elem(default = theme.color.fill, patch = PatchBackground)]
     pub fill: Color,
     #[elem(default = px(4), patch = PatchRadius)]
     pub radius: Val,

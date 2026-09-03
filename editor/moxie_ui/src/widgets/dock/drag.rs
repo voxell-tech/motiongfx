@@ -130,6 +130,7 @@ fn on_drag_move(
     // through it.
     let drop_tint = kernel.theme().color.accent.with_alpha(0.18);
     let text_primary = kernel.theme().color.text;
+    let ghost_fill = kernel.theme().color.fill;
     let drag_event = trigger.event();
     let cursor_pos_ui = Vec2::new(
         drag_event.pointer_location.position.x,
@@ -180,6 +181,7 @@ fn on_drag_move(
                     ghost,
                     &name,
                     text_primary,
+                    ghost_fill,
                 );
             });
 

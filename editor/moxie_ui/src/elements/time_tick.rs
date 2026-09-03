@@ -15,7 +15,7 @@ pub struct TimeTick {
     /// different lengths share a baseline.
     #[elem(default = px(4), patch = PatchHeight)]
     pub height: Val,
-    #[elem(default = Color::srgba(1.0, 1.0, 1.0, 0.25), patch = PatchBackground)]
+    #[elem(default = theme.color.text_dim, patch = PatchBackground)]
     pub color: Color,
 }
 

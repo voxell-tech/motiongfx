@@ -23,7 +23,7 @@ pub struct TimelineGap {
     pub height: Val,
     #[elem(patch = PatchGapImage)]
     pub image: Handle<Image>,
-    #[elem(default = Color::WHITE, patch = PatchGapColor)]
+    #[elem(default = theme.color.text_dim, patch = PatchGapColor)]
     pub color: Color,
 }
 

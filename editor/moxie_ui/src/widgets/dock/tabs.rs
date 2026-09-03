@@ -217,11 +217,12 @@ pub(super) fn spawn_ghost_tab(
     wrapper: Entity,
     label: &str,
     color: Color,
+    fill: Color,
 ) {
     let tile = world
         .spawn((
             tab_tile_node(),
-            BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.06)),
+            BackgroundColor(fill),
             ChildOf(wrapper),
         ))
         .id();

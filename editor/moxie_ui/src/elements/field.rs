@@ -23,9 +23,9 @@ use super::patch::*;
 pub struct CheckBox {
     #[elem(patch = PatchChecked)]
     pub checked: bool,
-    #[elem(default = Color::srgba(1.0, 1.0, 1.0, 0.08), patch = PatchBackground)]
+    #[elem(default = theme.color.fill, patch = PatchBackground)]
     pub fill: Color,
-    #[elem(default = Color::srgb(0.47, 0.86, 0.91), patch = PatchMark)]
+    #[elem(default = theme.color.accent, patch = PatchMark)]
     pub mark: Color,
 }
 

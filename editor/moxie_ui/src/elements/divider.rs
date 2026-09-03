@@ -16,7 +16,7 @@ pub struct Divider {
     pub thickness: Val,
     #[elem(default = ::Horizontal, patch = PatchOrientation)]
     pub orientation: ControlOrientation,
-    #[elem(default = Color::srgba(1.0, 1.0, 1.0, 0.08), patch = PatchBackground)]
+    #[elem(default = theme.color.hairline.color, patch = PatchBackground)]
     pub color: Color,
 }
 

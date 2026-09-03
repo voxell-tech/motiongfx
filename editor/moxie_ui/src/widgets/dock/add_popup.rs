@@ -146,6 +146,7 @@ fn build_popup(ui: &mut BevyUi) {
         .observe(close_popup);
 
     let (left, top, area) = (open.left, open.top, open.area);
+    let panel = ui.theme.color.panel;
 
     ui.elem(elem!(
         Frame,
@@ -156,7 +157,7 @@ fn build_popup(ui: &mut BevyUi) {
         row_gap = px(2),
         padding = UiRect::all(px(4)),
         radius = px(6),
-        background = Color::srgba(0.11, 0.10, 0.11, 0.98),
+        background = panel,
         z = 181
     ))
     .with(move |ui| build_rows(ui, area));
