@@ -99,9 +99,8 @@ pub fn styled<S: Style>(
     element
 }
 
-/// The value a field of an [`elem!`](crate::elem!) starts from: an
-/// element from its [`ElementBase::base`], anything else from its
-/// [`Default`].
+/// A field's starting value in an [`elem!`](crate::elem!): an
+/// element's [`ElementBase::base`], or any other type's [`Default`].
 pub trait Seed<Th> {
     fn seed(theme: &Th) -> Self;
 }

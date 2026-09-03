@@ -17,9 +17,8 @@ pub use fynix_macros::element;
 
 /// The value an element starts from, before a style and the call site.
 ///
-/// Written by `#[element]`: each field from its `#[elem(default = ...)]`
-/// with the backend's theme in hand, or from its own `Default`, or a
-/// `#[elem(child)]` field from its own `base`.
+/// `#[element]` writes it field by field: an `#[elem(default = ...)]`
+/// value with the theme in hand, or the field's own `Default`.
 pub trait ElementBase<H: Host>: Sized {
     fn base(theme: &H::Theme) -> Self;
 }

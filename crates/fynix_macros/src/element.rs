@@ -58,7 +58,7 @@ struct FieldConfig {
     default: Option<FieldDefault>,
 }
 
-/// The value a field starts from in [`ElementBase::base`].
+/// The value a field starts from in `ElementBase::base`.
 enum FieldDefault {
     /// `#[elem(default = <expr>)]`, whole.
     Expr(Expr),

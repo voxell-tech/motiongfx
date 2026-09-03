@@ -103,6 +103,8 @@ fn setup_editor_ui(
             Camera2d
             Camera {
                 order: 10,
+                // The const, not the theme resource: this runs at
+                // startup, before the kernel holds one.
                 clear_color: { moxie_ui::theme::BG },
             }
             TrackViewportCamera

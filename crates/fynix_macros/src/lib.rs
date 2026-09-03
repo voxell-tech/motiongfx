@@ -26,10 +26,10 @@ use syn::{DeriveInput, parse_macro_input};
 ///   `FieldPatch<Host, Target = FieldTy>`. Its `patch` writes the
 ///   field, at build and on change.
 /// - `#[elem(default = <expr>)]` - the value the field starts from in
-///   [`ElementBase::base`], with `theme` in scope. `default = ::<expr>`
+///   `ElementBase::base`, with `theme` in scope. `default = ::<expr>`
 ///   resolves against the field's own type: `::NONE` is `<Color>::NONE`
 ///   on a `Color` field. A field with none starts from its own
-///   [`Default`], a `#[elem(child)]` one from its own `base`.
+///   `Default`, a `#[elem(child)]` one from its own `base`.
 /// - `#[elem(ignore)]` - a field no path can name, read only by the
 ///   `build =` hook.
 ///

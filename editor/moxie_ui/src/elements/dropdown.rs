@@ -153,8 +153,8 @@ impl DropdownList {
             return;
         }
         // The rest of the node belongs to the popup scene, and writing
-        // it whole would undo the placement. The scene's own vertical
-        // padding goes: rows sit flush.
+        // it whole would undo the placement. Its vertical padding is
+        // zeroed so the rows sit flush.
         if let Some(mut layout) = build.entity_mut().get_mut::<Node>()
         {
             layout.min_width = self.width;

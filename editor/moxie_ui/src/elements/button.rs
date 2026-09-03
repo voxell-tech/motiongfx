@@ -28,8 +28,7 @@ pub enum Hover {
 
 /// A hit area holding an icon, a label, both, or whatever is built
 /// under it. Rests at the theme's fill, sized for a toolbar, and
-/// lights up under the cursor; the styles in this module carve out
-/// the variations.
+/// lights up under the cursor.
 #[element(build = Self::build)]
 pub struct Button {
     /// A node of its own, so its image and colour can be bound
@@ -43,8 +42,8 @@ pub struct Button {
     /// Between the icon and the label, when both are there.
     #[elem(default = px(theme.space.md), patch = PatchColumnGap)]
     pub column_gap: Val,
-    /// The surface at rest. A style that sits on something already a
-    /// surface clears it to [`Color::NONE`].
+    /// The surface at rest. [`Color::NONE`] for a button that sits on
+    /// something already a surface.
     #[elem(default = theme.color.fill, patch = PatchBackground)]
     pub fill: Color,
     #[elem(default = px(theme.space.touch), patch = PatchWidth)]
@@ -72,8 +71,7 @@ pub struct Button {
     /// segments). `None` rounds all four corners by `radius`.
     #[elem(patch = PatchCorners)]
     pub corners: Option<BorderRadius>,
-    /// Read once, when the lanes are wired. A style that lights its
-    /// icon and label instead sets [`Hover::IconLabel`].
+    /// What lights up under the cursor. See [`Hover`].
     #[elem(ignore, default = Hover::Fill(theme.color.hover))]
     hover: Hover,
 }

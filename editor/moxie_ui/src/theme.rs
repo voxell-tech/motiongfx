@@ -10,13 +10,10 @@ use std::time::Duration;
 use bevy::prelude::*;
 use motiongfx_interp::ease::{self, EaseFn};
 
-/// What the editor viewport clears to. The same as
-/// [`Colors::bg`], for the camera setup that runs before there is a
-/// theme to read.
+/// The editor's ground colour, also [`Colors::bg`].
 pub const BG: Color = Color::srgb_u8(0x19, 0x18, 0x1A);
 
-/// Raw Monokai Pro palette, as the fields the rest of the editor reads
-/// by name.
+/// Raw Monokai Pro palette.
 #[derive(Clone, Debug)]
 pub struct Palette {
     pub red: Color,
@@ -64,7 +61,7 @@ pub struct EditorTheme {
 }
 
 /// Semantic colour slots. A fill is translucent and layers over
-/// whatever is behind it; a ground is opaque.
+/// whatever is behind it, a ground is opaque.
 #[derive(Clone, Copy, Debug)]
 pub struct Colors {
     /// Primary (active) text.
@@ -84,21 +81,20 @@ pub struct Colors {
     pub panel: Color,
     /// A raised strip within a panel.
     pub surface: Color,
-    /// What a filled control rests at.
+    /// A filled control's resting surface.
     pub fill: Color,
     /// A barely-there fill, for a tint rather than a surface.
     pub fill_faint: Color,
     /// Dividers and borders.
     pub hairline: Color,
-    /// What a plain surface fades to under the cursor.
+    /// The overlay a plain surface fades to under the cursor.
     pub hover: Color,
     /// A selected row's surface tint.
     pub selection: Color,
     /// A timeline clip's fill.
     pub clip: Color,
-    /// What a clip brightens to under the cursor, then further while
-    /// held. Its own family of colour, not [`Self::hover`]'s neutral
-    /// gray.
+    /// A clip's own hover and press brighten, in its blue family
+    /// rather than [`Self::hover`]'s neutral gray.
     pub clip_hover: Color,
     pub clip_press: Color,
 }
