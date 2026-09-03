@@ -31,7 +31,7 @@ use fynix::composer::Composer;
 use fynix::elem;
 use fynix::ui::ElementHandle;
 use moxie_ui::elements::{
-    Button, ButtonElemCursor, Frame, FrameCursor, GhostButton, Icon,
+    Button, ButtonCursor, Frame, FrameCursor, GhostButton, Icon,
     IconCursor, Label, LabelCursor, Panel, PlayheadLine,
     PlayheadLineCursor, ScrollArea, TimeLabel, TimeTick,
     TimelineAction, TimelineActionCursor, TimelineBlock, TimelineGap,
@@ -123,7 +123,7 @@ impl Composer<FynixHost> for ControlBar {
         ))
         .with(|ui| {
             ui.elem(elem!(
-                !Button,
+                Button,
                 icon = elem!(
                     Icon,
                     image = crate::icons::PLAY,
@@ -163,7 +163,7 @@ impl Composer<FynixHost> for ControlBar {
             ui.elem(elem!(Frame, flex_grow = 1.0f32));
 
             ui.elem(elem!(
-                !Button,
+                Button,
                 label = elem!(Label, text = "Fit"),
                 width = px(44),
                 height = px(24)

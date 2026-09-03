@@ -22,8 +22,8 @@ use fynix::composer::Composer;
 use fynix::elem;
 use fynix::ui::{ElementHandle, ElementMut};
 use moxie_ui::elements::{
-    ButtonElem, ButtonElemCursor, Frame, FrameCursor, GhostButton,
-    Icon, Label, LabelCursor, Panel, ScrollArea, TintButton,
+    Button, ButtonCursor, Frame, FrameCursor, GhostButton, Icon,
+    Label, LabelCursor, Panel, ScrollArea, TintButton,
 };
 use moxie_ui::fold::{Foldable, FoldsOn};
 use moxie_ui::reactive::{
@@ -304,7 +304,7 @@ impl Composer<FynixHost> for Subtree {
                 '_,
                 '_,
                 FynixHost,
-                ButtonElem,
+                Button,
             >| {
                 drag::rows(&mut header, entity)
                     .observe(

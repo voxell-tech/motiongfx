@@ -20,18 +20,18 @@ pub enum Hover {
     /// Nothing lights up.
     #[default]
     None,
-    /// [`Button`], [`GhostButton`], [`MenuButton`]: the surface
-    /// itself.
+    /// The surface itself.
     Fill(Color),
-    /// [`TintButton`]: the icon and label, not the surface.
+    /// The icon and label, not the surface.
     IconLabel(Color),
 }
 
 /// A hit area holding an icon, a label, both, or whatever is built
-/// under it, with no look of its own. [`Button`] and [`GhostButton`]
-/// are two the editor gives it.
+/// under it. Rests at the theme's fill, sized for a toolbar, and
+/// lights up under the cursor; the styles in this module carve out
+/// the variations.
 #[element(build = Self::build)]
-pub struct ButtonElem {
+pub struct Button {
     /// A node of its own, so its image and colour can be bound
     /// without touching the button.
     #[elem(child)]
@@ -43,14 +43,13 @@ pub struct ButtonElem {
     /// Between the icon and the label, when both are there.
     #[elem(default = px(6), patch = PatchColumnGap)]
     pub column_gap: Val,
-    /// What the background shows. Nothing by default, which is a
-    /// [`GhostButton`]; [`Button`] rests at the theme's own fill, and
-    /// interaction lights either of them up.
-    #[elem(default = ::NONE, patch = PatchBackground)]
+    /// The surface at rest. A style that sits on something already a
+    /// surface clears it to [`Color::NONE`].
+    #[elem(default = theme.button_fill, patch = PatchBackground)]
     pub fill: Color,
-    #[elem(patch = PatchWidth)]
+    #[elem(default = px(26), patch = PatchWidth)]
     pub width: Val,
-    #[elem(patch = PatchHeight)]
+    #[elem(default = px(26), patch = PatchHeight)]
     pub height: Val,
     /// Share of a flex row's remaining space this button claims, for
     /// one that should fill a row rather than size to its own content.
@@ -65,7 +64,7 @@ pub struct ButtonElem {
     pub justify: JustifyContent,
     #[elem(patch = PatchPadding)]
     pub padding: UiRect,
-    #[elem(default = ::ZERO, patch = PatchRadius)]
+    #[elem(default = px(6), patch = PatchRadius)]
     pub radius: Val,
     /// Overrides `radius` with independent corners, for a button that
     /// sits at one end of a row of others (a
@@ -73,13 +72,13 @@ pub struct ButtonElem {
     /// segments). `None` rounds all four corners by `radius`.
     #[elem(patch = PatchCorners)]
     pub corners: Option<BorderRadius>,
-    /// Set by whichever [`Style`] built this - see [`Hover`]. Never
-    /// patched: read once, when the lanes are wired.
-    #[elem(ignore)]
+    /// Read once, when the lanes are wired. A style that lights its
+    /// icon and label instead sets [`Hover::IconLabel`].
+    #[elem(ignore, default = Hover::Fill(theme.hover_overlay))]
     hover: Hover,
 }
 
-impl ButtonElem {
+impl Button {
     fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             Node {
@@ -139,26 +138,9 @@ impl ButtonElem {
     }
 }
 
-/// The editor's own button: a filled, rounded pill sized for a
-/// toolbar, that lights up under the cursor.
-pub struct Button;
-
-impl Style for Button {
-    type Host = FynixHost;
-    type Element = ButtonElem;
-
-    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
-        button.fill = theme.button_fill;
-        button.width = px(26);
-        button.height = px(26);
-        button.radius = px(6);
-        button.hover = Hover::Fill(theme.hover_overlay);
-    }
-}
-
 /// A button whose icon and label carry `tint` under the cursor - the
 /// accent, by default, for the one action in a group the eye should
-/// land on first.
+/// land on first. No surface of its own.
 #[derive(Default)]
 pub struct TintButton {
     /// `None` takes the theme's own accent.
@@ -167,9 +149,13 @@ pub struct TintButton {
 
 impl Style for TintButton {
     type Host = FynixHost;
-    type Element = ButtonElem;
+    type Element = Button;
 
-    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+    fn apply(self, button: &mut Button, theme: &EditorTheme) {
+        button.fill = Color::NONE;
+        button.width = Val::Auto;
+        button.height = Val::Auto;
+        button.radius = Val::ZERO;
         button.hover =
             Hover::IconLabel(self.tint.unwrap_or(theme.accent));
     }
@@ -181,14 +167,14 @@ pub struct MenuButton;
 
 impl Style for MenuButton {
     type Host = FynixHost;
-    type Element = ButtonElem;
+    type Element = Button;
 
-    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+    fn apply(self, button: &mut Button, _theme: &EditorTheme) {
         button.fill = Color::NONE;
-        button.radius = Val::ZERO;
+        button.width = Val::Auto;
         button.height = percent(100);
+        button.radius = Val::ZERO;
         button.padding = UiRect::axes(px(10), Val::ZERO);
-        button.hover = Hover::Fill(theme.hover_overlay);
     }
 }
 
@@ -202,10 +188,12 @@ pub struct SegmentButton {
 
 impl Style for SegmentButton {
     type Host = FynixHost;
-    type Element = ButtonElem;
+    type Element = Button;
 
-    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+    fn apply(self, button: &mut Button, theme: &EditorTheme) {
+        button.width = Val::Auto;
         button.height = px(24);
+        button.radius = Val::ZERO;
         button.flex_grow = 1.0;
         button.fill = if self.active {
             theme.accent
@@ -227,11 +215,12 @@ pub struct GhostButton;
 
 impl Style for GhostButton {
     type Host = FynixHost;
-    type Element = ButtonElem;
+    type Element = Button;
 
-    fn apply(self, button: &mut ButtonElem, theme: &EditorTheme) {
+    fn apply(self, button: &mut Button, _theme: &EditorTheme) {
         button.fill = Color::NONE;
-        button.hover = Hover::Fill(theme.hover_overlay);
+        button.width = Val::Auto;
+        button.height = Val::Auto;
         button.padding = UiRect::axes(px(8), px(4));
         button.radius = px(4);
     }

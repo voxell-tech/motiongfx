@@ -26,7 +26,7 @@ use fynix::ui::{ElementHandle, ElementMut};
 use moxie_asset::AssetKinds;
 use moxie_ui::asset::draggable;
 use moxie_ui::elements::{
-    ButtonElem, Frame, Icon, Label, Panel, ScrollArea, TintButton,
+    Button, Frame, Icon, Label, Panel, ScrollArea, TintButton,
 };
 use moxie_ui::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use moxie_ui::reactive::{BevyUi, FynixHost, resource_changed};
@@ -227,14 +227,14 @@ impl Composer<FynixHost> for BookmarkRow {
             ),
             folds_on: FoldsOn::Header,
             enabled,
-            on_header: move |mut header: ElementMut<FynixHost, ButtonElem>| {
+            on_header: move |mut header: ElementMut<FynixHost, Button>| {
                 // Nothing to drop for the project's own folder.
                 let Some(index) = index else {
                     return;
                 };
 
                 // A delete button beside the label, injected as an
-                // extra child rather than one of `ButtonElem`'s own
+                // extra child rather than one of `Button`'s own
                 // icon/label slots. It takes its own click for
                 // itself, so the header's fold never hears it.
                 header.with(move |ui| {
@@ -347,7 +347,7 @@ impl Composer<FynixHost> for FolderRow {
             ),
             folds_on: FoldsOn::Header,
             enabled,
-            on_header: |_: ElementMut<FynixHost, ButtonElem>| {},
+            on_header: |_: ElementMut<FynixHost, Button>| {},
             body: move |ui: &mut BevyUi| {
                 build_children(ui, &path);
             },

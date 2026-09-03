@@ -55,7 +55,7 @@ impl Composer<FynixHost> for SaveRow {
         ui.elem(elem!(Frame, direction = FlexDirection::Row))
             .with(|ui| {
                 ui.elem(elem!(
-                    !Button,
+                    Button,
                     label = elem!(Label, text = "Save"),
                     width = px(64),
                     height = px(24)

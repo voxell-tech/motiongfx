@@ -18,7 +18,7 @@ use moxie_asset::ABSOLUTE_SOURCE;
 
 use crate::asset::AssetDragging;
 use crate::elements::{
-    ButtonElemCursor, GhostButton, Icon, Label, LabelCursor,
+    ButtonCursor, GhostButton, Icon, Label, LabelCursor,
 };
 use crate::icons;
 use crate::reactive::BevyUi;

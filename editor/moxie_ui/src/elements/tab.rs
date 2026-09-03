@@ -8,7 +8,7 @@ use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
 use super::patch::*;
-use super::{ButtonElem, Icon, Label};
+use super::{Button, Icon, Label};
 use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
 
 /// The strip across the top of a leaf.
@@ -77,7 +77,7 @@ pub struct Tab {
     #[elem(child)]
     pub label: Label,
     #[elem(child)]
-    pub close: Option<ButtonElem>,
+    pub close: Option<Button>,
     #[elem(patch = PatchWindowId)]
     pub window_id: String,
     #[elem(default = TabId(0), patch = PatchTabId)]

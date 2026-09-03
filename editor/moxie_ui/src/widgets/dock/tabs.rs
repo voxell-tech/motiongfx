@@ -12,8 +12,8 @@ use fynix::elem;
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
 use crate::elements::{
-    ButtonElemCursor, GhostButton, Icon, IconCursor, Label,
-    LabelCursor, Tab, TabBar, TabCursor, TabRow, TintButton,
+    ButtonCursor, GhostButton, Icon, IconCursor, Label, LabelCursor,
+    Tab, TabBar, TabCursor, TabRow, TintButton,
 };
 use crate::icons;
 use crate::motion::MotionExt;

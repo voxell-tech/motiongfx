@@ -33,8 +33,8 @@ mod timeline_track;
 // The cursor traits come too: a binding names a field by walking to
 // it, and the walk is what those provide.
 pub use button::{
-    Button, ButtonElem, ButtonElemCursor, ButtonElemField,
-    GhostButton, MenuButton, SegmentButton, TintButton,
+    Button, ButtonCursor, ButtonField, GhostButton, MenuButton,
+    SegmentButton, TintButton,
 };
 pub use divider::{Divider, DividerCursor, DividerField};
 pub use dropdown::{

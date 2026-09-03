@@ -16,7 +16,7 @@ use bevy::ui::{UiGlobalTransform, UiScale};
 use bevy_fynix::{BevyFynix, WorldEntityMut};
 use bevy_motiongfx::scene::id::EntityUid;
 use fynix::ui::ElementMut;
-use moxie_ui::elements::ButtonElem;
+use moxie_ui::elements::Button;
 use moxie_ui::layout::logical_rect;
 use moxie_ui::reactive::FynixHost;
 use moxie_ui::theme::EditorTheme;
@@ -65,9 +65,9 @@ pub(crate) enum At {
 /// on: before it, into it, or after it, by where in its height it is
 /// aimed.
 pub(super) fn rows<'r, 'u, 'a>(
-    header: &'r mut ElementMut<'u, 'a, FynixHost, ButtonElem>,
+    header: &'r mut ElementMut<'u, 'a, FynixHost, Button>,
     subject: Entity,
-) -> &'r mut ElementMut<'u, 'a, FynixHost, ButtonElem> {
+) -> &'r mut ElementMut<'u, 'a, FynixHost, Button> {
     let row = header.id();
 
     header

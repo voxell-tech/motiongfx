@@ -1,8 +1,8 @@
 //! A row of mutually exclusive options, as a composer rather than an
-//! element - it builds a subtree of [`ButtonElem`]s, none of it kept
+//! element - it builds a subtree of [`Button`]s, none of it kept
 //! around to be patched later.
 //!
-//! [`ButtonElem`]: crate::elements::button::ButtonElem
+//! [`Button`]: crate::elements::button::Button
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;

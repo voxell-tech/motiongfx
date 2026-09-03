@@ -20,7 +20,7 @@ use fynix::records::BuildFn;
 use fynix::ui::{ElementHandle, ElementMut};
 
 use super::{Field, FieldRow, ReflectInspect, enums};
-use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
+use crate::elements::{Button, Frame, Icon, Label, TintButton};
 use crate::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use crate::icons;
 use crate::reactive::{BevyUi, FynixHost};
@@ -508,12 +508,7 @@ impl<F: BuildFn<FynixHost>> Composer<FynixHost> for Section<F> {
             // Nothing else to mean: the whole header folds it.
             folds_on: FoldsOn::Header,
             enabled: true,
-            on_header: |_: ElementMut<
-                '_,
-                '_,
-                FynixHost,
-                ButtonElem,
-            >| {},
+            on_header: |_: ElementMut<'_, '_, FynixHost, Button>| {},
             body,
             open,
             on_toggle: move |world: &mut World, open: bool| {

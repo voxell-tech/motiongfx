@@ -21,8 +21,8 @@ use fynix::records::BuildFn;
 use fynix::ui::{ElementHandle, ElementMut};
 
 use crate::elements::{
-    ButtonElem, ButtonElemCursor, Frame, FrameCursor, Icon,
-    IconCursor, TintButton,
+    Button, ButtonCursor, Frame, FrameCursor, Icon, IconCursor,
+    TintButton,
 };
 use crate::icons;
 use crate::reactive::{BevyUi, FynixHost, component_changed_on};
@@ -76,12 +76,12 @@ pub enum FoldsOn {
 /// All this owns is the click that toggles, the chevron that turns,
 /// the body that goes, and the rail marking how deep that body sits.
 pub struct Foldable<
-    S: FnOnce(&<FynixHost as Host>::Theme) -> ButtonElem,
+    S: FnOnce(&<FynixHost as Host>::Theme) -> Button,
     B: BuildFn<FynixHost>,
-    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, ButtonElem>),
+    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, Button>),
     T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
 > {
-    /// Anything built on a [`ButtonElem`]. Under [`FoldsOn::Header`]
+    /// Anything built on a [`Button`]. Under [`FoldsOn::Header`]
     /// its icon slot is the chevron, so it has to carry one.
     pub header: S,
     pub folds_on: FoldsOn,
@@ -107,9 +107,9 @@ pub struct Foldable<
 
 impl<S, B, H, T> Composer<FynixHost> for Foldable<S, B, H, T>
 where
-    S: FnOnce(&<FynixHost as Host>::Theme) -> ButtonElem,
+    S: FnOnce(&<FynixHost as Host>::Theme) -> Button,
     B: BuildFn<FynixHost>,
-    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, ButtonElem>),
+    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, Button>),
     T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
 {
     type Element = Frame;
@@ -250,7 +250,7 @@ where
 /// Makes `button` the one that folds `node`, turning its chevron with
 /// the state and mirroring the result through `on_toggle`.
 fn folds<T>(
-    button: &mut ElementMut<FynixHost, ButtonElem>,
+    button: &mut ElementMut<FynixHost, Button>,
     node: Entity,
     on_toggle: T,
 ) where
