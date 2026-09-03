@@ -6,13 +6,19 @@
 //! Everything the kernel makes is an element. There is no way to
 //! spawn a bare node.
 
+mod build;
+mod patch;
+
+pub use self::build::Build;
+pub use self::patch::{Bindable, FieldPatch, Patch};
+
 use alloc::boxed::Box;
 use core::marker::PhantomData;
 
 use crate::composer::Composer;
 use crate::element::Element;
 use crate::host::Host;
-use crate::lenz::{Cursor, FieldPath, Identity, Tagged};
+use crate::lenz::{Cursor, FieldPath, Identity};
 use crate::records::{
     Binding, BuildFn, ChangedFn, ElementTable, FieldKey, Records,
     Watcher,
@@ -116,145 +122,6 @@ impl<'a, H: Host> Ui<'a, H> {
             node,
             element: PhantomData,
         }
-    }
-}
-
-/// What a `#[element(build = ...)]` hook writes through: this
-/// element's own node, `world`, `theme`, the child store, and the
-/// transition table.
-///
-/// Not [`ElementMut`]: a node running its own build hook has not
-/// finished existing yet, so `bind`/`watch`/`with` would not mean
-/// what they mean anywhere else.
-pub struct Build<'a, H: Host, E: Element<H>> {
-    pub world: &'a mut H::World,
-    pub theme: &'a H::Theme,
-    node: H::Node,
-    transitions: &'a mut TransitionTable<H>,
-    store: &'a mut Store<H>,
-    element: PhantomData<fn() -> E>,
-}
-
-impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
-    /// Not for hand-written code.
-    #[doc(hidden)]
-    pub fn new(
-        world: &'a mut H::World,
-        node: H::Node,
-        transitions: &'a mut TransitionTable<H>,
-        store: &'a mut Store<H>,
-        theme: &'a H::Theme,
-    ) -> Self {
-        Self {
-            world,
-            theme,
-            node,
-            transitions,
-            store,
-            element: PhantomData,
-        }
-    }
-
-    /// This element's own node.
-    pub fn id(&self) -> H::Node {
-        self.node
-    }
-
-    /// The node an `#[elem(child)]` child took.
-    ///
-    /// `None` when the walk names a field that is not an element, or
-    /// an `Option` child that is absent.
-    pub fn child<P>(
-        &self,
-        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
-    ) -> Option<H::Node>
-    where
-        P: FieldPath<Source = E>,
-    {
-        self.store.child(self.node, field)
-    }
-
-    /// As [`ElementMut::transition_from`], starting from `base`: this
-    /// node has no entry in the kernel's table yet to read one from.
-    pub fn transition_from<P>(
-        &mut self,
-        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
-        base: P::Target,
-        tween: Tween<P::Target>,
-    ) -> &mut Self
-    where
-        E: Send + Sync,
-        P: FieldPath<Source = E> + Bindable<H>,
-        P::Target: Clone + Send + Sync,
-    {
-        let cursor = field(Cursor::new());
-        let mut parents = cursor.hops();
-        parents.pop();
-        let Some(owner) = self.store.resolve(self.node, &parents)
-        else {
-            return self;
-        };
-        insert_transition(
-            self.transitions,
-            owner,
-            cursor.key(),
-            <P as Bindable<H>>::patch,
-            base,
-            tween,
-        );
-        self
-    }
-}
-
-/// What a `#[elem(patch = ...)]` writer writes through: the node the
-/// value lands on, `world`, and `theme`.
-///
-/// No [`Store`] or [`TransitionTable`] here. A patch writes a value;
-/// it wires nothing.
-pub struct Patch<'a, H: Host> {
-    pub world: &'a mut H::World,
-    pub theme: &'a H::Theme,
-    node: H::Node,
-}
-
-impl<'a, H: Host> Patch<'a, H> {
-    /// Not for hand-written code.
-    #[doc(hidden)]
-    pub fn new(
-        world: &'a mut H::World,
-        node: H::Node,
-        theme: &'a H::Theme,
-    ) -> Self {
-        Self { world, theme, node }
-    }
-
-    /// This element's own node.
-    pub fn id(&self) -> H::Node {
-        self.node
-    }
-}
-
-/// One field's writer, implemented on the tag a `#[elem(patch = ...)]`
-/// field carries.
-pub trait FieldPatch<H: Host> {
-    type Target;
-
-    fn patch(patch: &mut Patch<H>, value: &Self::Target);
-}
-
-/// A field path whose terminal hop is a `#[elem(patch = ...)]` field.
-pub trait Bindable<H: Host>: FieldPath {
-    fn patch(patch: &mut Patch<H>, value: &Self::Target);
-}
-
-impl<P, H> Bindable<H> for P
-where
-    H: Host,
-    P: FieldPath + Tagged,
-    P::Tag: FieldPatch<H, Target = P::Target>,
-{
-    fn patch(patch: &mut Patch<H>, value: &P::Target) {
-        <P::Tag as FieldPatch<H>>::patch(patch, value)
     }
 }
 
