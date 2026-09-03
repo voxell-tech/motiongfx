@@ -1,12 +1,12 @@
 //! What a field does on its way to a new value.
 //!
-//! A transition is an overlay, never a write: the element keeps the
+//! A transition is a tween, never a write: the element keeps the
 //! value the cascade gave it, and the kernel keeps the one the backend
 //! is currently showing. See
 //! [`ElementMut::transition`](crate::ui::ElementMut::transition).
 
 /// How a value travels. Carried rather than looked up through a
-/// trait, so declaring an overlay says nothing about the backend.
+/// trait, so declaring a tween says nothing about the backend.
 pub type LerpFn<T> = fn(&T, &T, f32) -> T;
 
 pub use motiongfx_interp::ease::EaseFn;

@@ -264,9 +264,9 @@ pub fn expand(
     let build_hook = opts.build.map(|build_fn| {
         quote! {
             {
-                let (__overlays, __store) = records.build_parts();
+                let (__tweens, __store) = records.build_parts();
                 let mut __draw = #root::ui::Build::new(
-                    world, node, __overlays, __store, theme,
+                    world, node, __tweens, __store, theme,
                 );
                 (#build_fn)(self, &mut __draw);
             }

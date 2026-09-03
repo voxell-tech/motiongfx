@@ -1,4 +1,4 @@
-//! What a build registers as it runs: watchers, bindings, overlays, and
+//! What a build registers as it runs: watchers, bindings, tweens, and
 //! the elements themselves - kept beside the world so both can be
 //! borrowed at once.
 
@@ -11,12 +11,12 @@ use typarena::type_table::TypeTable;
 
 use crate::host::Host;
 use crate::lenz::FieldId;
-use crate::overlay::Overlays;
 use crate::store::Store;
+use crate::tween::TweenTable;
 use crate::ui::Ui;
 use crate::world_node::WorldNodeRef;
 
-/// A field on a node: what a binding and an overlay are both keyed by.
+/// A field on a node: what a binding and a tween are both keyed by.
 pub(crate) struct FieldKey<H: Host> {
     pub(crate) node: H::Node,
     pub(crate) field: FieldId,
@@ -87,12 +87,12 @@ type BoxedBuild<H> =
 
 /// Writes one field of a mounted element, then pushes it out.
 ///
-/// Takes the whole table: only the closure knows which type to ask
+/// Takes both tables whole: only the closure knows which type to ask
 /// for.
 type BoxedApply<H> = Box<
     dyn Fn(
-            &mut Elements<H>,
-            &mut Overlays<H>,
+            &mut ElementTable<H>,
+            &mut TweenTable<H>,
             &mut <H as Host>::World,
             <H as Host>::Node,
             &mut Store<H>,
@@ -120,7 +120,7 @@ pub struct Watcher<H: Host> {
 ///
 /// A column per element type, so asking for the wrong type is a miss,
 /// not a panic.
-pub type Elements<H> = TypeTable<<H as Host>::Node>;
+pub type ElementTable<H> = TypeTable<<H as Host>::Node>;
 
 /// What a build registers as it runs, kept beside the world so both
 /// can be borrowed at once.
@@ -128,8 +128,8 @@ pub struct Records<H: Host> {
     /// Keyed by the whole walk. Binding a field twice replaces it.
     pub(crate) bindings: HashMap<FieldKey<H>, Binding<H>>,
     /// Keyed like `bindings`, one per field.
-    pub(crate) overlays: Overlays<H>,
-    pub(crate) elements: Elements<H>,
+    pub(crate) tweens: TweenTable<H>,
+    pub(crate) elements: ElementTable<H>,
     /// Which nodes have a row in `elements`. Lets a sweep know what
     /// to drop without asking `elements` what it holds.
     pub(crate) element_nodes: HashSet<H::Node>,
@@ -142,8 +142,8 @@ impl<H: Host> Default for Records<H> {
     fn default() -> Self {
         Self {
             bindings: HashMap::new(),
-            overlays: Overlays::default(),
-            elements: Elements::<H>::new(),
+            tweens: TweenTable::default(),
+            elements: ElementTable::<H>::new(),
             element_nodes: HashSet::new(),
             store: Store::new(),
             spawned: Vec::new(),
@@ -162,11 +162,11 @@ impl<H: Host> Records<H> {
         &mut self.store
     }
 
-    /// The store and the overlays together, borrowed at once.
+    /// The tween table and the store together, borrowed at once.
     #[doc(hidden)]
     pub fn build_parts(
         &mut self,
-    ) -> (&mut Overlays<H>, &mut Store<H>) {
-        (&mut self.overlays, &mut self.store)
+    ) -> (&mut TweenTable<H>, &mut Store<H>) {
+        (&mut self.tweens, &mut self.store)
     }
 }

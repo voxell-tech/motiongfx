@@ -19,11 +19,11 @@ pub mod composer;
 mod elem;
 pub mod element;
 pub mod host;
-pub mod overlay;
 pub mod records;
 pub mod store;
 pub mod style;
 pub mod transition;
+pub mod tween;
 pub mod ui;
 pub mod world_node;
 
@@ -222,7 +222,7 @@ impl<H: Host> Fynix<H> {
         // the app despawned another. Sweep both before touching any
         // dead handle.
         records.bindings.retain(|key, _| H::exists(world, key.node));
-        records.overlays.retain(|node| H::exists(world, node));
+        records.tweens.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
         // `elements` is keyed by type as well as node, so it cannot
@@ -237,7 +237,7 @@ impl<H: Host> Fynix<H> {
 
         let Records {
             bindings,
-            overlays,
+            tweens,
             elements,
             store,
             ..
@@ -249,18 +249,18 @@ impl<H: Host> Fynix<H> {
                 continue;
             }
             (binding.apply)(
-                elements, overlays, world, node, store, theme,
+                elements, tweens, world, node, store, theme,
             );
         }
 
-        // After the bindings, so an overlay gets the last word over
-        // the base they left.
+        // After the bindings, so a tween gets the last word over the
+        // base they left.
         let delta = H::delta(world);
-        overlays.advance(delta, world, theme);
+        tweens.advance(delta, world, theme);
     }
 
     /// Point a transitioning field at `target`, or release it back to
-    /// its base with `None`. Aiming a field with no overlay does
+    /// its base with `None`. Aiming a field with no tween does
     /// nothing.
     pub fn aim<E, P>(
         &mut self,
@@ -275,15 +275,15 @@ impl<H: Host> Fynix<H> {
         let key = field(Cursor::new()).key();
 
         if let Some(tween) =
-            self.records.overlays.tween::<P::Target>(node, key)
+            self.records.tweens.running::<P::Target>(node, key)
         {
             tween.aim(target);
         }
     }
 
     /// How many transitioning fields the kernel is holding.
-    pub fn overlay_len(&self) -> usize {
-        self.records.overlays.len()
+    pub fn tween_len(&self) -> usize {
+        self.records.tweens.len()
     }
 }
 

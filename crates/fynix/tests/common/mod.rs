@@ -47,7 +47,7 @@ pub enum Interact {
     Leave,
 }
 
-/// What a backend does when an interaction fires: point an overlay
+/// What a backend does when an interaction fires: point a tween
 /// somewhere. Only needs the kernel, since [`Fynix::aim`] does too.
 type Aim = Box<dyn Fn(&mut Fynix<FynixHost>) + Send + Sync>;
 

@@ -1,7 +1,7 @@
 //! A value laid over a field while it transitions, kept beside the
 //! element rather than in it.
 //!
-//! The element carries the *base*, the cascade's own value. An overlay
+//! The element carries the *base*, the cascade's own value. A tween
 //! carries what the backend is showing and writes it every frame,
 //! straight through the field's `#[elem(patch = ...)]` tag.
 
@@ -113,20 +113,20 @@ fn tick<H, T>(
     }
 }
 
-/// Every field with an overlay. One per field - a second overlay on
+/// Every field with a tween over it. One per field - a second tween on
 /// the same field replaces rather than doubles.
 ///
 /// A column per value type in `table`, so a frame advances one
 /// contiguous run per type rather than chasing a boxed trait object
 /// per field. `keys` is the set to sweep; `ticks` holds one advance
 /// function per value type seen.
-pub struct Overlays<H: Host> {
+pub struct TweenTable<H: Host> {
     table: TypeTable<FieldKey<H>>,
     keys: HashSet<FieldKey<H>>,
     ticks: Vec<(TypeId, TickFn<H>)>,
 }
 
-impl<H: Host> Default for Overlays<H> {
+impl<H: Host> Default for TweenTable<H> {
     fn default() -> Self {
         Self {
             table: TypeTable::new(),
@@ -136,7 +136,7 @@ impl<H: Host> Default for Overlays<H> {
     }
 }
 
-impl<H: Host> Overlays<H> {
+impl<H: Host> TweenTable<H> {
     pub(crate) fn insert<T>(
         &mut self,
         node: H::Node,
@@ -151,15 +151,15 @@ impl<H: Host> Overlays<H> {
         }
 
         let key = FieldKey::new(node, key);
-        // Drop any overlay already on this field, whatever its type.
+        // Drop any tween already on this field, whatever its type.
         self.table.remove_row(&key);
         self.table.insert(key, tween);
         self.keys.insert(key);
     }
 
-    /// The overlay on `(node, key)` as the `Tween<H, T>` it must be.
-    /// `None` if there is no overlay there.
-    pub(crate) fn tween<T: 'static>(
+    /// The tween on `(node, key)` as the `Tween<H, T>` it must be.
+    /// `None` if there is no tween there.
+    pub(crate) fn running<T: 'static>(
         &mut self,
         node: H::Node,
         key: FieldId,
@@ -181,7 +181,7 @@ impl<H: Host> Overlays<H> {
         });
     }
 
-    /// Advance every overlay by `dt`.
+    /// Advance every tween by `dt`.
     pub(crate) fn advance(
         &mut self,
         dt: f32,
@@ -202,9 +202,9 @@ impl<H: Host> Overlays<H> {
     }
 }
 
-/// Lay an overlay over `key` on `node`, starting from `base`.
-pub(crate) fn insert_overlay<H, T>(
-    overlays: &mut Overlays<H>,
+/// Lay a tween over `key` on `node`, starting from `base`.
+pub(crate) fn insert_tween<H, T>(
+    tweens: &mut TweenTable<H>,
     node: H::Node,
     key: FieldId,
     write: fn(&mut Patch<H>, &T),
@@ -214,7 +214,7 @@ pub(crate) fn insert_overlay<H, T>(
     H: Host,
     T: Clone + Send + Sync + 'static,
 {
-    overlays.insert(
+    tweens.insert(
         node,
         key,
         Tween {

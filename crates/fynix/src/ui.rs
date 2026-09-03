@@ -13,13 +13,14 @@ use crate::composer::Composer;
 use crate::element::Element;
 use crate::host::Host;
 use crate::lenz::{Cursor, FieldPath, Identity, Tagged};
-use crate::overlay::{Overlays, insert_overlay};
 use crate::records::{
-    Binding, BuildFn, ChangedFn, Elements, FieldKey, Records, Watcher,
+    Binding, BuildFn, ChangedFn, ElementTable, FieldKey, Records,
+    Watcher,
 };
 use crate::store::Store;
 use crate::style::StyledElem;
 use crate::transition::Transition;
+use crate::tween::{TweenTable, insert_tween};
 use crate::world_node::WorldNodeRef;
 
 /// Builds elements under a parent and records their reactivity.
@@ -119,7 +120,7 @@ impl<'a, H: Host> Ui<'a, H> {
 }
 
 /// What a `#[element(build = ...)]` hook writes through: this
-/// element's own node, `world`, `theme`, and the store and overlays
+/// element's own node, `world`, `theme`, and the store and tweens
 /// for wiring children and transitions.
 ///
 /// Not [`ElementMut`]: a node running its own build hook has not
@@ -129,7 +130,7 @@ pub struct Build<'a, H: Host, E: Element<H>> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
     node: H::Node,
-    overlays: &'a mut Overlays<H>,
+    tweens: &'a mut TweenTable<H>,
     store: &'a mut Store<H>,
     element: PhantomData<fn() -> E>,
 }
@@ -140,7 +141,7 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
     pub fn new(
         world: &'a mut H::World,
         node: H::Node,
-        overlays: &'a mut Overlays<H>,
+        tweens: &'a mut TweenTable<H>,
         store: &'a mut Store<H>,
         theme: &'a H::Theme,
     ) -> Self {
@@ -148,7 +149,7 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
             world,
             theme,
             node,
-            overlays,
+            tweens,
             store,
             element: PhantomData,
         }
@@ -193,8 +194,8 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
         else {
             return self;
         };
-        insert_overlay(
-            self.overlays,
+        insert_tween(
+            self.tweens,
             owner,
             cursor.key(),
             <P as Bindable<H>>::patch,
@@ -208,8 +209,8 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
 /// What a `#[elem(patch = ...)]` writer writes through: the node the
 /// value lands on, `world`, and `theme`.
 ///
-/// No [`Store`]/[`Overlays`] here. A patch writes a value; it never
-/// wires a child or an overlay.
+/// No [`Store`]/[`TweenTable`] here. A patch writes a value; it never
+/// wires a child or a tween.
 pub struct Patch<'a, H: Host> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
@@ -374,7 +375,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
 
     /// Let this field travel rather than snap.
     ///
-    /// Declares the overlay and its curve.
+    /// Declares the tween and its curve.
     /// [`Fynix::aim`](crate::Fynix::aim) points it; until then the
     /// base shows.
     pub fn transition<P>(
@@ -410,8 +411,8 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             return self;
         };
 
-        insert_overlay(
-            &mut self.ui.records.overlays,
+        insert_tween(
+            &mut self.ui.records.tweens,
             owner,
             cursor.key(),
             <P as Bindable<H>>::patch,
@@ -445,8 +446,8 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             return self;
         };
 
-        insert_overlay(
-            &mut self.ui.records.overlays,
+        insert_tween(
+            &mut self.ui.records.tweens,
             owner,
             cursor.key(),
             <P as Bindable<H>>::patch,
@@ -487,18 +488,18 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             return self;
         };
 
-        let apply = move |elements: &mut Elements<H>,
-                          overlays: &mut Overlays<H>,
+        let apply = move |elements: &mut ElementTable<H>,
+                          tweens: &mut TweenTable<H>,
                           world: &mut H::World,
                           node: H::Node,
                           _store: &mut Store<H>,
                           theme: &H::Theme| {
             let new = value(WorldNodeRef::new(world, node));
 
-            // An overlay on the same field takes the new base, so a
+            // A tween on the same field takes the new base, so a
             // release still heads to the right resting value.
             if let Some(tween) =
-                overlays.tween::<P::Target>(owner, key)
+                tweens.running::<P::Target>(owner, key)
             {
                 tween.rebase(&new);
             }
