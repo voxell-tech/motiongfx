@@ -5,31 +5,38 @@
 //! ends in one of three ways: reach the value, name the whole walk,
 //! or list the hops it took.
 
-use fynix::OverrideDefault;
 use fynix::lenz::Lenz;
 
-#[derive(OverrideDefault, Lenz)]
+#[derive(Lenz)]
 pub struct Card {
     pub header: Header,
 }
 
-#[derive(OverrideDefault, Lenz)]
+#[derive(Lenz)]
 pub struct Header {
-    /// Optional, so a walk through it can come back empty. Present by
-    /// default: the one walk that wants it gone says so.
-    #[default(..)]
+    /// Optional, so a walk through it can come back empty.
     pub badge: Option<Badge>,
 }
 
-#[derive(OverrideDefault, Lenz)]
+#[derive(Lenz)]
 pub struct Badge {
     pub icon: Icon,
 }
 
-#[derive(OverrideDefault, Lenz)]
+#[derive(Lenz)]
 pub struct Icon {
-    #[default(12)]
     pub size: u32,
+}
+
+/// A card with every link present, its icon at 12.
+fn card() -> Card {
+    Card {
+        header: Header {
+            badge: Some(Badge {
+                icon: Icon { size: 12 },
+            }),
+        },
+    }
 }
 
 fn main() {
@@ -45,7 +52,7 @@ fn main() {
 /// Four hops across four structs, ending in a pair of function
 /// pointers that read the field.
 fn reaching_the_value() {
-    let card = Card::default();
+    let card = card();
     let size = Card::cursor().header().badge().icon().size();
 
     println!("\nreaching the value");
@@ -57,7 +64,7 @@ fn reaching_the_value() {
 /// The walk is `Copy` and zero sized, so the same one reads and
 /// writes.
 fn writing_through_the_same_walk() {
-    let mut card = Card::default();
+    let mut card = card();
     let size = Card::cursor().header().badge().icon().size();
 
     *size.accessor().get_mut(&mut card).unwrap() = 24;
