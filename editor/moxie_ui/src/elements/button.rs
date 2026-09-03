@@ -41,15 +41,15 @@ pub struct Button {
     #[elem(child)]
     pub label: Option<Label>,
     /// Between the icon and the label, when both are there.
-    #[elem(default = px(6), patch = PatchColumnGap)]
+    #[elem(default = px(theme.space.md), patch = PatchColumnGap)]
     pub column_gap: Val,
     /// The surface at rest. A style that sits on something already a
     /// surface clears it to [`Color::NONE`].
     #[elem(default = theme.color.fill, patch = PatchBackground)]
     pub fill: Color,
-    #[elem(default = px(26), patch = PatchWidth)]
+    #[elem(default = px(theme.space.touch), patch = PatchWidth)]
     pub width: Val,
-    #[elem(default = px(26), patch = PatchHeight)]
+    #[elem(default = px(theme.space.touch), patch = PatchHeight)]
     pub height: Val,
     /// Share of a flex row's remaining space this button claims, for
     /// one that should fill a row rather than size to its own content.
@@ -64,7 +64,7 @@ pub struct Button {
     pub justify: JustifyContent,
     #[elem(patch = PatchPadding)]
     pub padding: UiRect,
-    #[elem(default = px(6), patch = PatchRadius)]
+    #[elem(default = px(theme.space.md), patch = PatchRadius)]
     pub radius: Val,
     /// Overrides `radius` with independent corners, for a button that
     /// sits at one end of a row of others (a
@@ -192,7 +192,7 @@ impl Style for SegmentButton {
 
     fn apply(self, button: &mut Button, theme: &EditorTheme) {
         button.width = Val::Auto;
-        button.height = px(24);
+        button.height = px(theme.space.row);
         button.radius = Val::ZERO;
         button.flex_grow = 1.0;
         button.fill = if self.active {
@@ -217,12 +217,13 @@ impl Style for GhostButton {
     type Host = FynixHost;
     type Element = Button;
 
-    fn apply(self, button: &mut Button, _theme: &EditorTheme) {
+    fn apply(self, button: &mut Button, theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.width = Val::Auto;
         button.height = Val::Auto;
-        button.padding = UiRect::axes(px(8), px(4));
-        button.radius = px(4);
+        button.padding =
+            UiRect::axes(px(theme.space.lg), px(theme.space.sm));
+        button.radius = px(theme.space.radius);
     }
 }
 

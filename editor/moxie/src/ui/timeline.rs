@@ -65,7 +65,6 @@ const CONTROL_BAR_HEIGHT: f32 = 40.0;
 const TIME_AXIS_HEIGHT: f32 = 24.0;
 const MAJOR_TICK: f32 = 8.0;
 const MINOR_TICK: f32 = 4.0;
-const LABEL_SIZE: f32 = 10.0;
 
 /// Viewport where the timeline, track and action UI is displayed.
 #[derive(Component, Default, Clone)]
@@ -216,6 +215,7 @@ fn axis_view(world: &World, node: Entity) -> (u32, TimelineView) {
 fn build_ticks(ui: &mut BevyUi) {
     let (width, view) = axis_view(ui.world, ui.parent());
     let color = ui.theme.color.text_dim;
+    let text_size = ui.theme.text.small;
     let marks = time_axis::ticks(&view, width as f32);
 
     for tick in marks {
@@ -234,7 +234,7 @@ fn build_ticks(ui: &mut BevyUi) {
                 label = elem!(
                     Label,
                     text = text,
-                    size = LABEL_SIZE,
+                    size = text_size,
                     wrap = false,
                     color = color.with_alpha(0.7)
                 )
@@ -516,7 +516,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     label = elem!(
                         Label,
                         text = label.clone(),
-                        size = 10.0f32,
+                        size = theme.text.small,
                         color = if placed.draft {
                             theme.color.critical.with_alpha(0.9)
                         } else {
