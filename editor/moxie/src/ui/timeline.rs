@@ -45,11 +45,11 @@ use moxie_ui::reactive::{
 
 /// Folded blocks, by path.
 #[derive(Resource, Default, Clone, PartialEq)]
-pub(super) struct BlockFoldState(BTreeSet<Vec<usize>>);
+pub(crate) struct BlockFoldState(BTreeSet<Vec<usize>>);
 
 impl BlockFoldState {
     /// The folded paths this holds.
-    pub(super) fn paths(&self) -> &BTreeSet<Vec<usize>> {
+    pub(crate) fn paths(&self) -> &BTreeSet<Vec<usize>> {
         &self.0
     }
 }
