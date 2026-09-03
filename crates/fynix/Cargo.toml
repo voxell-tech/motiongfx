@@ -8,7 +8,6 @@ repository.workspace = true
 
 [dependencies]
 lenz = { workspace = true }
-override_default = { workspace = true }
 fynix_macros = { workspace = true }
 hashbrown = { workspace = true, features = ["default-hasher"] }
 motiongfx_interp = { workspace = true }

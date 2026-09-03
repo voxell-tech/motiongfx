@@ -17,11 +17,9 @@ pub struct ScrollArea {
     pub height: Val,
     /// How much of its parent's remaining space this area claims -
     /// almost always `1.0` for one that should fill what's left.
-    #[elem(patch = PatchFlexGrow)]
-    #[default(0.0)]
+    #[elem(default = 0.0, patch = PatchFlexGrow)]
     pub flex_grow: f32,
-    #[elem(patch = PatchDirection)]
-    #[default(::Column)]
+    #[elem(default = ::Column, patch = PatchDirection)]
     pub direction: FlexDirection,
     #[elem(patch = PatchAlign)]
     pub align: AlignItems,
@@ -31,23 +29,17 @@ pub struct ScrollArea {
     pub padding: UiRect,
     /// Between rows, and between columns: a row of things wants the
     /// second, a column the first.
-    #[elem(patch = PatchRowGap)]
-    #[default(::ZERO)]
+    #[elem(default = ::ZERO, patch = PatchRowGap)]
     pub row_gap: Val,
-    #[elem(patch = PatchColumnGap)]
-    #[default(::ZERO)]
+    #[elem(default = ::ZERO, patch = PatchColumnGap)]
     pub column_gap: Val,
-    #[elem(patch = PatchRadius)]
-    #[default(::ZERO)]
+    #[elem(default = ::ZERO, patch = PatchRadius)]
     pub radius: Val,
-    #[elem(patch = PatchBackground)]
-    #[default(::NONE)]
+    #[elem(default = ::NONE, patch = PatchBackground)]
     pub background: Color,
-    #[elem(patch = PatchScrollX)]
-    #[default(true)]
+    #[elem(default = true, patch = PatchScrollX)]
     pub scroll_x: bool,
-    #[elem(patch = PatchScrollY)]
-    #[default(true)]
+    #[elem(default = true, patch = PatchScrollY)]
     pub scroll_y: bool,
 }
 

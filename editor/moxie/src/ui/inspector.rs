@@ -8,7 +8,6 @@ use fynix::ui::ElementHandle;
 use moxie_ui::elements::{EntityInspector, Label, ScrollArea};
 use moxie_ui::reactive::{BevyUi, FynixHost, resource_changed};
 
-use super::PANEL_PADDING;
 use crate::SelectedEntity;
 
 /// The inspector panel, as kernel nodes.
@@ -21,12 +20,13 @@ impl Composer<FynixHost> for InspectorPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, ScrollArea> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             ScrollArea,
             width = percent(100),
             flex_grow = 1.0f32,
             row_gap = px(8),
-            padding = UiRect::all(px(PANEL_PADDING)),
+            padding = UiRect::all(px(pad)),
             scroll_x = false
         ))
         .watch(resource_changed::<SelectedEntity>(), build)
@@ -36,7 +36,7 @@ impl Composer<FynixHost> for InspectorPanel {
 
 fn build(ui: &mut BevyUi) {
     let Some(entity) = ui.world.resource::<SelectedEntity>().0 else {
-        let muted = ui.theme.text_muted;
+        let muted = ui.theme.color.text_dim;
         ui.elem(elem!(
             Label,
             text = "Nothing selected",

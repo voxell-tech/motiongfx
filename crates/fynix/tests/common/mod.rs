@@ -246,11 +246,9 @@ impl Host for FynixHost {
 /// there, so nothing has to spell one out.
 #[element(host = FynixHost)]
 pub struct Label {
-    #[elem(patch = WriteLabelText)]
-    #[default(String::from("Label"))]
+    #[elem(default = String::from("Label"), patch = WriteLabelText)]
     pub text: String,
-    #[elem(patch = WriteLabelSize)]
-    #[default(13)]
+    #[elem(default = 13, patch = WriteLabelSize)]
     pub size: u32,
 }
 

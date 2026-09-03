@@ -148,7 +148,7 @@ fn panel(
     body: impl FnOnce(&mut BevyUi),
 ) {
     let title = title.to_string();
-    let text_color = theme.text_primary;
+    let text_color = theme.color.text;
 
     ui.elem(elem!(
         Frame,

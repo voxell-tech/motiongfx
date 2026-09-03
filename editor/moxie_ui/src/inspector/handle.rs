@@ -13,12 +13,12 @@ use bevy::prelude::*;
 
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
-use fynix::{elem, val};
+use fynix::elem;
 use moxie_asset::ABSOLUTE_SOURCE;
 
 use crate::asset::AssetDragging;
 use crate::elements::{
-    ButtonElemCursor, GhostButton, Icon, Label, LabelCursor,
+    ButtonCursor, GhostButton, Icon, Label, LabelCursor,
 };
 use crate::icons;
 use crate::reactive::BevyUi;
@@ -29,7 +29,7 @@ impl<T: Asset + TypePath> Inspect for Handle<T> {
     fn build(source: &dyn Source, ui: &mut BevyUi) {
         let read = source.boxed();
         let written = source.boxed();
-        let muted = ui.theme.text_muted;
+        let muted = ui.theme.color.text_dim;
         let kind = TypeId::of::<T>();
         let label = label_of::<T>(ui.world, &*read);
 
@@ -37,8 +37,8 @@ impl<T: Asset + TypePath> Inspect for Handle<T> {
             !GhostButton,
             width = percent(100),
             justify = JustifyContent::SpaceBetween,
-            icon = val!(Icon, image = icons::ASSET, color = muted),
-            label = val!(
+            icon = elem!(Icon, image = icons::ASSET, color = muted),
+            label = elem!(
                 Label,
                 text = label,
                 color = muted,

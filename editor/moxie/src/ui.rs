@@ -22,13 +22,13 @@ use crate::{
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::elem;
+use moxie_ui::MoxieUiPlugin;
 use moxie_ui::elements::{Frame, FrameCursor, Panel};
 use moxie_ui::reactive::{BevyUi, FynixSet, value_changed};
 use moxie_ui::widgets::dock::{
     DockAreaStyle, DockLeaf, DockNode, DockTree,
     DockWindowDescriptor, Edge, WindowRegistry, dock,
 };
-use moxie_ui::{MoxieUiPlugin, monokai};
 
 /// Wires feathers theming, the editor UI tree, and the per-frame
 /// timeline/playback/preview systems.
@@ -70,8 +70,6 @@ impl Plugin for UiPlugin {
     }
 }
 
-pub(crate) const PANEL_PADDING: f32 = 12.0;
-
 /// Marks the UI camera (which owns the window). Every other (scene)
 /// camera is retargeted to the offscreen preview image; see
 /// [`retarget_scene_cameras`].
@@ -105,7 +103,9 @@ fn setup_editor_ui(
             Camera2d
             Camera {
                 order: 10,
-                clear_color: { monokai::BASE[0] },
+                // The const, not the theme resource: this runs at
+                // startup, before the kernel holds one.
+                clear_color: { moxie_ui::theme::BG },
             }
             TrackViewportCamera
         ])

@@ -19,18 +19,17 @@ use bevy_fynix::WorldEntityMut;
 use bevy_motiongfx::scene::id::EntityUid;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::{ElementHandle, ElementMut};
-use fynix::{elem, val};
 use moxie_ui::elements::{
-    ButtonElem, ButtonElemCursor, Frame, FrameCursor, GhostButton,
-    Icon, Label, LabelCursor, Panel, ScrollArea, TintButton,
+    Button, ButtonCursor, Frame, FrameCursor, GhostButton, Icon,
+    Label, LabelCursor, Panel, ScrollArea, TintButton,
 };
 use moxie_ui::fold::{Foldable, FoldsOn};
 use moxie_ui::reactive::{
     BevyUi, FynixHost, component_changed_on, value_changed,
 };
 
-use super::PANEL_PADDING;
 use crate::{SceneRoot, SelectedEntity};
 
 /// Thickness of the line marking where a drop would land a row beside
@@ -73,20 +72,16 @@ impl Composer<FynixHost> for AddButton {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Frame> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             Frame,
             position = PositionType::Absolute,
-            inset = UiRect::new(
-                auto(),
-                px(PANEL_PADDING),
-                auto(),
-                px(PANEL_PADDING)
-            )
+            inset = UiRect::new(auto(), px(pad), auto(), px(pad))
         ))
         .with(move |ui| {
             ui.elem(elem!(
                 !TintButton::default(),
-                icon = val!(Icon, image = crate::icons::PLUS)
+                icon = elem!(Icon, image = crate::icons::PLUS)
             ))
             .observe(
                 |_: On<Activate>, mut commands: Commands| {
@@ -108,6 +103,7 @@ impl Composer<FynixHost> for Roots {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, ScrollArea> {
+        let pad = ui.theme.space.xl;
         // Roots only: a branch minds itself. The query is kept
         // because this polls every flush, and the build (which
         // makes its own) runs far less often.
@@ -119,9 +115,9 @@ impl Composer<FynixHost> for Roots {
             width = percent(100),
             flex_grow = 1.0f32,
             padding = UiRect::new(
-                px(PANEL_PADDING),
-                px(PANEL_PADDING),
-                px(PANEL_PADDING),
+                px(pad),
+                px(pad),
+                px(pad),
                 px(BUTTON_CLEARANCE)
             ),
             scroll_x = false
@@ -209,7 +205,7 @@ fn seam(
     above: Option<Entity>,
     below: Option<Entity>,
 ) {
-    let accent = ui.theme.accent;
+    let accent = ui.theme.color.accent;
 
     ui.elem(elem!(
         Frame,
@@ -278,8 +274,9 @@ impl Composer<FynixHost> for Subtree {
     ) -> ElementHandle<FynixHost, Frame> {
         let entity = self.entity;
         let name = name_of(ui.world, entity);
-        let text = ui.theme.text_primary;
-        let accent = ui.theme.accent;
+        let text = ui.theme.color.text;
+        let accent = ui.theme.color.accent;
+        let select = ui.theme.color.selection;
 
         ui.compose(Foldable {
             header: elem!(
@@ -289,7 +286,7 @@ impl Composer<FynixHost> for Subtree {
                 justify = JustifyContent::FlexStart,
                 padding = UiRect::axes(px(4), Val::ZERO),
                 radius = px(3),
-                label = val!(
+                label = elem!(
                     Label,
                     text = name,
                     wrap = false,
@@ -304,7 +301,7 @@ impl Composer<FynixHost> for Subtree {
                 '_,
                 '_,
                 FynixHost,
-                ButtonElem,
+                Button,
             >| {
                 drag::rows(&mut header, entity)
                     .observe(
@@ -321,7 +318,7 @@ impl Composer<FynixHost> for Subtree {
                         |button| button.fill(),
                         highlight_changed(entity),
                         move |WorldNodeRef { world, .. }| {
-                            highlight(world, entity, accent)
+                            highlight(world, entity, accent, select)
                         },
                     )
                     .bind(
@@ -376,14 +373,19 @@ struct Collapsed;
 
 /// What a row's own surface says: a drop landing inside it beats
 /// whether it is selected, and most rows are neither.
-fn highlight(world: &World, entity: Entity, accent: Color) -> Color {
+fn highlight(
+    world: &World,
+    entity: Entity,
+    accent: Color,
+    select: Color,
+) -> Color {
     if world
         .resource::<drag::Dragging>()
         .shows(entity, drag::At::Into)
     {
         accent.with_alpha(0.35)
     } else if world.resource::<SelectedEntity>().0 == Some(entity) {
-        accent.with_alpha(0.18)
+        select
     } else {
         Color::NONE
     }

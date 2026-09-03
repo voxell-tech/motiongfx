@@ -15,7 +15,6 @@ use fynix::host::Host;
 use fynix::lenz::{Cursor, FieldPath, Identity};
 use fynix::tween::Tween;
 use fynix::ui::{Bindable, Build, ElementMut};
-use motiongfx_interp::ease;
 
 /// What `lit` can aim at: a colour itself, or a field that only wears
 /// one sometimes.
@@ -147,11 +146,11 @@ impl<E: Element<FynixHost> + Send + Sync> MotionExt<E>
         P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit,
     {
-        let interact_ms = self.theme().interact_ms;
+        let motion = self.theme().motion;
         self.transition(
             field,
-            Tween::ms(interact_ms, T::mix)
-                .ease(ease::cubic::ease_out),
+            Tween::ms(motion.interact.as_millis() as u32, T::mix)
+                .ease(motion.ease),
         );
         on_lit(self, entity, field, hover, press)
     }
@@ -193,12 +192,12 @@ impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
         P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit,
     {
-        let interact_ms = self.theme().interact_ms;
+        let motion = self.theme().motion;
         self.transition_from(
             field,
             base,
-            Tween::ms(interact_ms, T::mix)
-                .ease(ease::cubic::ease_out),
+            Tween::ms(motion.interact.as_millis() as u32, T::mix)
+                .ease(motion.ease),
         );
         on_lit(self, entity, field, hover, press)
     }
@@ -240,12 +239,12 @@ impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
         P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit,
     {
-        let interact_ms = self.theme().interact_ms;
+        let motion = self.theme().motion;
         self.transition_from(
             field,
             base,
-            Tween::ms(interact_ms, T::mix)
-                .ease(ease::cubic::ease_out),
+            Tween::ms(motion.interact.as_millis() as u32, T::mix)
+                .ease(motion.ease),
         );
         on_lit(self, entity, field, hover, press)
     }

@@ -28,8 +28,7 @@ pub struct Frame {
     pub position: PositionType,
     /// How far each edge sits from the parent's, for an absolute
     /// frame. `Auto` on an edge leaves that one to the layout.
-    #[default(::all(auto()))]
-    #[elem(patch = PatchInset)]
+    #[elem(default = ::all(auto()), patch = PatchInset)]
     pub inset: UiRect,
     #[elem(patch = PatchDirection)]
     pub direction: FlexDirection,
@@ -49,19 +48,15 @@ pub struct Frame {
     pub overflow: Overflow,
     /// Between rows, and between columns: a row of things wants the
     /// second, a column the first.
-    #[default(::ZERO)]
-    #[elem(patch = PatchRowGap)]
+    #[elem(default = ::ZERO, patch = PatchRowGap)]
     pub row_gap: Val,
-    #[default(::ZERO)]
-    #[elem(patch = PatchColumnGap)]
+    #[elem(default = ::ZERO, patch = PatchColumnGap)]
     pub column_gap: Val,
-    #[default(::ZERO)]
-    #[elem(patch = PatchRadius)]
+    #[elem(default = ::ZERO, patch = PatchRadius)]
     pub radius: Val,
     /// Transparent by default, for a frame that only wants the
     /// layout.
-    #[default(::NONE)]
-    #[elem(patch = PatchBackground)]
+    #[elem(default = ::NONE, patch = PatchBackground)]
     pub background: Color,
     /// `None` hides it, which is how a frame that depends on a size it
     /// has not measured yet avoids showing up at its intrinsic size

@@ -21,17 +21,16 @@ use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::{ElementHandle, ElementMut};
-use fynix::{elem, val};
 use moxie_asset::AssetKinds;
 use moxie_ui::asset::draggable;
 use moxie_ui::elements::{
-    ButtonElem, Frame, Icon, Label, Panel, ScrollArea, TintButton,
+    Button, Frame, Icon, Label, Panel, ScrollArea, TintButton,
 };
 use moxie_ui::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use moxie_ui::reactive::{BevyUi, FynixHost, resource_changed};
 
-use super::PANEL_PADDING;
 use crate::{ProjectBookmarks, ProjectPath};
 
 /// Room below the last row for the button that floats over it.
@@ -74,20 +73,16 @@ impl Composer<FynixHost> for AddButton {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Frame> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             Frame,
             position = PositionType::Absolute,
-            inset = UiRect::new(
-                auto(),
-                px(PANEL_PADDING),
-                auto(),
-                px(PANEL_PADDING)
-            )
+            inset = UiRect::new(auto(), px(pad), auto(), px(pad))
         ))
         .with(move |ui| {
             ui.elem(elem!(
                 !TintButton::default(),
-                icon = val!(Icon, image = crate::icons::PLUS)
+                icon = elem!(Icon, image = crate::icons::PLUS)
             ))
             .observe(
                 |_: On<Activate>, mut commands: Commands| {
@@ -128,14 +123,15 @@ impl Composer<FynixHost> for Listing {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, ScrollArea> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             ScrollArea,
             width = percent(100),
             flex_grow = 1.0f32,
             padding = UiRect::new(
-                px(PANEL_PADDING),
-                px(PANEL_PADDING),
-                px(PANEL_PADDING),
+                px(pad),
+                px(pad),
+                px(pad),
                 px(BUTTON_CLEARANCE)
             ),
             scroll_x = false
@@ -204,21 +200,21 @@ impl Composer<FynixHost> for BookmarkRow {
             ui.world.resource::<AssetFoldState>().0.contains(&path);
         let toggle_path = path.clone();
 
-        let muted = ui.theme.text_muted;
-        let primary = ui.theme.text_primary;
+        let muted = ui.theme.color.text_dim;
+        let primary = ui.theme.color.text;
 
         ui.compose(Foldable {
             header: elem!(
                 !TintButton::default(),
                 width = percent(100),
                 justify = JustifyContent::FlexStart,
-                icon = val!(
+                icon = elem!(
                     Icon,
                     image = moxie_ui::icons::CHEVRON,
                     color = muted,
                     rotation = CHEVRON_SHUT
                 ),
-                label = val!(
+                label = elem!(
                     Label,
                     text = name.clone(),
                     color = primary,
@@ -227,17 +223,18 @@ impl Composer<FynixHost> for BookmarkRow {
             ),
             folds_on: FoldsOn::Header,
             enabled,
-            on_header: move |mut header: ElementMut<FynixHost, ButtonElem>| {
+            on_header: move |mut header: ElementMut<FynixHost, Button>| {
                 // Nothing to drop for the project's own folder.
                 let Some(index) = index else {
                     return;
                 };
 
                 // A delete button beside the label, injected as an
-                // extra child rather than one of `ButtonElem`'s own
+                // extra child rather than one of `Button`'s own
                 // icon/label slots. It takes its own click for
                 // itself, so the header's fold never hears it.
                 header.with(move |ui| {
+                    let critical = ui.theme.color.critical;
                     // Eats whatever room icon and label leave, so
                     // the delete button lands flush against the far
                     // end.
@@ -245,13 +242,13 @@ impl Composer<FynixHost> for BookmarkRow {
 
                     ui.elem(elem!(
                         !TintButton {
-                            tint: Some(ui.theme.critical)
+                            tint: Some(critical)
                         },
                         width = px(14),
                         height = px(14),
                         padding = UiRect::ZERO,
                         radius = px(2),
-                        icon = val!(
+                        icon = elem!(
                             Icon,
                             image = crate::icons::TRASH,
                             size = px(10)
@@ -324,20 +321,20 @@ impl Composer<FynixHost> for FolderRow {
             ui.world.resource::<AssetFoldState>().0.contains(&path);
         let toggle_path = path.clone();
 
-        let muted = ui.theme.text_muted;
-        let primary = ui.theme.text_primary;
+        let muted = ui.theme.color.text_dim;
+        let primary = ui.theme.color.text;
 
         ui.compose(Foldable {
             header: elem!(
                 !TintButton::default(),
                 justify = JustifyContent::FlexStart,
-                icon = val!(
+                icon = elem!(
                     Icon,
                     image = moxie_ui::icons::CHEVRON,
                     color = muted,
                     rotation = CHEVRON_SHUT
                 ),
-                label = val!(
+                label = elem!(
                     Label,
                     text = name.clone(),
                     color = primary,
@@ -346,7 +343,7 @@ impl Composer<FynixHost> for FolderRow {
             ),
             folds_on: FoldsOn::Header,
             enabled,
-            on_header: |_: ElementMut<FynixHost, ButtonElem>| {},
+            on_header: |_: ElementMut<FynixHost, Button>| {},
             body: move |ui: &mut BevyUi| {
                 build_children(ui, &path);
             },
@@ -454,7 +451,7 @@ fn file_row(ui: &mut BevyUi, path: &Path) {
     let color = if kind.is_some() {
         ui.theme.palette.purple
     } else {
-        ui.theme.text_muted
+        ui.theme.color.text_dim
     };
 
     let mut row = ui.elem(elem!(

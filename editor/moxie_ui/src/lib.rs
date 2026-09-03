@@ -12,7 +12,6 @@ pub mod fold;
 pub mod icons;
 pub mod inspector;
 pub mod layout;
-pub mod monokai;
 pub mod motion;
 pub mod reactive;
 pub mod theme;

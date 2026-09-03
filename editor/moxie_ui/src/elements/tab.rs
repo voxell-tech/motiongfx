@@ -8,14 +8,13 @@ use bevy_fynix::WorldEntityMut as _;
 use fynix::element::element;
 
 use super::patch::*;
-use super::{ButtonElem, Icon, Label};
+use super::{Button, Icon, Label};
 use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
 
 /// The strip across the top of a leaf.
 #[element(build = Self::build)]
 pub struct TabBar {
-    #[elem(patch = PatchBackground)]
-    #[default(Color::srgba(1.0, 1.0, 1.0, 0.03))]
+    #[elem(default = theme.color.fill_faint, patch = PatchBackground)]
     pub background: Color,
 }
 
@@ -78,16 +77,14 @@ pub struct Tab {
     #[elem(child)]
     pub label: Label,
     #[elem(child)]
-    pub close: Option<ButtonElem>,
+    pub close: Option<Button>,
     #[elem(patch = PatchWindowId)]
     pub window_id: String,
-    #[elem(patch = PatchTabId)]
-    #[default(TabId(0))]
+    #[elem(default = TabId(0), patch = PatchTabId)]
     pub tab: TabId,
     #[elem(patch = PatchActive)]
     pub active: bool,
-    #[elem(patch = PatchTabFill)]
-    #[default(Color::srgba(1.0, 1.0, 1.0, 0.06))]
+    #[elem(default = theme.color.fill, patch = PatchTabFill)]
     pub fill: Color,
 }
 

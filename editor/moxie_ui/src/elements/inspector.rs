@@ -21,9 +21,9 @@ use bevy::ui_widgets::{Activate, ActivateOnPress, MenuButton};
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::records::{BuildFn, ChangedFn};
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 
 use super::{
     Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
@@ -195,10 +195,10 @@ impl Composer<FynixHost> for AddComponent {
             .with(move |ui| {
                 ui.elem(elem!(
                     !TintButton::default(),
-                    icon = val!(
+                    icon = elem!(
                         Icon,
                         image = icons::PLUS,
-                        color = theme.text_muted
+                        color = theme.color.text_dim
                     )
                 ))
                 .insert((MenuButton, ActivateOnPress));
@@ -211,11 +211,11 @@ impl Composer<FynixHost> for AddComponent {
                         if options.is_empty() {
                             ui.elem(elem!(
                                 DropdownItem,
-                                label = val!(
+                                label = elem!(
                                     Label,
                                     text = "Nothing left to add"
                                         .to_string(),
-                                    color = theme.text_muted
+                                    color = theme.color.text_dim
                                 )
                             ));
                             return;
@@ -244,14 +244,14 @@ fn add_component_item(
 ) {
     ui.elem(elem!(
         DropdownItem,
-        label = val!(
+        label = elem!(
             Label,
             text = name.to_string(),
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         )
     ))
-    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
+    .lit(|item| item.fill(), theme.color.hover, theme.color.hover)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(move |world: &mut World| {
             add_component(world, entity, component);
@@ -333,7 +333,7 @@ fn add_component(
 /// have been headed.
 fn single(ui: &mut BevyUi, name: &str, field: Field) {
     let name = name.to_string();
-    let primary = ui.theme.text_primary;
+    let primary = ui.theme.color.text;
 
     ui.compose(FieldRow {
         label: name,

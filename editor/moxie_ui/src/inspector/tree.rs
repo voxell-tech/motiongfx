@@ -15,12 +15,12 @@ use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::records::BuildFn;
 use fynix::ui::{ElementHandle, ElementMut};
-use fynix::{elem, val};
 
 use super::{Field, FieldRow, ReflectInspect, enums};
-use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
+use crate::elements::{Button, Frame, Icon, Label, TintButton};
 use crate::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use crate::icons;
 use crate::reactive::{BevyUi, FynixHost};
@@ -347,7 +347,7 @@ fn build_leaf(
 
     // Dimmer than the value it labels: the field name is a caption,
     // not the content.
-    let muted = ui.theme.text_muted;
+    let muted = ui.theme.color.text_dim;
     let label = leaf_name(&path).to_string();
     let field = root.child(&path);
     ui.compose(FieldRow {
@@ -372,7 +372,7 @@ fn build_variant(
     depth: u32,
 ) {
     let field = root.child(&path);
-    let muted = ui.theme.text_muted;
+    let muted = ui.theme.color.text_dim;
 
     if children.is_empty() {
         let label = leaf_name(&path).to_string();
@@ -482,6 +482,8 @@ impl<F: BuildFn<FynixHost>> Composer<FynixHost> for Section<F> {
                 sections.0.contains(&(component, path.clone()))
             });
 
+        let muted = ui.theme.color.text_dim;
+        let primary = ui.theme.color.text;
         ui.compose(Foldable {
             header: elem!(
                 !TintButton::default(),
@@ -490,28 +492,23 @@ impl<F: BuildFn<FynixHost>> Composer<FynixHost> for Section<F> {
                 justify = JustifyContent::FlexStart,
                 padding = UiRect::axes(px(4), px(3)),
                 radius = px(4),
-                icon = val!(
+                icon = elem!(
                     Icon,
                     image = icons::CHEVRON,
-                    color = ui.theme.text_muted,
+                    color = muted,
                     rotation = CHEVRON_SHUT
                 ),
-                label = val!(
+                label = elem!(
                     Label,
                     text = name,
-                    color = ui.theme.text_primary,
+                    color = primary,
                     bold = true
                 )
             ),
             // Nothing else to mean: the whole header folds it.
             folds_on: FoldsOn::Header,
             enabled: true,
-            on_header: |_: ElementMut<
-                '_,
-                '_,
-                FynixHost,
-                ButtonElem,
-            >| {},
+            on_header: |_: ElementMut<'_, '_, FynixHost, Button>| {},
             body,
             open,
             on_toggle: move |world: &mut World, open: bool| {

@@ -1,15 +1,15 @@
 //! A row of mutually exclusive options, as a composer rather than an
-//! element - it builds a subtree of [`ButtonElem`]s, none of it kept
+//! element - it builds a subtree of [`Button`]s, none of it kept
 //! around to be patched later.
 //!
-//! [`ButtonElem`]: crate::elements::button::ButtonElem
+//! [`Button`]: crate::elements::button::Button
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 
 use super::{Frame, Label, SegmentButton};
 use crate::reactive::{BevyUi, FynixHost};
@@ -58,7 +58,7 @@ where
                 let text_color = if active {
                     theme.palette.base[0]
                 } else {
-                    theme.text_primary
+                    theme.color.text
                 };
                 let corners = segment_corners(i, count);
                 let on_select = on_select.clone();
@@ -66,7 +66,7 @@ where
                 ui.elem(elem!(
                     !SegmentButton { active },
                     corners = Some(corners),
-                    label = val!(
+                    label = elem!(
                         Label,
                         text = label,
                         size = 11.0f32,

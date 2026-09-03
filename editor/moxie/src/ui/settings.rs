@@ -6,14 +6,13 @@ use bevy::prelude::*;
 use bevy::settings::SaveSettingsSync;
 use bevy_fynix::WorldEntityMut;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 use moxie_ui::elements::{
     Button, Frame, Label, Panel, ResourceInspector,
 };
 use moxie_ui::reactive::{BevyUi, FynixHost};
 
-use super::PANEL_PADDING;
 use crate::EditorSettings;
 
 /// The settings panel, as kernel nodes.
@@ -26,11 +25,12 @@ impl Composer<FynixHost> for SettingsPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Panel> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             Panel,
             direction = FlexDirection::Column,
             row_gap = px(8),
-            padding = UiRect::all(px(PANEL_PADDING)),
+            padding = UiRect::all(px(pad)),
             scrolls = true
         ))
         .with(|ui| {
@@ -55,8 +55,8 @@ impl Composer<FynixHost> for SaveRow {
         ui.elem(elem!(Frame, direction = FlexDirection::Row))
             .with(|ui| {
                 ui.elem(elem!(
-                    !Button,
-                    label = val!(Label, text = "Save"),
+                    Button,
+                    label = elem!(Label, text = "Save"),
                     width = px(64),
                     height = px(24)
                 ))

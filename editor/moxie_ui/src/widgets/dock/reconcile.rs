@@ -131,14 +131,17 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
         .with(move |ui| {
             build_panel(id, split.a, true, a_visible, ui);
 
-            let hover = ui.theme.hover_overlay;
+            let hover = ui.theme.color.hover;
+            let line =
+                handle_line(ui.theme, flex_direction, line_color);
+            let bar = handle_bar(ui.theme, flex_direction);
             ui.elem(elem!(
                 SplitHandle,
                 node = id,
                 axis = flex_direction,
                 visible = handle_visible,
-                line = handle_line(flex_direction, line_color),
-                bar = handle_bar(flex_direction)
+                line = line,
+                bar = bar
             ))
             .lit(
                 |handle| handle.bar().background(),

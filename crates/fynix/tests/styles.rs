@@ -1,5 +1,5 @@
 //! The three layers an element passes through before it is built: its
-//! own default, a style, then the call site.
+//! own base, a style, then the call site.
 //!
 //! A style is a mutation, so the order they run in is the precedence,
 //! and nothing has to remember where a field's value came from.
@@ -10,20 +10,17 @@ mod common;
 
 use common::{FynixHost, Label, World};
 use fynix::Fynix;
-use fynix::element::{Element, ElementBase};
+use fynix::elem;
+use fynix::element::ElementBase;
 use fynix::host::Host;
-use fynix::records::Records;
-use fynix::style::{Raw, Style, StyledElem};
-use fynix::{elem, val};
+use fynix::style::Style;
 
-/// What the cascade produced, for a test that only wants the value.
-/// `create` says nothing about a backend, but the type it is called on
-/// has to name one.
-fn create<S: StyledElem<Host = FynixHost>>(styled: S) -> S::Element {
-    styled.create(&())
+/// Runs an [`elem!`]'s cascade with the mock theme.
+fn create<E>(build: impl FnOnce(&()) -> E) -> E {
+    build(&())
 }
 
-/// A style with something to say, so a test can see it run.
+/// A style that writes `size`.
 struct Title;
 
 impl Style for Title {
@@ -71,8 +68,7 @@ fn the_style_can_be_any_expression() {
         }
     }
 
-    // A literal, and a call. Both are told from the fields that
-    // follow by the comma, so neither has to be a bare path.
+    // A literal and a call; the comma tells either from the fields.
     assert_eq!(create(elem!(!Exactly(7))).size, 7);
     assert_eq!(
         create(elem!(!Exactly(7), text = "Save")).text,
@@ -114,8 +110,7 @@ fn generic_elements_and_styles_both_carry_their_arguments() {
     assert_eq!(themed.size, 32);
     assert_eq!(themed.look, Dark);
 
-    // The style is an expression, so it needs the turbofish that any
-    // other expression would.
+    // The style is an expression, so it takes a turbofish.
     let themed = create(elem!(!Wide::<Dark>(PhantomData)));
 
     assert_eq!(themed.size, 10);
@@ -173,51 +168,7 @@ fn closures_are_there_for_what_fields_cannot_say() {
 }
 
 #[test]
-fn every_case_is_the_same_argument() {
-    assert_eq!(create(elem!(!Title)).size, 10);
-    assert_eq!(create(elem!(!Title, size = 32u32)).size, 32);
-    assert_eq!(create(elem!(Label, size = 32u32)).size, 32);
-    assert_eq!(
-        create(Raw::new(Label {
-            text: "Save".into(),
-            size: 32,
-        }))
-        .size,
-        32
-    );
-}
-
-#[test]
-fn finished_element_passes_through_untouched() {
-    let label = create(Raw::new(Label {
-        text: "Save".into(),
-        size: 32,
-    }));
-
-    assert_eq!(label.text, "Save");
-    assert_eq!(label.size, 32, "no default, and no style");
-}
-
-#[test]
-fn what_the_cascade_left_is_what_gets_built() {
-    let (mut world, parent) = World::with_root();
-    let mut records = Records::default();
-
-    let label = create(elem!(!Title, text = "Save"));
-    let node = Element::<FynixHost>::build(
-        &label,
-        &mut world,
-        parent,
-        &mut records,
-        &(),
-    );
-
-    assert_eq!(world.get(node).text, "Save");
-    assert_eq!(world.get(node).size, 10);
-}
-
-#[test]
-fn the_builder_takes_a_styled_element_whole() {
+fn the_kernel_builds_what_the_cascade_left() {
     let (mut world, root) = World::with_root();
     let mut kernel = Fynix::new(());
 
@@ -233,12 +184,4 @@ fn the_builder_takes_a_styled_element_whole() {
     let children = FynixHost::children(&world, root);
     assert_eq!(world.get(children[0]).text, "Save");
     assert_eq!(world.get(children[0]).size, 10);
-}
-
-#[test]
-fn nested_value_can_be_a_style() {
-    let label: Label = val!(!Title, text = "Save");
-
-    assert_eq!(label.size, 10, "the style ran");
-    assert_eq!(label.text, "Save", "then the fields");
 }

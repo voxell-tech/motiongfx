@@ -7,13 +7,13 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
-use fynix::{elem, val};
+use fynix::elem;
 
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
 use crate::elements::{
-    ButtonElemCursor, GhostButton, Icon, IconCursor, Label,
-    LabelCursor, Tab, TabBar, TabCursor, TabRow, TintButton,
+    ButtonCursor, GhostButton, Icon, IconCursor, Label, LabelCursor,
+    Tab, TabBar, TabCursor, TabRow, TintButton,
 };
 use crate::icons;
 use crate::motion::MotionExt;
@@ -49,11 +49,11 @@ pub(super) fn build_tab_bar(
 
 /// The "+" at the end of the bar, which opens the window list.
 fn build_add_button(area: Entity, ui: &mut BevyUi) {
-    let muted = ui.theme.text_muted;
+    let muted = ui.theme.color.text_dim;
 
     ui.elem(elem!(
         !TintButton::default(),
-        icon = val!(Icon, image = icons::PLUS, color = muted)
+        icon = elem!(Icon, image = icons::PLUS, color = muted)
     ))
     .insert(DockTabAddButton { area_entity: area })
     .observe(super::add_popup::on_add_click);
@@ -73,37 +73,37 @@ fn build_tab(
 ) {
     let is_active = active_of(ui.world, leaf) == Some(tab_id);
     let theme = ui.theme;
-    let primary = theme.text_primary;
-    let muted = theme.text_muted;
+    let primary = theme.color.text;
+    let muted = theme.color.text_dim;
     let lit = text_color(ui.world, leaf, tab_id, primary, muted);
     let close_color = muted;
-    let close_hover = theme.critical;
+    let close_hover = theme.color.critical;
 
     let mut tab = ui.elem(elem!(
         Tab,
         window_id = window_id,
         tab = tab_id,
         active = is_active,
-        icon = icon.map(|image| val!(
+        icon = icon.map(|image| elem!(
             Icon,
             image = image,
             color = lit,
             size = px(12)
-        )),
-        label = val!(
+        )(theme)),
+        label = elem!(
             Label,
             text = label,
             color = lit,
             bold = true,
             wrap = false
         ),
-        close = val!(
+        close = elem!(
             !GhostButton,
             width = px(14),
             height = px(14),
             padding = UiRect::ZERO,
             radius = px(2),
-            icon = val!(
+            icon = elem!(
                 Icon,
                 image = feathers_icons::X,
                 color = close_color,
@@ -217,11 +217,12 @@ pub(super) fn spawn_ghost_tab(
     wrapper: Entity,
     label: &str,
     color: Color,
+    fill: Color,
 ) {
     let tile = world
         .spawn((
             tab_tile_node(),
-            BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.06)),
+            BackgroundColor(fill),
             ChildOf(wrapper),
         ))
         .id();

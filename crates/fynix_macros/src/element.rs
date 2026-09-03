@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use syn::{
-    Data, DeriveInput, Expr, Field, Path, parse_quote,
+    Data, DeriveInput, Expr, Field, Fields, Path, Token, parse_quote,
     punctuated::Punctuated,
 };
 
@@ -55,7 +55,16 @@ struct FieldConfig {
     child: bool,
     ignore: bool,
     patch: Option<Path>,
-    default: Option<Expr>,
+    default: Option<FieldDefault>,
+}
+
+/// The value a field starts from in `ElementBase::base`.
+enum FieldDefault {
+    /// `#[elem(default = <expr>)]`, whole.
+    Expr(Expr),
+    /// `#[elem(default = ::<expr>)]`, resolved against the field's own
+    /// type: `::NONE` on a `Color` field is `<Color>::NONE`.
+    Relative(Expr),
 }
 
 fn field_config(field: &Field) -> syn::Result<FieldConfig> {
@@ -73,7 +82,13 @@ fn field_config(field: &Field) -> syn::Result<FieldConfig> {
             } else if meta.path.is_ident("patch") {
                 cfg.patch = Some(meta.value()?.parse()?);
             } else if meta.path.is_ident("default") {
-                cfg.default = Some(meta.value()?.parse()?);
+                let value = meta.value()?;
+                cfg.default = Some(if value.peek(Token![::]) {
+                    value.parse::<Token![::]>()?;
+                    FieldDefault::Relative(value.parse()?)
+                } else {
+                    FieldDefault::Expr(value.parse()?)
+                });
             } else {
                 return Err(meta.error(
                     "expected `child`, `ignore`, `patch = ...`, or \
@@ -87,7 +102,7 @@ fn field_config(field: &Field) -> syn::Result<FieldConfig> {
     if cfg.child && (cfg.ignore || cfg.patch.is_some()) {
         return Err(syn::Error::new_spanned(
             field,
-            "`#[elem(child)]` takes no other directive",
+            "`#[elem(child)]` takes only `default = ...`",
         ));
     }
     if cfg.ignore && cfg.patch.is_some() {
@@ -134,7 +149,8 @@ pub fn expand(
     let mut own_patches = Vec::new();
     let mut field_writes = Vec::new();
     let mut despawns = Vec::new();
-    let mut default_overrides = Vec::new();
+    let mut field_inits = Vec::new();
+    let mut base_bounds = Vec::new();
 
     for field in fields.iter() {
         let field_name =
@@ -144,10 +160,33 @@ pub fn expand(
         let marker = quote!(#path_mod::#field_name #ty);
         let id = quote!(<#marker as #root::lenz::FieldPath>::id());
 
-        if let Some(default) = &cfg.default {
-            default_overrides
-                .push(quote!(__elem.#field_name = #default;));
-        }
+        let field_ty = &field.ty;
+        let init = match &cfg.default {
+            Some(FieldDefault::Expr(expr)) => quote!(#expr),
+            Some(FieldDefault::Relative(expr)) => {
+                quote!(<#field_ty>::#expr)
+            }
+            None if cfg.child => match option_inner(field_ty) {
+                Some(_) => quote!(::core::option::Option::None),
+                None => {
+                    base_bounds.push(quote!(
+                        #field_ty: #root::element::ElementBase<#host>
+                    ));
+                    quote! {
+                        <#field_ty as #root::element::ElementBase<#host>>::base(
+                            theme,
+                        )
+                    }
+                }
+            },
+            None => {
+                base_bounds.push(
+                    quote!(#field_ty: ::core::default::Default),
+                );
+                quote!(::core::default::Default::default())
+            }
+        };
+        field_inits.push(quote!(#field_name: #init,));
 
         // A `#[elem(child)]` field is an element in its own right. It
         // is absent from the enum: naming it there would offer a
@@ -273,6 +312,13 @@ pub fn expand(
         }
     });
 
+    let ctor = match &ast.data {
+        Data::Struct(data) if matches!(data.fields, Fields::Unit) => {
+            quote!(Self)
+        }
+        _ => quote!(Self { #(#field_inits)* }),
+    };
+
     Ok(quote! {
         #subject
 
@@ -300,15 +346,24 @@ pub fn expand(
 
         impl<#decl> #root::element::ElementBase<#host> for #name #ty
         where
-            Self: ::core::default::Default,
+            #(#base_bounds,)*
             #predicates
         {
             fn base(theme: &#host_theme) -> Self {
                 let _ = theme;
-                let mut __elem =
-                    <Self as ::core::default::Default>::default();
-                #(#default_overrides)*
-                __elem
+                #ctor
+            }
+        }
+
+        impl<#decl> #root::style::Seed<#host_theme> for #name #ty
+        where
+            #(#base_bounds,)*
+            #predicates
+        {
+            fn seed(theme: &#host_theme) -> Self {
+                <Self as #root::element::ElementBase<#host>>::base(
+                    theme,
+                )
             }
         }
 
@@ -375,8 +430,7 @@ pub fn expand(
 
 /// The struct, re-emitted for the path system to derive off.
 /// `#[elem(...)]` markers become `#[lenz(...)]` ones (`ignore` stays,
-/// `patch = X` becomes `tag = X`), with `Lenz` / `OverrideDefault`
-/// derived.
+/// `patch = X` becomes `tag = X`), with `Lenz` derived.
 fn rewrite_struct(
     ast: &DeriveInput,
     root: &TokenStream2,
@@ -384,7 +438,7 @@ fn rewrite_struct(
     let mut out = ast.clone();
 
     out.attrs.push(parse_quote! {
-        #[derive(#root::lenz::Lenz, #root::OverrideDefault)]
+        #[derive(#root::lenz::Lenz)]
     });
     out.attrs.push(parse_quote!(#[lenz(crate = #root::lenz)]));
 

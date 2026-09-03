@@ -32,62 +32,6 @@ pub use crate::world_node::{WorldNodeMut, WorldNodeRef};
 /// keeps naming it.
 pub use ::lenz;
 
-/// Writes the `Default` an element starts from, before a style and then
-/// a call site have had their say.
-///
-/// Nothing about it is UI: it applies to any struct or enum whose
-/// fields want a default other than their own.
-///
-/// A field says what it starts as in one of these ways, none of which
-/// name the field's type:
-///
-/// ```
-/// use fynix::OverrideDefault;
-/// #[derive(Default)]
-/// struct Font { size: u32, weight: u32 }
-///
-/// #[derive(OverrideDefault)]
-/// enum Weight {
-///     Thin,
-///     #[default]
-///     Bold,
-/// }
-///
-/// #[derive(OverrideDefault)]
-/// struct Label {
-///     #[default(size: 24, weight: 400)] // its own default, overridden
-///     font: Font,
-///     #[default(0: 1, 1: 2)]            // the same, by index
-///     origin: (u32, u32),
-///     #[default(_, 8, ..)]              // the same, as the pattern it
-///                                       // looks like: `_` and `..`
-///                                       // keep what the default had
-///     margin: (u32, u32, u32),
-///     #[default(::Thin)]                // a variant of the field's type
-///     weight: Weight,
-///     #[default(..)]                    // an `Option`, filled
-///     icon: Option<Font>,
-/// }
-///
-/// let label = Label::default();
-///
-/// assert_eq!((label.font.size, label.font.weight), (24, 400));
-/// assert_eq!(label.origin, (1, 2));
-/// assert_eq!(label.margin, (0, 8, 0));
-/// assert!(matches!(label.weight, Weight::Thin));
-/// assert!(label.icon.is_some());
-/// ```
-///
-/// Anything else is the value, whole: `#[default(px(4))]`. Braces say
-/// so outright, for a value that would otherwise read as one of the
-/// above: `#[default({ ::core::f32::consts::PI })]`.
-///
-/// An enum starts in the variant marked `#[default]`, and that
-/// variant's own fields take the attribute as any other field does.
-///
-/// The derive itself is the [`override_default`] crate.
-pub use override_default::OverrideDefault;
-
 /// Owns every watcher and binding, and the tree they maintain.
 pub struct Fynix<H: Host> {
     watchers: Vec<Watcher<H>>,
@@ -277,10 +221,20 @@ impl<H: Host> Fynix<H> {
         P: FieldPath<Source = E>,
         P::Target: Clone + Send + Sync + 'static,
     {
-        let key = field(Cursor::new()).key();
+        let cursor = field(Cursor::new());
+        let key = cursor.key();
+
+        // The transition sits on the node that owns the field, which
+        // for a path through a `#[elem(child)]` is a child of `node`.
+        let mut parents = cursor.hops();
+        parents.pop();
+        let Some(owner) = self.records.store.resolve(node, &parents)
+        else {
+            return;
+        };
 
         if let Some(transition) =
-            self.records.transitions.running::<P::Target>(node, key)
+            self.records.transitions.running::<P::Target>(owner, key)
         {
             transition.aim(target);
         }

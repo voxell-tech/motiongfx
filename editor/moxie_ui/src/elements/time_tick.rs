@@ -13,11 +13,9 @@ pub struct TimeTick {
     pub x: Val,
     /// Grown upward from the time axis's bottom edge, so marks of
     /// different lengths share a baseline.
-    #[elem(patch = PatchHeight)]
-    #[default(px(4))]
+    #[elem(default = px(4), patch = PatchHeight)]
     pub height: Val,
-    #[elem(patch = PatchBackground)]
-    #[default(Color::srgba(1.0, 1.0, 1.0, 0.25))]
+    #[elem(default = theme.color.text_dim, patch = PatchBackground)]
     pub color: Color,
 }
 

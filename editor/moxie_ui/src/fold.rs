@@ -15,14 +15,14 @@ use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
+use fynix::host::Host;
 use fynix::records::BuildFn;
-use fynix::style::StyledElem;
 use fynix::ui::{ElementHandle, ElementMut};
-use fynix::{elem, val};
 
 use crate::elements::{
-    ButtonElem, ButtonElemCursor, Frame, FrameCursor, Icon,
-    IconCursor, TintButton,
+    Button, ButtonCursor, Frame, FrameCursor, Icon, IconCursor,
+    TintButton,
 };
 use crate::icons;
 use crate::reactive::{BevyUi, FynixHost, component_changed_on};
@@ -76,12 +76,12 @@ pub enum FoldsOn {
 /// All this owns is the click that toggles, the chevron that turns,
 /// the body that goes, and the rail marking how deep that body sits.
 pub struct Foldable<
-    S: StyledElem<Host = FynixHost, Element = ButtonElem>,
+    S: FnOnce(&<FynixHost as Host>::Theme) -> Button,
     B: BuildFn<FynixHost>,
-    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, ButtonElem>),
+    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, Button>),
     T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
 > {
-    /// Anything built on a [`ButtonElem`]. Under [`FoldsOn::Header`]
+    /// Anything built on a [`Button`]. Under [`FoldsOn::Header`]
     /// its icon slot is the chevron, so it has to carry one.
     pub header: S,
     pub folds_on: FoldsOn,
@@ -107,9 +107,9 @@ pub struct Foldable<
 
 impl<S, B, H, T> Composer<FynixHost> for Foldable<S, B, H, T>
 where
-    S: StyledElem<Host = FynixHost, Element = ButtonElem>,
+    S: FnOnce(&<FynixHost as Host>::Theme) -> Button,
     B: BuildFn<FynixHost>,
-    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, ButtonElem>),
+    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, Button>),
     T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
 {
     type Element = Frame;
@@ -128,9 +128,9 @@ where
             on_toggle,
         } = self;
 
-        let muted = ui.theme.text_muted;
-        let toggle_size = ui.theme.fold_toggle;
-        let indent = ui.theme.fold_indent;
+        let muted = ui.theme.color.text_dim;
+        let toggle_size = ui.theme.space.fold_toggle;
+        let indent = ui.theme.space.fold_indent;
         let chevron = enabled && folds_on == FoldsOn::Chevron;
 
         let mut root = ui.elem(elem!(
@@ -161,7 +161,7 @@ where
                         width = px(toggle_size),
                         height = px(toggle_size),
                         radius = px(3),
-                        icon = val!(
+                        icon = elem!(
                             Icon,
                             image = icons::CHEVRON,
                             size = px(8),
@@ -211,12 +211,13 @@ where
                 },
             )
             .with(move |ui| {
+                let rail = ui.theme.palette.base[2];
                 // The rail. Stretched to the block's height, not
                 // sized by hand.
                 ui.elem(elem!(
                     Frame,
                     width = px(RAIL_WIDTH),
-                    background = ui.theme.palette.base[2]
+                    background = rail
                 ));
                 ui.elem(elem!(
                     Frame,
@@ -249,7 +250,7 @@ where
 /// Makes `button` the one that folds `node`, turning its chevron with
 /// the state and mirroring the result through `on_toggle`.
 fn folds<T>(
-    button: &mut ElementMut<FynixHost, ButtonElem>,
+    button: &mut ElementMut<FynixHost, Button>,
     node: Entity,
     on_toggle: T,
 ) where

@@ -23,8 +23,7 @@ struct Caption(String);
 
 #[element]
 pub struct Label {
-    #[elem(patch = WriteCaption)]
-    #[default(String::from("Label"))]
+    #[elem(default = String::from("Label"), patch = WriteCaption)]
     pub text: String,
 }
 

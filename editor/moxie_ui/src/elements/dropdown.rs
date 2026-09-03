@@ -51,22 +51,17 @@ pub struct Dropdown {
     #[elem(child)]
     pub chevron: Icon,
     /// Wide enough to stay readable when the choice is a short word.
-    #[elem(patch = PatchMinWidth)]
-    #[default(px(72))]
+    #[elem(default = px(72), patch = PatchMinWidth)]
     pub min_width: Val,
     /// Past this the label is clipped rather than the row growing:
     /// a column of these has to line up.
-    #[elem(patch = PatchMaxWidth)]
-    #[default(px(160))]
+    #[elem(default = px(160), patch = PatchMaxWidth)]
     pub max_width: Val,
-    #[elem(patch = PatchHeight)]
-    #[default(px(22))]
+    #[elem(default = px(22), patch = PatchHeight)]
     pub height: Val,
-    #[elem(patch = PatchBackground)]
-    #[default(Color::srgba(1.0, 1.0, 1.0, 0.06))]
+    #[elem(default = theme.color.fill, patch = PatchBackground)]
     pub fill: Color,
-    #[elem(patch = PatchRadius)]
-    #[default(px(4))]
+    #[elem(default = px(4), patch = PatchRadius)]
     pub radius: Val,
 }
 
@@ -140,13 +135,11 @@ impl Dropdown {
 #[element(build = Self::build)]
 pub struct DropdownList {
     /// Matched to the control's, so the two line up.
-    #[elem(patch = PatchListWidth)]
-    #[default(px(160))]
+    #[elem(default = px(160), patch = PatchListWidth)]
     pub width: Val,
     /// What the popup scene rounds its own corners to, so leaving this
     /// alone keeps the look feathers gave it.
-    #[elem(patch = PatchRadius)]
-    #[default(px(4))]
+    #[elem(default = px(4), patch = PatchRadius)]
     pub radius: Val,
 }
 
@@ -159,12 +152,15 @@ impl DropdownList {
             error!("failed to build a dropdown list: {err}");
             return;
         }
-        // Only the width and the corners: the rest of the node belongs to
-        // the popup scene, and writing it whole would undo the placement.
+        // The rest of the node belongs to the popup scene, and writing
+        // it whole would undo the placement. Its vertical padding is
+        // zeroed so the rows sit flush.
         if let Some(mut layout) = build.entity_mut().get_mut::<Node>()
         {
             layout.min_width = self.width;
             layout.border_radius = BorderRadius::all(self.radius);
+            layout.padding.top = px(0);
+            layout.padding.bottom = px(0);
         }
     }
 }
@@ -183,14 +179,11 @@ field_patch!(PatchListWidth, Val, |patch, v| {
 pub struct DropdownItem {
     #[elem(child)]
     pub label: Label,
-    #[elem(patch = PatchHeight)]
-    #[default(px(20))]
+    #[elem(default = px(20), patch = PatchHeight)]
     pub height: Val,
-    #[elem(patch = PatchBackground)]
-    #[default(::NONE)]
+    #[elem(default = ::NONE, patch = PatchBackground)]
     pub fill: Color,
-    #[elem(patch = PatchRadius)]
-    #[default(px(3))]
+    #[elem(default = px(3), patch = PatchRadius)]
     pub radius: Val,
 }
 

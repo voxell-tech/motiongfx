@@ -17,7 +17,7 @@ use super::registry::WindowRegistry;
 use super::tree::DockTree;
 use crate::layout::logical_rect;
 use bevy_fynix::WorldEntityMut;
-use fynix::{elem, val};
+use fynix::elem;
 
 use crate::elements::{Frame, GhostButton, Icon, Label, Overlay};
 use crate::icons;
@@ -146,6 +146,7 @@ fn build_popup(ui: &mut BevyUi) {
         .observe(close_popup);
 
     let (left, top, area) = (open.left, open.top, open.area);
+    let panel = ui.theme.color.panel;
 
     ui.elem(elem!(
         Frame,
@@ -156,7 +157,7 @@ fn build_popup(ui: &mut BevyUi) {
         row_gap = px(2),
         padding = UiRect::all(px(4)),
         radius = px(6),
-        background = Color::srgba(0.11, 0.10, 0.11, 0.98),
+        background = panel,
         z = 181
     ))
     .with(move |ui| build_rows(ui, area));
@@ -164,7 +165,7 @@ fn build_popup(ui: &mut BevyUi) {
 
 /// Windows are single-instance, so only closed ones are listed.
 fn build_rows(ui: &mut BevyUi, area: Entity) {
-    let text_color = ui.theme.text_primary;
+    let text_color = ui.theme.color.text;
     let tree = ui.world.resource::<DockTree>();
     let closed = ui
         .world
@@ -177,7 +178,7 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
     // Every window is already open, so the popup would be a blank
     // box: say why it is empty rather than showing nothing.
     if closed.is_empty() {
-        let muted = ui.theme.text_muted;
+        let muted = ui.theme.color.text_dim;
 
         ui.elem(elem!(
             Label,
@@ -201,13 +202,13 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
             width = percent(100),
             height = auto(),
             justify = JustifyContent::FlexStart,
-            icon = val!(
+            icon = elem!(
                 Icon,
                 image = image,
                 color = icon_color,
                 size = px(12)
             ),
-            label = val!(Label, text = name, color = text_color)
+            label = elem!(Label, text = name, color = text_color)
         ))
         .insert(AddsWindow { area, window_id })
         .observe(on_pick);

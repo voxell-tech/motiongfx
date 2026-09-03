@@ -29,8 +29,8 @@ use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 
 use super::{Source, when_changed};
 use crate::elements::{
@@ -211,7 +211,7 @@ fn name(
         Label,
         text = current,
         wrap = false,
-        color = theme.text_primary
+        color = theme.color.text
     ))
     .bind(
         |label| label.text(),
@@ -236,24 +236,24 @@ fn control(
         Dropdown,
         min_width = width,
         max_width = width,
-        label = val!(
+        label = elem!(
             Label,
             text = current,
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         ),
-        chevron = val!(
+        chevron = elem!(
             Icon,
             image = icons::CHEVRON,
-            color = theme.text_muted,
+            color = theme.color.text_dim,
             size = px(9),
             rotation = 180.0f32
         )
     ))
     .lit(
         |dropdown| dropdown.fill(),
-        theme.hover_overlay,
-        theme.hover_overlay,
+        theme.color.hover,
+        theme.color.hover,
     )
     .bind(
         |dropdown| dropdown.label().text(),
@@ -292,14 +292,14 @@ fn option(
 
     ui.elem(elem!(
         DropdownItem,
-        label = val!(
+        label = elem!(
             Label,
             text = variant,
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         )
     ))
-    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
+    .lit(|item| item.fill(), theme.color.hover, theme.color.hover)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         let (source, variant) = (edited.boxed(), chosen.clone());
 

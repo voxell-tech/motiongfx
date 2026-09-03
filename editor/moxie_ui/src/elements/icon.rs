@@ -16,8 +16,7 @@ pub struct Icon {
     pub image: String,
     #[elem(patch = PatchColor)]
     pub color: Color,
-    #[elem(patch = PatchIconSize)]
-    #[default(px(11))]
+    #[elem(default = px(11), patch = PatchIconSize)]
     pub size: Val,
     /// Clockwise, in degrees.
     #[elem(patch = PatchRotation)]

@@ -6,7 +6,7 @@ mod common;
 use core::marker::PhantomData;
 
 use common::{FynixHost, Label, LabelCursor, World};
-use fynix::element::{Element, Fields, element};
+use fynix::element::{Element, ElementBase, Fields, element};
 use fynix::records::Records;
 use fynix::ui::{FieldPatch, Patch};
 
@@ -48,7 +48,7 @@ impl<L: Look> FieldPatch<FynixHost> for WriteLook<L> {
 fn generic_element_builds_its_children() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let themed = Themed::<Dark>::default();
+    let themed = Themed::<Dark>::base(&());
 
     let node = themed.build(&mut world, parent, &mut records, &());
 
@@ -63,7 +63,7 @@ fn generic_element_builds_its_children() {
 fn generic_element_patches_through_its_child() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let mut themed = Themed::<Dark>::default();
+    let mut themed = Themed::<Dark>::base(&());
     let node = themed.build(&mut world, parent, &mut records, &());
 
     let path = Themed::<Dark>::cursor().label().text();

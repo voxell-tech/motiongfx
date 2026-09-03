@@ -15,7 +15,6 @@ use bevy::prelude::*;
 use bevy::ui_widgets::{Activate, ScrollArea as ScrollAreaBehavior};
 use bevy_motiongfx::prelude::MotionGfxManager;
 
-use super::PANEL_PADDING;
 use crate::block_layout::{self, Placed};
 use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_click_release,
@@ -28,10 +27,10 @@ use crate::{
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 use moxie_ui::elements::{
-    Button, ButtonElemCursor, Frame, FrameCursor, GhostButton, Icon,
+    Button, ButtonCursor, Frame, FrameCursor, GhostButton, Icon,
     IconCursor, Label, LabelCursor, Panel, PlayheadLine,
     PlayheadLineCursor, ScrollArea, TimeLabel, TimeTick,
     TimelineAction, TimelineActionCursor, TimelineBlock, TimelineGap,
@@ -65,7 +64,6 @@ const CONTROL_BAR_HEIGHT: f32 = 40.0;
 const TIME_AXIS_HEIGHT: f32 = 24.0;
 const MAJOR_TICK: f32 = 8.0;
 const MINOR_TICK: f32 = 4.0;
-const LABEL_SIZE: f32 = 10.0;
 
 /// Viewport where the timeline, track and action UI is displayed.
 #[derive(Component, Default, Clone)]
@@ -113,18 +111,19 @@ impl Composer<FynixHost> for ControlBar {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Frame> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             Frame,
             width = percent(100),
             height = px(CONTROL_BAR_HEIGHT),
             align = AlignItems::Center,
             column_gap = px(12),
-            padding = UiRect::horizontal(px(PANEL_PADDING))
+            padding = UiRect::horizontal(px(pad))
         ))
         .with(|ui| {
             ui.elem(elem!(
-                !Button,
-                icon = val!(
+                Button,
+                icon = elem!(
                     Icon,
                     image = crate::icons::PLAY,
                     size = px(14)
@@ -163,8 +162,8 @@ impl Composer<FynixHost> for ControlBar {
             ui.elem(elem!(Frame, flex_grow = 1.0f32));
 
             ui.elem(elem!(
-                !Button,
-                label = val!(Label, text = "Fit"),
+                Button,
+                label = elem!(Label, text = "Fit"),
                 width = px(44),
                 height = px(24)
             ))
@@ -215,7 +214,8 @@ fn axis_view(world: &World, node: Entity) -> (u32, TimelineView) {
 
 fn build_ticks(ui: &mut BevyUi) {
     let (width, view) = axis_view(ui.world, ui.parent());
-    let color = ui.theme.text_muted;
+    let color = ui.theme.color.text_dim;
+    let text_size = ui.theme.text.small;
     let marks = time_axis::ticks(&view, width as f32);
 
     for tick in marks {
@@ -231,10 +231,10 @@ fn build_ticks(ui: &mut BevyUi) {
             ui.elem(elem!(
                 TimeLabel,
                 x = px(tick.x),
-                label = val!(
+                label = elem!(
                     Label,
                     text = text,
-                    size = LABEL_SIZE,
+                    size = text_size,
                     wrap = false,
                     color = color.with_alpha(0.7)
                 )
@@ -373,7 +373,7 @@ impl Composer<FynixHost> for BlockHeader {
             is_selected,
         } = self;
         let theme = ui.theme;
-        let default_color = theme.text_primary;
+        let default_color = theme.color.text;
         let selected_color = theme.palette.purple;
 
         let block_color = if is_selected {
@@ -382,8 +382,8 @@ impl Composer<FynixHost> for BlockHeader {
             default_color
         };
 
-        let chevron_color = theme.text_primary.with_alpha(0.6);
-        let label_color = theme.text_primary.with_alpha(0.8);
+        let chevron_color = theme.color.text_faint;
+        let label_color = theme.color.text.with_alpha(0.8);
 
         let mut header = ui.elem(elem!(
             TimelineBlock,
@@ -444,14 +444,15 @@ fn build_block_boxes(ui: &mut BevyUi) {
         // grow.
         if !placed.path.is_empty() {
             let gap_x = placed.gap_x.unwrap_or(placed.x);
+            let image = pattern.clone();
             ui.elem(elem!(
                 TimelineGap,
                 top = px(placed.y),
                 left = px(gap_x),
                 width = px(placed.x - gap_x),
                 height = px(placed.h),
-                image = pattern.clone(),
-                color = theme.text_muted.with_alpha(0.35)
+                image = image,
+                color = theme.color.text_dim.with_alpha(0.35)
             ))
             .insert(drag::GapPath(placed.path.clone()));
         }
@@ -499,25 +500,25 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 // as an empty slot in the critical color, rather than
                 // a real action's fill.
                 let fill = if placed.draft {
-                    theme.critical.with_alpha(0.5)
+                    theme.color.critical.with_alpha(0.5)
                 } else {
-                    theme.palette.blue.with_alpha(0.5)
+                    theme.color.clip
                 };
                 let border = if is_selected {
-                    theme.accent
+                    theme.color.accent
                 } else if placed.draft {
-                    theme.critical.with_alpha(0.5)
+                    theme.color.critical.with_alpha(0.5)
                 } else {
                     Color::NONE
                 };
                 let mut clip = ui.elem(elem!(
                     TimelineAction,
-                    label = val!(
+                    label = elem!(
                         Label,
                         text = label.clone(),
-                        size = 10.0f32,
+                        size = theme.text.small,
                         color = if placed.draft {
-                            theme.critical.with_alpha(0.9)
+                            theme.color.critical.with_alpha(0.9)
                         } else {
                             theme.palette.blue.with_alpha(0.9)
                         }
@@ -533,8 +534,8 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 clip.insert(drag::BoxPath(placed.path.clone()))
                     .lit(
                         |action| action.fill(),
-                        theme.clip_hover,
-                        theme.clip_press,
+                        theme.color.clip_hover,
+                        theme.color.clip_press,
                     )
                     .observe({
                         let path = path.clone();
@@ -575,7 +576,7 @@ fn chevron(
 ) {
     ui.elem(elem!(
         !TintButton::default(),
-        icon = val!(
+        icon = elem!(
             Icon,
             image = moxie_ui::icons::CHEVRON,
             size = px(7),
@@ -602,7 +603,7 @@ fn edge_handle(
     y: f32,
     h: f32,
 ) {
-    let accent = ui.theme.accent;
+    let accent = ui.theme.color.accent;
     let mut handle = ui.elem(elem!(
         Frame,
         position = PositionType::Absolute,

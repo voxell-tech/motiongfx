@@ -26,7 +26,7 @@ use moxie_ui::inspector::{
 };
 use moxie_ui::reactive::{BevyUi, FynixHost, value_changed};
 
-use super::{PANEL_PADDING, hierarchy};
+use super::hierarchy;
 use crate::{EditorScene, SelectedAction};
 
 /// The action panel, as kernel nodes.
@@ -39,11 +39,12 @@ impl Composer<FynixHost> for ActionPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, ScrollArea> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             ScrollArea,
             flex_grow = 1.0f32,
             row_gap = px(8),
-            padding = px(PANEL_PADDING),
+            padding = px(pad),
             scroll_x = false
         ))
         // The shape only: each input binds its own value, so typing
@@ -149,8 +150,8 @@ fn build(ui: &mut BevyUi) {
 
     heading(ui, path.clone());
     if let Some(subject) = shape.subject {
-        let primary = theme.text_primary;
-        let muted = theme.text_muted;
+        let primary = theme.color.text;
+        let muted = theme.color.text_dim;
         ui.compose(FieldRow {
             label: "Subject".to_string(),
             color: muted,
@@ -191,7 +192,7 @@ fn build(ui: &mut BevyUi) {
         let path = path.clone();
         ui.compose(FieldRow {
             label: "Type".to_string(),
-            color: theme.text_muted,
+            color: theme.color.text_dim,
             bold: false,
             depth: 0,
             value: move |ui: &mut BevyUi| {
@@ -216,10 +217,10 @@ fn build(ui: &mut BevyUi) {
         });
     }
     for (name, value) in shape.rows {
-        let primary = theme.text_primary;
+        let primary = theme.color.text;
         ui.compose(FieldRow {
             label: name,
-            color: theme.text_muted,
+            color: theme.color.text_dim,
             bold: false,
             depth: 0,
             value: move |ui: &mut BevyUi| {
@@ -239,7 +240,7 @@ fn build(ui: &mut BevyUi) {
         };
         ui.compose(FieldRow {
             label: name,
-            color: theme.text_muted,
+            color: theme.color.text_dim,
             bold: false,
             depth: 0,
             value: move |ui: &mut BevyUi| inspect_value(ui, &source),
@@ -250,7 +251,7 @@ fn build(ui: &mut BevyUi) {
     if let Some(pooled) = shape.value {
         ui.compose(FieldRow {
             label: "Value".to_string(),
-            color: theme.text_muted,
+            color: theme.color.text_dim,
             bold: false,
             depth: 0,
             value: move |ui: &mut BevyUi| inspect_value(ui, &pooled),
@@ -725,9 +726,6 @@ fn heading(ui: &mut BevyUi, path: Vec<usize>) {
 
 /// What the panel says when there is nothing to show.
 fn note(ui: &mut BevyUi, text: &str) {
-    ui.elem(elem!(
-        Label,
-        text = text.to_string(),
-        color = ui.theme.text_muted
-    ));
+    let color = ui.theme.color.text_dim;
+    ui.elem(elem!(Label, text = text.to_string(), color = color));
 }

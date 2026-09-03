@@ -27,11 +27,9 @@ pub struct TimelineAction {
     pub width: Val,
     #[elem(patch = PatchHeight)]
     pub height: Val,
-    #[elem(patch = PatchBackground)]
-    #[default(Color::NONE)]
+    #[elem(default = Color::NONE, patch = PatchBackground)]
     pub fill: Color,
-    #[elem(patch = PatchBorderColor)]
-    #[default(Color::NONE)]
+    #[elem(default = Color::NONE, patch = PatchBorderColor)]
     pub border: Color,
     /// Thickens the border - the caller still chooses `border`'s
     /// color (the theme's accent, typically).

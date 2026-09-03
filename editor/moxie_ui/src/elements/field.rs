@@ -23,11 +23,9 @@ use super::patch::*;
 pub struct CheckBox {
     #[elem(patch = PatchChecked)]
     pub checked: bool,
-    #[elem(patch = PatchBackground)]
-    #[default(Color::srgba(1.0, 1.0, 1.0, 0.08))]
+    #[elem(default = theme.color.fill, patch = PatchBackground)]
     pub fill: Color,
-    #[elem(patch = PatchMark)]
-    #[default(Color::srgb(0.47, 0.86, 0.91))]
+    #[elem(default = theme.color.accent, patch = PatchMark)]
     pub mark: Color,
 }
 
@@ -120,11 +118,9 @@ pub struct NumberField {
     pub format: NumberFormat,
     /// The value shown. A field with focus keeps what is typed there
     /// rather than taking this.
-    #[elem(patch = PatchNumberValue)]
-    #[default(NumberInputValue::F32(0.0))]
+    #[elem(default = NumberInputValue::F32(0.0), patch = PatchNumberValue)]
     pub value: NumberInputValue,
-    #[elem(patch = PatchWidth)]
-    #[default(px(80))]
+    #[elem(default = px(80), patch = PatchWidth)]
     pub width: Val,
 }
 
@@ -191,8 +187,7 @@ field_patch!(PatchNumberValue, NumberInputValue, |patch, v| {
 pub struct TextField {
     #[elem(patch = PatchTextValue)]
     pub value: String,
-    #[elem(patch = PatchWidth)]
-    #[default(px(110))]
+    #[elem(default = px(110), patch = PatchWidth)]
     pub width: Val,
 }
 

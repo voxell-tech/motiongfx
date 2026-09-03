@@ -299,7 +299,7 @@ impl<F: FnOnce(&mut BevyUi)> Composer<FynixHost> for FieldRow<F> {
         const VALUE_SHARE: f32 = 0.6;
         const LABEL_SIZE: f32 = 12.0;
         const EDGE_PADDING: f32 = 8.0;
-        let indent = ui.theme.fold_indent + fold::RAIL_WIDTH;
+        let indent = ui.theme.space.fold_indent + fold::RAIL_WIDTH;
         let shed = VALUE_SHARE * depth as f32 * indent;
 
         ui.elem(elem!(

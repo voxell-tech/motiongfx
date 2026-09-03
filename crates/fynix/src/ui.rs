@@ -24,7 +24,6 @@ use crate::records::{
     Watcher,
 };
 use crate::store::Store;
-use crate::style::StyledElem;
 use crate::transition::{TransitionTable, insert_transition};
 use crate::tween::Tween;
 use crate::world_node::WorldNodeRef;
@@ -73,20 +72,19 @@ impl<'a, H: Host> Ui<'a, H> {
         self.records.store.child(self.parent, field)
     }
 
-    /// Run a [`StyledElem`]'s cascade, then build what it left, and
-    /// everything beneath it.
+    /// Run an [`elem!`](crate::elem!)'s cascade with the theme, then
+    /// build what it left, and everything beneath it.
     ///
     /// The kernel keeps the element, so a later patch can read it
     /// back.
-    pub fn elem<S, E>(
+    pub fn elem<E>(
         &mut self,
-        styled: S,
+        build: impl FnOnce(&H::Theme) -> E,
     ) -> ElementMut<'_, 'a, H, E>
     where
-        S: StyledElem<Host = H, Element = E>,
         E: Element<H> + Send + Sync,
     {
-        let element = styled.create(self.theme);
+        let element = build(self.theme);
 
         let node = element.build(
             self.world,

@@ -7,8 +7,8 @@ use bevy::ui_widgets::{
 };
 use bevy_fynix::WorldEntityMut;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 use moxie_ui::elements::{
     Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
     DropdownMenu, Frame, Label, MenuButton,
@@ -98,11 +98,11 @@ impl Composer<FynixHost> for Menu {
 fn title(ui: &mut BevyUi, theme: &EditorTheme, name: &str) {
     ui.elem(elem!(
         !MenuButton,
-        label = val!(
+        label = elem!(
             Label,
             text = name.to_string(),
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         )
     ))
     // What the menu's own observer reaches this through to open the
@@ -121,14 +121,14 @@ fn item(
     ui.elem(elem!(
         DropdownItem,
         radius = Val::ZERO,
-        label = val!(
+        label = elem!(
             Label,
             text = entry.to_string(),
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         )
     ))
-    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
+    .lit(|item| item.fill(), theme.color.hover, theme.color.hover)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(run);
     });
