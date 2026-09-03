@@ -16,7 +16,7 @@ use crate::tween::TweenTable;
 use crate::ui::Ui;
 use crate::world_node::WorldNodeRef;
 
-/// A field on a node: what a binding and a tween are both keyed by.
+/// A node and one of its fields, as a map key.
 pub(crate) struct FieldKey<H: Host> {
     pub(crate) node: H::Node,
     pub(crate) field: FieldId,

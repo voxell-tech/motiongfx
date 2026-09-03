@@ -1,6 +1,6 @@
-//! What a tween does: travel to what it was aimed at, carry on
-//! from wherever it is when that changes, and give the element back
-//! when it lets go.
+//! A tween travels to what it was aimed at, carries on from wherever
+//! it is when that changes, and gives the element back when it lets
+//! go.
 
 mod common;
 

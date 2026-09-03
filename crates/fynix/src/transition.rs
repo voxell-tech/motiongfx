@@ -1,18 +1,14 @@
-//! What a field does on its way to a new value.
-//!
-//! A transition is a tween, never a write: the element keeps the
-//! value the cascade gave it, and the kernel keeps the one the backend
-//! is currently showing. See
+//! A field's move to a new value, laid over the element rather than
+//! written into it: the element keeps the cascade's value, the kernel
+//! shows the interpolated one until it arrives. See
 //! [`ElementMut::transition`](crate::ui::ElementMut::transition).
 
-/// How a value travels. Carried rather than looked up through a
-/// trait, so declaring a tween says nothing about the backend.
+/// Interpolates between two `T` by a factor in `0..=1`.
 pub type LerpFn<T> = fn(&T, &T, f32) -> T;
 
 pub use motiongfx_interp::ease::EaseFn;
 
-/// How long a field takes to arrive, along what curve, and how the
-/// value itself is walked.
+/// A field's curve to a new value: duration, easing, interpolation.
 pub struct Transition<T> {
     /// Seconds. Zero arrives on the next flush.
     pub duration: f32, // TODO: Change to Duration.
@@ -38,7 +34,7 @@ impl<T> Transition<T> {
         self
     }
 
-    /// Where the curve stands after `elapsed`.
+    /// The eased `0..=1` progress at `elapsed`.
     pub(crate) fn at(&self, elapsed: f32) -> f32 {
         if self.duration <= 0.0 {
             return 1.0;
@@ -51,7 +47,7 @@ impl<T> Transition<T> {
     }
 }
 
-// Derived, these would ask `T` for what only the pointers need.
+// A derive would bound `T: Clone`; only the fn pointers get cloned.
 impl<T> Clone for Transition<T> {
     fn clone(&self) -> Self {
         *self

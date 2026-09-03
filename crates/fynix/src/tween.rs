@@ -22,10 +22,9 @@ pub(crate) struct Tween<H: Host, T> {
     /// The field's `#[elem(patch = ...)]` writer.
     write: fn(&mut Patch<H>, &T),
     curve: Transition<T>,
-    /// The cascade's own value. A binding on the same field moves it
-    /// through [`rebase`](Self::rebase).
+    /// The cascade's own value. Released, the tween heads back here.
     base: T,
-    /// Where it is aimed, or `None` while heading home to the base.
+    /// The aim, or `None` while heading home to the base.
     target: Option<T>,
     /// The current leg's start.
     from: T,
@@ -57,8 +56,8 @@ impl<H: Host, T: Clone> Tween<H, T> {
         self.target = target;
     }
 
-    /// The cascade value moved. Start a fresh leg if that is where it
-    /// is heading.
+    /// Move the base to `base`, restarting the leg if the tween is
+    /// heading there.
     pub(crate) fn rebase(&mut self, base: &T) {
         if self.target.is_none() {
             self.from = self.shown();
@@ -90,7 +89,7 @@ impl<H: Host, T: Clone> Tween<H, T> {
     }
 }
 
-/// Advances every [`Tween<H, T>`] in the table's column for one `T`.
+/// The per-type advance step in a [`TweenTable`]'s tick registry.
 type TickFn<H> = fn(
     &mut TypeTable<FieldKey<H>>,
     f32,
@@ -113,16 +112,15 @@ fn tick<H, T>(
     }
 }
 
-/// Every field with a tween over it. One per field - a second tween on
-/// the same field replaces rather than doubles.
+/// Every field with a tween over it, at most one per field.
 ///
-/// A column per value type in `table`, so a frame advances one
-/// contiguous run per type rather than chasing a boxed trait object
-/// per field. `keys` is the set to sweep; `ticks` holds one advance
-/// function per value type seen.
+/// One `Tween<H, T>` column per value type; [`advance`](Self::advance)
+/// walks each column through its matching `ticks` entry.
 pub struct TweenTable<H: Host> {
     table: TypeTable<FieldKey<H>>,
+    /// The rows to sweep when their nodes die.
     keys: HashSet<FieldKey<H>>,
+    /// One advance step per value type a tween has been inserted for.
     ticks: Vec<(TypeId, TickFn<H>)>,
 }
 
@@ -157,8 +155,8 @@ impl<H: Host> TweenTable<H> {
         self.keys.insert(key);
     }
 
-    /// The tween on `(node, key)` as the `Tween<H, T>` it must be.
-    /// `None` if there is no tween there.
+    /// The tween on `(node, key)`, if one is running with value type
+    /// `T`.
     pub(crate) fn running<T: 'static>(
         &mut self,
         node: H::Node,
