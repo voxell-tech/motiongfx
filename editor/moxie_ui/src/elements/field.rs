@@ -1,6 +1,6 @@
 //! What an inspector row is edited with.
 
-use crate::reactive::BevyHost;
+use crate::reactive::FynixBuild;
 use bevy::feathers::controls::{
     FeathersNumberInput, FeathersTextInput,
     FeathersTextInputContainer, NumberFormat, NumberInputValue,
@@ -13,16 +13,20 @@ use bevy::text::EditableText;
 use bevy::ui::Checked;
 use bevy::ui_widgets::Checkbox as CheckboxBehavior;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut;
+use fynix::element::element;
+
+use super::patch::*;
 
 /// A box that is ticked or not.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct CheckBox {
+    #[elem(patch = PatchChecked)]
     pub checked: bool,
+    #[elem(patch = PatchBackground)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.08))]
     pub fill: Color,
+    #[elem(patch = PatchMark)]
     #[default(Color::srgb(0.47, 0.86, 0.91))]
     pub mark: Color,
 }
@@ -32,56 +36,49 @@ pub struct CheckBox {
 #[derive(Component)]
 struct CheckMark;
 
-impl CheckBox {
-    fn tick(&self, entity: &mut impl EntityExt) {
-        if self.checked {
-            entity.insert(Checked);
+/// Toggle the `Checked` marker and show or hide the inner square.
+pub(super) fn tick(checked: bool, entity: &mut impl WorldEntityMut) {
+    if checked {
+        entity.insert(Checked);
+    } else {
+        entity.remove::<Checked>();
+    }
+
+    let node = entity.id();
+    let world = entity.world_mut();
+    let Some(mark) = mark_node(world, node) else {
+        return;
+    };
+    if let Some(mut layout) = world.get_mut::<Node>(mark) {
+        layout.display = if checked {
+            Display::Flex
         } else {
-            entity.remove::<Checked>();
-        }
-
-        let node = entity.id();
-        let world = entity.world_mut();
-
-        let Some(mark) = self.mark_node(world, node) else {
-            return;
+            Display::None
         };
-        if let Some(mut layout) = world.get_mut::<Node>(mark) {
-            layout.display = if self.checked {
-                Display::Flex
-            } else {
-                Display::None
-            };
-        }
-    }
-
-    fn paint(&self, entity: &mut impl EntityExt) {
-        let node = entity.id();
-        let world = entity.world_mut();
-
-        let Some(mark) = self.mark_node(world, node) else {
-            return;
-        };
-        world.entity_mut(mark).insert(BackgroundColor(self.mark));
-    }
-
-    /// The mark [`build_fields`](ElementVisual::build_fields) spawned,
-    /// found by its marker rather than by position: a box may be given
-    /// children of its own.
-    fn mark_node(
-        &self,
-        world: &World,
-        node: Entity,
-    ) -> Option<Entity> {
-        world
-            .get::<Children>(node)?
-            .iter()
-            .find(|&child| world.get::<CheckMark>(child).is_some())
     }
 }
 
-impl ElementVisual<BevyHost> for CheckBox {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+/// Paint the inner square.
+pub(super) fn paint(mark: Color, entity: &mut impl WorldEntityMut) {
+    let node = entity.id();
+    let world = entity.world_mut();
+    let Some(spot) = mark_node(world, node) else {
+        return;
+    };
+    world.entity_mut(spot).insert(BackgroundColor(mark));
+}
+
+/// The mark the build hook spawned, found by its marker rather than
+/// by position: a box may be given children of its own.
+fn mark_node(world: &World, node: Entity) -> Option<Entity> {
+    world
+        .get::<Children>(node)?
+        .iter()
+        .find(|&child| world.get::<CheckMark>(child).is_some())
+}
+
+impl CheckBox {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build
             .insert((
                 CheckboxBehavior,
@@ -108,148 +105,85 @@ impl ElementVisual<BevyHost> for CheckBox {
                 BackgroundColor(self.mark),
             ));
 
-        self.tick(build);
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: CheckBoxField,
-    ) {
-        match field {
-            CheckBoxField::Checked => self.tick(patch),
-            CheckBoxField::Fill => {
-                patch.insert(BackgroundColor(self.fill));
-            }
-            CheckBoxField::Mark => self.paint(patch),
-        }
+        tick(self.checked, build);
     }
 }
 
+field_patch!(PatchChecked, bool, |patch, v| tick(*v, patch));
+
+field_patch!(PatchMark, Color, |patch, v| paint(*v, patch));
+
 /// A number, typed or dragged.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct NumberField {
+    #[elem(patch = PatchNumberFormat)]
     pub format: NumberFormat,
     /// What it shows. Pushed as an event rather than written as a
     /// component, so an input being typed into ignores it and a live
     /// edit wins.
+    #[elem(patch = PatchNumberValue)]
     #[default(NumberInputValue::F32(0.0))]
     pub value: NumberInputValue,
+    #[elem(patch = PatchWidth)]
     #[default(px(80))]
     pub width: Val,
 }
 
+/// Feathers builds the input as a scene of its own: a container, the
+/// two steppers, and the text in between. Widening the node it wrote,
+/// not replacing it - the container carries the row's height, padding
+/// and rim, and an input without them has nothing to type into.
+pub(super) fn number_scene(
+    format: NumberFormat,
+    width: Val,
+    entity: &mut impl WorldEntityMut,
+) {
+    let scene = bsn! {
+        @FeathersNumberInput { @number_format: {format} }
+    };
+    if let Err(err) = entity.entity_mut().apply_scene(scene) {
+        error!("failed to build a number field: {err}");
+    }
+    if let Some(mut layout) = entity.entity_mut().get_mut::<Node>() {
+        layout.width = width;
+        layout.flex_grow = 0.0;
+    }
+}
+
 impl NumberField {
-    /// Feathers builds the input as a scene of its own: a container,
-    /// the two steppers, and the text in between.
-    fn scene(&self, world: &mut World, node: Entity) {
-        let format = self.format;
-        let scene = bsn! {
-            @FeathersNumberInput { @number_format: {format} }
-        };
-
-        if let Err(err) = world.entity_mut(node).apply_scene(scene) {
-            error!("failed to build a number field: {err}");
-        }
-
-        // Widening the node feathers wrote, not replacing it: the
-        // container carries the row's height, padding and rim, and an
-        // input without them has nothing to type into.
-        if let Some(mut layout) = world.get_mut::<Node>(node) {
-            layout.width = self.width;
-            layout.flex_grow = 0.0;
-        }
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        number_scene(self.format, self.width, build);
     }
 }
 
-impl ElementVisual<BevyHost> for NumberField {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
+field_patch!(PatchNumberFormat, NumberFormat, |patch, v| {
+    let width = patch
+        .entity_mut()
+        .get::<Node>()
+        .map(|node| node.width)
+        .unwrap_or(px(80));
+    number_scene(*v, width, patch);
+});
 
-        self.scene(world, node);
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: NumberFieldField,
-    ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
-
-        match field {
-            NumberFieldField::Format => self.scene(world, node),
-            NumberFieldField::Value => {
-                world.trigger(UpdateNumberInput {
-                    entity: node,
-                    value: self.value,
-                });
-            }
-            NumberFieldField::Width => {
-                if let Some(mut layout) = world.get_mut::<Node>(node)
-                {
-                    layout.width = self.width;
-                }
-            }
-        }
-    }
-}
+field_patch!(PatchNumberValue, NumberInputValue, |patch, v| {
+    let node = patch.id();
+    patch.world.trigger(UpdateNumberInput {
+        entity: node,
+        value: *v,
+    });
+});
 
 /// A single-line string, edited in place.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct TextField {
+    #[elem(patch = PatchTextValue)]
     pub value: String,
+    #[elem(patch = PatchWidth)]
     #[default(px(110))]
     pub width: Val,
 }
 
 impl TextField {
-    /// Feathers wants its own child entity for the editable text -
-    /// see the type's own docs - so this node is the container, and
-    /// the widget beneath it what actually holds [`EditableText`].
-    fn scene(&self, world: &mut World, node: Entity) {
-        let scene = bsn! {
-            @FeathersTextInputContainer
-            Children [
-                ( @FeathersTextInput )
-            ]
-        };
-
-        if let Err(err) = world.entity_mut(node).apply_scene(scene) {
-            error!("failed to build a text field: {err}");
-        }
-
-        if let Some(mut layout) = world.get_mut::<Node>(node) {
-            layout.width = self.width;
-            layout.flex_grow = 0.0;
-
-            // `FeathersTextInputContainer` reserves its left inset as
-            // a colorless 3px *border* rather than padding (room for
-            // a leading icon we never add), which leaves the
-            // background unpainted there and the left corners looking
-            // square next to the fully rounded right ones. Folding it
-            // into padding instead paints the background - and so the
-            // radius - all the way around.
-            layout.border = UiRect::ZERO;
-            layout.padding = UiRect::horizontal(px(3.0));
-        }
-
-        self.show(world, node);
-    }
-
-    /// Writes `self.value` into the child [`EditableText`].
-    fn show(&self, world: &mut World, node: Entity) {
-        let Some(text_input) = Self::text_input(world, node) else {
-            return;
-        };
-        if let Some(mut text) =
-            world.get_mut::<EditableText>(text_input)
-        {
-            text.editor_mut().set_text(&self.value);
-        }
-    }
-
     /// The child entity actually holding [`EditableText`], found by
     /// marker rather than position - the container may end up with
     /// other children later (an icon, say), and nothing here should
@@ -264,30 +198,61 @@ impl TextField {
     }
 }
 
-impl ElementVisual<BevyHost> for TextField {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
-        self.scene(world, node);
+/// Feathers wants its own child entity for the editable text - see
+/// the type's own docs - so this node is the container, and the
+/// widget beneath it what actually holds [`EditableText`].
+fn text_scene(
+    width: Val,
+    value: &str,
+    entity: &mut impl WorldEntityMut,
+) {
+    let scene = bsn! {
+        @FeathersTextInputContainer
+        Children [
+            ( @FeathersTextInput )
+        ]
+    };
+    if let Err(err) = entity.entity_mut().apply_scene(scene) {
+        error!("failed to build a text field: {err}");
     }
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: TextFieldField,
-    ) {
-        let node = patch.id();
-        let world = &mut *patch.world;
+    if let Some(mut layout) = entity.entity_mut().get_mut::<Node>() {
+        layout.width = width;
+        layout.flex_grow = 0.0;
 
-        match field {
-            TextFieldField::Value => self.show(world, node),
-            TextFieldField::Width => {
-                if let Some(mut layout) = world.get_mut::<Node>(node)
-                {
-                    layout.width = self.width;
-                }
-            }
-        }
+        // `FeathersTextInputContainer` reserves its left inset as a
+        // colorless 3px *border* rather than padding (room for a
+        // leading icon we never add), which leaves the background
+        // unpainted there and the left corners looking square next to
+        // the fully rounded right ones. Folding it into padding
+        // instead paints the background - and so the radius - all the
+        // way around.
+        layout.border = UiRect::ZERO;
+        layout.padding = UiRect::horizontal(px(3.0));
+    }
+
+    set_text(value, entity);
+}
+
+/// Write `value` into the child [`EditableText`].
+pub(super) fn set_text(
+    value: &str,
+    entity: &mut impl WorldEntityMut,
+) {
+    let node = entity.id();
+    let world = entity.world_mut();
+    let Some(input) = TextField::text_input(world, node) else {
+        return;
+    };
+    if let Some(mut text) = world.get_mut::<EditableText>(input) {
+        text.editor_mut().set_text(value);
     }
 }
+
+impl TextField {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        text_scene(self.width, &self.value, build);
+    }
+}
+
+field_patch!(PatchTextValue, String, |patch, v| set_text(v, patch));

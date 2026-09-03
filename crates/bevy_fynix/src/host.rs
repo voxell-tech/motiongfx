@@ -6,7 +6,7 @@ use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::prelude::*;
 use bevy_time::Time;
 use bevy_ui::Node;
-use fynix_mock::host::Host;
+use fynix::host::Host;
 
 /// Generic over `Theme`. This crate never names the app's concrete
 /// theme, only that it's a [`Resource`].

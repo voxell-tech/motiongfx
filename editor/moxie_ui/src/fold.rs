@@ -12,19 +12,20 @@
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::records::BuildFn;
-use fynix_mock::style::StyledElem;
-use fynix_mock::ui::{ElementHandle, ElementMut};
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::records::BuildFn;
+use fynix::style::StyledElem;
+use fynix::ui::{ElementHandle, ElementMut};
+use fynix::{elem, val};
 
 use crate::elements::{
     ButtonElem, ButtonElemCursor, Frame, FrameCursor, Icon,
     IconCursor, TintButton,
 };
 use crate::icons;
-use crate::reactive::{BevyHost, BevyUi, component_changed_on};
+use crate::reactive::{BevyUi, FynixHost, component_changed_on};
 
 /// The chevron's rotation, clockwise from the asset's resting
 /// up-pointing orientation. Right when shut, down when open.
@@ -75,9 +76,9 @@ pub enum FoldsOn {
 /// All this owns is the click that toggles, the chevron that turns,
 /// the body that goes, and the rail marking how deep that body sits.
 pub struct Foldable<
-    S: StyledElem<Host = BevyHost, Element = ButtonElem>,
-    B: BuildFn<BevyHost>,
-    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, BevyHost, ButtonElem>),
+    S: StyledElem<Host = FynixHost, Element = ButtonElem>,
+    B: BuildFn<FynixHost>,
+    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, ButtonElem>),
     T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
 > {
     /// Anything built on a [`ButtonElem`]. Under [`FoldsOn::Header`]
@@ -104,11 +105,11 @@ pub struct Foldable<
     pub on_toggle: T,
 }
 
-impl<S, B, H, T> Composer<BevyHost> for Foldable<S, B, H, T>
+impl<S, B, H, T> Composer<FynixHost> for Foldable<S, B, H, T>
 where
-    S: StyledElem<Host = BevyHost, Element = ButtonElem>,
-    B: BuildFn<BevyHost>,
-    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, BevyHost, ButtonElem>),
+    S: StyledElem<Host = FynixHost, Element = ButtonElem>,
+    B: BuildFn<FynixHost>,
+    H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, ButtonElem>),
     T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
 {
     type Element = Frame;
@@ -116,7 +117,7 @@ where
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let Self {
             header,
             folds_on,
@@ -201,7 +202,7 @@ where
             .bind(
                 |frame| frame.display(),
                 component_changed_on::<Folded>(node),
-                move |world, _| {
+                move |WorldNodeRef { world, .. }| {
                     if is_folded(world, node) {
                         Display::None
                     } else {
@@ -248,7 +249,7 @@ where
 /// Makes `button` the one that folds `node`, turning its chevron with
 /// the state and mirroring the result through `on_toggle`.
 fn folds<T>(
-    button: &mut ElementMut<BevyHost, ButtonElem>,
+    button: &mut ElementMut<FynixHost, ButtonElem>,
     node: Entity,
     on_toggle: T,
 ) where
@@ -265,7 +266,7 @@ fn folds<T>(
         .bind(
             |button| button.icon().rotation(),
             component_changed_on::<Folded>(node),
-            move |world, _| {
+            move |WorldNodeRef { world, .. }| {
                 if is_folded(world, node) {
                     CHEVRON_SHUT
                 } else {

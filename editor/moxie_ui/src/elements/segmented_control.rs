@@ -6,13 +6,13 @@
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::composer::Composer;
+use fynix::ui::ElementHandle;
+use fynix::{elem, val};
 
 use super::{Frame, Label, SegmentButton};
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::{BevyUi, FynixHost};
 
 /// A 3-way (or more) radio, one option filled solid - bevy_feathers'
 /// own `RoundedCorners`/`ButtonVariant::Primary` pattern: only the
@@ -27,7 +27,7 @@ pub struct SegmentedControl<F> {
     pub on_select: F,
 }
 
-impl<F> Composer<BevyHost> for SegmentedControl<F>
+impl<F> Composer<FynixHost> for SegmentedControl<F>
 where
     F: Fn(usize, &mut Commands) + Clone + Send + Sync + 'static,
 {
@@ -36,7 +36,7 @@ where
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let Self {
             options,
             selected,
@@ -72,7 +72,7 @@ where
                         size = 11.0f32,
                         bold = active,
                         wrap = false,
-                        color = Some(text_color)
+                        color = text_color
                     )
                 ))
                 .observe(

@@ -10,7 +10,7 @@
 //! - pressing Escape mid-drag to cancel.
 
 use bevy::prelude::*;
-use fynix_mock::elem;
+use fynix::elem;
 use moxie_ui::MoxieUiPlugin;
 use moxie_ui::elements::{Frame, Label};
 use moxie_ui::reactive::BevyUi;
@@ -117,7 +117,7 @@ fn filled(ui: &mut BevyUi, label: &str, color: Color) {
             Label,
             text = label,
             size = 20.0f32,
-            color = Some(Color::srgb(0.9, 0.9, 0.92))
+            color = Color::srgb(0.9, 0.9, 0.92)
         ));
     });
 }

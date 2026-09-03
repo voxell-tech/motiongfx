@@ -24,14 +24,15 @@ use std::any::TypeId;
 use bevy::light::CascadeShadowConfig;
 use bevy::prelude::*;
 use bevy::reflect::{FromType, GetTypeRegistration, PartialReflect};
-use fynix_mock::composer::Composer;
-use fynix_mock::elem;
-use fynix_mock::ui::ElementHandle;
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::elem;
+use fynix::ui::ElementHandle;
 use moxie_asset::AssetKindAppExt;
 
 use crate::elements::{Frame, Label};
 use crate::fold;
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::{BevyUi, FynixHost};
 pub use field::Field;
 pub(crate) use tree::single_value;
 pub use tree::{InspectorFields, Section};
@@ -192,9 +193,12 @@ impl<S: Source + ?Sized> SourceExt for S {}
 /// about a source depends on the node asking.
 pub fn when_changed(
     source: &dyn Source,
-) -> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut changed = source.changed();
-    move |world, _| changed(world)
+    move |WorldNodeRef { world, .. }| changed(world)
 }
 
 /// Fires when `get`'s value differs from the last poll, and on the
@@ -277,13 +281,13 @@ pub struct FieldRow<F: FnOnce(&mut BevyUi)> {
     pub value: F,
 }
 
-impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for FieldRow<F> {
+impl<F: FnOnce(&mut BevyUi)> Composer<FynixHost> for FieldRow<F> {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let Self {
             label,
             color,
@@ -319,7 +323,7 @@ impl<F: FnOnce(&mut BevyUi)> Composer<BevyHost> for FieldRow<F> {
                     Label,
                     text = label,
                     size = LABEL_SIZE,
-                    color = Some(color),
+                    color = color,
                     bold = bold,
                     wrap = false
                 ));

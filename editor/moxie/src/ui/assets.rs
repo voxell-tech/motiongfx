@@ -18,17 +18,18 @@ use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::{ElementHandle, ElementMut};
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::ui::{ElementHandle, ElementMut};
+use fynix::{elem, val};
 use moxie_asset::AssetKinds;
 use moxie_ui::asset::draggable;
 use moxie_ui::elements::{
     ButtonElem, Frame, Icon, Label, Panel, ScrollArea, TintButton,
 };
 use moxie_ui::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
-use moxie_ui::reactive::{BevyHost, BevyUi, resource_changed};
+use moxie_ui::reactive::{BevyUi, FynixHost, resource_changed};
 
 use super::PANEL_PADDING;
 use crate::{ProjectBookmarks, ProjectPath};
@@ -46,13 +47,13 @@ pub(super) struct AssetFoldState(BTreeSet<PathBuf>);
 
 pub(super) struct AssetsPanel;
 
-impl Composer<BevyHost> for AssetsPanel {
+impl Composer<FynixHost> for AssetsPanel {
     type Element = Panel;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Panel> {
+    ) -> ElementHandle<FynixHost, Panel> {
         ui.elem(elem!(Panel))
             .with(|ui| {
                 ui.compose(Listing);
@@ -66,13 +67,13 @@ impl Composer<BevyHost> for AssetsPanel {
 /// put however far the list is scrolled.
 struct AddButton;
 
-impl Composer<BevyHost> for AddButton {
+impl Composer<FynixHost> for AddButton {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             position = PositionType::Absolute,
@@ -120,13 +121,13 @@ fn add_bookmark(world: &mut World) {
 
 struct Listing;
 
-impl Composer<BevyHost> for Listing {
+impl Composer<FynixHost> for Listing {
     type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, ScrollArea> {
+    ) -> ElementHandle<FynixHost, ScrollArea> {
         ui.elem(elem!(
             ScrollArea,
             width = percent(100),
@@ -147,12 +148,15 @@ impl Composer<BevyHost> for Listing {
 /// Fires on either resource, since [`build_bookmarks`] draws from
 /// both.
 fn bookmarks_or_project_changed()
--> impl FnMut(&World, Entity) -> bool + Send + Sync + 'static {
+-> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
++ Send
++ Sync
++ 'static {
     let mut bookmarks = resource_changed::<ProjectBookmarks>();
     let mut project = resource_changed::<ProjectPath>();
-    move |world, node| {
-        let a = bookmarks(world, node);
-        let b = project(world, node);
+    move |WorldNodeRef { world, node }| {
+        let a = bookmarks(WorldNodeRef::new(world, node));
+        let b = project(WorldNodeRef::new(world, node));
         a || b
     }
 }
@@ -186,13 +190,13 @@ struct BookmarkRow {
     path: PathBuf,
 }
 
-impl Composer<BevyHost> for BookmarkRow {
+impl Composer<FynixHost> for BookmarkRow {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let Self { index, path } = self;
         let name = display_name(&path);
         let enabled = has_entries(&path);
@@ -217,13 +221,13 @@ impl Composer<BevyHost> for BookmarkRow {
                 label = val!(
                     Label,
                     text = name.clone(),
-                    color = Some(primary),
+                    color = primary,
                     wrap = false
                 )
             ),
             folds_on: FoldsOn::Header,
             enabled,
-            on_header: move |mut header: ElementMut<BevyHost, ButtonElem>| {
+            on_header: move |mut header: ElementMut<FynixHost, ButtonElem>| {
                 // Nothing to drop for the project's own folder.
                 let Some(index) = index else {
                     return;
@@ -306,13 +310,13 @@ struct FolderRow {
     path: PathBuf,
 }
 
-impl Composer<BevyHost> for FolderRow {
+impl Composer<FynixHost> for FolderRow {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let path = self.path;
         let name = display_name(&path);
         let enabled = has_entries(&path);
@@ -336,13 +340,13 @@ impl Composer<BevyHost> for FolderRow {
                 label = val!(
                     Label,
                     text = name.clone(),
-                    color = Some(primary),
+                    color = primary,
                     wrap = false
                 )
             ),
             folds_on: FoldsOn::Header,
             enabled,
-            on_header: |_: ElementMut<BevyHost, ButtonElem>| {},
+            on_header: |_: ElementMut<FynixHost, ButtonElem>| {},
             body: move |ui: &mut BevyUi| {
                 build_children(ui, &path);
             },
@@ -462,7 +466,7 @@ fn file_row(ui: &mut BevyUi, path: &Path) {
         ui.elem(elem!(
             Label,
             text = name,
-            color = Some(color),
+            color = color,
             wrap = false
         ));
     });

@@ -15,34 +15,27 @@ pub(crate) use drag::Dragging;
 use bevy::ecs::query::QueryState;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
 use bevy_motiongfx::scene::id::EntityUid;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::{ElementHandle, ElementMut};
-use fynix_mock::{elem, val};
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::ui::{ElementHandle, ElementMut};
+use fynix::{elem, val};
 use moxie_ui::elements::{
     ButtonElem, ButtonElemCursor, Frame, FrameCursor, GhostButton,
     Icon, Label, LabelCursor, Panel, ScrollArea, TintButton,
 };
 use moxie_ui::fold::{Foldable, FoldsOn};
 use moxie_ui::reactive::{
-    BevyHost, BevyUi, component_changed_on, value_changed,
+    BevyUi, FynixHost, component_changed_on, value_changed,
 };
 
 use super::PANEL_PADDING;
 use crate::{SceneRoot, SelectedEntity};
 
-/// The line marking where a drop would land a row.
-const GAP: f32 = 2.0;
-
-/// What that line answers to. Twice its own thickness, so aiming
-/// between two rows does not ask for the pixels the line is drawn in -
-/// the way a split's handle is wider than the seam it draws.
-///
-/// It holds that space whether or not a drag is happening, which is
-/// also what separates one row from the next: a line that appeared
-/// only when aimed at would shift every row below it as it did.
-const GAP_HIT: f32 = GAP * 2.0;
+/// Thickness of the line marking where a drop would land a row beside
+/// another.
+const DROP_LINE: f32 = 2.0;
 
 /// Room below the last row for the button that floats over it.
 const BUTTON_CLEARANCE: f32 = 34.0;
@@ -51,13 +44,13 @@ const BUTTON_CLEARANCE: f32 = 34.0;
 /// as a whole.
 pub(super) struct HierarchyPanel;
 
-impl Composer<BevyHost> for HierarchyPanel {
+impl Composer<FynixHost> for HierarchyPanel {
     type Element = Panel;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Panel> {
+    ) -> ElementHandle<FynixHost, Panel> {
         ui.elem(elem!(Panel))
             .with(|ui| {
                 ui.compose(Roots);
@@ -73,13 +66,13 @@ impl Composer<BevyHost> for HierarchyPanel {
 /// stays put however far the list is scrolled.
 struct AddButton;
 
-impl Composer<BevyHost> for AddButton {
+impl Composer<FynixHost> for AddButton {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             position = PositionType::Absolute,
@@ -108,13 +101,13 @@ impl Composer<BevyHost> for AddButton {
 /// The subjects themselves, scrolling under the button.
 struct Roots;
 
-impl Composer<BevyHost> for Roots {
+impl Composer<FynixHost> for Roots {
     type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, ScrollArea> {
+    ) -> ElementHandle<FynixHost, ScrollArea> {
         // Roots only: a branch minds itself. The query is kept
         // because this polls every flush, and the build (which
         // makes its own) runs far less often.
@@ -134,7 +127,7 @@ impl Composer<BevyHost> for Roots {
             scroll_x = false
         ))
         .watch(
-            move |world, _| {
+            move |WorldNodeRef { world, .. }| {
                 let query = match &mut query {
                     Some(query) => query,
                     slot => match QueryState::try_new(world) {
@@ -194,52 +187,81 @@ fn build_roots(ui: &mut BevyUi) {
     listing(ui, roots);
 }
 
-/// One list of rows, with the gaps a drop can land between them.
-///
-/// A gap above each row and one below the last, so every place a row
-/// could go gets exactly one, not a doubled-up pair between rows.
+/// One list of subtrees, with a seam between each and at either end
+/// where a drop can land a row beside its neighbours.
 fn listing(ui: &mut BevyUi, entities: Vec<Entity>) {
-    let accent = ui.theme.accent;
-
+    let mut prev = None;
     for &entity in &entities {
-        gap(ui, entity, accent, drag::At::Before);
+        seam(ui, prev, Some(entity));
         ui.compose(Subtree { entity });
+        prev = Some(entity);
     }
-
-    if let Some(&last) = entities.last() {
-        gap(ui, last, accent, drag::At::After);
-    }
+    seam(ui, prev, None);
 }
 
-/// Where a drop lands a row beside another, as a hit area wider than
-/// the line it commits to, like a split's handle is wider than the
-/// seam it draws.
-fn gap(ui: &mut BevyUi, entity: Entity, accent: Color, at: drag::At) {
-    let mut marker = ui.elem(elem!(
+/// The seam between two rows, and the line a drop lights on it. Full
+/// width of the list, so the line is exactly as wide as the rows.
+///
+/// One seam answers for both sides of it: a drop after `above` and one
+/// before `below` land in the same place, so either lights this line.
+fn seam(
+    ui: &mut BevyUi,
+    above: Option<Entity>,
+    below: Option<Entity>,
+) {
+    let accent = ui.theme.accent;
+
+    ui.elem(elem!(
         Frame,
         width = percent(100),
-        height = px(GAP_HIT),
+        // No height, and the line overflows it: the seam then adds
+        // nothing to the list, and the indent rails, which stretch to
+        // the list's height, are not dragged past its last row.
+        height = px(0),
+        // Or a flex item's auto floor grows it back to the line's own
+        // height.
+        min_height = px(0),
         justify = JustifyContent::Center,
         direction = FlexDirection::Column
-    ));
-
-    drag::drops(&mut marker, entity, at).with(move |ui| {
-        ui.elem(elem!(Frame, width = percent(100), height = px(GAP)))
-            .bind(
-                |line| line.background(),
-                drop_changed(entity, at),
-                move |world, _| {
-                    if world
-                        .resource::<drag::Dragging>()
-                        .shows(entity, at)
-                    {
-                        accent
-                    } else {
-                        Color::NONE
-                    }
-                },
-            );
+    ))
+    .with(move |ui| {
+        ui.elem(elem!(
+            Frame,
+            width = percent(100),
+            height = px(DROP_LINE)
+        ))
+        .bind(
+            |line| line.background(),
+            seam_changed(above, below),
+            move |WorldNodeRef { world, .. }| {
+                if seam_lit(world, above, below) {
+                    accent
+                } else {
+                    Color::NONE
+                }
+            },
+        );
     });
+}
+
+/// Whether a drop is aimed at the seam between `above` and `below`.
+fn seam_lit(
+    world: &World,
+    above: Option<Entity>,
+    below: Option<Entity>,
+) -> bool {
+    let dragging = world.resource::<drag::Dragging>();
+    above.is_some_and(|e| dragging.shows(e, drag::At::After))
+        || below.is_some_and(|e| dragging.shows(e, drag::At::Before))
+}
+
+/// Fires when whether the seam between `above` and `below` is aimed at
+/// moves.
+fn seam_changed(
+    above: Option<Entity>,
+    below: Option<Entity>,
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
+    value_changed(move |world, _| seam_lit(world, above, below))
 }
 
 /// One subject, and everything under it.
@@ -247,13 +269,13 @@ struct Subtree {
     entity: Entity,
 }
 
-impl Composer<BevyHost> for Subtree {
+impl Composer<FynixHost> for Subtree {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let entity = self.entity;
         let name = name_of(ui.world, entity);
         let text = ui.theme.text_primary;
@@ -271,7 +293,7 @@ impl Composer<BevyHost> for Subtree {
                     Label,
                     text = name,
                     wrap = false,
-                    color = Some(text)
+                    color = text
                 )
             ),
             // The row is the subject's, to select; only the
@@ -281,7 +303,7 @@ impl Composer<BevyHost> for Subtree {
             on_header: move |mut header: ElementMut<
                 '_,
                 '_,
-                BevyHost,
+                FynixHost,
                 ButtonElem,
             >| {
                 drag::rows(&mut header, entity)
@@ -298,14 +320,16 @@ impl Composer<BevyHost> for Subtree {
                     .bind(
                         |button| button.fill(),
                         highlight_changed(entity),
-                        move |world, _| {
+                        move |WorldNodeRef { world, .. }| {
                             highlight(world, entity, accent)
                         },
                     )
                     .bind(
                         |button| button.label().text(),
                         component_changed_on::<Name>(entity),
-                        move |world, _| name_of(world, entity),
+                        move |WorldNodeRef { world, .. }| {
+                            name_of(world, entity)
+                        },
                     );
             },
             body: move |ui: &mut BevyUi| {
@@ -368,7 +392,7 @@ fn highlight(world: &World, entity: Entity, accent: Color) -> Color {
 /// Fires when either half of what [`highlight`] reads moves.
 fn highlight_changed(
     entity: Entity,
-) -> impl FnMut(&World, Entity) -> bool {
+) -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool {
     value_changed(move |world, _| {
         (
             world.resource::<SelectedEntity>().0 == Some(entity),
@@ -376,16 +400,6 @@ fn highlight_changed(
                 .resource::<drag::Dragging>()
                 .shows(entity, drag::At::Into),
         )
-    })
-}
-
-/// Fires when whether a drop would land at `at` beside `entity` moves.
-fn drop_changed(
-    entity: Entity,
-    at: drag::At,
-) -> impl FnMut(&World, Entity) -> bool {
-    value_changed(move |world, _| {
-        world.resource::<drag::Dragging>().shows(entity, at)
     })
 }
 

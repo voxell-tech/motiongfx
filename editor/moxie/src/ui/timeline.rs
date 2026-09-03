@@ -11,9 +11,8 @@ pub(crate) use pattern::DelayPattern;
 use core::time::Duration;
 use std::collections::BTreeSet;
 
-use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
+use bevy::ui_widgets::{Activate, ScrollArea as ScrollAreaBehavior};
 use bevy_motiongfx::prelude::MotionGfxManager;
 
 use super::PANEL_PADDING;
@@ -22,14 +21,15 @@ use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_click_release,
     on_track_drag, on_track_press, on_track_release,
 };
+use crate::zoom::{FitTimeline, on_track_scroll};
 use crate::{
-    EditorScene, EditorState, PIXELS_PER_SECOND, SelectedAction,
-    time_axis,
+    EditorScene, EditorState, SelectedAction, TimelineView, time_axis,
 };
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::ui::ElementHandle;
+use fynix::{elem, val};
 use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, FrameCursor, GhostButton, Icon,
     IconCursor, Label, LabelCursor, Panel, PlayheadLine,
@@ -40,7 +40,7 @@ use moxie_ui::elements::{
 use moxie_ui::fold::{CHEVRON_OPEN, CHEVRON_SHUT};
 use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{
-    BevyHost, BevyUi, resource_changed, value_changed,
+    BevyUi, FynixHost, resource_changed, value_changed,
 };
 
 /// Folded blocks, by path.
@@ -69,7 +69,7 @@ const LABEL_SIZE: f32 = 10.0;
 
 /// Viewport where the timeline, track and action UI is displayed.
 #[derive(Component, Default, Clone)]
-struct TrackViewport;
+pub(crate) struct TrackViewport;
 
 /// The timeline panel, as kernel nodes.
 ///
@@ -79,13 +79,13 @@ struct TrackViewport;
 /// `bsn!` tree.
 pub(super) struct TimelinePanel;
 
-impl Composer<BevyHost> for TimelinePanel {
+impl Composer<FynixHost> for TimelinePanel {
     type Element = Panel;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Panel> {
+    ) -> ElementHandle<FynixHost, Panel> {
         ui.elem(elem!(Panel))
             .with(|ui| {
                 ui.elem(elem!(
@@ -106,13 +106,13 @@ impl Composer<BevyHost> for TimelinePanel {
 /// Play/pause + time readout.
 struct ControlBar;
 
-impl Composer<BevyHost> for ControlBar {
+impl Composer<FynixHost> for ControlBar {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             width = percent(100),
@@ -130,17 +130,13 @@ impl Composer<BevyHost> for ControlBar {
                     size = px(14)
                 )
             ))
-            .observe(
-                |mut click: On<Pointer<Click>>,
-                 mut commands: Commands| {
-                    click.propagate(false);
-                    commands.trigger(TogglePlayback);
-                },
-            )
+            .observe(|_: On<Activate>, mut commands: Commands| {
+                commands.trigger(TogglePlayback);
+            })
             .bind(
                 |button| button.icon().image(),
                 resource_changed::<EditorState>(),
-                |world, _| {
+                |WorldNodeRef { world, .. }| {
                     if world.resource::<EditorState>().is_playing {
                         crate::icons::PAUSE.to_string()
                     } else {
@@ -152,11 +148,29 @@ impl Composer<BevyHost> for ControlBar {
             ui.elem(elem!(Label, text = "0.00s")).bind(
                 |label| label.text(),
                 resource_changed::<MotionGfxManager>(),
-                |world, entity| {
+                |WorldNodeRef {
+                     world,
+                     node: entity,
+                 }| {
                     format!(
                         "{:.2}s",
                         current_time(world, entity).as_secs_f32()
                     )
+                },
+            );
+
+            // Fit button.
+            ui.elem(elem!(Frame, flex_grow = 1.0f32));
+
+            ui.elem(elem!(
+                !Button,
+                label = val!(Label, text = "Fit"),
+                width = px(44),
+                height = px(24)
+            ))
+            .observe(
+                |_: On<Activate>, mut commands: Commands| {
+                    commands.trigger(FitTimeline);
                 },
             );
         })
@@ -167,59 +181,62 @@ impl Composer<BevyHost> for ControlBar {
 /// The time axis ruler above the tracks.
 struct TimeAxis;
 
-impl Composer<BevyHost> for TimeAxis {
+impl Composer<FynixHost> for TimeAxis {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             width = percent(100),
             height = px(TIME_AXIS_HEIGHT),
         ))
-        .watch(value_changed(axis_width), build_ticks)
+        .watch(value_changed(axis_view), build_ticks)
         .handle()
     }
 }
 
-/// Time axis's width, rounded so sub-pixel jitter cannot
-/// retrigger the watch.
-fn axis_width(world: &World, node: Entity) -> u32 {
-    world
+/// The time axis's width and the view it draws, so a change to
+/// either retriggers the watch. Width is rounded so sub-pixel
+/// jitter cannot.
+fn axis_view(world: &World, node: Entity) -> (u32, TimelineView) {
+    let width = world
         .get::<ComputedNode>(node)
         .map(|computed| {
             (computed.size().x * computed.inverse_scale_factor())
                 as u32
         })
-        .unwrap_or(0)
+        .unwrap_or(0);
+
+    (width, *world.resource::<TimelineView>())
 }
 
 fn build_ticks(ui: &mut BevyUi) {
-    let width = axis_width(ui.world, ui.parent()) as f32;
+    let (width, view) = axis_view(ui.world, ui.parent());
     let color = ui.theme.text_muted;
-    let marks = time_axis::ticks(PIXELS_PER_SECOND, 0.0, width);
+    let marks = time_axis::ticks(&view, width as f32);
 
     for tick in marks {
         let major = tick.label.is_some();
         ui.elem(elem!(
             TimeTick,
-            x = tick.x,
-            height = if major { MAJOR_TICK } else { MINOR_TICK },
+            x = px(tick.x),
+            height = px(if major { MAJOR_TICK } else { MINOR_TICK }),
             color = color.with_alpha(if major { 0.6 } else { 0.3 })
         ));
 
         if let Some(text) = tick.label {
             ui.elem(elem!(
                 TimeLabel,
-                x = tick.x,
+                x = px(tick.x),
                 label = val!(
                     Label,
                     text = text,
                     size = LABEL_SIZE,
                     wrap = false,
-                    color = Some(color.with_alpha(0.7))
+                    color = color.with_alpha(0.7)
                 )
             ));
         }
@@ -231,13 +248,13 @@ fn build_ticks(ui: &mut BevyUi) {
 /// [`ScrollArea`] neither scrolls nor clips it.
 struct TrackArea;
 
-impl Composer<BevyHost> for TrackArea {
+impl Composer<FynixHost> for TrackArea {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             width = percent(100),
@@ -249,12 +266,15 @@ impl Composer<BevyHost> for TrackArea {
         .observe(on_track_release)
         .observe(on_track_click_release)
         .observe(on_track_cancel)
+        .observe(on_track_scroll)
         .with(|ui| {
             ui.elem(elem!(PlayheadLine)).bind(
                 |line| line.left(),
                 resource_changed::<MotionGfxManager>(),
-                |world, node| {
-                    crate::px_for(current_time(world, node))
+                |WorldNodeRef { world, node }| {
+                    px(world
+                        .resource::<TimelineView>()
+                        .x_from_time(current_time(world, node)))
                 },
             );
         })
@@ -268,6 +288,7 @@ impl Composer<BevyHost> for TrackArea {
                 flex_grow = 1.0f32
             ))
             .insert(TrackViewport)
+            .remove::<ScrollAreaBehavior>()
             .watch(value_changed(block_view), build_block_boxes);
         })
         .handle()
@@ -289,6 +310,7 @@ fn current_time(world: &World, _: Entity) -> Duration {
 
 /// The editor scene's animation tree, laid out as nested boxes.
 fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
+    let view = *world.resource::<TimelineView>();
     let empty = BTreeSet::new();
     let folded = world
         .get_resource::<BlockFoldState>()
@@ -299,6 +321,7 @@ fn block_placements(world: &World, _: Entity) -> Vec<Placed> {
         .map(|editor_scene| {
             block_layout::layout(
                 &editor_scene.scene().0.animation,
+                view,
                 folded,
             )
         })
@@ -332,13 +355,13 @@ struct BlockHeader {
     is_selected: bool,
 }
 
-impl Composer<BevyHost> for BlockHeader {
+impl Composer<FynixHost> for BlockHeader {
     type Element = TimelineBlock;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, TimelineBlock> {
+    ) -> ElementHandle<FynixHost, TimelineBlock> {
         let Self {
             path,
             x,
@@ -364,10 +387,10 @@ impl Composer<BevyHost> for BlockHeader {
 
         let mut header = ui.elem(elem!(
             TimelineBlock,
-            top = y,
-            left = x,
-            width = w,
-            height = h,
+            top = px(y),
+            left = px(x),
+            width = px(w),
+            height = px(h),
             background = block_color.with_alpha(0.03),
             border = block_color.with_alpha(0.5)
         ));
@@ -394,7 +417,7 @@ impl Composer<BevyHost> for BlockHeader {
                     Label,
                     text = label,
                     wrap = false,
-                    color = Some(label_color)
+                    color = label_color
                 ));
             });
         });
@@ -423,10 +446,10 @@ fn build_block_boxes(ui: &mut BevyUi) {
             let gap_x = placed.gap_x.unwrap_or(placed.x);
             ui.elem(elem!(
                 TimelineGap,
-                top = placed.y,
-                left = gap_x,
-                width = placed.x - gap_x,
-                height = placed.h,
+                top = px(placed.y),
+                left = px(gap_x),
+                width = px(placed.x - gap_x),
+                height = px(placed.h),
                 image = pattern.clone(),
                 color = theme.text_muted.with_alpha(0.35)
             ))
@@ -493,16 +516,16 @@ fn build_block_boxes(ui: &mut BevyUi) {
                         Label,
                         text = label.clone(),
                         size = 10.0f32,
-                        color = Some(if placed.draft {
+                        color = if placed.draft {
                             theme.critical.with_alpha(0.9)
                         } else {
                             theme.palette.blue.with_alpha(0.9)
-                        })
+                        }
                     ),
-                    top = placed.y,
-                    left = placed.x,
-                    width = placed.w,
-                    height = placed.h,
+                    top = px(placed.y),
+                    left = px(placed.x),
+                    width = px(placed.w),
+                    height = px(placed.h),
                     fill = fill,
                     border = border,
                     selected = is_selected

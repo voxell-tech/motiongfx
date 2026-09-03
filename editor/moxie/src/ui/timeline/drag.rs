@@ -28,17 +28,17 @@ use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
 use bevy::ui::UiScale;
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt;
+use bevy_fynix::WorldEntityMut;
 use bevy_motiongfx::scene::backend::Backend;
-use fynix_mock::element::Element;
-use fynix_mock::ui::ElementMut;
+use fynix::element::Element;
+use fynix::ui::ElementMut;
 use motiongfx_scene::block::Node as SceneNode;
-use moxie_ui::reactive::BevyHost;
+use moxie_ui::reactive::FynixHost;
 
 use super::super::action::{node_at, node_at_mut};
 use super::BlockFoldState;
 use crate::block_layout;
-use crate::{EditorScene, PIXELS_PER_SECOND};
+use crate::{EditorScene, TimelineView};
 
 /// How wide an edge handle is.
 pub(crate) const EDGE_HANDLE_PX: f32 = 6.0;
@@ -86,11 +86,11 @@ pub(crate) struct GapPath(pub(crate) Vec<usize>);
 
 /// Makes `handle` an edge: dragging it edits `path`'s `delay`
 /// (`Kind::Move`) or `duration` (`Kind::Resize`).
-pub(crate) fn edge<'r, 'u, 'a, E: Element<BevyHost>>(
-    handle: &'r mut ElementMut<'u, 'a, BevyHost, E>,
+pub(crate) fn edge<'r, 'u, 'a, E: Element<FynixHost>>(
+    handle: &'r mut ElementMut<'u, 'a, FynixHost, E>,
     path: Vec<usize>,
     kind: Kind,
-) -> &'r mut ElementMut<'u, 'a, BevyHost, E> {
+) -> &'r mut ElementMut<'u, 'a, FynixHost, E> {
     handle
         .insert(EntityCursor::System(SystemCursorIcon::EwResize))
         .observe(
@@ -123,6 +123,7 @@ pub(crate) fn edge<'r, 'u, 'a, E: Element<BevyHost>>(
                   mut dragging: ResMut<Dragging>,
                   editor_scene: Res<EditorScene>,
                   folded: Res<BlockFoldState>,
+                  view: Res<TimelineView>,
                   boxes: Query<(&BoxPath, &mut Node)>,
                   gaps: Query<
                 (&GapPath, &mut Node),
@@ -132,8 +133,8 @@ pub(crate) fn edge<'r, 'u, 'a, E: Element<BevyHost>>(
                     return;
                 };
                 let cursor = drag.pointer_location.position / scale.0;
-                let dx_secs = (cursor.x - gesture.cursor_start.x)
-                    / PIXELS_PER_SECOND;
+                let dx_secs = view
+                    .secs_from_dx(cursor.x - gesture.cursor_start.x);
 
                 gesture.value_secs = match gesture.kind {
                     Kind::Move => {
@@ -146,6 +147,7 @@ pub(crate) fn edge<'r, 'u, 'a, E: Element<BevyHost>>(
                 relayout(
                     &editor_scene,
                     &folded,
+                    *view,
                     &gesture.path,
                     gesture.kind,
                     gesture.value_secs,
@@ -182,6 +184,7 @@ pub(crate) fn cancel_on_escape(
     mut dragging: ResMut<Dragging>,
     editor_scene: Res<EditorScene>,
     folded: Res<BlockFoldState>,
+    view: Res<TimelineView>,
     boxes: Query<(&BoxPath, &mut Node)>,
     gaps: Query<(&GapPath, &mut Node), Without<BoxPath>>,
 ) {
@@ -194,6 +197,7 @@ pub(crate) fn cancel_on_escape(
     relayout(
         &editor_scene,
         &folded,
+        *view,
         &gesture.path,
         gesture.kind,
         gesture.base_secs,
@@ -209,6 +213,7 @@ pub(crate) fn cancel_on_escape(
 fn relayout(
     editor_scene: &EditorScene,
     folded: &BlockFoldState,
+    view: TimelineView,
     path: &[usize],
     kind: Kind,
     secs: f32,
@@ -221,7 +226,9 @@ fn relayout(
     };
     apply_edit(node, kind, secs);
 
-    for placed in block_layout::layout(&animation, folded.paths()) {
+    for placed in
+        block_layout::layout(&animation, view, folded.paths())
+    {
         for (box_path, mut node) in &mut boxes {
             if box_path.0 != placed.path {
                 continue;

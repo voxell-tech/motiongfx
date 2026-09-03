@@ -1,61 +1,32 @@
-use crate::reactive::BevyHost;
+use crate::reactive::FynixBuild;
 use bevy::prelude::*;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::element::element;
 
 use super::Label;
+use super::patch::*;
 
 /// A time reading on the time axis, placing above the mark it reads
 /// for.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct TimeLabel {
     #[elem(child)]
     pub label: Label,
     /// Pixels from the time axis's left edge.
-    pub x: f32,
+    #[elem(patch = PatchTimeLabelX)]
+    pub x: Val,
 }
 
 impl TimeLabel {
-    fn node(&self) -> Node {
-        Node {
-            position_type: PositionType::Absolute,
-            left: px(self.x),
-            top: px(1),
-            width: px(0),
-            justify_content: if self.centred() {
-                JustifyContent::Center
-            } else {
-                JustifyContent::FlexStart
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        build.insert((
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(1),
+                width: px(0),
+                ..default()
             },
-            padding: UiRect::left(if self.centred() {
-                Val::ZERO
-            } else {
-                px(3)
-            }),
-            ..default()
-        }
-    }
-
-    fn centred(&self) -> bool {
-        self.x > 0.0
-    }
-}
-
-impl ElementVisual<BevyHost> for TimeLabel {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        build.insert((self.node(), Pickable::IGNORE));
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: TimeLabelField,
-    ) {
-        match field {
-            TimeLabelField::X => {
-                patch.insert(self.node());
-            }
-        }
+            Pickable::IGNORE,
+        ));
     }
 }

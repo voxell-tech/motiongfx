@@ -2,22 +2,31 @@
 //!
 //! Reordering and reparenting are the same edit: every subject sits in
 //! some parent's [`Children`], so both are a matter of which list a row
-//! lands in and where. A row itself means inside it; the gaps either
-//! side of one mean beside it, and are their own drop targets so that
-//! what commits to a hair-thin line is not itself hair-thin.
+//! lands in and where. One row is the whole drop target: its middle
+//! means inside it, its top and bottom edges beside it. What commits to
+//! a hair-thin line is a band a quarter of the row tall, not itself
+//! hair-thin.
 
 use bevy::picking::events::{
     Drag, DragDrop, DragEnd, DragLeave, DragOver, DragStart, Pointer,
 };
 use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
-use bevy::ui::UiScale;
-use bevy_fynix::{BevyFynix, EntityExt};
-use fynix_mock::element::Element;
-use fynix_mock::ui::ElementMut;
+use bevy::ui::{UiGlobalTransform, UiScale};
+use bevy_fynix::{BevyFynix, WorldEntityMut};
+use bevy_motiongfx::scene::id::EntityUid;
+use fynix::ui::ElementMut;
 use moxie_ui::elements::ButtonElem;
-use moxie_ui::reactive::BevyHost;
+use moxie_ui::layout::logical_rect;
+use moxie_ui::reactive::FynixHost;
 use moxie_ui::theme::EditorTheme;
+
+/// How much of a row's height, at each end, aims beside it rather than
+/// into it. The middle half is the drop-inside band.
+const EDGE: f32 = 0.25;
+
+/// What [`logical_rect`] reads off a node to place it in pointer space.
+type NodeRect = (&'static ComputedNode, &'static UiGlobalTransform);
 
 /// Where the ghost sits relative to the cursor, so the cursor lands
 /// just inside it rather than on its corner.
@@ -52,14 +61,98 @@ pub(crate) enum At {
     After,
 }
 
-/// Makes `header` a row that can be picked up, and dropped into.
+/// Makes `header` a row that can be picked up, and one a drop can land
+/// on: before it, into it, or after it, by where in its height it is
+/// aimed.
 pub(super) fn rows<'r, 'u, 'a>(
-    header: &'r mut ElementMut<'u, 'a, BevyHost, ButtonElem>,
+    header: &'r mut ElementMut<'u, 'a, FynixHost, ButtonElem>,
     subject: Entity,
-) -> &'r mut ElementMut<'u, 'a, BevyHost, ButtonElem> {
-    drops(header, subject, At::Into);
+) -> &'r mut ElementMut<'u, 'a, FynixHost, ButtonElem> {
+    let row = header.id();
 
     header
+        .observe(
+            move |over: On<Pointer<DragOver>>,
+                  scale: Res<UiScale>,
+                  rects: Query<NodeRect>,
+                  kids: Query<&Children>,
+                  is_subject: Query<(), With<EntityUid>>,
+                  is_collapsed: Query<(), With<super::Collapsed>>,
+                  mut dragging: ResMut<Dragging>| {
+                if over.button != PointerButton::Primary {
+                    return;
+                }
+                if dragging.subject.is_none() {
+                    return;
+                }
+                let Ok((computed, transform)) = rects.get(row) else {
+                    return;
+                };
+                let rect = logical_rect(computed, transform);
+                let cursor = over.pointer_location.position / scale.0;
+                let frac = (cursor.y - rect.min.y) / rect.height();
+
+                let at = if frac < EDGE {
+                    At::Before
+                } else if frac > 1.0 - EDGE {
+                    At::After
+                } else {
+                    At::Into
+                };
+
+                // Below an open branch, the space is its children's:
+                // the drop lands as the first of them, which is the
+                // same slot, and the same line, as before that child.
+                let target = match at {
+                    At::After if !is_collapsed.contains(subject) => {
+                        kids.get(subject)
+                            .ok()
+                            .and_then(|kids| {
+                                kids.iter().find(|&kid| {
+                                    is_subject.contains(kid)
+                                })
+                            })
+                            .map_or((subject, At::After), |first| {
+                                (first, At::Before)
+                            })
+                    }
+                    _ => (subject, at),
+                };
+                dragging.target = Some(target);
+            },
+        )
+        .observe(
+            move |_: On<Pointer<DragLeave>>,
+                  mut dragging: ResMut<Dragging>| {
+                if matches!(
+                    dragging.target,
+                    Some((aimed, _)) if aimed == subject
+                ) {
+                    dragging.target = None;
+                }
+            },
+        )
+        .observe(
+            move |drop: On<Pointer<DragDrop>>,
+                  dragging: Res<Dragging>,
+                  mut commands: Commands| {
+                // Read rather than taken: the drop lands before the
+                // drag ends, which is what clears it.
+                let Some(dragged) = dragging.subject else {
+                    return;
+                };
+                if drop.button != PointerButton::Primary {
+                    return;
+                }
+                let Some((target_row, at)) = dragging.target else {
+                    return;
+                };
+
+                commands.queue(move |world: &mut World| {
+                    apply(world, dragged, target_row, at);
+                });
+            },
+        )
         .observe(
             move |start: On<Pointer<DragStart>>,
                   names: Query<&Name>,
@@ -114,49 +207,6 @@ pub(super) fn rows<'r, 'u, 'a>(
                 dragging.target = None;
             },
         )
-}
-
-/// Makes `elem` somewhere a row can be dropped, landing it at `at`
-/// relative to `subject`.
-pub(super) fn drops<'r, 'u, 'a, E: Element<BevyHost>>(
-    elem: &'r mut ElementMut<'u, 'a, BevyHost, E>,
-    subject: Entity,
-    at: At,
-) -> &'r mut ElementMut<'u, 'a, BevyHost, E> {
-    elem.observe(
-        move |over: On<Pointer<DragOver>>,
-              mut dragging: ResMut<Dragging>| {
-            if over.button == PointerButton::Primary {
-                dragging.target = Some((subject, at));
-            }
-        },
-    )
-    .observe(
-        move |_: On<Pointer<DragLeave>>,
-              mut dragging: ResMut<Dragging>| {
-            if dragging.target == Some((subject, at)) {
-                dragging.target = None;
-            }
-        },
-    )
-    .observe(
-        move |drop: On<Pointer<DragDrop>>,
-              dragging: Res<Dragging>,
-              mut commands: Commands| {
-            // Read rather than taken: the drop lands before the drag
-            // ends, which is what clears it.
-            let Some(dragged) = dragging.subject else {
-                return;
-            };
-            if drop.button != PointerButton::Primary {
-                return;
-            }
-
-            commands.queue(move |world: &mut World| {
-                apply(world, dragged, subject, at);
-            });
-        },
-    )
 }
 
 /// What follows the cursor while a row is being dragged.

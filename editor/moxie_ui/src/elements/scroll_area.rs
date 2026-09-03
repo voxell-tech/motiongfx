@@ -1,111 +1,68 @@
-use crate::reactive::BevyHost;
+use crate::reactive::FynixBuild;
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollArea as ScrollAreaBehavior;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::element::element;
+
+use super::patch::*;
 
 /// A sized container with real, interactive scrolling - trackpad and
 /// mouse-wheel input actually move it (`ScrollAreaBehavior`), not just
 /// a clipped overflow a caller has to drive by hand.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct ScrollArea {
+    #[elem(patch = PatchWidth)]
     pub width: Val,
+    #[elem(patch = PatchHeight)]
     pub height: Val,
     /// How much of its parent's remaining space this area claims -
     /// almost always `1.0` for one that should fill what's left.
+    #[elem(patch = PatchFlexGrow)]
     #[default(0.0)]
     pub flex_grow: f32,
+    #[elem(patch = PatchDirection)]
     #[default(::Column)]
     pub direction: FlexDirection,
+    #[elem(patch = PatchAlign)]
     pub align: AlignItems,
+    #[elem(patch = PatchJustify)]
     pub justify: JustifyContent,
+    #[elem(patch = PatchPadding)]
     pub padding: UiRect,
     /// Between rows, and between columns: a row of things wants the
     /// second, a column the first.
+    #[elem(patch = PatchRowGap)]
     #[default(::ZERO)]
     pub row_gap: Val,
+    #[elem(patch = PatchColumnGap)]
     #[default(::ZERO)]
     pub column_gap: Val,
+    #[elem(patch = PatchRadius)]
     #[default(::ZERO)]
     pub radius: Val,
+    #[elem(patch = PatchBackground)]
     #[default(::NONE)]
     pub background: Color,
+    #[elem(patch = PatchScrollX)]
     #[default(true)]
     pub scroll_x: bool,
+    #[elem(patch = PatchScrollY)]
     #[default(true)]
     pub scroll_y: bool,
 }
 
 impl ScrollArea {
-    fn node(&self) -> Node {
-        Node {
-            width: self.width,
-            height: self.height,
-            flex_grow: self.flex_grow,
-            // `min: 0` lets the area shrink below its content instead
-            // of forcing its parent to grow around it - without this
-            // there is nothing left to scroll.
-            min_width: px(0),
-            min_height: px(0),
-            flex_direction: self.direction,
-            align_items: self.align,
-            justify_content: self.justify,
-            padding: self.padding,
-            row_gap: self.row_gap,
-            column_gap: self.column_gap,
-            border_radius: BorderRadius::all(self.radius),
-            overflow: Overflow {
-                x: axis(self.scroll_x),
-                y: axis(self.scroll_y),
-            },
-            ..default()
-        }
-    }
-}
-
-fn axis(scrolls: bool) -> OverflowAxis {
-    if scrolls {
-        OverflowAxis::Scroll
-    } else {
-        OverflowAxis::Visible
-    }
-}
-
-impl ElementVisual<BevyHost> for ScrollArea {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        // `min: 0` lets the area shrink below its content instead of
+        // forcing its parent to grow around it - without it there is
+        // nothing left to scroll.
         build.insert((
-            self.node(),
-            BackgroundColor(self.background),
+            Node {
+                min_width: px(0),
+                min_height: px(0),
+                ..default()
+            },
             ScrollAreaBehavior,
         ));
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: ScrollAreaField,
-    ) {
-        match field {
-            ScrollAreaField::Background => {
-                patch.insert(BackgroundColor(self.background));
-            }
-            // Every other field is one of `Node`'s, and writing it
-            // whole is one insert rather than an arm apiece.
-            ScrollAreaField::Width
-            | ScrollAreaField::Height
-            | ScrollAreaField::FlexGrow
-            | ScrollAreaField::Direction
-            | ScrollAreaField::Align
-            | ScrollAreaField::Justify
-            | ScrollAreaField::Padding
-            | ScrollAreaField::RowGap
-            | ScrollAreaField::ColumnGap
-            | ScrollAreaField::Radius
-            | ScrollAreaField::ScrollX
-            | ScrollAreaField::ScrollY => {
-                patch.insert(self.node());
-            }
-        }
     }
 }

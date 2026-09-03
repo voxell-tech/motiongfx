@@ -14,7 +14,7 @@
 //! a look at the widgets themselves. Click any header to fold it.
 
 use bevy::prelude::*;
-use fynix_mock::elem;
+use fynix::elem;
 use moxie_ui::MoxieUiPlugin;
 use moxie_ui::elements::{
     ComponentInspector, EntityInspector, Frame, Label,
@@ -164,7 +164,7 @@ fn panel(
             text = title,
             size = 14.0f32,
             bold = true,
-            color = Some(text_color)
+            color = text_color
         ));
         body(ui);
     });

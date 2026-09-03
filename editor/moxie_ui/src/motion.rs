@@ -2,7 +2,7 @@
 //! than spelling it out. Each takes the field by cursor, so one of
 //! them serves every widget with a colour in the right place.
 
-use crate::reactive::BevyHost;
+use crate::reactive::FynixHost;
 use crate::theme::EditorTheme;
 use bevy::color::Mix;
 use bevy::picking::events::{
@@ -10,11 +10,11 @@ use bevy::picking::events::{
 };
 use bevy::prelude::*;
 use bevy_fynix::interact::OnExt;
-use fynix_mock::element::Element;
-use fynix_mock::host::Host;
-use fynix_mock::lenz::{Cursor, FieldPath, Identity};
-use fynix_mock::transition::Transition;
-use fynix_mock::ui::{Build, ElementMut};
+use fynix::element::Element;
+use fynix::host::Host;
+use fynix::lenz::{Cursor, FieldPath, Identity};
+use fynix::transition::Transition;
+use fynix::ui::{Build, ElementMut};
 use motiongfx_interp::ease;
 
 /// What `lit` can aim at: a colour itself, or a field that only wears
@@ -52,8 +52,8 @@ impl Lit for Option<Color> {
 
 /// Lights a field under the cursor, reading its base out of the
 /// kernel's own table. Only [`ElementMut`] offers this, not
-/// [`Build`]: a node running its own
-/// `build_fields` has no entry there yet.
+/// [`Build`]: a node running its own `#[element(build = ...)]` hook
+/// has no entry there yet.
 pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
     LitFrom<E>
 {
@@ -85,10 +85,9 @@ pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
 }
 
 /// As [`MotionExt`], but given the base explicitly instead of
-/// reading it out of the kernel's table, for
-/// [`build_fields`](fynix_mock::element::ElementVisual::build_fields)
-/// whose node has no entry there yet. Both [`ElementMut`] and
-/// [`Build`] offer this.
+/// reading it out of the kernel's table, for a
+/// `#[element(build = ...)]` hook whose node has no entry there yet.
+/// Both [`ElementMut`] and [`Build`] offer this.
 pub trait LitFrom<E: Element<Self::Host>> {
     type Host: Host;
 
@@ -120,8 +119,8 @@ pub trait LitFrom<E: Element<Self::Host>> {
         T: Lit;
 }
 
-impl<E: Element<BevyHost> + Send + Sync> MotionExt<E>
-    for ElementMut<'_, '_, BevyHost, E>
+impl<E: Element<FynixHost> + Send + Sync> MotionExt<E>
+    for ElementMut<'_, '_, FynixHost, E>
 {
     fn lit<P, T>(
         &mut self,
@@ -158,10 +157,10 @@ impl<E: Element<BevyHost> + Send + Sync> MotionExt<E>
     }
 }
 
-impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
-    for ElementMut<'_, '_, BevyHost, E>
+impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
+    for ElementMut<'_, '_, FynixHost, E>
 {
-    type Host = BevyHost;
+    type Host = FynixHost;
 
     fn theme(&self) -> &EditorTheme {
         self.ui.theme
@@ -205,10 +204,10 @@ impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
     }
 }
 
-impl<E: Element<BevyHost> + Send + Sync> LitFrom<E>
-    for Build<'_, BevyHost, E>
+impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
+    for Build<'_, FynixHost, E>
 {
-    type Host = BevyHost;
+    type Host = FynixHost;
 
     fn theme(&self) -> &EditorTheme {
         self.theme
@@ -263,7 +262,7 @@ fn on_lit<T, E, P, Target>(
 ) -> &mut T
 where
     T: OnExt<E, EditorTheme>,
-    E: Element<BevyHost> + Send + Sync,
+    E: Element<FynixHost> + Send + Sync,
     P: FieldPath<Source = E, Target = Target>,
     Target: Lit,
 {

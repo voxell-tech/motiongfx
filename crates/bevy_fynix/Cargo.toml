@@ -8,7 +8,7 @@ repository.workspace = true
 
 [dependencies]
 # fynix
-fynix_mock = { workspace = true }
+fynix = { workspace = true }
 
 # bevy
 bevy_app = { workspace = true }

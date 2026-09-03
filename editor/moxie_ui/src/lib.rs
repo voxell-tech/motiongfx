@@ -18,6 +18,9 @@ pub mod reactive;
 pub mod theme;
 pub mod widgets;
 
+/// The backend `#[element]` builds against by default.
+pub use reactive::{FynixBuild, FynixHost};
+
 use bevy::feathers::FeathersPlugins;
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy::feathers::theme::UiTheme;

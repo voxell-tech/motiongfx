@@ -4,55 +4,38 @@ use bevy_app::prelude::*;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::prelude::*;
 use bevy_fynix::host::BevyHost;
-use bevy_fynix::{FynixPlugin, watch_root};
+use bevy_fynix::{FynixPlugin, WorldEntityRef as _, watch_root};
 use bevy_ui::Node;
-use fynix_mock::elem;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use fynix::elem;
+use fynix::element::element;
+use fynix::ui::{FieldPatch, Patch};
 
 /// Nothing in these tests reads a theme - a host still needs one.
 #[derive(Resource, Clone, Default)]
 struct NoTheme;
 
-type Host = BevyHost<NoTheme>;
+type FynixHost = BevyHost<NoTheme>;
 
 /// What the element writes. A real one would write `bevy_ui`
 /// components; this only has to be visible from a test.
 #[derive(Component, Debug, PartialEq)]
 struct Caption(String);
 
-#[derive(Element)]
+#[element]
 pub struct Label {
+    #[elem(patch = WriteCaption)]
     #[default(String::from("Label"))]
     pub text: String,
 }
 
-impl ElementVisual<Host> for Label {
-    fn build_fields(
-        &self,
-        build: &mut Build<BevyHost<NoTheme>, Self>,
-    ) {
-        let node = build.id();
-        let world = &mut *build.world;
+pub struct WriteCaption;
 
-        world.entity_mut(node).insert(Caption(self.text.clone()));
-    }
+impl FieldPatch<FynixHost> for WriteCaption {
+    type Target = String;
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost<NoTheme>>,
-        field: LabelField,
-    ) {
+    fn patch(patch: &mut Patch<FynixHost>, text: &String) {
         let node = patch.id();
-        let world = &mut *patch.world;
-
-        match field {
-            LabelField::Text => {
-                world
-                    .entity_mut(node)
-                    .insert(Caption(self.text.clone()));
-            }
-        }
+        patch.world.entity_mut(node).insert(Caption(text.clone()));
     }
 }
 
@@ -119,10 +102,8 @@ fn binding_patches_the_node_it_built() {
     watch_root(app.world_mut(), root, |ui| {
         ui.elem(elem!(Label)).bind(
             |label| label.text(),
-            |world: &World, _| world.resource::<Source>().changed,
-            |world: &World, _| {
-                world.resource::<Source>().text.clone()
-            },
+            |world_node| world_node.resource::<Source>().changed,
+            |world_node| world_node.resource::<Source>().text.clone(),
         );
     });
 

@@ -13,9 +13,9 @@ use bevy::prelude::*;
 use bevy::reflect::PartialReflect;
 use bevy_motiongfx::scene::backend::{AnimEase, AnimInterp, Backend};
 use bevy_motiongfx::scene::id::{SceneUid, SceneUidMap};
-use fynix_mock::composer::Composer;
-use fynix_mock::elem;
-use fynix_mock::ui::ElementHandle;
+use fynix::composer::Composer;
+use fynix::elem;
+use fynix::ui::ElementHandle;
 use motiongfx_scene::block::{ActionCmd, Block, Combinator, Node};
 use motiongfx_scene::refs::FieldRef;
 use moxie_ui::elements::{
@@ -24,7 +24,7 @@ use moxie_ui::elements::{
 use moxie_ui::inspector::{
     FieldRow, Source, inspect_value, reflect_changed,
 };
-use moxie_ui::reactive::{BevyHost, BevyUi, value_changed};
+use moxie_ui::reactive::{BevyUi, FynixHost, value_changed};
 
 use super::{PANEL_PADDING, hierarchy};
 use crate::{EditorScene, SelectedAction};
@@ -32,13 +32,13 @@ use crate::{EditorScene, SelectedAction};
 /// The action panel, as kernel nodes.
 pub(super) struct ActionPanel;
 
-impl Composer<BevyHost> for ActionPanel {
+impl Composer<FynixHost> for ActionPanel {
     type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, ScrollArea> {
+    ) -> ElementHandle<FynixHost, ScrollArea> {
         ui.elem(elem!(
             ScrollArea,
             flex_grow = 1.0f32,
@@ -168,14 +168,14 @@ fn build(ui: &mut BevyUi) {
                         ui.elem(elem!(
                             Label,
                             text = name,
-                            color = Some(primary),
+                            color = primary,
                             wrap = false
                         ));
                     }
                     ui.elem(elem!(
                         Label,
                         text = format!("#{}", subject.head),
-                        color = Some(muted),
+                        color = muted,
                         wrap = false
                     ));
                 });
@@ -226,7 +226,7 @@ fn build(ui: &mut BevyUi) {
                 ui.elem(elem!(
                     Label,
                     text = value,
-                    color = Some(primary),
+                    color = primary,
                     wrap = false
                 ));
             },
@@ -728,6 +728,6 @@ fn note(ui: &mut BevyUi, text: &str) {
     ui.elem(elem!(
         Label,
         text = text.to_string(),
-        color = Some(ui.theme.text_muted)
+        color = ui.theme.text_muted
     ));
 }

@@ -4,14 +4,14 @@
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::settings::SaveSettingsSync;
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::composer::Composer;
+use fynix::ui::ElementHandle;
+use fynix::{elem, val};
 use moxie_ui::elements::{
     Button, Frame, Label, Panel, ResourceInspector,
 };
-use moxie_ui::reactive::{BevyHost, BevyUi};
+use moxie_ui::reactive::{BevyUi, FynixHost};
 
 use super::PANEL_PADDING;
 use crate::EditorSettings;
@@ -19,13 +19,13 @@ use crate::EditorSettings;
 /// The settings panel, as kernel nodes.
 pub(super) struct SettingsPanel;
 
-impl Composer<BevyHost> for SettingsPanel {
+impl Composer<FynixHost> for SettingsPanel {
     type Element = Panel;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Panel> {
+    ) -> ElementHandle<FynixHost, Panel> {
         ui.elem(elem!(
             Panel,
             direction = FlexDirection::Column,
@@ -45,13 +45,13 @@ impl Composer<BevyHost> for SettingsPanel {
 /// The one action the panel has of its own.
 struct SaveRow;
 
-impl Composer<BevyHost> for SaveRow {
+impl Composer<FynixHost> for SaveRow {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(Frame, direction = FlexDirection::Row))
             .with(|ui| {
                 ui.elem(elem!(

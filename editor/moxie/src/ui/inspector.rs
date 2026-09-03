@@ -2,11 +2,11 @@
 //! component of one entity, each under a collapsible header.
 
 use bevy::prelude::*;
-use fynix_mock::composer::Composer;
-use fynix_mock::elem;
-use fynix_mock::ui::ElementHandle;
+use fynix::composer::Composer;
+use fynix::elem;
+use fynix::ui::ElementHandle;
 use moxie_ui::elements::{EntityInspector, Label, ScrollArea};
-use moxie_ui::reactive::{BevyHost, BevyUi, resource_changed};
+use moxie_ui::reactive::{BevyUi, FynixHost, resource_changed};
 
 use super::PANEL_PADDING;
 use crate::SelectedEntity;
@@ -14,13 +14,13 @@ use crate::SelectedEntity;
 /// The inspector panel, as kernel nodes.
 pub(super) struct InspectorPanel;
 
-impl Composer<BevyHost> for InspectorPanel {
+impl Composer<FynixHost> for InspectorPanel {
     type Element = ScrollArea;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, ScrollArea> {
+    ) -> ElementHandle<FynixHost, ScrollArea> {
         ui.elem(elem!(
             ScrollArea,
             width = percent(100),
@@ -40,7 +40,7 @@ fn build(ui: &mut BevyUi) {
         ui.elem(elem!(
             Label,
             text = "Nothing selected",
-            color = Some(muted)
+            color = muted
         ));
         return;
     };

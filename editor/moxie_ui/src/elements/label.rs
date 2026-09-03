@@ -1,88 +1,96 @@
-use crate::reactive::BevyHost;
+use crate::reactive::FynixBuild;
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
-use bevy_fynix::EntityExt as _;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut;
+use fynix::element::element;
+
+use super::patch::*;
 
 /// A theme-inheriting text label.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct Label {
+    #[elem(patch = PatchText)]
     pub text: String,
+    #[elem(patch = PatchTextSize)]
     #[default(12.0)]
     pub size: f32,
-    /// `None` leaves the colour to the theme.
-    pub color: Option<Color>,
+    /// [`Color::NONE`] leaves the colour to the theme.
+    #[default(::NONE)]
+    #[elem(patch = PatchTextColor)]
+    pub color: Color,
+    #[elem(patch = PatchBold)]
     pub bold: bool,
+    #[elem(patch = PatchWrap)]
     #[default(true)]
     pub wrap: bool,
 }
 
-impl Label {
-    fn font(&self) -> TextFont {
-        TextFont {
-            font_size: FontSize::Px(self.size),
-            weight: if self.bold {
-                FontWeight::BOLD
-            } else {
-                FontWeight::NORMAL
-            },
-            ..default()
-        }
-    }
-
-    fn layout(&self) -> TextLayout {
-        TextLayout {
-            linebreak: if self.wrap {
-                LineBreak::WordBoundary
-            } else {
-                LineBreak::NoWrap
-            },
-            ..default()
-        }
+fn font(size: f32, bold: bool) -> TextFont {
+    TextFont {
+        font_size: FontSize::Px(size),
+        weight: if bold {
+            FontWeight::BOLD
+        } else {
+            FontWeight::NORMAL
+        },
+        ..default()
     }
 }
 
-impl ElementVisual<BevyHost> for Label {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+fn layout(wrap: bool) -> TextLayout {
+    TextLayout {
+        linebreak: if wrap {
+            LineBreak::WordBoundary
+        } else {
+            LineBreak::NoWrap
+        },
+        ..default()
+    }
+}
+
+impl Label {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             Text::new(self.text.clone()),
-            self.font(),
-            self.layout(),
+            font(self.size, self.bold),
+            layout(self.wrap),
         ));
 
-        // A colour of its own opts out of the theme's.
-        match self.color {
-            Some(color) => build.insert(TextColor(color)),
-            None => build.insert(ThemedText),
-        };
+        set_color(self.color, build);
     }
+}
 
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: LabelField,
-    ) {
-        match field {
-            LabelField::Text => {
-                if let Some(mut text) =
-                    patch.entity_mut().get_mut::<Text>()
-                {
-                    text.0.clone_from(&self.text);
-                }
-            }
-            LabelField::Size | LabelField::Bold => {
-                patch.insert(self.font());
-            }
-            LabelField::Wrap => {
-                patch.insert(self.layout());
-            }
-            LabelField::Color => {
-                match self.color {
-                    Some(color) => patch.insert(TextColor(color)),
-                    None => patch.insert(ThemedText),
-                };
-            }
-        }
+field_patch!(PatchText, String, |patch, v| {
+    with::<Text>(patch, |t| t.0.clone_from(v));
+});
+
+field_patch!(PatchTextSize, f32, |patch, v| {
+    with::<TextFont>(patch, |f| f.font_size = FontSize::Px(*v));
+});
+
+field_patch!(PatchBold, bool, |patch, v| {
+    let weight = if *v {
+        FontWeight::BOLD
+    } else {
+        FontWeight::NORMAL
+    };
+    with::<TextFont>(patch, move |f| f.weight = weight);
+});
+
+field_patch!(PatchWrap, bool, |patch, v| {
+    patch.insert(layout(*v));
+});
+
+field_patch!(PatchTextColor, Color, |patch, v| {
+    set_color(*v, patch);
+});
+
+/// Insert an explicit [`TextColor`], or [`ThemedText`] for
+/// [`Color::NONE`].
+fn set_color(color: Color, entity: &mut impl WorldEntityMut) {
+    if color == Color::NONE {
+        entity.insert(ThemedText);
+    } else {
+        entity.insert(TextColor(color));
     }
 }

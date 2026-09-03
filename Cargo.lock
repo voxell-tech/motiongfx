@@ -943,7 +943,7 @@ dependencies = [
  "bevy_picking",
  "bevy_time",
  "bevy_ui",
- "fynix_mock",
+ "fynix",
 ]
 
 [[package]]
@@ -3034,17 +3034,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "fynix_mock"
+name = "fynix"
 version = "0.3.0"
 dependencies = [
- "fynix_mock_macros",
+ "fynix_macros",
  "hashbrown 0.17.1",
+ "lenz",
  "motiongfx_interp",
+ "override_default",
  "typarena",
 ]
 
 [[package]]
-name = "fynix_mock_macros"
+name = "fynix_macros"
 version = "0.3.0"
 dependencies = [
  "proc-macro-crate",
@@ -3754,6 +3756,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "lenz"
+version = "0.1.0"
+source = "git+https://github.com/nixonyh/lenz#8c4ffaf0bad1dd42c2ffafccc0f91d737fc45d9b"
+dependencies = [
+ "lenz_macros",
+]
+
+[[package]]
+name = "lenz_macros"
+version = "0.1.0"
+source = "git+https://github.com/nixonyh/lenz#8c4ffaf0bad1dd42c2ffafccc0f91d737fc45d9b"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "lewton"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3957,7 +3978,7 @@ dependencies = [
  "bevy",
  "bevy_fynix",
  "bevy_motiongfx",
- "fynix_mock",
+ "fynix",
  "motiongfx_scene",
  "moxie_asset",
  "moxie_ui",
@@ -3981,7 +4002,7 @@ version = "0.3.0"
 dependencies = [
  "bevy",
  "bevy_fynix",
- "fynix_mock",
+ "fynix",
  "motiongfx_interp",
  "moxie_asset",
 ]
@@ -4611,6 +4632,16 @@ checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "override_default"
+version = "0.1.0"
+source = "git+https://github.com/nixonyh/override_default#c953e1361f2e2eed1670040cc44672028f14b525"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]

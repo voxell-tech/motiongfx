@@ -26,10 +26,11 @@ use bevy::reflect::{
 };
 use bevy::ui_widgets::Activate;
 
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::WorldNodeRef;
+use fynix::composer::Composer;
+use fynix::ui::ElementHandle;
+use fynix::{elem, val};
 
 use super::{Source, when_changed};
 use crate::elements::{
@@ -38,7 +39,7 @@ use crate::elements::{
 };
 use crate::icons;
 use crate::motion::MotionExt;
-use crate::reactive::{BevyHost, BevyUi};
+use crate::reactive::{BevyUi, FynixHost};
 use crate::theme::EditorTheme;
 
 /// Every variant of `value`'s type, if it is an enum at all.
@@ -160,13 +161,13 @@ pub(super) struct VariantPicker<'a> {
     pub pick: bool,
 }
 
-impl Composer<BevyHost> for VariantPicker<'_> {
+impl Composer<FynixHost> for VariantPicker<'_> {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         let Self {
             source,
             variants,
@@ -210,12 +211,14 @@ fn name(
         Label,
         text = current,
         wrap = false,
-        color = Some(theme.text_primary)
+        color = theme.text_primary
     ))
     .bind(
         |label| label.text(),
         when_changed(source),
-        move |world, _| active(&*shown, world).unwrap_or_default(),
+        move |WorldNodeRef { world, .. }| {
+            active(&*shown, world).unwrap_or_default()
+        },
     );
 }
 
@@ -237,7 +240,7 @@ fn control(
             Label,
             text = current,
             wrap = false,
-            color = Some(theme.text_primary)
+            color = theme.text_primary
         ),
         chevron = val!(
             Icon,
@@ -255,7 +258,9 @@ fn control(
     .bind(
         |dropdown| dropdown.label().text(),
         when_changed(source),
-        move |world, _| active(&*shown, world).unwrap_or_default(),
+        move |WorldNodeRef { world, .. }| {
+            active(&*shown, world).unwrap_or_default()
+        },
     );
 }
 
@@ -291,7 +296,7 @@ fn option(
             Label,
             text = variant,
             wrap = false,
-            color = Some(theme.text_primary)
+            color = theme.text_primary
         )
     ))
     .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)

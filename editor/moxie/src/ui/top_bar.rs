@@ -5,29 +5,29 @@ use bevy::prelude::*;
 use bevy::ui_widgets::{
     Activate, ActivateOnPress, MenuButton as MenuButtonBehavior,
 };
-use bevy_fynix::EntityExt;
-use fynix_mock::composer::Composer;
-use fynix_mock::ui::ElementHandle;
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::composer::Composer;
+use fynix::ui::ElementHandle;
+use fynix::{elem, val};
 use moxie_ui::elements::{
     Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
     DropdownMenu, Frame, Label, MenuButton,
 };
 use moxie_ui::motion::MotionExt;
-use moxie_ui::reactive::{BevyHost, BevyUi};
+use moxie_ui::reactive::{BevyUi, FynixHost};
 use moxie_ui::theme::EditorTheme;
 
 use crate::project;
 
 pub(super) struct TopBar;
 
-impl Composer<BevyHost> for TopBar {
+impl Composer<FynixHost> for TopBar {
     type Element = Frame;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, Frame> {
+    ) -> ElementHandle<FynixHost, Frame> {
         ui.elem(elem!(
             Frame,
             width = percent(100),
@@ -53,13 +53,13 @@ struct Menu {
     entries: Vec<(&'static str, fn(&mut World))>,
 }
 
-impl Composer<BevyHost> for Menu {
+impl Composer<FynixHost> for Menu {
     type Element = DropdownMenu;
 
     fn compose(
         self,
         ui: &mut BevyUi,
-    ) -> ElementHandle<BevyHost, DropdownMenu> {
+    ) -> ElementHandle<FynixHost, DropdownMenu> {
         let Self { name, entries } = self;
         let theme = ui.theme;
         // Sized to the longest entry, so the list clears its own text
@@ -102,7 +102,7 @@ fn title(ui: &mut BevyUi, theme: &EditorTheme, name: &str) {
             Label,
             text = name.to_string(),
             wrap = false,
-            color = Some(theme.text_primary)
+            color = theme.text_primary
         )
     ))
     // What the menu's own observer reaches this through to open the
@@ -125,7 +125,7 @@ fn item(
             Label,
             text = entry.to_string(),
             wrap = false,
-            color = Some(theme.text_primary)
+            color = theme.text_primary
         )
     ))
     .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)

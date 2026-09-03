@@ -7,7 +7,7 @@
 //! window edge, dismissal on focus loss, Escape, and arrow-key
 //! navigation.
 
-use crate::reactive::BevyHost;
+use crate::reactive::FynixBuild;
 use bevy::feathers::controls::{FeathersMenu, FeathersMenuPopup};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::input_focus::tab_navigation::TabIndex;
@@ -17,10 +17,10 @@ use bevy::ui_widgets::{
     ActivateOnPress, Button as ButtonBehavior, MenuButton, MenuItem,
 };
 use bevy::window::SystemCursorIcon;
-use bevy_fynix::EntityExt;
-use fynix_mock::element::{Element, ElementVisual};
-use fynix_mock::ui::{Build, Patch};
+use bevy_fynix::WorldEntityMut as _;
+use fynix::element::element;
 
+use super::patch::*;
 use super::{Icon, Label};
 
 /// What a [`Dropdown`] and its [`DropdownList`] hang from.
@@ -28,32 +28,21 @@ use super::{Icon, Label};
 /// Carries the observer that opens and closes the list, found by
 /// looking through this node's children. Both must be built
 /// underneath it, in either order.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct DropdownMenu;
 
-impl ElementVisual<BevyHost> for DropdownMenu {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-        let world = &mut *build.world;
-
+impl DropdownMenu {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         if let Err(err) =
-            world.entity_mut(node).apply_scene(bsn! { @FeathersMenu })
+            build.entity_mut().apply_scene(bsn! { @FeathersMenu })
         {
             error!("failed to build a dropdown: {err}");
         }
     }
-
-    fn patch_fields(
-        &self,
-        _patch: &mut Patch<BevyHost>,
-        field: DropdownMenuField,
-    ) {
-        match field {}
-    }
 }
 
 /// The shut control: what is chosen now, and a chevron.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct Dropdown {
     /// A node of its own, so the choice showing can be bound without
     /// the control being rebuilt.
@@ -62,16 +51,21 @@ pub struct Dropdown {
     #[elem(child)]
     pub chevron: Icon,
     /// Wide enough to stay readable when the choice is a short word.
+    #[elem(patch = PatchMinWidth)]
     #[default(px(72))]
     pub min_width: Val,
     /// Past this the label is clipped rather than the row growing:
     /// a column of these has to line up.
+    #[elem(patch = PatchMaxWidth)]
     #[default(px(160))]
     pub max_width: Val,
+    #[elem(patch = PatchHeight)]
     #[default(px(22))]
     pub height: Val,
+    #[elem(patch = PatchBackground)]
     #[default(Color::srgba(1.0, 1.0, 1.0, 0.06))]
     pub fill: Color,
+    #[elem(patch = PatchRadius)]
     #[default(px(4))]
     pub radius: Val,
 }
@@ -99,26 +93,8 @@ impl Dropdown {
         px(longest as f32 * font_size * ADVANCE + FURNITURE)
     }
 
-    fn node(&self) -> Node {
-        Node {
-            min_width: self.min_width,
-            max_width: self.max_width,
-            height: self.height,
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::SpaceBetween,
-            column_gap: px(6),
-            padding: UiRect::axes(px(8), Val::ZERO),
-            border_radius: BorderRadius::all(self.radius),
-            // What will not fit is the label's problem, not the
-            // row's - see `hold_chevron`.
-            overflow: Overflow::clip(),
-            ..default()
-        }
-    }
-
     /// Keeps the chevron its own size while the label gives way.
-    fn hold_chevron(build: &mut Build<BevyHost, Self>) {
+    fn hold_chevron(build: &mut FynixBuild<'_, Self>) {
         let Some(chevron) = build.child(DropdownCursor::chevron)
         else {
             return;
@@ -131,37 +107,28 @@ impl Dropdown {
     }
 }
 
-impl ElementVisual<BevyHost> for Dropdown {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+impl Dropdown {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
-            self.node(),
-            BackgroundColor(self.fill),
+            Node {
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::SpaceBetween,
+                column_gap: px(6),
+                padding: UiRect::axes(px(8), Val::ZERO),
+                // What will not fit is the label's problem, not the
+                // row's - see `hold_chevron`.
+                overflow: Overflow::clip(),
+                ..default()
+            },
             ButtonBehavior,
-            // Opens the list beside it; the anchor's own observer
-            // does the work.
+            // Opens the list beside it; the anchor's own observer does
+            // the work.
             ActivateOnPress,
             MenuButton,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
-        Self::hold_chevron(build);
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: DropdownField,
-    ) {
-        match field {
-            DropdownField::Fill => {
-                patch.insert(BackgroundColor(self.fill));
-            }
-            DropdownField::MinWidth
-            | DropdownField::MaxWidth
-            | DropdownField::Height
-            | DropdownField::Radius => {
-                patch.insert(self.node());
-            }
-        }
+        Dropdown::hold_chevron(build);
     }
 }
 
@@ -170,24 +137,31 @@ impl ElementVisual<BevyHost> for Dropdown {
 /// Placed by the popup scene it is built from, so it flips above the
 /// control rather than off the bottom of the window, and is not
 /// clipped by whatever it was opened inside.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct DropdownList {
     /// Matched to the control's, so the two line up.
+    #[elem(patch = PatchListWidth)]
     #[default(px(160))]
     pub width: Val,
     /// What the popup scene rounds its own corners to, so leaving this
     /// alone keeps the look feathers gave it.
+    #[elem(patch = PatchRadius)]
     #[default(px(4))]
     pub radius: Val,
 }
 
 impl DropdownList {
-    /// Only the width and the corners. The rest of the node belongs to
-    /// the popup scene, and writing it whole would undo the placement
-    /// that came with it.
-    fn size(&self, entity: &mut impl EntityExt) {
-        if let Some(mut layout) =
-            entity.entity_mut().get_mut::<Node>()
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        if let Err(err) = build
+            .entity_mut()
+            .apply_scene(bsn! { @FeathersMenuPopup })
+        {
+            error!("failed to build a dropdown list: {err}");
+            return;
+        }
+        // Only the width and the corners: the rest of the node belongs to
+        // the popup scene, and writing it whole would undo the placement.
+        if let Some(mut layout) = build.entity_mut().get_mut::<Node>()
         {
             layout.min_width = self.width;
             layout.border_radius = BorderRadius::all(self.radius);
@@ -195,87 +169,46 @@ impl DropdownList {
     }
 }
 
-impl ElementVisual<BevyHost> for DropdownList {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
-        let node = build.id();
-
-        if let Err(err) = build
-            .world
-            .entity_mut(node)
-            .apply_scene(bsn! { @FeathersMenuPopup })
-        {
-            error!("failed to build a dropdown list: {err}");
-            return;
-        }
-        self.size(build);
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: DropdownListField,
-    ) {
-        match field {
-            DropdownListField::Width | DropdownListField::Radius => {
-                self.size(patch)
-            }
-        }
-    }
-}
+// The list is placed by its popup scene, so only its own width lands
+// on `min_width`.
+field_patch!(PatchListWidth, Val, |patch, v| {
+    node(patch, |n| n.min_width = *v);
+});
 
 /// One row of a [`DropdownList`].
 ///
 /// Picking one closes the list. It also has to be focusable, because
 /// focus is what keeps the list open at all.
-#[derive(Element)]
+#[element(build = Self::build)]
 pub struct DropdownItem {
     #[elem(child)]
     pub label: Label,
+    #[elem(patch = PatchHeight)]
     #[default(px(20))]
     pub height: Val,
+    #[elem(patch = PatchBackground)]
     #[default(::NONE)]
     pub fill: Color,
+    #[elem(patch = PatchRadius)]
     #[default(px(3))]
     pub radius: Val,
 }
 
-impl DropdownItem {
-    fn node(&self) -> Node {
-        Node {
-            width: percent(100),
-            height: self.height,
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            padding: UiRect::axes(px(8), Val::ZERO),
-            border_radius: BorderRadius::all(self.radius),
-            ..default()
-        }
-    }
-}
+impl DropdownItem {}
 
-impl ElementVisual<BevyHost> for DropdownItem {
-    fn build_fields(&self, build: &mut Build<BevyHost, Self>) {
+impl DropdownItem {
+    fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
-            self.node(),
-            BackgroundColor(self.fill),
+            Node {
+                width: percent(100),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                padding: UiRect::axes(px(8), Val::ZERO),
+                ..default()
+            },
             MenuItem,
             TabIndex(0),
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
-    }
-
-    fn patch_fields(
-        &self,
-        patch: &mut Patch<BevyHost>,
-        field: DropdownItemField,
-    ) {
-        match field {
-            DropdownItemField::Fill => {
-                patch.insert(BackgroundColor(self.fill));
-            }
-            DropdownItemField::Height | DropdownItemField::Radius => {
-                patch.insert(self.node());
-            }
-        }
     }
 }

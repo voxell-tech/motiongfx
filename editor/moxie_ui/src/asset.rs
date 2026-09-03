@@ -14,11 +14,11 @@ use bevy::picking::pointer::PointerButton;
 use bevy::prelude::*;
 use bevy::ui::UiScale;
 
-use bevy_fynix::{BevyFynix, EntityExt};
-use fynix_mock::element::Element;
-use fynix_mock::ui::ElementMut;
+use bevy_fynix::{BevyFynix, WorldEntityMut};
+use fynix::element::Element;
+use fynix::ui::ElementMut;
 
-use crate::reactive::BevyHost;
+use crate::reactive::FynixHost;
 use crate::theme::EditorTheme;
 
 /// Where the ghost sits relative to the cursor, so the cursor lands
@@ -36,12 +36,12 @@ pub struct AssetDragging {
 
 /// Makes `elem` a file that can be picked up and dragged onto an
 /// asset field, named `label` while it follows the cursor.
-pub fn draggable<'r, 'u, 'a, E: Element<BevyHost>>(
-    elem: &'r mut ElementMut<'u, 'a, BevyHost, E>,
+pub fn draggable<'r, 'u, 'a, E: Element<FynixHost>>(
+    elem: &'r mut ElementMut<'u, 'a, FynixHost, E>,
     path: PathBuf,
     kind: TypeId,
     label: String,
-) -> &'r mut ElementMut<'u, 'a, BevyHost, E> {
+) -> &'r mut ElementMut<'u, 'a, FynixHost, E> {
     elem.observe(
         move |start: On<Pointer<DragStart>>,
               kernel: Res<BevyFynix<EditorTheme>>,

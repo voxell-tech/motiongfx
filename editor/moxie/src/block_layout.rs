@@ -4,7 +4,7 @@
 //! containers (blocks).
 //!
 //! Horizontal position always comes straight from a node's resolved
-//! start time ([`crate::px_for`]). Nesting only affects the vertical
+//! start time ([`TimelineView`]). Nesting only affects the vertical
 //! axis: a block's box literally encloses its children's boxes,
 //! rather than implying the relationship through indentation.
 
@@ -13,6 +13,8 @@ use std::collections::BTreeSet;
 
 use bevy_motiongfx::scene::backend::Backend;
 use motiongfx_scene::block::{Block, Combinator, Node};
+
+use crate::TimelineView;
 
 /// Height of an action leaf's bar, and of a block's header strip.
 const ROW_HEIGHT: f32 = 26.0;
@@ -60,6 +62,7 @@ pub(crate) struct Placed {
 /// duration is unaffected, only its height and its children's boxes.
 pub(crate) fn layout(
     animation: &Block<Backend>,
+    view: TimelineView,
     folded: &BTreeSet<Vec<usize>>,
 ) -> Vec<Placed> {
     if animation.children.is_empty() {
@@ -73,7 +76,7 @@ pub(crate) fn layout(
         &mut Vec::new(),
     );
     let mut out = Vec::new();
-    flatten(&root, 0.0, 0, &mut Vec::new(), &mut out);
+    flatten(&root, 0.0, 0, view, &mut Vec::new(), &mut out);
     out
 }
 
@@ -330,15 +333,14 @@ fn flatten(
     measured: &Measured,
     y: f32,
     depth: usize,
+    view: TimelineView,
     path: &mut Vec<usize>,
     out: &mut Vec<Placed>,
 ) {
-    let x = crate::px_for(measured.start);
-    let w =
-        crate::px_for(measured.end.saturating_sub(measured.start))
-            .max(MIN_WIDTH);
+    let x = view.x_from_time(measured.start);
+    let w = (view.x_from_time(measured.end) - x).max(MIN_WIDTH);
     let gap_x = (measured.gap > Duration::ZERO).then(|| {
-        crate::px_for(measured.start.saturating_sub(measured.gap))
+        view.x_from_time(measured.start.saturating_sub(measured.gap))
     });
 
     match &measured.kind {
@@ -393,6 +395,7 @@ fn flatten(
                     child,
                     content_top + lane_y,
                     depth + 1,
+                    view,
                     path,
                     out,
                 );

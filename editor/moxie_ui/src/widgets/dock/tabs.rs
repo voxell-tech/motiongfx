@@ -5,8 +5,9 @@ use bevy::feathers::constants::icons as feathers_icons;
 use bevy::picking::events::{Click, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use bevy_fynix::EntityExt;
-use fynix_mock::{elem, val};
+use bevy_fynix::WorldEntityMut;
+use fynix::WorldNodeRef;
+use fynix::{elem, val};
 
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
@@ -92,7 +93,7 @@ fn build_tab(
         label = val!(
             Label,
             text = label,
-            color = Some(lit),
+            color = lit,
             bold = true,
             wrap = false
         ),
@@ -116,21 +117,23 @@ fn build_tab(
         .bind(
             |tab| tab.active(),
             resource_changed::<DockTree>(),
-            move |world, _| active_of(world, leaf) == Some(tab_id),
+            move |WorldNodeRef { world, .. }| {
+                active_of(world, leaf) == Some(tab_id)
+            },
         )
         // What the tab holds is lit by the same signal, and separately:
         // the fill is the tab's own field, these are its children's.
         .bind(
             |tab| tab.label().color(),
             resource_changed::<DockTree>(),
-            move |world, _| {
+            move |WorldNodeRef { world, .. }| {
                 text_color(world, leaf, tab_id, primary, muted)
             },
         )
         .bind(
             |tab| tab.icon().color(),
             resource_changed::<DockTree>(),
-            move |world, _| {
+            move |WorldNodeRef { world, .. }| {
                 text_color(world, leaf, tab_id, primary, muted)
             },
         )
