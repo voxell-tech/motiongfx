@@ -7,7 +7,7 @@
 //! [`elem!`](crate::elem!) picks the right one.
 //!
 //! A style only writes fields. It never sees a node, so it cannot
-//! wire an observer or a lane.
+//! wire an observer or a transition.
 
 use core::marker::PhantomData;
 

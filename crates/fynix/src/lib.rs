@@ -19,11 +19,11 @@ pub mod composer;
 mod elem;
 pub mod element;
 pub mod host;
-pub mod lanes;
 pub mod records;
 pub mod store;
 pub mod style;
 pub mod transition;
+pub mod tween;
 pub mod ui;
 pub mod world_node;
 
@@ -221,10 +221,8 @@ impl<H: Host> Fynix<H> {
         // A node can die at any time: a rebuild above cleared one, or
         // the app despawned another. Sweep both before touching any
         // dead handle.
-        records
-            .bindings
-            .retain(|(node, _), _| H::exists(world, *node));
-        records.lanes.retain(|node| H::exists(world, node));
+        records.bindings.retain(|key, _| H::exists(world, key.node));
+        records.transitions.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
         // `elements` is keyed by type as well as node, so it cannot
@@ -239,36 +237,35 @@ impl<H: Host> Fynix<H> {
 
         let Records {
             bindings,
-            lanes,
+            transitions,
             elements,
             store,
             ..
         } = records;
 
-        for ((node, _), binding) in bindings.iter_mut() {
-            if !(binding.changed)(WorldNodeRef::new(world, *node)) {
+        for (key, binding) in bindings.iter_mut() {
+            let node = key.node;
+            if !(binding.changed)(WorldNodeRef::new(world, node)) {
                 continue;
             }
-            (binding.apply)(elements, world, *node, store, theme);
-        }
-
-        // After the bindings, so a lane gets the last word over the
-        // base they left.
-        let delta = H::delta(world);
-
-        for (node, lane) in lanes.iter_mut() {
-            lane.advance(
-                delta,
+            (binding.apply)(
                 elements,
-                WorldNodeMut::new(world, node),
+                transitions,
+                world,
+                node,
                 store,
                 theme,
             );
         }
+
+        // After the bindings, so a transition gets the last word over
+        // the base they left.
+        let delta = H::delta(world);
+        transitions.advance(delta, world, theme);
     }
 
     /// Point a transitioning field at `target`, or release it back to
-    /// its base with `None`. Aiming a field with no lane does
+    /// its base with `None`. Aiming a field with no transition does
     /// nothing.
     pub fn aim<E, P>(
         &mut self,
@@ -278,19 +275,20 @@ impl<H: Host> Fynix<H> {
     ) where
         E: 'static,
         P: FieldPath<Source = E>,
-        P::Target: 'static,
+        P::Target: Clone + Send + Sync + 'static,
     {
         let key = field(Cursor::new()).key();
 
-        if let Some(lane) = self.records.lanes.get_mut(node, key) {
-            let mut target = target;
-            lane.aim(&mut target);
+        if let Some(transition) =
+            self.records.transitions.running::<P::Target>(node, key)
+        {
+            transition.aim(target);
         }
     }
 
     /// How many transitioning fields the kernel is holding.
-    pub fn lane_len(&self) -> usize {
-        self.records.lanes.len()
+    pub fn transition_len(&self) -> usize {
+        self.records.transitions.len()
     }
 }
 

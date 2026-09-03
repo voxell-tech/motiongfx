@@ -1,19 +1,55 @@
-//! What a build registers as it runs: watchers, bindings, lanes, and
-//! the elements themselves - kept beside the world so both can be
+//! What a build registers as it runs: watchers, bindings, transitions,
+//! and the elements themselves - kept beside the world so both can be
 //! borrowed at once.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::hash::{Hash, Hasher};
 
 use hashbrown::{HashMap, HashSet};
 use typarena::type_table::TypeTable;
 
 use crate::host::Host;
-use crate::lanes::Lanes;
 use crate::lenz::FieldId;
 use crate::store::Store;
+use crate::transition::TransitionTable;
 use crate::ui::Ui;
 use crate::world_node::WorldNodeRef;
+
+/// A node and one of its fields, as a map key.
+pub(crate) struct FieldKey<H: Host> {
+    pub(crate) node: H::Node,
+    pub(crate) field: FieldId,
+}
+
+impl<H: Host> FieldKey<H> {
+    pub(crate) fn new(node: H::Node, field: FieldId) -> Self {
+        Self { node, field }
+    }
+}
+
+impl<H: Host> Clone for FieldKey<H> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<H: Host> Copy for FieldKey<H> {}
+
+impl<H: Host> PartialEq for FieldKey<H> {
+    fn eq(&self, other: &Self) -> bool {
+        self.node == other.node && self.field == other.field
+    }
+}
+
+impl<H: Host> Eq for FieldKey<H> {}
+
+impl<H: Host> Hash for FieldKey<H> {
+    fn hash<S: Hasher>(&self, state: &mut S) {
+        self.node.hash(state);
+        self.field.hash(state);
+    }
+}
 
 /// Predicate over a node's world, polled once per flush.
 ///
@@ -51,11 +87,12 @@ type BoxedBuild<H> =
 
 /// Writes one field of a mounted element, then pushes it out.
 ///
-/// Takes the whole table: only the closure knows which type to ask
+/// Takes both tables whole: only the closure knows which type to ask
 /// for.
 type BoxedApply<H> = Box<
     dyn Fn(
-            &mut Elements<H>,
+            &mut ElementTable<H>,
+            &mut TransitionTable<H>,
             &mut <H as Host>::World,
             <H as Host>::Node,
             &mut Store<H>,
@@ -83,16 +120,16 @@ pub struct Watcher<H: Host> {
 ///
 /// A column per element type, so asking for the wrong type is a miss,
 /// not a panic.
-pub type Elements<H> = TypeTable<<H as Host>::Node>;
+pub type ElementTable<H> = TypeTable<<H as Host>::Node>;
 
 /// What a build registers as it runs, kept beside the world so both
 /// can be borrowed at once.
 pub struct Records<H: Host> {
     /// Keyed by the whole walk. Binding a field twice replaces it.
-    pub(crate) bindings: HashMap<(H::Node, FieldId), Binding<H>>,
+    pub(crate) bindings: HashMap<FieldKey<H>, Binding<H>>,
     /// Keyed like `bindings`, one per field.
-    pub(crate) lanes: Lanes<H>,
-    pub(crate) elements: Elements<H>,
+    pub(crate) transitions: TransitionTable<H>,
+    pub(crate) elements: ElementTable<H>,
     /// Which nodes have a row in `elements`. Lets a sweep know what
     /// to drop without asking `elements` what it holds.
     pub(crate) element_nodes: HashSet<H::Node>,
@@ -105,8 +142,8 @@ impl<H: Host> Default for Records<H> {
     fn default() -> Self {
         Self {
             bindings: HashMap::new(),
-            lanes: Lanes::default(),
-            elements: Elements::<H>::new(),
+            transitions: TransitionTable::default(),
+            elements: ElementTable::<H>::new(),
             element_nodes: HashSet::new(),
             store: Store::new(),
             spawned: Vec::new(),
@@ -125,9 +162,11 @@ impl<H: Host> Records<H> {
         &mut self.store
     }
 
-    /// The store and the lanes together, borrowed at once.
+    /// The transition table and the store together, borrowed at once.
     #[doc(hidden)]
-    pub fn build_parts(&mut self) -> (&mut Lanes<H>, &mut Store<H>) {
-        (&mut self.lanes, &mut self.store)
+    pub fn build_parts(
+        &mut self,
+    ) -> (&mut TransitionTable<H>, &mut Store<H>) {
+        (&mut self.transitions, &mut self.store)
     }
 }

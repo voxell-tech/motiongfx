@@ -5948,9 +5948,9 @@ checksum = "8464ec13c3691491391d9fce00f6416c9a48e46972f72d7865688be2080192c9"
 
 [[package]]
 name = "typarena"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc412794331fd10ad620a88fea59d0b7da84e08eb652a350458b61e4c7b57167"
+checksum = "342613123370309e6e5852d54c0ef20b0edc104b96bd972f9c8d014c85062eda"
 dependencies = [
  "hashbrown 0.16.1",
  "indexmap",

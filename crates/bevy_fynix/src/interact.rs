@@ -55,7 +55,7 @@ impl<E: 'static, Theme: Send + Sync + 'static, V: EntityEvent>
     ) -> Self
     where
         P: FieldPath<Source = E>,
-        P::Target: Clone + Send + Sync,
+        P::Target: PartialEq + Clone + Send + Sync,
     {
         self.aims.push(Box::new(move |kernel, node| {
             kernel.aim(node, field, target.clone());

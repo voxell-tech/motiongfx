@@ -13,8 +13,8 @@ use bevy_fynix::interact::OnExt;
 use fynix::element::Element;
 use fynix::host::Host;
 use fynix::lenz::{Cursor, FieldPath, Identity};
-use fynix::transition::Transition;
-use fynix::ui::{Build, ElementMut};
+use fynix::tween::Tween;
+use fynix::ui::{Bindable, Build, ElementMut};
 use motiongfx_interp::ease;
 
 /// What `lit` can aim at: a colour itself, or a field that only wears
@@ -67,7 +67,7 @@ pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit;
 
     /// Same as [`Self::lit()`], but watches a specific entity, not
@@ -80,7 +80,7 @@ pub trait MotionExt<E: Element<<Self as LitFrom<E>>::Host>>:
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit;
 }
 
@@ -101,7 +101,7 @@ pub trait LitFrom<E: Element<Self::Host>> {
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit;
 
     /// Same as [`Self::lit_from()`], but watches a specific entity,
@@ -115,7 +115,7 @@ pub trait LitFrom<E: Element<Self::Host>> {
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit;
 }
 
@@ -129,7 +129,7 @@ impl<E: Element<FynixHost> + Send + Sync> MotionExt<E>
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit,
     {
         let node = self.id();
@@ -144,13 +144,13 @@ impl<E: Element<FynixHost> + Send + Sync> MotionExt<E>
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit,
     {
         let interact_ms = self.theme().interact_ms;
         self.transition(
             field,
-            Transition::ms(interact_ms, T::mix)
+            Tween::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
         on_lit(self, entity, field, hover, press)
@@ -174,7 +174,7 @@ impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit,
     {
         let node = self.id();
@@ -190,14 +190,14 @@ impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit,
     {
         let interact_ms = self.theme().interact_ms;
         self.transition_from(
             field,
             base,
-            Transition::ms(interact_ms, T::mix)
+            Tween::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
         on_lit(self, entity, field, hover, press)
@@ -221,7 +221,7 @@ impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit,
     {
         let node = self.id();
@@ -237,14 +237,14 @@ impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
         press: Color,
     ) -> &mut Self
     where
-        P: FieldPath<Source = E, Target = T>,
+        P: FieldPath<Source = E, Target = T> + Bindable<FynixHost>,
         T: Lit,
     {
         let interact_ms = self.theme().interact_ms;
         self.transition_from(
             field,
             base,
-            Transition::ms(interact_ms, T::mix)
+            Tween::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
         on_lit(self, entity, field, hover, press)

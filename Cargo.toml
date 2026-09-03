@@ -42,7 +42,7 @@ bevy_picking = { version = "0.19", default-features = false }
 
 # other
 field_path = "0.4.1"
-typarena = { version = "0.1.0", features = ["send", "sync"] }
+typarena = { version = "0.1.2", features = ["send", "sync"] }
 libm = "0.2"
 nonempty = { version = "0.12", default-features = false }
 hashbrown = { version = "0.17", default-features = false }

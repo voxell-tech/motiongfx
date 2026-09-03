@@ -47,8 +47,8 @@ pub enum Interact {
     Leave,
 }
 
-/// What a backend does when an interaction fires: point a lane
-/// somewhere. Only needs the kernel, since [`Fynix::aim`] does too.
+/// A backend's response to an interaction: point a transition
+/// somewhere. Takes only the kernel, as [`Fynix::aim`] does.
 type Aim = Box<dyn Fn(&mut Fynix<FynixHost>) + Send + Sync>;
 
 /// The `aim_on` a real backend would build for itself, over whatever
@@ -62,7 +62,7 @@ pub trait TestAim<E> {
     ) -> &mut Self
     where
         P: FieldPath<Source = E>,
-        P::Target: Clone + Send + Sync;
+        P::Target: PartialEq + Clone + Send + Sync;
 }
 
 impl<E: Element<FynixHost>> TestAim<E>
@@ -76,7 +76,7 @@ impl<E: Element<FynixHost>> TestAim<E>
     ) -> &mut Self
     where
         P: FieldPath<Source = E>,
-        P::Target: Clone + Send + Sync,
+        P::Target: PartialEq + Clone + Send + Sync,
     {
         let node = self.id();
         self.ui.world.interactions.push((
@@ -102,7 +102,7 @@ impl<E: Element<FynixHost>> TestAim<E> for Build<'_, FynixHost, E> {
     ) -> &mut Self
     where
         P: FieldPath<Source = E>,
-        P::Target: Clone + Send + Sync,
+        P::Target: PartialEq + Clone + Send + Sync,
     {
         let node = self.id();
         self.world.interactions.push((

@@ -8,10 +8,11 @@ use hashbrown::HashMap;
 
 use crate::host::Host;
 use crate::lenz::{Cursor, FieldId, FieldPath, Identity};
+use crate::records::FieldKey;
 
 /// The node each `#[elem(child)]` field built, per parent.
 pub struct Store<H: Host> {
-    children: HashMap<(H::Node, FieldId), H::Node>,
+    children: HashMap<FieldKey<H>, H::Node>,
 }
 
 impl<H: Host> Default for Store<H> {
@@ -33,7 +34,7 @@ impl<H: Host> Store<H> {
         parent: H::Node,
         field: FieldId,
     ) -> Option<H::Node> {
-        self.children.get(&(parent, field)).copied()
+        self.children.get(&FieldKey::new(parent, field)).copied()
     }
 
     pub fn insert(
@@ -42,7 +43,7 @@ impl<H: Host> Store<H> {
         field: FieldId,
         child: H::Node,
     ) {
-        self.children.insert((parent, field), child);
+        self.children.insert(FieldKey::new(parent, field), child);
     }
 
     /// Forget `field`'s child and hand it back, for a teardown.
@@ -51,15 +52,15 @@ impl<H: Host> Store<H> {
         parent: H::Node,
         field: FieldId,
     ) -> Option<H::Node> {
-        self.children.remove(&(parent, field))
+        self.children.remove(&FieldKey::new(parent, field))
     }
 
     /// Drop entries whose nodes the backend no longer has.
     ///
     /// Catches whatever the app despawned on its own.
     pub fn prune(&mut self, world: &H::World) {
-        self.children.retain(|(parent, _), child| {
-            H::exists(world, *parent) && H::exists(world, *child)
+        self.children.retain(|key, child| {
+            H::exists(world, key.node) && H::exists(world, *child)
         });
     }
 

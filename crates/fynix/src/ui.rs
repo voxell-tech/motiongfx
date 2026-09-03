@@ -12,14 +12,15 @@ use core::marker::PhantomData;
 use crate::composer::Composer;
 use crate::element::Element;
 use crate::host::Host;
-use crate::lanes::{Lanes, insert_lane, insert_travel};
 use crate::lenz::{Cursor, FieldPath, Identity, Tagged};
 use crate::records::{
-    Binding, BuildFn, ChangedFn, Elements, Records, Watcher,
+    Binding, BuildFn, ChangedFn, ElementTable, FieldKey, Records,
+    Watcher,
 };
 use crate::store::Store;
 use crate::style::StyledElem;
-use crate::transition::Transition;
+use crate::transition::{TransitionTable, insert_transition};
+use crate::tween::Tween;
 use crate::world_node::WorldNodeRef;
 
 /// Builds elements under a parent and records their reactivity.
@@ -119,8 +120,8 @@ impl<'a, H: Host> Ui<'a, H> {
 }
 
 /// What a `#[element(build = ...)]` hook writes through: this
-/// element's own node, `world`, `theme`, and the store and lanes for
-/// wiring children and transitions.
+/// element's own node, `world`, `theme`, the child store, and the
+/// transition table.
 ///
 /// Not [`ElementMut`]: a node running its own build hook has not
 /// finished existing yet, so `bind`/`watch`/`with` would not mean
@@ -129,7 +130,7 @@ pub struct Build<'a, H: Host, E: Element<H>> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
     node: H::Node,
-    lanes: &'a mut Lanes<H>,
+    transitions: &'a mut TransitionTable<H>,
     store: &'a mut Store<H>,
     element: PhantomData<fn() -> E>,
 }
@@ -140,7 +141,7 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
     pub fn new(
         world: &'a mut H::World,
         node: H::Node,
-        lanes: &'a mut Lanes<H>,
+        transitions: &'a mut TransitionTable<H>,
         store: &'a mut Store<H>,
         theme: &'a H::Theme,
     ) -> Self {
@@ -148,7 +149,7 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
             world,
             theme,
             node,
-            lanes,
+            transitions,
             store,
             element: PhantomData,
         }
@@ -179,15 +180,27 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
         base: P::Target,
-        transition: Transition<P::Target>,
+        tween: Tween<P::Target>,
     ) -> &mut Self
     where
         E: Send + Sync,
-        P: FieldPath<Source = E>,
-        P::Target: PartialEq + Clone + Send + Sync,
+        P: FieldPath<Source = E> + Bindable<H>,
+        P::Target: Clone + Send + Sync,
     {
-        insert_lane::<H, E, P>(
-            self.lanes, self.node, field, base, transition,
+        let cursor = field(Cursor::new());
+        let mut parents = cursor.hops();
+        parents.pop();
+        let Some(owner) = self.store.resolve(self.node, &parents)
+        else {
+            return self;
+        };
+        insert_transition(
+            self.transitions,
+            owner,
+            cursor.key(),
+            <P as Bindable<H>>::patch,
+            base,
+            tween,
         );
         self
     }
@@ -196,8 +209,8 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
 /// What a `#[elem(patch = ...)]` writer writes through: the node the
 /// value lands on, `world`, and `theme`.
 ///
-/// No [`Store`]/[`Lanes`] here. A patch writes a value; it never wires
-/// a child or a lane.
+/// No [`Store`] or [`TransitionTable`] here. A patch writes a value;
+/// it wires nothing.
 pub struct Patch<'a, H: Host> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
@@ -362,18 +375,18 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
 
     /// Let this field travel rather than snap.
     ///
-    /// Declares the lane and its curve.
+    /// Declares the transition and the tween that shapes it.
     /// [`Fynix::aim`](crate::Fynix::aim) points it; until then the
     /// base shows.
     pub fn transition<P>(
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
-        transition: Transition<P::Target>,
+        tween: Tween<P::Target>,
     ) -> &mut Self
     where
         E: Send + Sync,
-        P: FieldPath<Source = E>,
-        P::Target: PartialEq + Clone + Send + Sync,
+        P: FieldPath<Source = E> + Bindable<H>,
+        P::Target: Clone + Send + Sync,
     {
         let cursor = field(Cursor::new());
         let accessor = cursor.accessor();
@@ -390,14 +403,21 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             return self;
         };
 
-        insert_travel(
-            &mut self.ui.records.lanes,
-            self.node,
+        let mut parents = cursor.hops();
+        parents.pop();
+        let Some(owner) =
+            self.ui.records.store.resolve(self.node, &parents)
+        else {
+            return self;
+        };
+
+        insert_transition(
+            &mut self.ui.records.transitions,
+            owner,
             cursor.key(),
-            accessor,
-            cursor.hops(),
+            <P as Bindable<H>>::patch,
             base,
-            transition,
+            tween,
         );
         self
     }
@@ -410,19 +430,29 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
         base: P::Target,
-        transition: Transition<P::Target>,
+        tween: Tween<P::Target>,
     ) -> &mut Self
     where
         E: Send + Sync,
-        P: FieldPath<Source = E>,
-        P::Target: PartialEq + Clone + Send + Sync,
+        P: FieldPath<Source = E> + Bindable<H>,
+        P::Target: Clone + Send + Sync,
     {
-        insert_lane::<H, E, P>(
-            &mut self.ui.records.lanes,
-            self.node,
-            field,
+        let cursor = field(Cursor::new());
+        let mut parents = cursor.hops();
+        parents.pop();
+        let Some(owner) =
+            self.ui.records.store.resolve(self.node, &parents)
+        else {
+            return self;
+        };
+
+        insert_transition(
+            &mut self.ui.records.transitions,
+            owner,
+            cursor.key(),
+            <P as Bindable<H>>::patch,
             base,
-            transition,
+            tween,
         );
         self
     }
@@ -443,10 +473,11 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     ) -> &mut Self
     where
         P: FieldPath<Source = E> + Bindable<H>,
-        P::Target: Send + Sync,
+        P::Target: Clone + Send + Sync,
     {
         let cursor = field(Cursor::new());
         let accessor = cursor.accessor();
+        let key = cursor.key();
 
         // The terminal hop is the field; the rest reach its owner.
         let mut parents = cursor.hops();
@@ -457,12 +488,21 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             return self;
         };
 
-        let apply = move |elements: &mut Elements<H>,
+        let apply = move |elements: &mut ElementTable<H>,
+                          transitions: &mut TransitionTable<H>,
                           world: &mut H::World,
                           node: H::Node,
                           _store: &mut Store<H>,
                           theme: &H::Theme| {
             let new = value(WorldNodeRef::new(world, node));
+
+            // A transition on the same field takes the new base, so a
+            // release still heads to the right resting value.
+            if let Some(transition) =
+                transitions.running::<P::Target>(owner, key)
+            {
+                transition.rebase(&new);
+            }
 
             // The struct keeps the value too, for `Fynix::element`.
             if let Some(element) = elements.get_mut::<E>(&node)
@@ -479,7 +519,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         };
 
         self.ui.records.bindings.insert(
-            (self.node, cursor.key()),
+            FieldKey::new(self.node, cursor.key()),
             Binding {
                 changed: Box::new(changed),
                 apply: Box::new(apply),
