@@ -114,7 +114,7 @@ fn tick<H, T>(
 
 /// Every field with a tween over it, at most one per field.
 ///
-/// One `Tween<H, T>` column per value type; [`advance`](Self::advance)
+/// One `Tween<H, T>` column per value type; [`Self::advance`]
 /// walks each column through its matching `ticks` entry.
 pub struct TweenTable<H: Host> {
     table: TypeTable<FieldKey<H>>,

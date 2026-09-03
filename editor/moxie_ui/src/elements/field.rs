@@ -4,9 +4,9 @@ use crate::reactive::FynixBuild;
 use bevy::feathers::controls::{
     FeathersNumberInput, FeathersTextInput,
     FeathersTextInputContainer, NumberFormat, NumberInputValue,
-    UpdateNumberInput,
 };
 use bevy::feathers::cursor::EntityCursor;
+use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
 use bevy::scene::EntityWorldMutSceneExt;
 use bevy::text::EditableText;
@@ -118,9 +118,8 @@ field_patch!(PatchMark, Color, |patch, v| paint(*v, patch));
 pub struct NumberField {
     #[elem(patch = PatchNumberFormat)]
     pub format: NumberFormat,
-    /// What it shows. Pushed as an event rather than written as a
-    /// component, so an input being typed into ignores it and a live
-    /// edit wins.
+    /// The value shown. A field with focus keeps what is typed there
+    /// rather than taking this.
     #[elem(patch = PatchNumberValue)]
     #[default(NumberInputValue::F32(0.0))]
     pub value: NumberInputValue,
@@ -138,6 +137,11 @@ pub(super) fn number_scene(
     width: Val,
     entity: &mut impl WorldEntityMut,
 ) {
+    // `apply_scene` keeps the subtree a prior call built, and this
+    // runs again whenever `format` is patched. Clear it so the stale
+    // input is not left as a rootless node.
+    entity.entity_mut().despawn_related::<Children>();
+
     let scene = bsn! {
         @FeathersNumberInput { @number_format: {format} }
     };
@@ -167,10 +171,19 @@ field_patch!(PatchNumberFormat, NumberFormat, |patch, v| {
 
 field_patch!(PatchNumberValue, NumberInputValue, |patch, v| {
     let node = patch.id();
-    patch.world.trigger(UpdateNumberInput {
-        entity: node,
-        value: *v,
-    });
+    let Some(input) = TextField::text_input(patch.world, node) else {
+        return;
+    };
+    // The focused field keeps what the user typed.
+    if patch.world.resource::<InputFocus>().get() == Some(input) {
+        return;
+    }
+    let shown = v.to_string();
+    if let Some(mut text) = patch.world.get_mut::<EditableText>(input)
+        && text.value().to_string() != shown
+    {
+        text.editor_mut().set_text(&shown);
+    }
 });
 
 /// A single-line string, edited in place.
