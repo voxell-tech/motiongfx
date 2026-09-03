@@ -79,7 +79,8 @@ impl Composer<FynixHost> for Menu {
                 ui.elem(elem!(
                     DropdownList,
                     width = width,
-                    radius = Val::ZERO
+                    radius = Val::ZERO,
+                    pad_y = Val::ZERO
                 ))
                 .with(move |ui| {
                     for (entry, run) in entries {
