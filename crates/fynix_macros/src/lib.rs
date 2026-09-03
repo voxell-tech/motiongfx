@@ -12,10 +12,9 @@ use syn::{DeriveInput, parse_macro_input};
 
 /// Marks a struct as an element, built against one backend.
 ///
-/// The struct is re-emitted with `#[derive(Lenz, OverrideDefault)]`,
-/// then `Fields`, `ElementBase`, and `Element` are written for it. The
-/// backend is `crate::FynixHost` unless `#[element(host = <path>)]` names
-/// another.
+/// The struct is re-emitted with `#[derive(Lenz)]`, then `Fields`,
+/// `ElementBase`, and `Element` are written for it. The backend is
+/// `crate::FynixHost` unless `#[element(host = <path>)]` names another.
 ///
 /// - `#[element(build = <fn>)]` - a structural hook run once at build,
 ///   `fn(&Self, &mut Build<Host, Self>)`, that inserts components and
