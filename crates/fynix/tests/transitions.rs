@@ -84,6 +84,42 @@ fn aimed_field_travels_over_the_transition() {
 }
 
 #[test]
+fn aim_reaches_a_transition_on_a_child() {
+    #[element(host = FynixHost)]
+    pub struct Card {
+        #[elem(child)]
+        label: Label,
+    }
+
+    let (mut world, root) = World::with_root();
+    world.delta = 1.0;
+    let mut kernel = Fynix::new(());
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Card)).transition(
+                |card| card.label().size(),
+                Tween::secs(1.0, <u32 as Interpolation<()>>::interp)
+                    .ease(ease::linear),
+            );
+        },
+        &mut world,
+    );
+    kernel.flush(&mut world);
+
+    let card = only_child(&world, root);
+    let label = FynixHost::children(&world, card)[0];
+
+    // The path runs `Card -> label (child) -> size`, so the transition
+    // sits on the label node, not the card. `aim` has to walk there.
+    kernel.aim::<Card, _>(card, |card| card.label().size(), Some(99));
+    kernel.flush(&mut world);
+
+    assert_eq!(world.get(label).size, 99);
+}
+
+#[test]
 fn retarget_carries_on_from_where_it_reached() {
     let (mut world, _, mut kernel, label) = travelling();
 

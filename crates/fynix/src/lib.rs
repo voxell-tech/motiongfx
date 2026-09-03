@@ -277,10 +277,20 @@ impl<H: Host> Fynix<H> {
         P: FieldPath<Source = E>,
         P::Target: Clone + Send + Sync + 'static,
     {
-        let key = field(Cursor::new()).key();
+        let cursor = field(Cursor::new());
+        let key = cursor.key();
+
+        // The transition sits on the node that owns the field, which
+        // for a path through a `#[elem(child)]` is a child of `node`.
+        let mut parents = cursor.hops();
+        parents.pop();
+        let Some(owner) = self.records.store.resolve(node, &parents)
+        else {
+            return;
+        };
 
         if let Some(transition) =
-            self.records.transitions.running::<P::Target>(node, key)
+            self.records.transitions.running::<P::Target>(owner, key)
         {
             transition.aim(target);
         }
