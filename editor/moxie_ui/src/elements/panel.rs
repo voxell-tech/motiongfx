@@ -20,11 +20,9 @@ pub struct Panel {
     pub padding: UiRect,
     /// Between rows, and between columns: a row of things wants the
     /// second, a column the first.
-    #[elem(patch = PatchRowGap)]
-    #[default(Val::ZERO)]
+    #[elem(default = Val::ZERO, patch = PatchRowGap)]
     pub row_gap: Val,
-    #[elem(patch = PatchColumnGap)]
-    #[default(Val::ZERO)]
+    #[elem(default = Val::ZERO, patch = PatchColumnGap)]
     pub column_gap: Val,
     #[elem(patch = PatchPanelScrolls)]
     pub scrolls: bool,

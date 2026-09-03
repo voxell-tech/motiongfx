@@ -14,8 +14,7 @@ use crate::widgets::dock::{DockTab, DockTabRow, TAB_HEIGHT, TabId};
 /// The strip across the top of a leaf.
 #[element(build = Self::build)]
 pub struct TabBar {
-    #[elem(patch = PatchBackground)]
-    #[default(Color::srgba(1.0, 1.0, 1.0, 0.03))]
+    #[elem(default = Color::srgba(1.0, 1.0, 1.0, 0.03), patch = PatchBackground)]
     pub background: Color,
 }
 
@@ -81,13 +80,11 @@ pub struct Tab {
     pub close: Option<ButtonElem>,
     #[elem(patch = PatchWindowId)]
     pub window_id: String,
-    #[elem(patch = PatchTabId)]
-    #[default(TabId(0))]
+    #[elem(default = TabId(0), patch = PatchTabId)]
     pub tab: TabId,
     #[elem(patch = PatchActive)]
     pub active: bool,
-    #[elem(patch = PatchTabFill)]
-    #[default(Color::srgba(1.0, 1.0, 1.0, 0.06))]
+    #[elem(default = Color::srgba(1.0, 1.0, 1.0, 0.06), patch = PatchTabFill)]
     pub fill: Color,
 }
 

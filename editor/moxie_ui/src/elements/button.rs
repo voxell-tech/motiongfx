@@ -41,14 +41,12 @@ pub struct ButtonElem {
     #[elem(child)]
     pub label: Option<Label>,
     /// Between the icon and the label, when both are there.
-    #[default(px(6))]
-    #[elem(patch = PatchColumnGap)]
+    #[elem(default = px(6), patch = PatchColumnGap)]
     pub column_gap: Val,
     /// What the background shows. Nothing by default, which is a
     /// [`GhostButton`]; [`Button`] rests at the theme's own fill, and
     /// interaction lights either of them up.
-    #[default(::NONE)]
-    #[elem(patch = PatchBackground)]
+    #[elem(default = ::NONE, patch = PatchBackground)]
     pub fill: Color,
     #[elem(patch = PatchWidth)]
     pub width: Val,
@@ -58,20 +56,16 @@ pub struct ButtonElem {
     /// one that should fill a row rather than size to its own content.
     #[elem(patch = PatchFlexGrow)]
     pub flex_grow: f32,
-    #[default(px(18))]
-    #[elem(patch = PatchMinWidth)]
+    #[elem(default = px(18), patch = PatchMinWidth)]
     pub min_width: Val,
-    #[default(px(18))]
-    #[elem(patch = PatchMinHeight)]
+    #[elem(default = px(18), patch = PatchMinHeight)]
     pub min_height: Val,
     /// Centred, for a button that is only as big as what it holds.
-    #[default(::Center)]
-    #[elem(patch = PatchJustify)]
+    #[elem(default = ::Center, patch = PatchJustify)]
     pub justify: JustifyContent,
     #[elem(patch = PatchPadding)]
     pub padding: UiRect,
-    #[default(::ZERO)]
-    #[elem(patch = PatchRadius)]
+    #[elem(default = ::ZERO, patch = PatchRadius)]
     pub radius: Val,
     /// Overrides `radius` with independent corners, for a button that
     /// sits at one end of a row of others (a

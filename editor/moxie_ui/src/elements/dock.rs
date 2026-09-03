@@ -69,14 +69,11 @@ impl DockHost {
 /// writes its own component whole, so it needs no build hook.
 #[element]
 pub struct SplitGroup {
-    #[elem(patch = PatchGroupNode)]
-    #[default(NodeId(0))]
+    #[elem(default = NodeId(0), patch = PatchGroupNode)]
     pub node: NodeId,
-    #[elem(patch = PatchGroupMinRatio)]
-    #[default(0.05)]
+    #[elem(default = 0.05, patch = PatchGroupMinRatio)]
     pub min_ratio: f32,
-    #[elem(patch = PatchGroupAxis)]
-    #[default(::Row)]
+    #[elem(default = ::Row, patch = PatchGroupAxis)]
     pub axis: FlexDirection,
 }
 
@@ -97,16 +94,13 @@ field_patch!(PatchGroupAxis, FlexDirection, |patch, v| {
 /// [`bar`](Self::bar) that only shows on hover.
 #[element(build = Self::build)]
 pub struct SplitHandle {
-    #[elem(patch = PatchHandleNode)]
-    #[default(NodeId(0))]
+    #[elem(default = NodeId(0), patch = PatchHandleNode)]
     pub node: NodeId,
-    #[elem(patch = PatchHandleAxis)]
-    #[default(::Row)]
+    #[elem(default = ::Row, patch = PatchHandleAxis)]
     pub axis: FlexDirection,
     /// Hidden when either side of the split has collapsed: there is
     /// nothing left to drag between.
-    #[elem(patch = PatchHandleVisible)]
-    #[default(true)]
+    #[elem(default = true, patch = PatchHandleVisible)]
     pub visible: bool,
     /// Marks the seam at rest. Never interactive, and never lit -
     /// [`handle_line`] gives it a fixed color.
@@ -224,12 +218,10 @@ field_patch!(PatchHandleVisible, bool, |patch, v| {
 /// what the panel holds.
 #[element(build = Self::build)]
 pub struct SplitPanel {
-    #[elem(patch = PatchPanelRatio)]
-    #[default(1.0)]
+    #[elem(default = 1.0, patch = PatchPanelRatio)]
     pub ratio: f32,
     /// A collapsed panel takes no space, so its sibling reclaims it.
-    #[elem(patch = PatchPanelVisible)]
-    #[default(true)]
+    #[elem(default = true, patch = PatchPanelVisible)]
     pub visible: bool,
 }
 
@@ -260,13 +252,11 @@ field_patch!(PatchPanelVisible, bool, |patch, v| {
 /// A leaf of the tree: a tab bar, and the content of every tab.
 #[element(build = Self::build)]
 pub struct Area {
-    #[elem(patch = PatchAreaNode)]
-    #[default(NodeId(0))]
+    #[elem(default = NodeId(0), patch = PatchAreaNode)]
     pub node: NodeId,
     #[elem(patch = PatchAreaId)]
     pub id: String,
-    #[elem(patch = PatchAreaStyle)]
-    #[default(::TabBar)]
+    #[elem(default = ::TabBar, patch = PatchAreaStyle)]
     pub style: DockAreaStyle,
     /// Which tab is showing, which a binding keeps up to date. The
     /// component itself, because a walk hops *into* an `Option`
@@ -313,8 +303,7 @@ field_patch!(PatchAreaStyle, DockAreaStyle, |patch, v| {
 pub struct TabContent {
     #[elem(patch = PatchContentWindowId)]
     pub window_id: String,
-    #[elem(patch = PatchContentTab)]
-    #[default(TabId(0))]
+    #[elem(default = TabId(0), patch = PatchContentTab)]
     pub tab: TabId,
     #[elem(patch = PatchContentShowing)]
     pub showing: bool,

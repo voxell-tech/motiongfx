@@ -19,11 +19,9 @@ pub struct TimelineBlock {
     pub width: Val,
     #[elem(patch = PatchHeight)]
     pub height: Val,
-    #[elem(patch = PatchBackground)]
-    #[default(Color::NONE)]
+    #[elem(default = Color::NONE, patch = PatchBackground)]
     pub background: Color,
-    #[elem(patch = PatchBorderColor)]
-    #[default(Color::NONE)]
+    #[elem(default = Color::NONE, patch = PatchBorderColor)]
     pub border: Color,
 }
 

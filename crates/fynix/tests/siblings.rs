@@ -4,21 +4,18 @@
 mod common;
 
 use common::{FynixHost, Label, LabelCursor, World};
-use fynix::element::{Element, element};
+use fynix::element::{Element, ElementBase, element};
 use fynix::records::Records;
 
 /// Two labels that already say which is which, so a test can tell one
 /// node from the other without setting anything up.
 #[element]
 pub struct Pair {
-    #[elem(child)]
-    #[default(text: String::from("up"), size: 1)]
+    #[elem(child, default = Label { text: String::from("up"), size: 1 })]
     pub top: Label,
-    #[elem(child)]
-    #[default(text: String::from("down"), size: 2)]
+    #[elem(child, default = Label { text: String::from("down"), size: 2 })]
     pub bottom: Label,
-    #[elem(patch = WriteGap)]
-    #[default(7)]
+    #[elem(default = 7, patch = WriteGap)]
     pub gap: u32,
 }
 
@@ -31,7 +28,7 @@ test_patch!(WriteGap, u32, |patch, v| {
 fn two_children_of_one_type_keep_separate_nodes() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let pair = Pair::default();
+    let pair = Pair::base(&());
 
     let node = pair.build(&mut world, parent, &mut records, &());
 
@@ -51,7 +48,7 @@ fn two_children_of_one_type_keep_separate_nodes() {
 fn patching_one_of_a_pair_leaves_the_other() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let mut pair = Pair::default();
+    let mut pair = Pair::base(&());
     let node = pair.build(&mut world, parent, &mut records, &());
     let top = records
         .store()

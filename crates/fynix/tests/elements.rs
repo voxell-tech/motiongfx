@@ -4,15 +4,14 @@
 mod common;
 
 use common::{FynixHost, Label, LabelCursor, World};
-use fynix::element::{Element, Fields, element};
+use fynix::element::{Element, ElementBase, Fields, element};
 use fynix::host::Host;
 use fynix::lenz::{FieldPath, Lenz};
 use fynix::records::Records;
 
 #[element]
 pub struct Icon {
-    #[elem(patch = WriteGlyph)]
-    #[default('+')]
+    #[elem(default = '+', patch = WriteGlyph)]
     pub glyph: char,
 }
 
@@ -30,11 +29,9 @@ pub struct Button {
     pub label: Label,
     /// Present by default, so the tests that want one say nothing and
     /// the one that wants none clears it.
-    #[elem(child)]
-    #[default(..)]
+    #[elem(child, default = Some(Icon { glyph: '+' }))]
     pub icon: Option<Icon>,
-    #[elem(patch = WritePadding)]
-    #[default(4)]
+    #[elem(default = 4, patch = WritePadding)]
     pub padding: u32,
     #[elem(patch = WriteBorder)]
     pub border: Border,
@@ -62,7 +59,7 @@ test_patch!(WriteBorder, Border, |patch, v| {
 fn build_writes_the_element_and_its_children() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let button = Button::default();
+    let button = Button::base(&());
 
     let node = button.build(&mut world, parent, &mut records, &());
 
@@ -83,7 +80,7 @@ fn absent_child_leaves_no_entry() {
     let mut records = Records::default();
     let button = Button {
         icon: None,
-        ..Button::default()
+        ..Button::base(&())
     };
 
     let node = button.build(&mut world, parent, &mut records, &());
@@ -103,7 +100,7 @@ fn absent_child_leaves_no_entry() {
 fn path_into_a_child_is_patched_by_that_child() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let mut button = Button::default();
+    let mut button = Button::base(&());
     let node = button.build(&mut world, parent, &mut records, &());
     let label =
         records.store().get(node, button_path::label::id()).unwrap();
@@ -128,7 +125,7 @@ fn path_into_a_child_is_patched_by_that_child() {
 fn path_into_plain_data_is_finished_by_its_owner() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let mut button = Button::default();
+    let mut button = Button::base(&());
     let node = button.build(&mut world, parent, &mut records, &());
 
     let path = Button::cursor().border().width();
@@ -162,7 +159,7 @@ fn elem_field_is_not_one_of_our_own() {
 fn patching_an_unnamed_field_changes_nothing() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let button = Button::default();
+    let button = Button::base(&());
     let node = button.build(&mut world, parent, &mut records, &());
 
     // A real path, but to a field of something else entirely.
@@ -176,7 +173,7 @@ fn patching_an_unnamed_field_changes_nothing() {
 fn despawn_takes_the_children_and_their_entries() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let button = Button::default();
+    let button = Button::base(&());
     let node = button.build(&mut world, parent, &mut records, &());
     let label =
         records.store().get(node, button_path::label::id()).unwrap();
@@ -196,7 +193,7 @@ fn despawn_takes_the_children_and_their_entries() {
 fn pruning_drops_what_the_app_despawned() {
     let (mut world, parent) = World::with_root();
     let mut records = Records::default();
-    let button = Button::default();
+    let button = Button::base(&());
     let node = button.build(&mut world, parent, &mut records, &());
 
     assert_eq!(records.store().len(), 2);

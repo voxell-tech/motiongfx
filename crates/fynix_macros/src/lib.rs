@@ -1,8 +1,7 @@
 //! Derive macros for `fynix`.
 //!
-//! `#[derive(Lenz)]` for field paths lives in the `lenz` crate and
-//! `#[derive(OverrideDefault)]` in the `override_default` crate, both
-//! re-exported by `fynix`; `#[element]` emits what they and its own
+//! `#[derive(Lenz)]` for field paths lives in the `lenz` crate,
+//! re-exported by `fynix`; `#[element]` emits what it and its own
 //! dispatch would.
 
 mod common;
@@ -27,11 +26,16 @@ use syn::{DeriveInput, parse_macro_input};
 /// - `#[elem(patch = <tag>)]` - a type implementing
 ///   `FieldPatch<Host, Target = FieldTy>`. Its `patch` writes the
 ///   field, at build and on change.
-/// - `#[elem(default = <expr>)]` - the value the field starts from,
-///   with `theme` in scope. Layered over the `#[default(...)]` the
-///   re-emitted struct still takes.
+/// - `#[elem(default = <expr>)]` - the value the field starts from in
+///   [`ElementBase::base`], with `theme` in scope. `default = ::<expr>`
+///   resolves against the field's own type: `::NONE` is `<Color>::NONE`
+///   on a `Color` field. A field with none starts from its own
+///   [`Default`], a `#[elem(child)]` one from its own `base`.
 /// - `#[elem(ignore)]` - a field no path can name, read only by the
 ///   `build =` hook.
+///
+/// A `Default` impl is written too, deferring to `base` with
+/// `<Host::Theme>::default()`, for `val!` and nested construction.
 #[proc_macro_attribute]
 pub fn element(args: TokenStream, input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);

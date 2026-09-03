@@ -152,11 +152,9 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
     /// put it on.
     #[element(build = Self::build)]
     pub struct Grower {
-        #[elem(patch = WriteText)]
-        #[default(String::from("Label"))]
+        #[elem(default = String::from("Label"), patch = WriteText)]
         pub text: String,
-        #[elem(patch = WriteSize)]
-        #[default(13)]
+        #[elem(default = 13, patch = WriteSize)]
         pub size: u32,
         /// What a style asks this to grow to under the pointer, if
         /// anything. Read once, when the transition is wired.

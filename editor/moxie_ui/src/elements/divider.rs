@@ -12,14 +12,11 @@ const DIVIDER_WIDTH: f32 = 6.0;
 /// The draggable line between two panes.
 #[element]
 pub struct Divider {
-    #[elem(patch = PatchThickness)]
-    #[default(px(DIVIDER_WIDTH))]
+    #[elem(default = px(DIVIDER_WIDTH), patch = PatchThickness)]
     pub thickness: Val,
-    #[elem(patch = PatchOrientation)]
-    #[default(::Horizontal)]
+    #[elem(default = ::Horizontal, patch = PatchOrientation)]
     pub orientation: ControlOrientation,
-    #[elem(patch = PatchBackground)]
-    #[default(Color::srgba(1.0, 1.0, 1.0, 0.08))]
+    #[elem(default = Color::srgba(1.0, 1.0, 1.0, 0.08), patch = PatchBackground)]
     pub color: Color,
 }
 
