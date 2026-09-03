@@ -31,7 +31,6 @@ use moxie_ui::elements::{
 use moxie_ui::fold::{CHEVRON_SHUT, Foldable, FoldsOn};
 use moxie_ui::reactive::{BevyUi, FynixHost, resource_changed};
 
-use super::PANEL_PADDING;
 use crate::{ProjectBookmarks, ProjectPath};
 
 /// Room below the last row for the button that floats over it.
@@ -74,15 +73,11 @@ impl Composer<FynixHost> for AddButton {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Frame> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             Frame,
             position = PositionType::Absolute,
-            inset = UiRect::new(
-                auto(),
-                px(PANEL_PADDING),
-                auto(),
-                px(PANEL_PADDING)
-            )
+            inset = UiRect::new(auto(), px(pad), auto(), px(pad))
         ))
         .with(move |ui| {
             ui.elem(elem!(
@@ -128,14 +123,15 @@ impl Composer<FynixHost> for Listing {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, ScrollArea> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             ScrollArea,
             width = percent(100),
             flex_grow = 1.0f32,
             padding = UiRect::new(
-                px(PANEL_PADDING),
-                px(PANEL_PADDING),
-                px(PANEL_PADDING),
+                px(pad),
+                px(pad),
+                px(pad),
                 px(BUTTON_CLEARANCE)
             ),
             scroll_x = false

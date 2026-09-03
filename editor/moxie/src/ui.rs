@@ -70,8 +70,6 @@ impl Plugin for UiPlugin {
     }
 }
 
-pub(crate) const PANEL_PADDING: f32 = 12.0;
-
 /// Marks the UI camera (which owns the window). Every other (scene)
 /// camera is retargeted to the offscreen preview image; see
 /// [`retarget_scene_cameras`].

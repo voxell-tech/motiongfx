@@ -30,7 +30,6 @@ use moxie_ui::reactive::{
     BevyUi, FynixHost, component_changed_on, value_changed,
 };
 
-use super::PANEL_PADDING;
 use crate::{SceneRoot, SelectedEntity};
 
 /// Thickness of the line marking where a drop would land a row beside
@@ -73,15 +72,11 @@ impl Composer<FynixHost> for AddButton {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Frame> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             Frame,
             position = PositionType::Absolute,
-            inset = UiRect::new(
-                auto(),
-                px(PANEL_PADDING),
-                auto(),
-                px(PANEL_PADDING)
-            )
+            inset = UiRect::new(auto(), px(pad), auto(), px(pad))
         ))
         .with(move |ui| {
             ui.elem(elem!(
@@ -108,6 +103,7 @@ impl Composer<FynixHost> for Roots {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, ScrollArea> {
+        let pad = ui.theme.space.xl;
         // Roots only: a branch minds itself. The query is kept
         // because this polls every flush, and the build (which
         // makes its own) runs far less often.
@@ -119,9 +115,9 @@ impl Composer<FynixHost> for Roots {
             width = percent(100),
             flex_grow = 1.0f32,
             padding = UiRect::new(
-                px(PANEL_PADDING),
-                px(PANEL_PADDING),
-                px(PANEL_PADDING),
+                px(pad),
+                px(pad),
+                px(pad),
                 px(BUTTON_CLEARANCE)
             ),
             scroll_x = false

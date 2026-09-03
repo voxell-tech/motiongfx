@@ -26,7 +26,7 @@ use moxie_ui::inspector::{
 };
 use moxie_ui::reactive::{BevyUi, FynixHost, value_changed};
 
-use super::{PANEL_PADDING, hierarchy};
+use super::hierarchy;
 use crate::{EditorScene, SelectedAction};
 
 /// The action panel, as kernel nodes.
@@ -39,11 +39,12 @@ impl Composer<FynixHost> for ActionPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, ScrollArea> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             ScrollArea,
             flex_grow = 1.0f32,
             row_gap = px(8),
-            padding = px(PANEL_PADDING),
+            padding = px(pad),
             scroll_x = false
         ))
         // The shape only: each input binds its own value, so typing

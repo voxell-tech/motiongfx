@@ -15,7 +15,6 @@ use bevy::prelude::*;
 use bevy::ui_widgets::{Activate, ScrollArea as ScrollAreaBehavior};
 use bevy_motiongfx::prelude::MotionGfxManager;
 
-use super::PANEL_PADDING;
 use crate::block_layout::{self, Placed};
 use crate::playback::{
     TogglePlayback, on_track_cancel, on_track_click_release,
@@ -112,13 +111,14 @@ impl Composer<FynixHost> for ControlBar {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Frame> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             Frame,
             width = percent(100),
             height = px(CONTROL_BAR_HEIGHT),
             align = AlignItems::Center,
             column_gap = px(12),
-            padding = UiRect::horizontal(px(PANEL_PADDING))
+            padding = UiRect::horizontal(px(pad))
         ))
         .with(|ui| {
             ui.elem(elem!(

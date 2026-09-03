@@ -13,7 +13,6 @@ use moxie_ui::elements::{
 };
 use moxie_ui::reactive::{BevyUi, FynixHost};
 
-use super::PANEL_PADDING;
 use crate::EditorSettings;
 
 /// The settings panel, as kernel nodes.
@@ -26,11 +25,12 @@ impl Composer<FynixHost> for SettingsPanel {
         self,
         ui: &mut BevyUi,
     ) -> ElementHandle<FynixHost, Panel> {
+        let pad = ui.theme.space.xl;
         ui.elem(elem!(
             Panel,
             direction = FlexDirection::Column,
             row_gap = px(8),
-            padding = UiRect::all(px(PANEL_PADDING)),
+            padding = UiRect::all(px(pad)),
             scrolls = true
         ))
         .with(|ui| {
