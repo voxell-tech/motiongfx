@@ -8,8 +8,8 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut as _;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 
 use super::{Frame, Label, SegmentButton};
 use crate::reactive::{BevyUi, FynixHost};
@@ -66,7 +66,7 @@ where
                 ui.elem(elem!(
                     !SegmentButton { active },
                     corners = Some(corners),
-                    label = val!(
+                    label = elem!(
                         Label,
                         text = label,
                         size = 11.0f32,

@@ -13,7 +13,7 @@ use bevy::prelude::*;
 
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
-use fynix::{elem, val};
+use fynix::elem;
 use moxie_asset::ABSOLUTE_SOURCE;
 
 use crate::asset::AssetDragging;
@@ -37,8 +37,8 @@ impl<T: Asset + TypePath> Inspect for Handle<T> {
             !GhostButton,
             width = percent(100),
             justify = JustifyContent::SpaceBetween,
-            icon = val!(Icon, image = icons::ASSET, color = muted),
-            label = val!(
+            icon = elem!(Icon, image = icons::ASSET, color = muted),
+            label = elem!(
                 Label,
                 text = label,
                 color = muted,

@@ -28,8 +28,8 @@ use crate::{
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 use moxie_ui::elements::{
     Button, ButtonElemCursor, Frame, FrameCursor, GhostButton, Icon,
     IconCursor, Label, LabelCursor, Panel, PlayheadLine,
@@ -124,7 +124,7 @@ impl Composer<FynixHost> for ControlBar {
         .with(|ui| {
             ui.elem(elem!(
                 !Button,
-                icon = val!(
+                icon = elem!(
                     Icon,
                     image = crate::icons::PLAY,
                     size = px(14)
@@ -164,7 +164,7 @@ impl Composer<FynixHost> for ControlBar {
 
             ui.elem(elem!(
                 !Button,
-                label = val!(Label, text = "Fit"),
+                label = elem!(Label, text = "Fit"),
                 width = px(44),
                 height = px(24)
             ))
@@ -231,7 +231,7 @@ fn build_ticks(ui: &mut BevyUi) {
             ui.elem(elem!(
                 TimeLabel,
                 x = px(tick.x),
-                label = val!(
+                label = elem!(
                     Label,
                     text = text,
                     size = LABEL_SIZE,
@@ -444,13 +444,14 @@ fn build_block_boxes(ui: &mut BevyUi) {
         // grow.
         if !placed.path.is_empty() {
             let gap_x = placed.gap_x.unwrap_or(placed.x);
+            let image = pattern.clone();
             ui.elem(elem!(
                 TimelineGap,
                 top = px(placed.y),
                 left = px(gap_x),
                 width = px(placed.x - gap_x),
                 height = px(placed.h),
-                image = pattern.clone(),
+                image = image,
                 color = theme.text_muted.with_alpha(0.35)
             ))
             .insert(drag::GapPath(placed.path.clone()));
@@ -512,7 +513,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 };
                 let mut clip = ui.elem(elem!(
                     TimelineAction,
-                    label = val!(
+                    label = elem!(
                         Label,
                         text = label.clone(),
                         size = 10.0f32,
@@ -575,7 +576,7 @@ fn chevron(
 ) {
     ui.elem(elem!(
         !TintButton::default(),
-        icon = val!(
+        icon = elem!(
             Icon,
             image = moxie_ui::icons::CHEVRON,
             size = px(7),

@@ -6,8 +6,8 @@ use bevy::prelude::*;
 use bevy::settings::SaveSettingsSync;
 use bevy_fynix::WorldEntityMut;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 use moxie_ui::elements::{
     Button, Frame, Label, Panel, ResourceInspector,
 };
@@ -56,7 +56,7 @@ impl Composer<FynixHost> for SaveRow {
             .with(|ui| {
                 ui.elem(elem!(
                     !Button,
-                    label = val!(Label, text = "Save"),
+                    label = elem!(Label, text = "Save"),
                     width = px(64),
                     height = px(24)
                 ))

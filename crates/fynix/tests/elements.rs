@@ -4,6 +4,7 @@
 mod common;
 
 use common::{FynixHost, Label, LabelCursor, World};
+use fynix::elem;
 use fynix::element::{Element, ElementBase, Fields, element};
 use fynix::host::Host;
 use fynix::lenz::{FieldPath, Lenz};
@@ -203,6 +204,17 @@ fn pruning_drops_what_the_app_despawned() {
     records.store_mut().prune(&world);
 
     assert!(records.store().is_empty());
+}
+
+#[test]
+fn call_site_child_still_starts_from_its_base() {
+    // `Label::base` fills `text` with "Label"; overriding only `size`
+    // at the call site must keep the rest of the base.
+    let button =
+        elem!(Button, label = elem!(Label, size = 9u32))(&());
+
+    assert_eq!(button.label.text, "Label", "from the child's base");
+    assert_eq!(button.label.size, 9, "the call site");
 }
 
 #[test]

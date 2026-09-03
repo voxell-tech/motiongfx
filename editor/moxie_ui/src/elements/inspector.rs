@@ -21,9 +21,9 @@ use bevy::ui_widgets::{Activate, ActivateOnPress, MenuButton};
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::records::{BuildFn, ChangedFn};
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 
 use super::{
     Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
@@ -195,7 +195,7 @@ impl Composer<FynixHost> for AddComponent {
             .with(move |ui| {
                 ui.elem(elem!(
                     !TintButton::default(),
-                    icon = val!(
+                    icon = elem!(
                         Icon,
                         image = icons::PLUS,
                         color = theme.text_muted
@@ -211,7 +211,7 @@ impl Composer<FynixHost> for AddComponent {
                         if options.is_empty() {
                             ui.elem(elem!(
                                 DropdownItem,
-                                label = val!(
+                                label = elem!(
                                     Label,
                                     text = "Nothing left to add"
                                         .to_string(),
@@ -244,7 +244,7 @@ fn add_component_item(
 ) {
     ui.elem(elem!(
         DropdownItem,
-        label = val!(
+        label = elem!(
             Label,
             text = name.to_string(),
             wrap = false,

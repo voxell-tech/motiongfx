@@ -34,8 +34,8 @@ use syn::{DeriveInput, parse_macro_input};
 /// - `#[elem(ignore)]` - a field no path can name, read only by the
 ///   `build =` hook.
 ///
-/// A `Default` impl is written too, deferring to `base` with
-/// `<Host::Theme>::default()`, for `val!` and nested construction.
+/// A `Seed<Host::Theme>` impl is written too, deferring to `base`, so
+/// `elem!` can start a nested element field from the theme.
 #[proc_macro_attribute]
 pub fn element(args: TokenStream, input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);

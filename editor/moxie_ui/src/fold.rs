@@ -15,10 +15,10 @@ use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
+use fynix::host::Host;
 use fynix::records::BuildFn;
-use fynix::style::StyledElem;
 use fynix::ui::{ElementHandle, ElementMut};
-use fynix::{elem, val};
 
 use crate::elements::{
     ButtonElem, ButtonElemCursor, Frame, FrameCursor, Icon,
@@ -76,7 +76,7 @@ pub enum FoldsOn {
 /// All this owns is the click that toggles, the chevron that turns,
 /// the body that goes, and the rail marking how deep that body sits.
 pub struct Foldable<
-    S: StyledElem<Host = FynixHost, Element = ButtonElem>,
+    S: FnOnce(&<FynixHost as Host>::Theme) -> ButtonElem,
     B: BuildFn<FynixHost>,
     H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, ButtonElem>),
     T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
@@ -107,7 +107,7 @@ pub struct Foldable<
 
 impl<S, B, H, T> Composer<FynixHost> for Foldable<S, B, H, T>
 where
-    S: StyledElem<Host = FynixHost, Element = ButtonElem>,
+    S: FnOnce(&<FynixHost as Host>::Theme) -> ButtonElem,
     B: BuildFn<FynixHost>,
     H: for<'u, 'a> FnOnce(ElementMut<'u, 'a, FynixHost, ButtonElem>),
     T: Fn(&mut World, bool) + Clone + Send + Sync + 'static,
@@ -161,7 +161,7 @@ where
                         width = px(toggle_size),
                         height = px(toggle_size),
                         radius = px(3),
-                        icon = val!(
+                        icon = elem!(
                             Icon,
                             image = icons::CHEVRON,
                             size = px(8),
@@ -211,12 +211,13 @@ where
                 },
             )
             .with(move |ui| {
+                let rail = ui.theme.palette.base[2];
                 // The rail. Stretched to the block's height, not
                 // sized by hand.
                 ui.elem(elem!(
                     Frame,
                     width = px(RAIL_WIDTH),
-                    background = ui.theme.palette.base[2]
+                    background = rail
                 ));
                 ui.elem(elem!(
                     Frame,

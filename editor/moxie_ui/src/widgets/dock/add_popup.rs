@@ -17,7 +17,7 @@ use super::registry::WindowRegistry;
 use super::tree::DockTree;
 use crate::layout::logical_rect;
 use bevy_fynix::WorldEntityMut;
-use fynix::{elem, val};
+use fynix::elem;
 
 use crate::elements::{Frame, GhostButton, Icon, Label, Overlay};
 use crate::icons;
@@ -201,13 +201,13 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
             width = percent(100),
             height = auto(),
             justify = JustifyContent::FlexStart,
-            icon = val!(
+            icon = elem!(
                 Icon,
                 image = image,
                 color = icon_color,
                 size = px(12)
             ),
-            label = val!(Label, text = name, color = text_color)
+            label = elem!(Label, text = name, color = text_color)
         ))
         .insert(AddsWindow { area, window_id })
         .observe(on_pick);

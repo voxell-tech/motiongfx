@@ -19,8 +19,8 @@ use bevy_fynix::WorldEntityMut;
 use bevy_motiongfx::scene::id::EntityUid;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::{ElementHandle, ElementMut};
-use fynix::{elem, val};
 use moxie_ui::elements::{
     ButtonElem, ButtonElemCursor, Frame, FrameCursor, GhostButton,
     Icon, Label, LabelCursor, Panel, ScrollArea, TintButton,
@@ -86,7 +86,7 @@ impl Composer<FynixHost> for AddButton {
         .with(move |ui| {
             ui.elem(elem!(
                 !TintButton::default(),
-                icon = val!(Icon, image = crate::icons::PLUS)
+                icon = elem!(Icon, image = crate::icons::PLUS)
             ))
             .observe(
                 |_: On<Activate>, mut commands: Commands| {
@@ -289,7 +289,7 @@ impl Composer<FynixHost> for Subtree {
                 justify = JustifyContent::FlexStart,
                 padding = UiRect::axes(px(4), Val::ZERO),
                 radius = px(3),
-                label = val!(
+                label = elem!(
                     Label,
                     text = name,
                     wrap = false,

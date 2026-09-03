@@ -15,9 +15,9 @@ use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::records::BuildFn;
 use fynix::ui::{ElementHandle, ElementMut};
-use fynix::{elem, val};
 
 use super::{Field, FieldRow, ReflectInspect, enums};
 use crate::elements::{ButtonElem, Frame, Icon, Label, TintButton};
@@ -482,6 +482,8 @@ impl<F: BuildFn<FynixHost>> Composer<FynixHost> for Section<F> {
                 sections.0.contains(&(component, path.clone()))
             });
 
+        let muted = ui.theme.text_muted;
+        let primary = ui.theme.text_primary;
         ui.compose(Foldable {
             header: elem!(
                 !TintButton::default(),
@@ -490,16 +492,16 @@ impl<F: BuildFn<FynixHost>> Composer<FynixHost> for Section<F> {
                 justify = JustifyContent::FlexStart,
                 padding = UiRect::axes(px(4), px(3)),
                 radius = px(4),
-                icon = val!(
+                icon = elem!(
                     Icon,
                     image = icons::CHEVRON,
-                    color = ui.theme.text_muted,
+                    color = muted,
                     rotation = CHEVRON_SHUT
                 ),
-                label = val!(
+                label = elem!(
                     Label,
                     text = name,
-                    color = ui.theme.text_primary,
+                    color = primary,
                     bold = true
                 )
             ),

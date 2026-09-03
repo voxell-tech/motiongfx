@@ -10,17 +10,16 @@ mod common;
 
 use common::{FynixHost, Label, World};
 use fynix::Fynix;
+use fynix::elem;
 use fynix::element::{Element, ElementBase};
 use fynix::host::Host;
 use fynix::records::Records;
-use fynix::style::{Raw, Style, StyledElem};
-use fynix::{elem, val};
+use fynix::style::Style;
 
-/// What the cascade produced, for a test that only wants the value.
-/// `create` says nothing about a backend, but the type it is called on
-/// has to name one.
-fn create<S: StyledElem<Host = FynixHost>>(styled: S) -> S::Element {
-    styled.create(&())
+/// Runs an [`elem!`]'s cascade with the mock theme, for a test that
+/// only wants the value it left.
+fn create<E>(build: impl FnOnce(&()) -> E) -> E {
+    build(&())
 }
 
 /// A style with something to say, so a test can see it run.
@@ -178,10 +177,10 @@ fn every_case_is_the_same_argument() {
     assert_eq!(create(elem!(!Title, size = 32u32)).size, 32);
     assert_eq!(create(elem!(Label, size = 32u32)).size, 32);
     assert_eq!(
-        create(Raw::new(Label {
+        create(|_| Label {
             text: "Save".into(),
             size: 32,
-        }))
+        })
         .size,
         32
     );
@@ -189,10 +188,10 @@ fn every_case_is_the_same_argument() {
 
 #[test]
 fn finished_element_passes_through_untouched() {
-    let label = create(Raw::new(Label {
+    let label = create(|_| Label {
         text: "Save".into(),
         size: 32,
-    }));
+    });
 
     assert_eq!(label.text, "Save");
     assert_eq!(label.size, 32, "no default, and no style");
@@ -237,7 +236,7 @@ fn the_builder_takes_a_styled_element_whole() {
 
 #[test]
 fn nested_value_can_be_a_style() {
-    let label: Label = val!(!Title, text = "Save");
+    let label: Label = elem!(!Title, text = "Save")(&());
 
     assert_eq!(label.size, 10, "the style ran");
     assert_eq!(label.text, "Save", "then the fields");

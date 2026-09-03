@@ -21,8 +21,8 @@ use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::{ElementHandle, ElementMut};
-use fynix::{elem, val};
 use moxie_asset::AssetKinds;
 use moxie_ui::asset::draggable;
 use moxie_ui::elements::{
@@ -87,7 +87,7 @@ impl Composer<FynixHost> for AddButton {
         .with(move |ui| {
             ui.elem(elem!(
                 !TintButton::default(),
-                icon = val!(Icon, image = crate::icons::PLUS)
+                icon = elem!(Icon, image = crate::icons::PLUS)
             ))
             .observe(
                 |_: On<Activate>, mut commands: Commands| {
@@ -212,13 +212,13 @@ impl Composer<FynixHost> for BookmarkRow {
                 !TintButton::default(),
                 width = percent(100),
                 justify = JustifyContent::FlexStart,
-                icon = val!(
+                icon = elem!(
                     Icon,
                     image = moxie_ui::icons::CHEVRON,
                     color = muted,
                     rotation = CHEVRON_SHUT
                 ),
-                label = val!(
+                label = elem!(
                     Label,
                     text = name.clone(),
                     color = primary,
@@ -238,6 +238,7 @@ impl Composer<FynixHost> for BookmarkRow {
                 // icon/label slots. It takes its own click for
                 // itself, so the header's fold never hears it.
                 header.with(move |ui| {
+                    let critical = ui.theme.critical;
                     // Eats whatever room icon and label leave, so
                     // the delete button lands flush against the far
                     // end.
@@ -245,13 +246,13 @@ impl Composer<FynixHost> for BookmarkRow {
 
                     ui.elem(elem!(
                         !TintButton {
-                            tint: Some(ui.theme.critical)
+                            tint: Some(critical)
                         },
                         width = px(14),
                         height = px(14),
                         padding = UiRect::ZERO,
                         radius = px(2),
-                        icon = val!(
+                        icon = elem!(
                             Icon,
                             image = crate::icons::TRASH,
                             size = px(10)
@@ -331,13 +332,13 @@ impl Composer<FynixHost> for FolderRow {
             header: elem!(
                 !TintButton::default(),
                 justify = JustifyContent::FlexStart,
-                icon = val!(
+                icon = elem!(
                     Icon,
                     image = moxie_ui::icons::CHEVRON,
                     color = muted,
                     rotation = CHEVRON_SHUT
                 ),
-                label = val!(
+                label = elem!(
                     Label,
                     text = name.clone(),
                     color = primary,

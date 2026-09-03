@@ -76,11 +76,13 @@ fn axes<T, V>(
         column_gap = px(6)
     ))
     .with(move |ui| {
+        let theme = ui.theme;
         for (index, name) in T::NAMES.iter().enumerate() {
+            let color = axis_color(theme, name);
             ui.elem(elem!(
                 Label,
                 text = name.to_uppercase(),
-                color = axis_color(ui.theme, name),
+                color = color,
                 bold = true
             ));
             axis::<T, V>(

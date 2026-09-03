@@ -9,7 +9,9 @@
 use crate::reactive::FynixBuild;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut as _;
-use fynix::element::element;
+use fynix::element::{ElementBase as _, element};
+
+use crate::theme::EditorTheme;
 
 use super::patch::*;
 
@@ -115,51 +117,48 @@ pub struct SplitHandle {
 
 /// The bar's own size: thin on the split's axis, full-length across
 /// it.
-pub fn handle_bar(axis: FlexDirection) -> Frame {
+pub fn handle_bar(theme: &EditorTheme, axis: FlexDirection) -> Frame {
     let thin = px(HANDLE_SIZE / 2.0);
-    match axis {
-        FlexDirection::Row | FlexDirection::RowReverse => Frame {
-            width: thin,
-            height: percent(100),
-            ..default()
-        },
-        FlexDirection::Column | FlexDirection::ColumnReverse => {
-            Frame {
-                width: percent(100),
-                height: thin,
-                ..default()
-            }
+    let (width, height) = match axis {
+        FlexDirection::Row | FlexDirection::RowReverse => {
+            (thin, percent(100))
         }
+        _ => (percent(100), thin),
+    };
+    Frame {
+        width,
+        height,
+        ..Frame::base(theme)
     }
 }
 
 /// One pixel, centered in the hit area by explicit inset rather than
 /// flex alignment - it sits outside the flow so `bar` can still
 /// center itself normally.
-pub fn handle_line(axis: FlexDirection, color: Color) -> Frame {
+pub fn handle_line(
+    theme: &EditorTheme,
+    axis: FlexDirection,
+    color: Color,
+) -> Frame {
     const LINE: f32 = 1.0;
     let offset = px((HANDLE_SIZE - LINE) / 2.0);
     let base = Frame {
         position: PositionType::Absolute,
         background: color,
-        ..default()
+        ..Frame::base(theme)
     };
 
-    match axis {
-        FlexDirection::Row | FlexDirection::RowReverse => Frame {
-            width: px(LINE),
-            height: percent(100),
-            inset: UiRect::horizontal(offset),
-            ..base
-        },
-        FlexDirection::Column | FlexDirection::ColumnReverse => {
-            Frame {
-                width: percent(100),
-                height: px(LINE),
-                inset: UiRect::vertical(offset),
-                ..base
-            }
+    let (width, height, inset) = match axis {
+        FlexDirection::Row | FlexDirection::RowReverse => {
+            (px(LINE), percent(100), UiRect::horizontal(offset))
         }
+        _ => (percent(100), px(LINE), UiRect::vertical(offset)),
+    };
+    Frame {
+        width,
+        height,
+        inset,
+        ..base
     }
 }
 

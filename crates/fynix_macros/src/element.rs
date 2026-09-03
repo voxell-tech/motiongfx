@@ -355,15 +355,14 @@ pub fn expand(
             }
         }
 
-        impl<#decl> ::core::default::Default for #name #ty
+        impl<#decl> #root::style::Seed<#host_theme> for #name #ty
         where
-            #host_theme: ::core::default::Default,
             #(#base_bounds,)*
             #predicates
         {
-            fn default() -> Self {
+            fn seed(theme: &#host_theme) -> Self {
                 <Self as #root::element::ElementBase<#host>>::base(
-                    &<#host_theme as ::core::default::Default>::default(),
+                    theme,
                 )
             }
         }

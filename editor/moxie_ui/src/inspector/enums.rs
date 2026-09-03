@@ -29,8 +29,8 @@ use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
 use fynix::composer::Composer;
+use fynix::elem;
 use fynix::ui::ElementHandle;
-use fynix::{elem, val};
 
 use super::{Source, when_changed};
 use crate::elements::{
@@ -236,13 +236,13 @@ fn control(
         Dropdown,
         min_width = width,
         max_width = width,
-        label = val!(
+        label = elem!(
             Label,
             text = current,
             wrap = false,
             color = theme.text_primary
         ),
-        chevron = val!(
+        chevron = elem!(
             Icon,
             image = icons::CHEVRON,
             color = theme.text_muted,
@@ -292,7 +292,7 @@ fn option(
 
     ui.elem(elem!(
         DropdownItem,
-        label = val!(
+        label = elem!(
             Label,
             text = variant,
             wrap = false,

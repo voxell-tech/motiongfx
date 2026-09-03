@@ -725,9 +725,6 @@ fn heading(ui: &mut BevyUi, path: Vec<usize>) {
 
 /// What the panel says when there is nothing to show.
 fn note(ui: &mut BevyUi, text: &str) {
-    ui.elem(elem!(
-        Label,
-        text = text.to_string(),
-        color = ui.theme.text_muted
-    ));
+    let color = ui.theme.text_muted;
+    ui.elem(elem!(Label, text = text.to_string(), color = color));
 }

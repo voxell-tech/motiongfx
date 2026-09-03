@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
-use fynix::{elem, val};
+use fynix::elem;
 
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
@@ -53,7 +53,7 @@ fn build_add_button(area: Entity, ui: &mut BevyUi) {
 
     ui.elem(elem!(
         !TintButton::default(),
-        icon = val!(Icon, image = icons::PLUS, color = muted)
+        icon = elem!(Icon, image = icons::PLUS, color = muted)
     ))
     .insert(DockTabAddButton { area_entity: area })
     .observe(super::add_popup::on_add_click);
@@ -84,26 +84,26 @@ fn build_tab(
         window_id = window_id,
         tab = tab_id,
         active = is_active,
-        icon = icon.map(|image| val!(
+        icon = icon.map(|image| elem!(
             Icon,
             image = image,
             color = lit,
             size = px(12)
-        )),
-        label = val!(
+        )(theme)),
+        label = elem!(
             Label,
             text = label,
             color = lit,
             bold = true,
             wrap = false
         ),
-        close = val!(
+        close = elem!(
             !GhostButton,
             width = px(14),
             height = px(14),
             padding = UiRect::ZERO,
             radius = px(2),
-            icon = val!(
+            icon = elem!(
                 Icon,
                 image = feathers_icons::X,
                 color = close_color,
