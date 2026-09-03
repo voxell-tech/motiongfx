@@ -19,8 +19,8 @@ use crate::records::{
 };
 use crate::store::Store;
 use crate::style::StyledElem;
-use crate::transition::Transition;
-use crate::tween::{TweenTable, insert_tween};
+use crate::transition::{TransitionTable, insert_transition};
+use crate::tween::Tween;
 use crate::world_node::WorldNodeRef;
 
 /// Builds elements under a parent and records their reactivity.
@@ -120,8 +120,8 @@ impl<'a, H: Host> Ui<'a, H> {
 }
 
 /// What a `#[element(build = ...)]` hook writes through: this
-/// element's own node, `world`, `theme`, and the store and tweens
-/// for wiring children and transitions.
+/// element's own node, `world`, `theme`, and the store and transition
+/// table for wiring children and transitions.
 ///
 /// Not [`ElementMut`]: a node running its own build hook has not
 /// finished existing yet, so `bind`/`watch`/`with` would not mean
@@ -130,7 +130,7 @@ pub struct Build<'a, H: Host, E: Element<H>> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
     node: H::Node,
-    tweens: &'a mut TweenTable<H>,
+    transitions: &'a mut TransitionTable<H>,
     store: &'a mut Store<H>,
     element: PhantomData<fn() -> E>,
 }
@@ -141,7 +141,7 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
     pub fn new(
         world: &'a mut H::World,
         node: H::Node,
-        tweens: &'a mut TweenTable<H>,
+        transitions: &'a mut TransitionTable<H>,
         store: &'a mut Store<H>,
         theme: &'a H::Theme,
     ) -> Self {
@@ -149,7 +149,7 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
             world,
             theme,
             node,
-            tweens,
+            transitions,
             store,
             element: PhantomData,
         }
@@ -180,7 +180,7 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
         base: P::Target,
-        transition: Transition<P::Target>,
+        tween: Tween<P::Target>,
     ) -> &mut Self
     where
         E: Send + Sync,
@@ -194,13 +194,13 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
         else {
             return self;
         };
-        insert_tween(
-            self.tweens,
+        insert_transition(
+            self.transitions,
             owner,
             cursor.key(),
             <P as Bindable<H>>::patch,
             base,
-            transition,
+            tween,
         );
         self
     }
@@ -209,8 +209,8 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
 /// What a `#[elem(patch = ...)]` writer writes through: the node the
 /// value lands on, `world`, and `theme`.
 ///
-/// No [`Store`]/[`TweenTable`] here. A patch writes a value; it never
-/// wires a child or a tween.
+/// No [`Store`]/[`TransitionTable`] here. A patch writes a value; it never
+/// wires a child or a transition.
 pub struct Patch<'a, H: Host> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,
@@ -375,13 +375,13 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
 
     /// Let this field travel rather than snap.
     ///
-    /// Declares the tween and its curve.
+    /// Declares the transition and the tween that shapes it.
     /// [`Fynix::aim`](crate::Fynix::aim) points it; until then the
     /// base shows.
     pub fn transition<P>(
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
-        transition: Transition<P::Target>,
+        tween: Tween<P::Target>,
     ) -> &mut Self
     where
         E: Send + Sync,
@@ -411,13 +411,13 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             return self;
         };
 
-        insert_tween(
-            &mut self.ui.records.tweens,
+        insert_transition(
+            &mut self.ui.records.transitions,
             owner,
             cursor.key(),
             <P as Bindable<H>>::patch,
             base,
-            transition,
+            tween,
         );
         self
     }
@@ -430,7 +430,7 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         &mut self,
         field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
         base: P::Target,
-        transition: Transition<P::Target>,
+        tween: Tween<P::Target>,
     ) -> &mut Self
     where
         E: Send + Sync,
@@ -446,13 +446,13 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
             return self;
         };
 
-        insert_tween(
-            &mut self.ui.records.tweens,
+        insert_transition(
+            &mut self.ui.records.transitions,
             owner,
             cursor.key(),
             <P as Bindable<H>>::patch,
             base,
-            transition,
+            tween,
         );
         self
     }
@@ -489,19 +489,19 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         };
 
         let apply = move |elements: &mut ElementTable<H>,
-                          tweens: &mut TweenTable<H>,
+                          transitions: &mut TransitionTable<H>,
                           world: &mut H::World,
                           node: H::Node,
                           _store: &mut Store<H>,
                           theme: &H::Theme| {
             let new = value(WorldNodeRef::new(world, node));
 
-            // A tween on the same field takes the new base, so a
+            // A transition on the same field takes the new base, so a
             // release still heads to the right resting value.
-            if let Some(tween) =
-                tweens.running::<P::Target>(owner, key)
+            if let Some(transition) =
+                transitions.running::<P::Target>(owner, key)
             {
-                tween.rebase(&new);
+                transition.rebase(&new);
             }
 
             // The struct keeps the value too, for `Fynix::element`.

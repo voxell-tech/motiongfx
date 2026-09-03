@@ -13,7 +13,7 @@ use bevy_fynix::interact::OnExt;
 use fynix::element::Element;
 use fynix::host::Host;
 use fynix::lenz::{Cursor, FieldPath, Identity};
-use fynix::transition::Transition;
+use fynix::tween::Tween;
 use fynix::ui::{Bindable, Build, ElementMut};
 use motiongfx_interp::ease;
 
@@ -150,7 +150,7 @@ impl<E: Element<FynixHost> + Send + Sync> MotionExt<E>
         let interact_ms = self.theme().interact_ms;
         self.transition(
             field,
-            Transition::ms(interact_ms, T::mix)
+            Tween::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
         on_lit(self, entity, field, hover, press)
@@ -197,7 +197,7 @@ impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
         self.transition_from(
             field,
             base,
-            Transition::ms(interact_ms, T::mix)
+            Tween::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
         on_lit(self, entity, field, hover, press)
@@ -244,7 +244,7 @@ impl<E: Element<FynixHost> + Send + Sync> LitFrom<E>
         self.transition_from(
             field,
             base,
-            Transition::ms(interact_ms, T::mix)
+            Tween::ms(interact_ms, T::mix)
                 .ease(ease::cubic::ease_out),
         );
         on_lit(self, entity, field, hover, press)

@@ -1,5 +1,5 @@
-//! What a build registers as it runs: watchers, bindings, tweens, and
-//! the elements themselves - kept beside the world so both can be
+//! What a build registers as it runs: watchers, bindings, transitions,
+//! and the elements themselves - kept beside the world so both can be
 //! borrowed at once.
 
 use alloc::boxed::Box;
@@ -12,7 +12,7 @@ use typarena::type_table::TypeTable;
 use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::store::Store;
-use crate::tween::TweenTable;
+use crate::transition::TransitionTable;
 use crate::ui::Ui;
 use crate::world_node::WorldNodeRef;
 
@@ -92,7 +92,7 @@ type BoxedBuild<H> =
 type BoxedApply<H> = Box<
     dyn Fn(
             &mut ElementTable<H>,
-            &mut TweenTable<H>,
+            &mut TransitionTable<H>,
             &mut <H as Host>::World,
             <H as Host>::Node,
             &mut Store<H>,
@@ -128,7 +128,7 @@ pub struct Records<H: Host> {
     /// Keyed by the whole walk. Binding a field twice replaces it.
     pub(crate) bindings: HashMap<FieldKey<H>, Binding<H>>,
     /// Keyed like `bindings`, one per field.
-    pub(crate) tweens: TweenTable<H>,
+    pub(crate) transitions: TransitionTable<H>,
     pub(crate) elements: ElementTable<H>,
     /// Which nodes have a row in `elements`. Lets a sweep know what
     /// to drop without asking `elements` what it holds.
@@ -142,7 +142,7 @@ impl<H: Host> Default for Records<H> {
     fn default() -> Self {
         Self {
             bindings: HashMap::new(),
-            tweens: TweenTable::default(),
+            transitions: TransitionTable::default(),
             elements: ElementTable::<H>::new(),
             element_nodes: HashSet::new(),
             store: Store::new(),
@@ -162,11 +162,11 @@ impl<H: Host> Records<H> {
         &mut self.store
     }
 
-    /// The tween table and the store together, borrowed at once.
+    /// The transition table and the store together, borrowed at once.
     #[doc(hidden)]
     pub fn build_parts(
         &mut self,
-    ) -> (&mut TweenTable<H>, &mut Store<H>) {
-        (&mut self.tweens, &mut self.store)
+    ) -> (&mut TransitionTable<H>, &mut Store<H>) {
+        (&mut self.transitions, &mut self.store)
     }
 }

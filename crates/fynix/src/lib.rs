@@ -222,7 +222,7 @@ impl<H: Host> Fynix<H> {
         // the app despawned another. Sweep both before touching any
         // dead handle.
         records.bindings.retain(|key, _| H::exists(world, key.node));
-        records.tweens.retain(|node| H::exists(world, node));
+        records.transitions.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
         // `elements` is keyed by type as well as node, so it cannot
@@ -237,7 +237,7 @@ impl<H: Host> Fynix<H> {
 
         let Records {
             bindings,
-            tweens,
+            transitions,
             elements,
             store,
             ..
@@ -249,18 +249,23 @@ impl<H: Host> Fynix<H> {
                 continue;
             }
             (binding.apply)(
-                elements, tweens, world, node, store, theme,
+                elements,
+                transitions,
+                world,
+                node,
+                store,
+                theme,
             );
         }
 
-        // After the bindings, so a tween gets the last word over the
-        // base they left.
+        // After the bindings, so a transition gets the last word over
+        // the base they left.
         let delta = H::delta(world);
-        tweens.advance(delta, world, theme);
+        transitions.advance(delta, world, theme);
     }
 
     /// Point a transitioning field at `target`, or release it back to
-    /// its base with `None`. Aiming a field with no tween does
+    /// its base with `None`. Aiming a field with no transition does
     /// nothing.
     pub fn aim<E, P>(
         &mut self,
@@ -274,16 +279,16 @@ impl<H: Host> Fynix<H> {
     {
         let key = field(Cursor::new()).key();
 
-        if let Some(tween) =
-            self.records.tweens.running::<P::Target>(node, key)
+        if let Some(transition) =
+            self.records.transitions.running::<P::Target>(node, key)
         {
-            tween.aim(target);
+            transition.aim(target);
         }
     }
 
     /// How many transitioning fields the kernel is holding.
-    pub fn tween_len(&self) -> usize {
-        self.records.tweens.len()
+    pub fn transition_len(&self) -> usize {
+        self.records.transitions.len()
     }
 }
 

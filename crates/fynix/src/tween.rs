@@ -1,228 +1,59 @@
-//! A value laid over a field while it transitions, kept beside the
-//! element rather than in it.
+//! The shape of a field's move to a new value: how long, along what
+//! curve, and how the value itself is walked. A [`Transition`] plays
+//! one out. See
+//! [`ElementMut::transition`](crate::ui::ElementMut::transition).
 //!
-//! The element carries the *base*, the cascade's own value. A tween
-//! carries what the backend is showing and writes it every frame,
-//! straight through the field's `#[elem(patch = ...)]` tag.
+//! [`Transition`]: crate::transition::Transition
 
-use alloc::vec::Vec;
-use core::any::TypeId;
+/// Interpolates between two `T` by a factor in `0..=1`.
+pub type LerpFn<T> = fn(&T, &T, f32) -> T;
 
-use hashbrown::HashSet;
-use typarena::type_table::TypeTable;
+pub use motiongfx_interp::ease::EaseFn;
 
-use crate::host::Host;
-use crate::lenz::FieldId;
-use crate::records::FieldKey;
-use crate::transition::Transition;
-use crate::ui::Patch;
-
-/// One field's transition in progress.
-pub(crate) struct Tween<H: Host, T> {
-    /// The field's `#[elem(patch = ...)]` writer.
-    write: fn(&mut Patch<H>, &T),
-    curve: Transition<T>,
-    /// The cascade's own value. Released, the tween heads back here.
-    base: T,
-    /// The aim, or `None` while heading home to the base.
-    target: Option<T>,
-    /// The current leg's start.
-    from: T,
-    elapsed: f32,
+/// A field's curve to a new value: duration, easing, interpolation.
+pub struct Tween<T> {
+    /// Seconds. Zero arrives on the next flush.
+    pub duration: f32, // TODO: Change to Duration.
+    pub ease: EaseFn,
+    pub lerp: LerpFn<T>,
 }
 
-impl<H: Host, T: Clone> Tween<H, T> {
-    fn heading(&self) -> &T {
-        self.target.as_ref().unwrap_or(&self.base)
-    }
-
-    fn shown(&self) -> T {
-        if self.curve.done(self.elapsed) {
-            self.heading().clone()
-        } else {
-            (self.curve.lerp)(
-                &self.from,
-                self.heading(),
-                self.curve.at(self.elapsed),
-            )
-        }
-    }
-
-    /// Aim at `target`, or `None` to release it back to the base.
-    pub(crate) fn aim(&mut self, target: Option<T>) {
-        // Snapshot before the endpoint moves.
-        self.from = self.shown();
-        self.elapsed = 0.0;
-        self.target = target;
-    }
-
-    /// Move the base to `base`, restarting the leg if the tween is
-    /// heading there.
-    pub(crate) fn rebase(&mut self, base: &T) {
-        if self.target.is_none() {
-            self.from = self.shown();
-            self.elapsed = 0.0;
-        }
-        self.base = base.clone();
-    }
-
-    /// Advance by `dt` and write what it reached.
-    fn advance(
-        &mut self,
-        dt: f32,
-        world: &mut H::World,
-        node: H::Node,
-        theme: &H::Theme,
-    ) {
-        // Arrived home: nothing to write, the base shows.
-        if self.target.is_none() && self.curve.done(self.elapsed) {
-            return;
-        }
-
-        self.elapsed += dt;
-        let shown = self.shown();
-
-        // Written every frame, even unmoved, so a binding that wrote
-        // the base earlier this flush cannot win.
-        let mut patch = Patch::new(world, node, theme);
-        (self.write)(&mut patch, &shown);
-    }
-}
-
-/// The per-type advance step in a [`TweenTable`]'s tick registry.
-type TickFn<H> = fn(
-    &mut TypeTable<FieldKey<H>>,
-    f32,
-    &mut <H as Host>::World,
-    &<H as Host>::Theme,
-);
-
-fn tick<H, T>(
-    table: &mut TypeTable<FieldKey<H>>,
-    dt: f32,
-    world: &mut H::World,
-    theme: &H::Theme,
-) where
-    H: Host,
-    T: Clone + Send + Sync + 'static,
-{
-    for (key, tween) in table.iter_mut::<Tween<H, T>>() {
-        let node = key.node;
-        tween.advance(dt, world, node, theme);
-    }
-}
-
-/// Every field with a tween over it, at most one per field.
-///
-/// One `Tween<H, T>` column per value type; [`Self::advance`]
-/// walks each column through its matching `ticks` entry.
-pub struct TweenTable<H: Host> {
-    table: TypeTable<FieldKey<H>>,
-    /// The rows to sweep when their nodes die.
-    keys: HashSet<FieldKey<H>>,
-    /// One advance step per value type a tween has been inserted for.
-    ticks: Vec<(TypeId, TickFn<H>)>,
-}
-
-impl<H: Host> Default for TweenTable<H> {
-    fn default() -> Self {
+impl<T> Tween<T> {
+    pub fn secs(duration: f32, lerp: LerpFn<T>) -> Self {
         Self {
-            table: TypeTable::new(),
-            keys: HashSet::new(),
-            ticks: Vec::new(),
-        }
-    }
-}
-
-impl<H: Host> TweenTable<H> {
-    pub(crate) fn insert<T>(
-        &mut self,
-        node: H::Node,
-        key: FieldId,
-        tween: Tween<H, T>,
-    ) where
-        T: Clone + Send + Sync + 'static,
-    {
-        let id = TypeId::of::<T>();
-        if !self.ticks.iter().any(|(seen, _)| *seen == id) {
-            self.ticks.push((id, tick::<H, T>));
-        }
-
-        let key = FieldKey::new(node, key);
-        // Drop any tween already on this field, whatever its type.
-        self.table.remove_row(&key);
-        self.table.insert(key, tween);
-        self.keys.insert(key);
-    }
-
-    /// The tween on `(node, key)`, if one is running with value type
-    /// `T`.
-    pub(crate) fn running<T: 'static>(
-        &mut self,
-        node: H::Node,
-        key: FieldId,
-    ) -> Option<&mut Tween<H, T>> {
-        self.table.get_mut::<Tween<H, T>>(&FieldKey::new(node, key))
-    }
-
-    pub(crate) fn retain(
-        &mut self,
-        mut keep: impl FnMut(H::Node) -> bool,
-    ) {
-        let table = &mut self.table;
-        self.keys.retain(|key| {
-            let live = keep(key.node);
-            if !live {
-                table.remove_row(key);
-            }
-            live
-        });
-    }
-
-    /// Advance every tween by `dt`.
-    pub(crate) fn advance(
-        &mut self,
-        dt: f32,
-        world: &mut H::World,
-        theme: &H::Theme,
-    ) {
-        for i in 0..self.ticks.len() {
-            (self.ticks[i].1)(&mut self.table, dt, world, theme);
+            duration,
+            ease: motiongfx_interp::ease::linear,
+            lerp,
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.keys.len()
+    pub fn ms(duration: u32, lerp: LerpFn<T>) -> Self {
+        Self::secs(duration as f32 / 1000.0, lerp)
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.keys.is_empty()
+    pub fn ease(mut self, ease: EaseFn) -> Self {
+        self.ease = ease;
+        self
+    }
+
+    /// The eased `0..=1` progress at `elapsed`.
+    pub(crate) fn at(&self, elapsed: f32) -> f32 {
+        if self.duration <= 0.0 {
+            return 1.0;
+        }
+        (self.ease)((elapsed / self.duration).clamp(0.0, 1.0))
+    }
+
+    pub(crate) fn done(&self, elapsed: f32) -> bool {
+        elapsed >= self.duration
     }
 }
 
-/// Lay a tween over `key` on `node`, starting from `base`.
-pub(crate) fn insert_tween<H, T>(
-    tweens: &mut TweenTable<H>,
-    node: H::Node,
-    key: FieldId,
-    write: fn(&mut Patch<H>, &T),
-    base: T,
-    curve: Transition<T>,
-) where
-    H: Host,
-    T: Clone + Send + Sync + 'static,
-{
-    tweens.insert(
-        node,
-        key,
-        Tween {
-            write,
-            from: base.clone(),
-            base,
-            target: None,
-            // Settled on the base until something aims it.
-            elapsed: curve.duration,
-            curve,
-        },
-    );
+// A derive would bound `T: Clone`; only the fn pointers get cloned.
+impl<T> Clone for Tween<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
+
+impl<T> Copy for Tween<T> {}

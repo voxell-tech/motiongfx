@@ -1,6 +1,6 @@
-//! A tween travels to what it was aimed at, carries on from wherever
-//! it is when that changes, and gives the element back when it lets
-//! go.
+//! A transition travels to what it was aimed at, carries on from
+//! wherever it is when that changes, and gives the element back when
+//! it lets go.
 
 mod common;
 
@@ -10,7 +10,7 @@ use common::{
 use fynix::element::element;
 use fynix::host::Host;
 use fynix::style::Style;
-use fynix::transition::Transition;
+use fynix::tween::Tween;
 use fynix::ui::Build;
 use fynix::{Fynix, WorldNodeRef, elem};
 use motiongfx_interp::ease;
@@ -44,11 +44,8 @@ fn travelling() -> (World, usize, Fynix<FynixHost>, usize) {
         |ui| {
             ui.elem(elem!(Label, size = 0u32)).transition(
                 |label| label.size(),
-                Transition::secs(
-                    1.0,
-                    <u32 as Interpolation<()>>::interp,
-                )
-                .ease(ease::linear),
+                Tween::secs(1.0, <u32 as Interpolation<()>>::interp)
+                    .ease(ease::linear),
             );
         },
         &mut world,
@@ -60,7 +57,7 @@ fn travelling() -> (World, usize, Fynix<FynixHost>, usize) {
 }
 
 #[test]
-fn base_is_what_shows_until_something_aims_the_tween() {
+fn base_is_what_shows_until_something_aims_the_transition() {
     let (mut world, _, mut kernel, label) = travelling();
 
     assert_eq!(world.get(label).size, 0);
@@ -122,14 +119,14 @@ fn releasing_travels_back_to_the_base() {
 }
 
 #[test]
-fn element_keeps_the_base_while_a_tween_is_in_flight() {
+fn element_keeps_the_base_while_a_transition_is_in_flight() {
     let (mut world, root, mut kernel, label) = travelling();
 
     kernel.aim::<Label, _>(label, |label| label.size(), Some(100));
     kernel.flush(&mut world);
     assert_eq!(world.get(label).size, 25, "the backend moved");
 
-    // Whatever the tween shows, the element is still what the cascade
+    // Whatever the transition shows, the element is still what the cascade
     // left: a rebuild starts from the base, not from mid flight.
     kernel.unwatch(root);
     kernel.watch(
@@ -148,9 +145,9 @@ fn element_keeps_the_base_while_a_tween_is_in_flight() {
 
 #[test]
 fn style_carries_what_moves_as_well_as_what_it_looks_like() {
-    /// A style has no node to wire a tween onto, so what moves is the
+    /// A style has no node to wire a transition onto, so what moves is the
     /// element's own business - `Grower` leaves a slot for a style to
-    /// fill, and wires the tween itself once it has a node to put it
+    /// fill, and wires the transition itself once it has a node to put it
     /// on.
     #[element(build = Self::build)]
     pub struct Grower {
@@ -161,7 +158,7 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
         #[default(13)]
         pub size: u32,
         /// What a style asks this to grow to under the pointer, if
-        /// anything. Read once, when the tween is wired.
+        /// anything. Read once, when the transition is wired.
         #[elem(ignore)]
         pub grows_to: Option<u32>,
     }
@@ -185,7 +182,7 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
                 .transition_from(
                     |g| g.size(),
                     self.size,
-                    Transition::secs(
+                    Tween::secs(
                         1.0,
                         <u32 as Interpolation<()>>::interp,
                     ),
@@ -237,13 +234,13 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
 }
 
 #[test]
-fn tween_goes_with_the_node_it_was_declared_on() {
+fn transition_goes_with_the_node_it_was_declared_on() {
     let (mut world, _, mut kernel, label) = travelling();
 
-    assert_eq!(kernel.tween_len(), 1);
+    assert_eq!(kernel.transition_len(), 1);
 
     FynixHost::despawn(&mut world, label);
     kernel.flush(&mut world);
 
-    assert_eq!(kernel.tween_len(), 0);
+    assert_eq!(kernel.transition_len(), 0);
 }
