@@ -36,7 +36,7 @@ impl Composer<FynixHost> for InspectorPanel {
 
 fn build(ui: &mut BevyUi) {
     let Some(entity) = ui.world.resource::<SelectedEntity>().0 else {
-        let muted = ui.theme.text_muted;
+        let muted = ui.theme.color.text_dim;
         ui.elem(elem!(
             Label,
             text = "Nothing selected",

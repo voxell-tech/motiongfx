@@ -198,7 +198,7 @@ impl Composer<FynixHost> for AddComponent {
                     icon = elem!(
                         Icon,
                         image = icons::PLUS,
-                        color = theme.text_muted
+                        color = theme.color.text_dim
                     )
                 ))
                 .insert((MenuButton, ActivateOnPress));
@@ -215,7 +215,7 @@ impl Composer<FynixHost> for AddComponent {
                                     Label,
                                     text = "Nothing left to add"
                                         .to_string(),
-                                    color = theme.text_muted
+                                    color = theme.color.text_dim
                                 )
                             ));
                             return;
@@ -248,10 +248,10 @@ fn add_component_item(
             Label,
             text = name.to_string(),
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         )
     ))
-    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
+    .lit(|item| item.fill(), theme.color.hover, theme.color.hover)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(move |world: &mut World| {
             add_component(world, entity, component);
@@ -333,7 +333,7 @@ fn add_component(
 /// have been headed.
 fn single(ui: &mut BevyUi, name: &str, field: Field) {
     let name = name.to_string();
-    let primary = ui.theme.text_primary;
+    let primary = ui.theme.color.text;
 
     ui.compose(FieldRow {
         label: name,

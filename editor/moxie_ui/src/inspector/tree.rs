@@ -347,7 +347,7 @@ fn build_leaf(
 
     // Dimmer than the value it labels: the field name is a caption,
     // not the content.
-    let muted = ui.theme.text_muted;
+    let muted = ui.theme.color.text_dim;
     let label = leaf_name(&path).to_string();
     let field = root.child(&path);
     ui.compose(FieldRow {
@@ -372,7 +372,7 @@ fn build_variant(
     depth: u32,
 ) {
     let field = root.child(&path);
-    let muted = ui.theme.text_muted;
+    let muted = ui.theme.color.text_dim;
 
     if children.is_empty() {
         let label = leaf_name(&path).to_string();
@@ -482,8 +482,8 @@ impl<F: BuildFn<FynixHost>> Composer<FynixHost> for Section<F> {
                 sections.0.contains(&(component, path.clone()))
             });
 
-        let muted = ui.theme.text_muted;
-        let primary = ui.theme.text_primary;
+        let muted = ui.theme.color.text_dim;
+        let primary = ui.theme.color.text;
         ui.compose(Foldable {
             header: elem!(
                 !TintButton::default(),

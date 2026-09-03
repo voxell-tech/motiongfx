@@ -1,11 +1,14 @@
 //! Editor theme: the raw Monokai Pro palette plus the semantic slots
-//! the UI actually reads (text, accent, interaction fades).
+//! the UI reads, grouped by what they govern.
 //!
 //! Palette mirrors
 //! `examples/bevy_examples/assets/typst/monokai_pro.typ`
 //! so typst-rendered content and the editor chrome share one look.
 
+use std::time::Duration;
+
 use bevy::prelude::*;
+use motiongfx_interp::ease::{self, EaseFn};
 
 use crate::monokai;
 
@@ -38,56 +41,172 @@ impl Default for Palette {
     }
 }
 
-/// The editor UI's look: semantic colors, timing, and sizing.
+/// A line: its width and its colour.
+#[derive(Clone, Copy, Debug)]
+pub struct Stroke {
+    pub width: f32,
+    pub color: Color,
+}
+
+/// A selected thing: its fill and its outline.
+#[derive(Clone, Copy, Debug)]
+pub struct Selection {
+    pub fill: Color,
+    pub stroke: Stroke,
+}
+
+/// The editor's look, grouped by what it governs.
 #[derive(Clone, Debug)]
 pub struct EditorTheme {
     pub palette: Palette,
+    pub color: Colors,
+    pub space: Spacing,
+    pub text: TextScale,
+    pub motion: Motion,
+}
+
+/// Semantic colour slots. A fill is translucent and layers over
+/// whatever is behind it; a ground is opaque.
+#[derive(Clone, Copy, Debug)]
+pub struct Colors {
     /// Primary (active) text.
-    pub text_primary: Color,
+    pub text: Color,
     /// Secondary / inactive text and icons.
-    pub text_muted: Color,
-    /// Interactive accent (active tabs, drop targets).
+    pub text_dim: Color,
+    /// A third, fainter tier, for a de-emphasised label beside a
+    /// brighter one.
+    pub text_faint: Color,
+    /// Interactive accent.
     pub accent: Color,
-    /// Subtle hover fill for list rows and the like.
-    pub hover_fill: Color,
-    /// Playhead / destructive accents.
+    /// Destructive accents, and a draft or error state.
     pub critical: Color,
-    /// The faint surface a filled button rests at.
-    pub button_fill: Color,
+    /// The editor's own ground.
+    pub bg: Color,
+    /// Panels and popups.
+    pub panel: Color,
+    /// A raised strip within a panel.
+    pub surface: Color,
+    /// What a filled control rests at.
+    pub fill: Color,
+    /// A barely-there fill, for a tint rather than a surface.
+    pub fill_faint: Color,
+    /// Dividers and borders.
+    pub hairline: Stroke,
     /// What a plain surface fades to under the cursor.
-    pub hover_overlay: Color,
-    /// What it fades to further while held.
-    pub press_overlay: Color,
-    /// How long a hover/press fade takes.
-    pub interact_ms: u32,
-    /// What a timeline clip brightens to under the cursor. Its own
-    /// family of color, not [`Self::hover_overlay`]'s neutral gray.
+    pub hover: Color,
+    /// A selected row or region.
+    pub selection: Selection,
+    /// A timeline clip's fill and border.
+    pub clip: Selection,
+    /// What a clip brightens to under the cursor, then further while
+    /// held. Its own family of colour, not [`Self::hover`]'s neutral
+    /// gray.
     pub clip_hover: Color,
-    /// Same, further while held.
     pub clip_press: Color,
+}
+
+/// The spacing and sizing scale.
+#[derive(Clone, Copy, Debug)]
+pub struct Spacing {
+    pub xs: f32,
+    pub sm: f32,
+    pub md: f32,
+    pub lg: f32,
+    pub xl: f32,
+    /// The default corner.
+    pub radius: f32,
+    /// The standard height of a row or an interactive control.
+    pub row: f32,
+    /// A toolbar button's square.
+    pub touch: f32,
+    /// The default icon.
+    pub icon: f32,
+    /// A divider or rail's thickness.
+    pub hairline: f32,
     /// A fold's chevron, sized to sit beside a row.
     pub fold_toggle: f32,
     /// How far a fold's rail sets its body in from the header.
     pub fold_indent: f32,
 }
 
+/// Font sizes, three steps.
+#[derive(Clone, Copy, Debug)]
+pub struct TextScale {
+    pub small: f32,
+    pub body: f32,
+    pub label: f32,
+}
+
+/// How the UI moves.
+#[derive(Clone, Copy, Debug)]
+pub struct Motion {
+    /// How long a hover or press fade takes.
+    pub interact: Duration,
+    /// The curve an interaction fade follows.
+    pub ease: EaseFn,
+}
+
 impl Default for EditorTheme {
     fn default() -> Self {
         let palette = Palette::default();
+        let base = palette.base;
         Self {
-            text_primary: palette.base[8],
-            text_muted: palette.base[6],
-            accent: palette.blue,
-            hover_fill: palette.base[8].with_alpha(0.06),
-            critical: palette.red,
-            button_fill: palette.base[8].with_alpha(0.06),
-            hover_overlay: palette.base[8].with_alpha(0.14),
-            press_overlay: palette.base[8].with_alpha(0.22),
-            interact_ms: 120,
-            clip_hover: Color::srgb(0.35, 0.70, 1.0),
-            clip_press: Color::srgb(0.55, 0.82, 1.0),
-            fold_toggle: 14.0,
-            fold_indent: 9.0,
+            color: Colors {
+                text: base[8],
+                text_dim: base[6],
+                text_faint: base[8].with_alpha(0.6),
+                accent: palette.blue,
+                critical: palette.red,
+                bg: base[0],
+                panel: base[1],
+                surface: base[2],
+                fill: base[8].with_alpha(0.06),
+                fill_faint: base[8].with_alpha(0.03),
+                hairline: Stroke {
+                    width: 1.0,
+                    color: base[8].with_alpha(0.08),
+                },
+                hover: base[8].with_alpha(0.14),
+                selection: Selection {
+                    fill: palette.blue.with_alpha(0.18),
+                    stroke: Stroke {
+                        width: 1.0,
+                        color: palette.blue,
+                    },
+                },
+                clip: Selection {
+                    fill: palette.blue.with_alpha(0.5),
+                    stroke: Stroke {
+                        width: 1.0,
+                        color: palette.blue,
+                    },
+                },
+                clip_hover: Color::srgb(0.35, 0.70, 1.0),
+                clip_press: Color::srgb(0.55, 0.82, 1.0),
+            },
+            space: Spacing {
+                xs: 2.0,
+                sm: 4.0,
+                md: 6.0,
+                lg: 8.0,
+                xl: 12.0,
+                radius: 4.0,
+                row: 24.0,
+                touch: 26.0,
+                icon: 11.0,
+                hairline: 1.0,
+                fold_toggle: 14.0,
+                fold_indent: 9.0,
+            },
+            text: TextScale {
+                small: 10.0,
+                body: 12.0,
+                label: 14.0,
+            },
+            motion: Motion {
+                interact: Duration::from_millis(120),
+                ease: ease::cubic::ease_out,
+            },
             palette,
         }
     }

@@ -128,9 +128,9 @@ where
             on_toggle,
         } = self;
 
-        let muted = ui.theme.text_muted;
-        let toggle_size = ui.theme.fold_toggle;
-        let indent = ui.theme.fold_indent;
+        let muted = ui.theme.color.text_dim;
+        let toggle_size = ui.theme.space.fold_toggle;
+        let indent = ui.theme.space.fold_indent;
         let chevron = enabled && folds_on == FoldsOn::Chevron;
 
         let mut root = ui.elem(elem!(

@@ -164,7 +164,7 @@ fn build_popup(ui: &mut BevyUi) {
 
 /// Windows are single-instance, so only closed ones are listed.
 fn build_rows(ui: &mut BevyUi, area: Entity) {
-    let text_color = ui.theme.text_primary;
+    let text_color = ui.theme.color.text;
     let tree = ui.world.resource::<DockTree>();
     let closed = ui
         .world
@@ -177,7 +177,7 @@ fn build_rows(ui: &mut BevyUi, area: Entity) {
     // Every window is already open, so the popup would be a blank
     // box: say why it is empty rather than showing nothing.
     if closed.is_empty() {
-        let muted = ui.theme.text_muted;
+        let muted = ui.theme.color.text_dim;
 
         ui.elem(elem!(
             Label,

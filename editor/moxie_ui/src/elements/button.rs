@@ -45,7 +45,7 @@ pub struct Button {
     pub column_gap: Val,
     /// The surface at rest. A style that sits on something already a
     /// surface clears it to [`Color::NONE`].
-    #[elem(default = theme.button_fill, patch = PatchBackground)]
+    #[elem(default = theme.color.fill, patch = PatchBackground)]
     pub fill: Color,
     #[elem(default = px(26), patch = PatchWidth)]
     pub width: Val,
@@ -74,7 +74,7 @@ pub struct Button {
     pub corners: Option<BorderRadius>,
     /// Read once, when the lanes are wired. A style that lights its
     /// icon and label instead sets [`Hover::IconLabel`].
-    #[elem(ignore, default = Hover::Fill(theme.hover_overlay))]
+    #[elem(ignore, default = Hover::Fill(theme.color.hover))]
     hover: Hover,
 }
 
@@ -157,7 +157,7 @@ impl Style for TintButton {
         button.height = Val::Auto;
         button.radius = Val::ZERO;
         button.hover =
-            Hover::IconLabel(self.tint.unwrap_or(theme.accent));
+            Hover::IconLabel(self.tint.unwrap_or(theme.color.accent));
     }
 }
 
@@ -196,14 +196,14 @@ impl Style for SegmentButton {
         button.radius = Val::ZERO;
         button.flex_grow = 1.0;
         button.fill = if self.active {
-            theme.accent
+            theme.color.accent
         } else {
-            theme.button_fill
+            theme.color.fill
         };
         button.hover = if self.active {
             Hover::None
         } else {
-            Hover::Fill(theme.hover_overlay)
+            Hover::Fill(theme.color.hover)
         };
     }
 }

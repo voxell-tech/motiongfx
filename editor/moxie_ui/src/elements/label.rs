@@ -11,7 +11,7 @@ use super::patch::*;
 pub struct Label {
     #[elem(patch = PatchText)]
     pub text: String,
-    #[elem(default = 12.0, patch = PatchTextSize)]
+    #[elem(default = theme.text.body, patch = PatchTextSize)]
     pub size: f32,
     /// [`Color::NONE`] leaves the colour to the theme.
     #[elem(default = ::NONE, patch = PatchTextColor)]

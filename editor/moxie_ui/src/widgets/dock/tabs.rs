@@ -49,7 +49,7 @@ pub(super) fn build_tab_bar(
 
 /// The "+" at the end of the bar, which opens the window list.
 fn build_add_button(area: Entity, ui: &mut BevyUi) {
-    let muted = ui.theme.text_muted;
+    let muted = ui.theme.color.text_dim;
 
     ui.elem(elem!(
         !TintButton::default(),
@@ -73,11 +73,11 @@ fn build_tab(
 ) {
     let is_active = active_of(ui.world, leaf) == Some(tab_id);
     let theme = ui.theme;
-    let primary = theme.text_primary;
-    let muted = theme.text_muted;
+    let primary = theme.color.text;
+    let muted = theme.color.text_dim;
     let lit = text_color(ui.world, leaf, tab_id, primary, muted);
     let close_color = muted;
-    let close_hover = theme.critical;
+    let close_hover = theme.color.critical;
 
     let mut tab = ui.elem(elem!(
         Tab,

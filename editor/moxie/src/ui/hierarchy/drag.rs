@@ -224,7 +224,7 @@ fn ghost(at: Vec2, name: String, theme: &EditorTheme) -> impl Bundle {
             border_radius: BorderRadius::all(px(3)),
             ..default()
         },
-        BackgroundColor(theme.accent.with_alpha(0.85)),
+        BackgroundColor(theme.color.accent.with_alpha(0.85)),
         GlobalZIndex(200),
         Pickable::IGNORE,
         children![(

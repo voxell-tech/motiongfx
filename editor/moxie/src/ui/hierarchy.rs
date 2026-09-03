@@ -209,7 +209,7 @@ fn seam(
     above: Option<Entity>,
     below: Option<Entity>,
 ) {
-    let accent = ui.theme.accent;
+    let accent = ui.theme.color.accent;
 
     ui.elem(elem!(
         Frame,
@@ -278,8 +278,8 @@ impl Composer<FynixHost> for Subtree {
     ) -> ElementHandle<FynixHost, Frame> {
         let entity = self.entity;
         let name = name_of(ui.world, entity);
-        let text = ui.theme.text_primary;
-        let accent = ui.theme.accent;
+        let text = ui.theme.color.text;
+        let accent = ui.theme.color.accent;
 
         ui.compose(Foldable {
             header: elem!(

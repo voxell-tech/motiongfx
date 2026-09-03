@@ -211,7 +211,7 @@ fn name(
         Label,
         text = current,
         wrap = false,
-        color = theme.text_primary
+        color = theme.color.text
     ))
     .bind(
         |label| label.text(),
@@ -240,20 +240,20 @@ fn control(
             Label,
             text = current,
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         ),
         chevron = elem!(
             Icon,
             image = icons::CHEVRON,
-            color = theme.text_muted,
+            color = theme.color.text_dim,
             size = px(9),
             rotation = 180.0f32
         )
     ))
     .lit(
         |dropdown| dropdown.fill(),
-        theme.hover_overlay,
-        theme.hover_overlay,
+        theme.color.hover,
+        theme.color.hover,
     )
     .bind(
         |dropdown| dropdown.label().text(),
@@ -296,10 +296,10 @@ fn option(
             Label,
             text = variant,
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         )
     ))
-    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
+    .lit(|item| item.fill(), theme.color.hover, theme.color.hover)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         let (source, variant) = (edited.boxed(), chosen.clone());
 

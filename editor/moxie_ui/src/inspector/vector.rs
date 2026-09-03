@@ -45,7 +45,7 @@ fn axis_color(theme: &EditorTheme, name: &str) -> Color {
         "x" => monokai::RED,
         "y" => monokai::GREEN,
         "z" => monokai::BLUE,
-        _ => theme.text_muted,
+        _ => theme.color.text_dim,
     }
 }
 

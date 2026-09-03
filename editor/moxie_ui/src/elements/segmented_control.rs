@@ -58,7 +58,7 @@ where
                 let text_color = if active {
                     theme.palette.base[0]
                 } else {
-                    theme.text_primary
+                    theme.color.text
                 };
                 let corners = segment_corners(i, count);
                 let on_select = on_select.clone();

@@ -204,8 +204,8 @@ impl Composer<FynixHost> for BookmarkRow {
             ui.world.resource::<AssetFoldState>().0.contains(&path);
         let toggle_path = path.clone();
 
-        let muted = ui.theme.text_muted;
-        let primary = ui.theme.text_primary;
+        let muted = ui.theme.color.text_dim;
+        let primary = ui.theme.color.text;
 
         ui.compose(Foldable {
             header: elem!(
@@ -238,7 +238,7 @@ impl Composer<FynixHost> for BookmarkRow {
                 // icon/label slots. It takes its own click for
                 // itself, so the header's fold never hears it.
                 header.with(move |ui| {
-                    let critical = ui.theme.critical;
+                    let critical = ui.theme.color.critical;
                     // Eats whatever room icon and label leave, so
                     // the delete button lands flush against the far
                     // end.
@@ -325,8 +325,8 @@ impl Composer<FynixHost> for FolderRow {
             ui.world.resource::<AssetFoldState>().0.contains(&path);
         let toggle_path = path.clone();
 
-        let muted = ui.theme.text_muted;
-        let primary = ui.theme.text_primary;
+        let muted = ui.theme.color.text_dim;
+        let primary = ui.theme.color.text;
 
         ui.compose(Foldable {
             header: elem!(
@@ -455,7 +455,7 @@ fn file_row(ui: &mut BevyUi, path: &Path) {
     let color = if kind.is_some() {
         ui.theme.palette.purple
     } else {
-        ui.theme.text_muted
+        ui.theme.color.text_dim
     };
 
     let mut row = ui.elem(elem!(

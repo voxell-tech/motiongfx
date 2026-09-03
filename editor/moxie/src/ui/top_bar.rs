@@ -102,7 +102,7 @@ fn title(ui: &mut BevyUi, theme: &EditorTheme, name: &str) {
             Label,
             text = name.to_string(),
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         )
     ))
     // What the menu's own observer reaches this through to open the
@@ -125,10 +125,10 @@ fn item(
             Label,
             text = entry.to_string(),
             wrap = false,
-            color = theme.text_primary
+            color = theme.color.text
         )
     ))
-    .lit(|item| item.fill(), theme.hover_overlay, theme.hover_overlay)
+    .lit(|item| item.fill(), theme.color.hover, theme.color.hover)
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(run);
     });

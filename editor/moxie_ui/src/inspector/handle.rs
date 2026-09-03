@@ -29,7 +29,7 @@ impl<T: Asset + TypePath> Inspect for Handle<T> {
     fn build(source: &dyn Source, ui: &mut BevyUi) {
         let read = source.boxed();
         let written = source.boxed();
-        let muted = ui.theme.text_muted;
+        let muted = ui.theme.color.text_dim;
         let kind = TypeId::of::<T>();
         let label = label_of::<T>(ui.world, &*read);
 

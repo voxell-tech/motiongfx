@@ -215,7 +215,7 @@ fn axis_view(world: &World, node: Entity) -> (u32, TimelineView) {
 
 fn build_ticks(ui: &mut BevyUi) {
     let (width, view) = axis_view(ui.world, ui.parent());
-    let color = ui.theme.text_muted;
+    let color = ui.theme.color.text_dim;
     let marks = time_axis::ticks(&view, width as f32);
 
     for tick in marks {
@@ -373,7 +373,7 @@ impl Composer<FynixHost> for BlockHeader {
             is_selected,
         } = self;
         let theme = ui.theme;
-        let default_color = theme.text_primary;
+        let default_color = theme.color.text;
         let selected_color = theme.palette.purple;
 
         let block_color = if is_selected {
@@ -382,8 +382,8 @@ impl Composer<FynixHost> for BlockHeader {
             default_color
         };
 
-        let chevron_color = theme.text_primary.with_alpha(0.6);
-        let label_color = theme.text_primary.with_alpha(0.8);
+        let chevron_color = theme.color.text.with_alpha(0.6);
+        let label_color = theme.color.text.with_alpha(0.8);
 
         let mut header = ui.elem(elem!(
             TimelineBlock,
@@ -452,7 +452,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 width = px(placed.x - gap_x),
                 height = px(placed.h),
                 image = image,
-                color = theme.text_muted.with_alpha(0.35)
+                color = theme.color.text_dim.with_alpha(0.35)
             ))
             .insert(drag::GapPath(placed.path.clone()));
         }
@@ -500,14 +500,14 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 // as an empty slot in the critical color, rather than
                 // a real action's fill.
                 let fill = if placed.draft {
-                    theme.critical.with_alpha(0.5)
+                    theme.color.critical.with_alpha(0.5)
                 } else {
                     theme.palette.blue.with_alpha(0.5)
                 };
                 let border = if is_selected {
-                    theme.accent
+                    theme.color.accent
                 } else if placed.draft {
-                    theme.critical.with_alpha(0.5)
+                    theme.color.critical.with_alpha(0.5)
                 } else {
                     Color::NONE
                 };
@@ -518,7 +518,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                         text = label.clone(),
                         size = 10.0f32,
                         color = if placed.draft {
-                            theme.critical.with_alpha(0.9)
+                            theme.color.critical.with_alpha(0.9)
                         } else {
                             theme.palette.blue.with_alpha(0.9)
                         }
@@ -534,8 +534,8 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 clip.insert(drag::BoxPath(placed.path.clone()))
                     .lit(
                         |action| action.fill(),
-                        theme.clip_hover,
-                        theme.clip_press,
+                        theme.color.clip_hover,
+                        theme.color.clip_press,
                     )
                     .observe({
                         let path = path.clone();
@@ -603,7 +603,7 @@ fn edge_handle(
     y: f32,
     h: f32,
 ) {
-    let accent = ui.theme.accent;
+    let accent = ui.theme.color.accent;
     let mut handle = ui.elem(elem!(
         Frame,
         position = PositionType::Absolute,
