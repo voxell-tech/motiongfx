@@ -280,6 +280,7 @@ impl Composer<FynixHost> for Subtree {
         let name = name_of(ui.world, entity);
         let text = ui.theme.color.text;
         let accent = ui.theme.color.accent;
+        let select = ui.theme.color.selection;
 
         ui.compose(Foldable {
             header: elem!(
@@ -321,7 +322,7 @@ impl Composer<FynixHost> for Subtree {
                         |button| button.fill(),
                         highlight_changed(entity),
                         move |WorldNodeRef { world, .. }| {
-                            highlight(world, entity, accent)
+                            highlight(world, entity, accent, select)
                         },
                     )
                     .bind(
@@ -376,14 +377,19 @@ struct Collapsed;
 
 /// What a row's own surface says: a drop landing inside it beats
 /// whether it is selected, and most rows are neither.
-fn highlight(world: &World, entity: Entity, accent: Color) -> Color {
+fn highlight(
+    world: &World,
+    entity: Entity,
+    accent: Color,
+    select: Color,
+) -> Color {
     if world
         .resource::<drag::Dragging>()
         .shows(entity, drag::At::Into)
     {
         accent.with_alpha(0.35)
     } else if world.resource::<SelectedEntity>().0 == Some(entity) {
-        accent.with_alpha(0.18)
+        select
     } else {
         Color::NONE
     }

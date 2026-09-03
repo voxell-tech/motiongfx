@@ -41,20 +41,6 @@ impl Default for Palette {
     }
 }
 
-/// A line: its width and its colour.
-#[derive(Clone, Copy, Debug)]
-pub struct Stroke {
-    pub width: f32,
-    pub color: Color,
-}
-
-/// A selected thing: its fill and its outline.
-#[derive(Clone, Copy, Debug)]
-pub struct Selection {
-    pub fill: Color,
-    pub stroke: Stroke,
-}
-
 /// The editor's look, grouped by what it governs.
 #[derive(Clone, Debug)]
 pub struct EditorTheme {
@@ -91,13 +77,13 @@ pub struct Colors {
     /// A barely-there fill, for a tint rather than a surface.
     pub fill_faint: Color,
     /// Dividers and borders.
-    pub hairline: Stroke,
+    pub hairline: Color,
     /// What a plain surface fades to under the cursor.
     pub hover: Color,
-    /// A selected row or region.
-    pub selection: Selection,
-    /// A timeline clip's fill and border.
-    pub clip: Selection,
+    /// A selected row's surface tint.
+    pub selection: Color,
+    /// A timeline clip's fill.
+    pub clip: Color,
     /// What a clip brightens to under the cursor, then further while
     /// held. Its own family of colour, not [`Self::hover`]'s neutral
     /// gray.
@@ -162,25 +148,10 @@ impl Default for EditorTheme {
                 surface: base[2],
                 fill: base[8].with_alpha(0.06),
                 fill_faint: base[8].with_alpha(0.03),
-                hairline: Stroke {
-                    width: 1.0,
-                    color: base[8].with_alpha(0.08),
-                },
+                hairline: base[8].with_alpha(0.08),
                 hover: base[8].with_alpha(0.14),
-                selection: Selection {
-                    fill: palette.blue.with_alpha(0.18),
-                    stroke: Stroke {
-                        width: 1.0,
-                        color: palette.blue,
-                    },
-                },
-                clip: Selection {
-                    fill: palette.blue.with_alpha(0.5),
-                    stroke: Stroke {
-                        width: 1.0,
-                        color: palette.blue,
-                    },
-                },
+                selection: palette.blue.with_alpha(0.18),
+                clip: palette.blue.with_alpha(0.5),
                 clip_hover: Color::srgb(0.35, 0.70, 1.0),
                 clip_press: Color::srgb(0.55, 0.82, 1.0),
             },

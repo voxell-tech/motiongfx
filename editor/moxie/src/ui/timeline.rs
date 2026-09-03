@@ -382,7 +382,7 @@ impl Composer<FynixHost> for BlockHeader {
             default_color
         };
 
-        let chevron_color = theme.color.text.with_alpha(0.6);
+        let chevron_color = theme.color.text_faint;
         let label_color = theme.color.text.with_alpha(0.8);
 
         let mut header = ui.elem(elem!(
@@ -502,7 +502,7 @@ fn build_block_boxes(ui: &mut BevyUi) {
                 let fill = if placed.draft {
                     theme.color.critical.with_alpha(0.5)
                 } else {
-                    theme.palette.blue.with_alpha(0.5)
+                    theme.color.clip
                 };
                 let border = if is_selected {
                     theme.color.accent
