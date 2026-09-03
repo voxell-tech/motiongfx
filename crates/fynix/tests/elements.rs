@@ -30,7 +30,7 @@ pub struct Button {
     pub label: Label,
     /// Present by default, so the tests that want one say nothing and
     /// the one that wants none clears it.
-    #[elem(child, default = Some(Icon { glyph: '+' }))]
+    #[elem(child, default = Some(Icon::base(theme)))]
     pub icon: Option<Icon>,
     #[elem(default = 4, patch = WritePadding)]
     pub padding: u32,

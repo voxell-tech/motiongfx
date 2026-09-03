@@ -87,8 +87,6 @@ pub trait Style {
 
 /// [`ElementBase::base`] then the style, the first two layers of an
 /// [`elem!`](crate::elem!) with a `!style`.
-///
-/// Not for hand-written code.
 #[doc(hidden)]
 pub fn styled<S: Style>(
     style: S,
@@ -104,8 +102,6 @@ pub fn styled<S: Style>(
 /// The value a field of an [`elem!`](crate::elem!) starts from: an
 /// element from its [`ElementBase::base`], anything else from its
 /// [`Default`].
-///
-/// `#[element]` writes the element case; the blanket covers the rest.
 pub trait Seed<Th> {
     fn seed(theme: &Th) -> Self;
 }

@@ -1,11 +1,11 @@
 //! The [`elem!`] macro: an element construction deferred until the
 //! theme is in hand, as `FnOnce(&Theme) -> Element`.
 //!
-//! Three layers, in precedence order:
-//! [`ElementBase::base`](crate::element::ElementBase::base) or
-//! [`Seed`](crate::style::Seed) -> [`Style`](crate::style::Style) ->
-//! the call site's own fields. [`Ui::elem`](crate::ui::Ui::elem) runs
-//! the whole thing once, with the theme.
+//! Three layers, in precedence order: the element's
+//! [`base`](crate::element::ElementBase::base), a
+//! [`Style`](crate::style::Style), then the call site's own fields.
+//! [`Ui::elem`](crate::ui::Ui::elem) runs the whole thing once, with
+//! the theme.
 
 // For docs.
 #[expect(unused_imports)]
@@ -18,9 +18,8 @@ use crate::elem;
 /// element, written without it; each converts through [`From`], and
 /// `field = elem!(..)` starts that nested field from the same theme.
 ///
-/// A field expression that reads the theme takes it from a local, not
-/// through the `Ui`: the closure is `move`, so a bare `ui.theme` in
-/// there captures `ui` itself.
+/// A field expression that needs the theme reads it from a local: the
+/// closure is `move`, so a bare `ui.theme` would capture `ui`.
 ///
 /// ```
 /// # #![allow(path_statements)]
