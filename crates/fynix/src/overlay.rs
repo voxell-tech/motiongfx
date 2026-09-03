@@ -5,31 +5,16 @@
 //! carries what the backend is showing and writes it every frame,
 //! straight through the field's `#[elem(patch = ...)]` tag.
 
-use alloc::boxed::Box;
-use core::any::Any;
+use alloc::vec::Vec;
+use core::any::TypeId;
 
-use hashbrown::HashMap;
+use hashbrown::HashSet;
+use typarena::type_table::TypeTable;
 
 use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::transition::Transition;
 use crate::ui::Patch;
-
-/// A field with a transitioning value over it, ticked once a frame.
-///
-/// The erased view of a [`Tween`]: the flush loop advances every
-/// overlay without knowing the value type.
-pub(crate) trait Overlay<H: Host>: Any + Send + Sync {
-    /// Advance by `dt` and write what it reached. `false` once it has
-    /// arrived home and the base is what shows.
-    fn advance(
-        &mut self,
-        dt: f32,
-        world: &mut H::World,
-        node: H::Node,
-        theme: &H::Theme,
-    ) -> bool;
-}
 
 /// One field's transition in progress.
 pub(crate) struct Tween<H: Host, T> {
@@ -80,23 +65,18 @@ impl<H: Host, T: Clone> Tween<H, T> {
         }
         self.base = base.clone();
     }
-}
 
-impl<H, T> Overlay<H> for Tween<H, T>
-where
-    H: Host,
-    T: Clone + Send + Sync + 'static,
-{
+    /// Advance by `dt` and write what it reached.
     fn advance(
         &mut self,
         dt: f32,
         world: &mut H::World,
         node: H::Node,
         theme: &H::Theme,
-    ) -> bool {
+    ) {
         // Arrived home: nothing to write, the base shows.
         if self.target.is_none() && self.curve.done(self.elapsed) {
-            return false;
+            return;
         }
 
         self.elapsed += dt;
@@ -106,72 +86,117 @@ where
         // the base earlier this flush cannot win.
         let mut patch = Patch::new(world, node, theme);
         (self.write)(&mut patch, &shown);
+    }
+}
 
-        true
+/// Advances every [`Tween<H, T>`] in the table's column for one `T`.
+type TickFn<H> = fn(
+    &mut TypeTable<(<H as Host>::Node, FieldId)>,
+    f32,
+    &mut <H as Host>::World,
+    &<H as Host>::Theme,
+);
+
+fn tick<H, T>(
+    table: &mut TypeTable<(H::Node, FieldId)>,
+    dt: f32,
+    world: &mut H::World,
+    theme: &H::Theme,
+) where
+    H: Host,
+    T: Clone + Send + Sync + 'static,
+{
+    for ((node, _), tween) in table.iter_mut::<Tween<H, T>>() {
+        let node = *node;
+        tween.advance(dt, world, node, theme);
     }
 }
 
 /// Every field with an overlay. One per field - a second overlay on
 /// the same field replaces rather than doubles.
-pub struct Overlays<H: Host>(
-    HashMap<(H::Node, FieldId), Box<dyn Overlay<H>>>,
-);
+///
+/// A column per value type in `table`, so a frame advances one
+/// contiguous run per type rather than chasing a boxed trait object
+/// per field. `keys` is the set to sweep; `ticks` holds one advance
+/// function per value type seen.
+pub struct Overlays<H: Host> {
+    table: TypeTable<(H::Node, FieldId)>,
+    keys: HashSet<(H::Node, FieldId)>,
+    ticks: Vec<(TypeId, TickFn<H>)>,
+}
 
 impl<H: Host> Default for Overlays<H> {
     fn default() -> Self {
-        Self(HashMap::new())
+        Self {
+            table: TypeTable::new(),
+            keys: HashSet::new(),
+            ticks: Vec::new(),
+        }
     }
 }
 
 impl<H: Host> Overlays<H> {
-    pub(crate) fn insert(
+    pub(crate) fn insert<T>(
         &mut self,
         node: H::Node,
         key: FieldId,
-        overlay: Box<dyn Overlay<H>>,
-    ) {
-        self.0.insert((node, key), overlay);
+        tween: Tween<H, T>,
+    ) where
+        T: Clone + Send + Sync + 'static,
+    {
+        let id = TypeId::of::<T>();
+        if !self.ticks.iter().any(|(seen, _)| *seen == id) {
+            self.ticks.push((id, tick::<H, T>));
+        }
+
+        // Drop any overlay already on this field, whatever its type.
+        self.table.remove_row(&(node, key));
+        self.table.insert((node, key), tween);
+        self.keys.insert((node, key));
     }
 
-    /// The overlay on `(node, key)`, downcast to the `Tween<H, T>` it
-    /// must be. `None` if there is no overlay there.
+    /// The overlay on `(node, key)` as the `Tween<H, T>` it must be.
+    /// `None` if there is no overlay there.
     pub(crate) fn tween<T: 'static>(
         &mut self,
         node: H::Node,
         key: FieldId,
     ) -> Option<&mut Tween<H, T>> {
-        let overlay = self.0.get_mut(&(node, key))?.as_mut();
-        let any: &mut dyn Any = overlay;
-        let tween = any.downcast_mut();
-        debug_assert!(
-            tween.is_some(),
-            "an overlay's value type does not match the field's"
-        );
-        tween
+        self.table.get_mut::<Tween<H, T>>(&(node, key))
     }
 
     pub(crate) fn retain(
         &mut self,
         mut keep: impl FnMut(H::Node) -> bool,
     ) {
-        self.0.retain(|(node, _), _| keep(*node));
+        let table = &mut self.table;
+        self.keys.retain(|&(node, key)| {
+            let live = keep(node);
+            if !live {
+                table.remove_row(&(node, key));
+            }
+            live
+        });
     }
 
-    pub(crate) fn iter_mut(
+    /// Advance every overlay by `dt`.
+    pub(crate) fn advance(
         &mut self,
-    ) -> impl Iterator<Item = (H::Node, &mut Box<dyn Overlay<H>>)>
-    {
-        self.0
-            .iter_mut()
-            .map(|((node, _), overlay)| (*node, overlay))
+        dt: f32,
+        world: &mut H::World,
+        theme: &H::Theme,
+    ) {
+        for i in 0..self.ticks.len() {
+            (self.ticks[i].1)(&mut self.table, dt, world, theme);
+        }
     }
 
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.keys.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.keys.is_empty()
     }
 }
 
@@ -190,7 +215,7 @@ pub(crate) fn insert_overlay<H, T>(
     overlays.insert(
         node,
         key,
-        Box::new(Tween {
+        Tween {
             write,
             from: base.clone(),
             base,
@@ -198,6 +223,6 @@ pub(crate) fn insert_overlay<H, T>(
             // Settled on the base until something aims it.
             elapsed: curve.duration,
             curve,
-        }),
+        },
     );
 }

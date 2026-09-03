@@ -257,10 +257,7 @@ impl<H: Host> Fynix<H> {
         // After the bindings, so an overlay gets the last word over
         // the base they left.
         let delta = H::delta(world);
-
-        for (node, overlay) in overlays.iter_mut() {
-            overlay.advance(delta, world, node, theme);
-        }
+        overlays.advance(delta, world, theme);
     }
 
     /// Point a transitioning field at `target`, or release it back to
