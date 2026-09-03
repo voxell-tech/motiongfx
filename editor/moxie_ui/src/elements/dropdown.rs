@@ -141,10 +141,6 @@ pub struct DropdownList {
     /// alone keeps the look feathers gave it.
     #[elem(default = px(4), patch = PatchRadius)]
     pub radius: Val,
-    /// Top and bottom room inside the list. The popup scene's own,
-    /// unless a menu bar wants its rows flush.
-    #[elem(default = px(4), patch = PatchListPadY)]
-    pub pad_y: Val,
 }
 
 impl DropdownList {
@@ -157,13 +153,14 @@ impl DropdownList {
             return;
         }
         // The rest of the node belongs to the popup scene, and writing
-        // it whole would undo the placement.
+        // it whole would undo the placement. The scene's own vertical
+        // padding goes: rows sit flush.
         if let Some(mut layout) = build.entity_mut().get_mut::<Node>()
         {
             layout.min_width = self.width;
             layout.border_radius = BorderRadius::all(self.radius);
-            layout.padding.top = self.pad_y;
-            layout.padding.bottom = self.pad_y;
+            layout.padding.top = px(0);
+            layout.padding.bottom = px(0);
         }
     }
 }
@@ -172,14 +169,6 @@ impl DropdownList {
 // on `min_width`.
 field_patch!(PatchListWidth, Val, |patch, v| {
     node(patch, |n| n.min_width = *v);
-});
-
-// Vertical only: the popup scene owns the horizontal padding.
-field_patch!(PatchListPadY, Val, |patch, v| {
-    node(patch, |n| {
-        n.padding.top = *v;
-        n.padding.bottom = *v;
-    });
 });
 
 /// One row of a [`DropdownList`].
