@@ -151,8 +151,6 @@ impl Style for TintButton {
         button.hover = Hover::IconLabel;
     }
 
-    // `apply` runs before the call site builds `icon`/`label`, so it
-    // cannot reach them; `finish` runs after and wins instead.
     fn finish(&self, button: &mut Button, theme: &EditorTheme) {
         let tint = self.tint.unwrap_or(theme.color.accent);
         if let Some(icon) = &mut button.icon {

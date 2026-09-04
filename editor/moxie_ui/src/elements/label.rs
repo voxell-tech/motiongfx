@@ -22,9 +22,8 @@ pub struct Label {
         on(Hovered, read = Self::lit),
     ))]
     pub color: Color,
-    /// What `color` travels to while the pointer is over whatever
-    /// owns this label; `None` leaves it at rest. Element state: the
-    /// lines read it, nothing draws it.
+    /// What `color` travels to while hovered; `None` rests. Element
+    /// state: nothing draws it, only the anim line reads it.
     pub hover_color: Option<Color>,
     #[elem(patch = PatchBold)]
     pub bold: bool,

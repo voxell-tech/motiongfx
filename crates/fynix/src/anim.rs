@@ -5,7 +5,7 @@
 //! names the [`Source`] the field heads to, and the field's base names
 //! it when none match. Changing a tag re-resolves the node's fields
 //! and starts or redirects a [`Transition`]; [`AnimTable::tick`] plays
-//! them out. See `docs/transition_tag_model.md`.
+//! them out.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -469,7 +469,8 @@ fn retarget<H, T>(
         transition.elapsed = Duration::ZERO;
         transition.tween = tween;
         if reverse {
-            // Only as far back as it had come.
+            // Only as far back as it had come - an approximation,
+            // not true velocity continuity at the reversal.
             transition.tween.duration = tween.duration.min(spent);
         }
         return;

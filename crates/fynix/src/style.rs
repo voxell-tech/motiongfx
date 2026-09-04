@@ -85,8 +85,7 @@ pub trait Style {
     }
 
     /// After them - late enough to reach a child the call site just
-    /// built, which `apply` runs too early to see. Most styles never
-    /// need this; the default does nothing.
+    /// built, which `apply` runs too early to see.
     fn finish(
         &self,
         element: &mut Self::Element,

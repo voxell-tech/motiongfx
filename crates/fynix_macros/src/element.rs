@@ -478,8 +478,6 @@ pub fn expand(
                         elem, world, node, records, theme,
                     );
                     records.store_mut().insert(node, #id, child);
-                    // Mount it as an element in its own right, so a tag
-                    // lands on it and its `anim(...)` lines resolve.
                     records.mount_child(child, ::core::clone::Clone::clone(elem));
                 }
             });
@@ -722,9 +720,8 @@ fn rewrite_struct(
         #[derive(#root::lenz::Lenz)]
     });
     out.attrs.push(parse_quote!(#[lenz(crate = #root::lenz)]));
-    // A `#[elem(child)]` child is snapshotted into the element table
-    // at build so its `anim(...)` lines have a value to resolve
-    // against; that snapshot is a clone.
+    // A `#[elem(child)]` child is cloned into the element table at
+    // build, for its `anim(...)` lines to resolve against.
     out.attrs
         .push(parse_quote!(#[derive(::core::clone::Clone)]));
 
