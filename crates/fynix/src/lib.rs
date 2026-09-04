@@ -253,8 +253,6 @@ impl<H: Host> Fynix<H> {
         self.records
             .register_anim(core::any::TypeId::of::<E>(), fields);
     }
-
-
 }
 
 /// Despawn the kernel's children of `root`. The sweep in

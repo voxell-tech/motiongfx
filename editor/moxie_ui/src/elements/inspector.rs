@@ -27,8 +27,8 @@ use fynix::records::{BuildFn, ChangedFn};
 use fynix::ui::ElementHandle;
 
 use super::{
-    Dropdown, DropdownItem, DropdownList,
-    DropdownMenu, Frame, Icon, Label, TintButton,
+    Dropdown, DropdownItem, DropdownList, DropdownMenu, Frame, Icon,
+    Label, TintButton,
 };
 use crate::icons;
 use crate::inspector::{

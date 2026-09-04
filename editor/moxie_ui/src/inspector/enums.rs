@@ -14,7 +14,6 @@
 //! whichever variant it is already on, with that variant's fields
 //! walked underneath like a struct's.
 
-use bevy_fynix::tag::TagExt as _;
 use bevy::prelude::*;
 use bevy::reflect::enums::{
     DynamicEnum, DynamicVariant, VariantInfo,
@@ -26,6 +25,7 @@ use bevy::reflect::{
     PartialReflect, ReflectRef, TypeInfo, TypeRegistry,
 };
 use bevy::ui_widgets::Activate;
+use bevy_fynix::tag::TagExt as _;
 
 use bevy_fynix::WorldEntityMut;
 use fynix::WorldNodeRef;
@@ -35,8 +35,8 @@ use fynix::ui::ElementHandle;
 
 use super::{Source, when_changed};
 use crate::elements::{
-    Dropdown, DropdownCursor, DropdownItem,
-    DropdownList, DropdownMenu, Frame, Icon, Label, LabelCursor,
+    Dropdown, DropdownCursor, DropdownItem, DropdownList,
+    DropdownMenu, Frame, Icon, Label, LabelCursor,
 };
 use crate::icons;
 use crate::reactive::{BevyUi, FynixHost};

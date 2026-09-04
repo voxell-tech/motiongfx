@@ -7,8 +7,8 @@ use crate::lenz::{FieldPath, Tagged};
 /// value lands on, `world`, and `theme`.
 ///
 /// No [`Store`](crate::store::Store) or
-/// [`TransitionTable`](crate::transition::TransitionTable) here. A
-/// patch writes a value; it wires nothing.
+/// [`AnimTable`](crate::anim::AnimTable) here. A patch writes a
+/// value; it wires nothing.
 pub struct Patch<'a, H: Host> {
     pub world: &'a mut H::World,
     pub theme: &'a H::Theme,

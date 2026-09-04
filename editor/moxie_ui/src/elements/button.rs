@@ -78,7 +78,7 @@ pub struct Button {
     /// segments). `None` rounds all four corners by `radius`.
     #[elem(patch = PatchCorners)]
     pub corners: Option<BorderRadius>,
-    /// What lights up under the cursor. See [`Hover`].
+    /// What lights up under the cursor.
     #[elem(ignore, default = Hover::Fill(theme.color.hover))]
     pub hover: Hover,
 }

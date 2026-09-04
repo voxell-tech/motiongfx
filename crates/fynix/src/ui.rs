@@ -238,7 +238,6 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         self
     }
 
-
     /// Write `value` into `cursor` whenever `changed` fires, then push
     /// that one field straight to the backend.
     ///

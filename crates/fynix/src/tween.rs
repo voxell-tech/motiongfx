@@ -1,7 +1,6 @@
 //! The shape of a field's move to a new value: how long, along what
-//! curve, and how the value itself is walked. A transition plays one
-//! out. See
-//! [`ElementMut::transition`](crate::ui::ElementMut::transition).
+//! curve, and how the value itself is walked. `#[elem(anim(...))]`
+//! names one per field; [`crate::anim`] plays it.
 
 use core::time::Duration;
 
@@ -52,7 +51,6 @@ impl<T> Tween<T> {
             elapsed.as_secs_f32() / self.duration.as_secs_f32();
         (self.ease)(linear.clamp(0.0, 1.0))
     }
-
 }
 
 // A derive would bound `T: Clone`; only the fn pointers get cloned.

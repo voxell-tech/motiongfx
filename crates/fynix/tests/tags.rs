@@ -106,7 +106,11 @@ fn tag_travels_to_its_line() {
     kernel.set_tag(node, Hovered);
     flush(&mut kernel, &mut world, 4);
 
-    assert_eq!(world.get(node).size, 100, "arrived at the hover size");
+    assert_eq!(
+        world.get(node).size,
+        100,
+        "arrived at the hover size"
+    );
     assert_eq!(world.get(node).border_width, 40, "border too");
 }
 

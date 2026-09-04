@@ -4,7 +4,7 @@
 //! list of lines, one per `on(...)`; the first whose tag is active
 //! names the [`Source`] the field heads to, and the field's base names
 //! it when none match. Changing a tag re-resolves the node's fields
-//! and starts or redirects a [`Transition`]; [`AnimTable::tick`] plays
+//! and starts or redirects a `Transition`; [`AnimTable::tick`] plays
 //! them out.
 
 use alloc::boxed::Box;
@@ -202,7 +202,12 @@ impl<H: Host> AnimTable<H> {
             };
             let key = FieldKey::new(node, field.field);
             retarget(
-                elements, &mut self.rows, &self.pool, key, from, to,
+                elements,
+                &mut self.rows,
+                &self.pool,
+                key,
+                from,
+                to,
             );
 
             // A retarget that found nothing to move leaves no row,

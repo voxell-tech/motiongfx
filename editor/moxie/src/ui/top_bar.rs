@@ -1,18 +1,18 @@
 //! The menu bar above the dock, holding what acts on the project as a
 //! whole rather than on anything a panel is showing.
 
-use bevy_fynix::tag::TagExt as _;
 use bevy::prelude::*;
 use bevy::ui_widgets::{
     Activate, ActivateOnPress, MenuButton as MenuButtonBehavior,
 };
 use bevy_fynix::WorldEntityMut;
+use bevy_fynix::tag::TagExt as _;
 use fynix::composer::Composer;
 use fynix::elem;
 use fynix::ui::ElementHandle;
 use moxie_ui::elements::{
-    Dropdown, DropdownItem, DropdownList,
-    DropdownMenu, Frame, Label, MenuButton,
+    Dropdown, DropdownItem, DropdownList, DropdownMenu, Frame, Label,
+    MenuButton,
 };
 use moxie_ui::reactive::{BevyUi, FynixHost};
 use moxie_ui::theme::EditorTheme;

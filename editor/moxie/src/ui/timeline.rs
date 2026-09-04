@@ -31,11 +31,10 @@ use fynix::composer::Composer;
 use fynix::elem;
 use fynix::ui::ElementHandle;
 use moxie_ui::elements::{
-    Button, ButtonCursor, Frame, GhostButton, Icon,
-    IconCursor, Label, LabelCursor, Panel, PlayheadLine,
-    PlayheadLineCursor, ScrollArea, TimeLabel, TimeTick,
-    TimelineAction, TimelineBlock, TimelineGap,
-    TintButton,
+    Button, ButtonCursor, Frame, GhostButton, Icon, IconCursor,
+    Label, LabelCursor, Panel, PlayheadLine, PlayheadLineCursor,
+    ScrollArea, TimeLabel, TimeTick, TimelineAction, TimelineBlock,
+    TimelineGap, TintButton,
 };
 use moxie_ui::fold::{CHEVRON_OPEN, CHEVRON_SHUT};
 use moxie_ui::reactive::{

@@ -93,7 +93,6 @@ impl World {
     pub fn get(&self, node: usize) -> &Node {
         self.nodes.get(&node).expect("live node")
     }
-
 }
 
 pub struct FynixHost;
