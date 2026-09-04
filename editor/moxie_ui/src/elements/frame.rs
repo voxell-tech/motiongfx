@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_fynix::tag::{Hovered, Pressed};
 use fynix::element::element;
 
 use super::patch::*;
@@ -56,8 +57,19 @@ pub struct Frame {
     pub radius: Val,
     /// Transparent by default, for a frame that only wants the
     /// layout.
-    #[elem(default = ::NONE, patch = PatchBackground)]
+    #[elem(default = ::NONE, patch = PatchBackground, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        on(Pressed, read = Self::pressed),
+        on(Hovered, read = Self::hovered),
+    ))]
     pub background: Color,
+    /// What `background` travels to under the cursor; `None` rests.
+    #[elem(ignore)]
+    pub hover_background: Option<Color>,
+    /// While held. Falls back to `hover_background` when unset.
+    #[elem(ignore)]
+    pub press_background: Option<Color>,
     /// `None` hides it, which is how a frame that depends on a size it
     /// has not measured yet avoids showing up at its intrinsic size
     /// for a frame.
@@ -68,4 +80,23 @@ pub struct Frame {
     /// parent's, where the tree already puts it.
     #[elem(patch = PatchOptionalZ)]
     pub z: Option<i32>,
+}
+
+impl Frame {
+    /// Where `background` heads under the cursor, or its own colour
+    /// when none was set, so it stays put.
+    fn hovered(&self) -> &Color {
+        match &self.hover_background {
+            Some(color) => color,
+            None => &self.background,
+        }
+    }
+
+    /// While held, falling back to the hover shade.
+    fn pressed(&self) -> &Color {
+        match &self.press_background {
+            Some(color) => color,
+            None => self.hovered(),
+        }
+    }
 }

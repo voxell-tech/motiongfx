@@ -4001,6 +4001,7 @@ version = "0.3.0"
 dependencies = [
  "bevy",
  "bevy_fynix",
+ "bevy_motiongfx",
  "fynix",
  "motiongfx_interp",
  "moxie_asset",

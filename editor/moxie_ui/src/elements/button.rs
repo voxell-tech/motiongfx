@@ -8,9 +8,10 @@ use fynix::element::element;
 use fynix::style::Style;
 
 use super::patch::*;
-use super::{Icon, IconCursor, Label, LabelCursor};
-use crate::motion::LitFrom as _;
+use super::{Icon, Label};
 use crate::theme::EditorTheme;
+use bevy::picking::events::{Out, Over, Pointer};
+use bevy_fynix::tag::{Hovered, TagExt as _};
 
 /// What lights up under the cursor, and to what colour. A style has
 /// no node to wire this on, so it leaves the choice here for the
@@ -22,8 +23,10 @@ pub enum Hover {
     None,
     /// The surface itself.
     Fill(Color),
-    /// The icon and label, not the surface.
-    IconLabel(Color),
+    /// The icon and label, not the surface. Their own `hover_color`
+    /// carries the shade - set by a [`Style`]'s
+    /// [`finish`](Style::finish), late enough to reach a child.
+    IconLabel,
 }
 
 /// A hit area holding an icon, a label, both, or whatever is built
@@ -44,7 +47,11 @@ pub struct Button {
     pub column_gap: Val,
     /// The surface at rest. [`Color::NONE`] for a button that sits on
     /// something already a surface.
-    #[elem(default = theme.color.fill, patch = PatchBackground)]
+    #[elem(default = theme.color.fill, patch = PatchBackground, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        on(Hovered, read = Self::lit),
+    ))]
     pub fill: Color,
     #[elem(default = px(theme.space.touch), patch = PatchWidth)]
     pub width: Val,
@@ -71,12 +78,21 @@ pub struct Button {
     /// segments). `None` rounds all four corners by `radius`.
     #[elem(patch = PatchCorners)]
     pub corners: Option<BorderRadius>,
-    /// What lights up under the cursor. See [`Hover`].
+    /// What lights up under the cursor.
     #[elem(ignore, default = Hover::Fill(theme.color.hover))]
-    hover: Hover,
+    pub hover: Hover,
 }
 
 impl Button {
+    /// Where `fill` heads under the cursor. Only [`Hover::Fill`]
+    /// moves the surface; the others leave it at rest.
+    fn lit(&self) -> &Color {
+        match &self.hover {
+            Hover::Fill(color) => color,
+            _ => &self.fill,
+        }
+    }
+
     fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             Node {
@@ -87,51 +103,29 @@ impl Button {
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
 
-        // Wired against a base already in hand as `self`: the node
-        // has no entry in the kernel's table yet for `.lit()` to read
-        // one from. Both stops light to the same colour: `Hover`
-        // carries one shade, not separate hover/press ones.
-        let (fill, icon_label) = match self.hover {
-            Hover::None => (None, None),
-            Hover::Fill(color) => (Some(color), None),
-            Hover::IconLabel(color) => (None, Some(color)),
-        };
-
-        if let Some(color) = fill {
-            build.lit_from(
-                |button| button.fill(),
-                self.fill,
-                color,
-                color,
-            );
+        if matches!(self.hover, Hover::None) {
+            return;
         }
 
-        if let Some(tint) = icon_label {
-            // Read straight from `self`: an absent icon/label is
-            // skipped, same as if it were never lit at all.
-            if let Some(icon) = &self.icon {
-                build.lit_from(
-                    |button| button.icon().color(),
-                    icon.color,
-                    tint,
-                    tint,
-                );
-            }
-            // `Color::NONE` is the themed default, no base to lerp
-            // from.
-            if let Some(color) = self
-                .label
-                .as_ref()
-                .map(|label| label.color)
-                .filter(|color| *color != Color::NONE)
-            {
-                build.lit_from(
-                    |button| button.label().color(),
-                    color,
-                    tint,
-                    tint,
-                );
-            }
+        // The button's own hit area drives all three: the icon and
+        // label have none of their own, and would not see the
+        // pointer at all.
+        let node = build.id();
+        build.pointer_tags();
+
+        for child in [
+            build.child(|button| button.icon()),
+            build.child(|button| button.label()),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            build.tag_node_from::<Pointer<Over>, _>(
+                child, node, Hovered,
+            );
+            build.untag_node_from::<Pointer<Out>, Hovered>(
+                child, node,
+            );
         }
     }
 }
@@ -149,13 +143,22 @@ impl Style for TintButton {
     type Host = FynixHost;
     type Element = Button;
 
-    fn apply(self, button: &mut Button, theme: &EditorTheme) {
+    fn apply(&self, button: &mut Button, _theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.width = Val::Auto;
         button.height = Val::Auto;
         button.radius = Val::ZERO;
-        button.hover =
-            Hover::IconLabel(self.tint.unwrap_or(theme.color.accent));
+        button.hover = Hover::IconLabel;
+    }
+
+    fn finish(&self, button: &mut Button, theme: &EditorTheme) {
+        let tint = self.tint.unwrap_or(theme.color.accent);
+        if let Some(icon) = &mut button.icon {
+            icon.hover_color = Some(tint);
+        }
+        if let Some(label) = &mut button.label {
+            label.hover_color = Some(tint);
+        }
     }
 }
 
@@ -167,7 +170,7 @@ impl Style for MenuButton {
     type Host = FynixHost;
     type Element = Button;
 
-    fn apply(self, button: &mut Button, _theme: &EditorTheme) {
+    fn apply(&self, button: &mut Button, _theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.width = Val::Auto;
         button.height = percent(100);
@@ -188,7 +191,7 @@ impl Style for SegmentButton {
     type Host = FynixHost;
     type Element = Button;
 
-    fn apply(self, button: &mut Button, theme: &EditorTheme) {
+    fn apply(&self, button: &mut Button, theme: &EditorTheme) {
         button.width = Val::Auto;
         button.height = px(theme.space.row);
         button.radius = Val::ZERO;
@@ -215,7 +218,7 @@ impl Style for GhostButton {
     type Host = FynixHost;
     type Element = Button;
 
-    fn apply(self, button: &mut Button, theme: &EditorTheme) {
+    fn apply(&self, button: &mut Button, theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.width = Val::Auto;
         button.height = Val::Auto;

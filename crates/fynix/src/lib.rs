@@ -11,10 +11,10 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use crate::host::Host;
-use crate::lenz::{Cursor, FieldPath, Identity};
 use crate::records::{BuildFn, ChangedFn, Records, Watcher};
 use crate::ui::Ui;
 
+pub mod anim;
 pub mod composer;
 mod elem;
 pub mod element;
@@ -22,7 +22,6 @@ pub mod host;
 pub mod records;
 pub mod store;
 pub mod style;
-pub mod transition;
 pub mod tween;
 pub mod ui;
 pub mod world_node;
@@ -128,6 +127,12 @@ impl<H: Host> Fynix<H> {
         // still schedules another rebuild.
         let retheme = core::mem::take(&mut self.theme_dirty);
 
+        // Registrations bake in the tweens the old theme named, so
+        // the rebuild below has to make them again.
+        if retheme {
+            self.records.anim.forget();
+        }
+
         // Split so `records` stays writable while `watchers` is
         // borrowed by the loop below.
         let Self {
@@ -166,14 +171,16 @@ impl<H: Host> Fynix<H> {
         // the app despawned another. Sweep both before touching any
         // dead handle.
         records.bindings.retain(|key, _| H::exists(world, key.node));
-        records.transitions.retain(|node| H::exists(world, node));
+        records.anim.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
         // `elements` is keyed by type as well as node, so it cannot
         // say what it holds. `element_nodes` is the list to sweep.
-        records.element_nodes.retain(|node| {
+        records.element_nodes.retain(|node, _| {
             let alive = H::exists(world, *node);
             if !alive {
+                // Takes the node's tags with it: they are columns on
+                // the same row.
                 records.elements.remove_row(node);
             }
             alive
@@ -181,7 +188,6 @@ impl<H: Host> Fynix<H> {
 
         let Records {
             bindings,
-            transitions,
             elements,
             store,
             ..
@@ -192,57 +198,60 @@ impl<H: Host> Fynix<H> {
             if !(binding.changed)(WorldNodeRef::new(world, node)) {
                 continue;
             }
-            (binding.apply)(
-                elements,
-                transitions,
-                world,
-                node,
-                store,
-                theme,
-            );
+            (binding.apply)(elements, world, node, store, theme);
         }
 
-        // After the bindings, so a transition gets the last word over
-        // the base they left.
+        // After the bindings, so a leg gets the last word over the
+        // value they left.
         let delta = H::delta(world);
-        transitions.advance(delta, world, theme);
+        records.anim.tick(delta, world, &records.elements, theme);
     }
 
-    /// Point a transitioning field at `target`, or release it back to
-    /// its base with `None`. Aiming a field with no transition does
-    /// nothing.
-    pub fn aim<E, P>(
-        &mut self,
-        node: H::Node,
-        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
-        target: Option<P::Target>,
-    ) where
-        E: 'static,
-        P: FieldPath<Source = E>,
-        P::Target: Clone + Send + Sync + 'static,
-    {
-        let cursor = field(Cursor::new());
-        let key = cursor.key();
-
-        // The transition sits on the node that owns the field, which
-        // for a path through a `#[elem(child)]` is a child of `node`.
-        let mut parents = cursor.hops();
-        parents.pop();
-        let Some(owner) = self.records.store.resolve(node, &parents)
-        else {
+    /// Tag `node`, replacing any tag of the same type it already
+    /// carries. Its animated fields re-resolve and travel to whatever
+    /// the new tag set names.
+    pub fn set_tag<T: anim::Tag>(&mut self, node: H::Node, tag: T) {
+        let Records {
+            anim,
+            elements,
+            element_nodes,
+            ..
+        } = &mut self.records;
+        let Some(kind) = element_nodes.get(&node).copied() else {
             return;
         };
-
-        if let Some(transition) =
-            self.records.transitions.running::<P::Target>(owner, key)
-        {
-            transition.aim(target);
-        }
+        anim.set_tag(elements, kind, node, tag);
     }
 
-    /// How many transitioning fields the kernel is holding.
-    pub fn transition_len(&self) -> usize {
-        self.records.transitions.len()
+    /// Drop `node`'s tag of type `T`. Its fields fall back to the
+    /// next active line, or to their base.
+    pub fn unset_tag<T: anim::Tag>(&mut self, node: H::Node) {
+        let Records {
+            anim,
+            elements,
+            element_nodes,
+            ..
+        } = &mut self.records;
+        let Some(kind) = element_nodes.get(&node).copied() else {
+            return;
+        };
+        anim.unset_tag::<T>(elements, kind, node);
+    }
+
+    /// How many fields are travelling under a tag.
+    pub fn moving_len(&self) -> usize {
+        self.records.anim.len()
+    }
+
+    /// Register element type `kind`'s animated fields. `#[element]`
+    /// emits this on the type's first build; a hand-rolled element
+    /// calls it itself.
+    pub fn register_anim<E: 'static>(
+        &mut self,
+        fields: impl FnOnce(&mut anim::Registrar<'_, H>),
+    ) {
+        self.records
+            .register_anim(core::any::TypeId::of::<E>(), fields);
     }
 }
 

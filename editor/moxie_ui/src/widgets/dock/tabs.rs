@@ -12,11 +12,10 @@ use fynix::elem;
 use super::area::DockTabAddButton;
 use super::tree::{DockNode, DockTree, NodeId, TabId};
 use crate::elements::{
-    ButtonCursor, GhostButton, Icon, IconCursor, Label, LabelCursor,
-    Tab, TabBar, TabCursor, TabRow, TintButton,
+    Icon, IconCursor, Label, LabelCursor, Tab, TabBar, TabCursor,
+    TabRow, TintButton,
 };
 use crate::icons;
-use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed};
 
 #[derive(Component)]
@@ -98,7 +97,9 @@ fn build_tab(
             wrap = false
         ),
         close = elem!(
-            !GhostButton,
+            !TintButton {
+                tint: Some(close_hover),
+            },
             width = px(14),
             height = px(14),
             padding = UiRect::ZERO,
@@ -157,13 +158,6 @@ fn build_tab(
             move |_: On<Activate>, mut tree: ResMut<DockTree>| {
                 tree.remove_tab(tab_id);
             },
-        );
-
-        tab.lit_entity(
-            close,
-            |tab| tab.close().icon().color(),
-            close_hover,
-            close_hover,
         );
     }
 }

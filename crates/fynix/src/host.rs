@@ -2,6 +2,7 @@
 
 use alloc::vec::Vec;
 use core::hash::Hash;
+use core::time::Duration;
 
 pub trait Host: Sized + Send + Sync + 'static {
     /// Opaque handle to a node.
@@ -15,8 +16,8 @@ pub trait Host: Sized + Send + Sync + 'static {
     /// Owned by [`Fynix`](crate::Fynix), not `World`.
     type Theme: 'static;
 
-    /// Seconds since the last flush. What a transition advances by.
-    fn delta(world: &Self::World) -> f32;
+    /// Time since the last flush. What a transition advances by.
+    fn delta(world: &Self::World) -> Duration;
 
     /// Create an empty node under `parent`, wired for
     /// [`Host::children`]/[`Host::despawn`] to find later.

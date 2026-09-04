@@ -18,6 +18,7 @@ use bevy::ui_widgets::{
 };
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
+use bevy_fynix::tag::{Hovered, Pressed, TagExt as _};
 use fynix::element::element;
 
 use super::patch::*;
@@ -59,8 +60,19 @@ pub struct Dropdown {
     pub max_width: Val,
     #[elem(default = px(22), patch = PatchHeight)]
     pub height: Val,
-    #[elem(default = theme.color.fill, patch = PatchBackground)]
+    #[elem(default = theme.color.fill, patch = PatchBackground, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        on(Pressed, read = Self::pressed),
+        on(Hovered, read = hover_fill),
+    ))]
     pub fill: Color,
+    /// What `fill` travels to under the cursor.
+    #[elem(ignore, default = theme.color.hover)]
+    pub hover_fill: Color,
+    /// While held. Falls back to `hover_fill` when unset.
+    #[elem(ignore)]
+    pub press_fill: Option<Color>,
     #[elem(default = px(4), patch = PatchRadius)]
     pub radius: Val,
 }
@@ -123,6 +135,7 @@ impl Dropdown {
             MenuButton,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
+        build.pointer_tags();
         Dropdown::hold_chevron(build);
     }
 }
@@ -181,8 +194,19 @@ pub struct DropdownItem {
     pub label: Label,
     #[elem(default = px(20), patch = PatchHeight)]
     pub height: Val,
-    #[elem(default = ::NONE, patch = PatchBackground)]
+    #[elem(default = ::NONE, patch = PatchBackground, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        on(Pressed, read = Self::pressed),
+        on(Hovered, read = hover_fill),
+    ))]
     pub fill: Color,
+    /// What `fill` travels to under the cursor.
+    #[elem(ignore, default = theme.color.hover)]
+    pub hover_fill: Color,
+    /// While held. Falls back to `hover_fill` when unset.
+    #[elem(ignore)]
+    pub press_fill: Option<Color>,
     #[elem(default = px(3), patch = PatchRadius)]
     pub radius: Val,
 }
@@ -203,5 +227,26 @@ impl DropdownItem {
             TabIndex(0),
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
+        build.pointer_tags();
+    }
+}
+
+impl Dropdown {
+    /// While held, falling back to the hover shade.
+    fn pressed(&self) -> &Color {
+        match &self.press_fill {
+            Some(color) => color,
+            None => &self.hover_fill,
+        }
+    }
+}
+
+impl DropdownItem {
+    /// While held, falling back to the hover shade.
+    fn pressed(&self) -> &Color {
+        match &self.press_fill {
+            Some(color) => color,
+            None => &self.hover_fill,
+        }
     }
 }

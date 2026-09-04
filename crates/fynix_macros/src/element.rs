@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use syn::{
-    Data, DeriveInput, Expr, Field, Fields, Path, Token, parse_quote,
-    punctuated::Punctuated,
+    Data, DeriveInput, Expr, Field, Fields, Ident, Path, Token,
+    parse_quote, punctuated::Punctuated,
 };
 
 use crate::common::{
@@ -56,6 +56,254 @@ struct FieldConfig {
     ignore: bool,
     patch: Option<Path>,
     default: Option<FieldDefault>,
+    anim: Option<AnimConfig>,
+}
+
+/// `#[elem(anim(ms = .., ease = .., interp = .., on(..), ..))]`: how
+/// a field travels, and the tags it answers to.
+struct AnimConfig {
+    duration: Duration,
+    ease: Option<Expr>,
+    /// Defaults to `<T as Interpolation<_>>::interp`.
+    interp: Option<Expr>,
+    /// In priority order, first match wins.
+    lines: Vec<AnimLine>,
+}
+
+/// One `on(<tag>, read = <field | path>, ms = .., ease = ..)`.
+struct AnimLine {
+    /// A value of the tag type: a unit struct, or an enum variant.
+    tag: Expr,
+    /// Where the destination value comes from.
+    from: LineValue,
+    duration: Option<Duration>,
+    ease: Option<Expr>,
+}
+
+/// What a line heads to.
+enum LineValue {
+    /// `read = <field>`, a sibling field read in place.
+    Field(Ident),
+    /// `read = <path>`, an `fn(&Self) -> &T` for a value the element
+    /// works out rather than stores.
+    Read(Expr),
+}
+
+impl LineValue {
+    /// A bare name is a field; a path with a qualifier is a method.
+    fn read(expr: Expr) -> Self {
+        match expr {
+            Expr::Path(expr_path)
+                if expr_path.path.segments.len() == 1 =>
+            {
+                LineValue::Field(
+                    expr_path
+                        .path
+                        .segments
+                        .iter()
+                        .next()
+                        .unwrap()
+                        .ident
+                        .clone(),
+                )
+            }
+            other => LineValue::Read(other),
+        }
+    }
+}
+
+/// How long a leg runs. Either form takes an expression, so a theme
+/// value serves as well as a literal.
+enum Duration {
+    /// `ms = <expr>`, milliseconds.
+    Millis(Expr),
+    /// `duration = <expr>`, a `core::time::Duration`.
+    Exact(Expr),
+}
+
+/// `Tween::ms(ms, interp).ease(ease)` for one destination.
+#[allow(clippy::too_many_arguments)]
+fn tween_of(
+    root: &TokenStream2,
+    field_ty: &syn::Type,
+    duration: &Duration,
+    ease: Option<&Expr>,
+    interp: Option<&Expr>,
+) -> TokenStream2 {
+    let interp = match interp {
+        Some(interp) => quote!(#interp),
+        None => quote! {
+            <#field_ty as #root::tween::Interpolation<_>>::interp
+        },
+    };
+    let tween = match duration {
+        Duration::Millis(ms) => {
+            quote!(#root::tween::Tween::ms(#ms, #interp))
+        }
+        Duration::Exact(dur) => {
+            quote!(#root::tween::Tween::new(#dur, #interp))
+        }
+    };
+    match ease {
+        Some(ease) => quote!(#tween.ease(#ease)),
+        None => tween,
+    }
+}
+
+/// One `registrar.field(...)` call: the field's base, then its lines
+/// in the order they were written.
+#[allow(clippy::too_many_arguments)]
+fn anim_field(
+    root: &TokenStream2,
+    host: &Path,
+    name: &Ident,
+    ty: &TokenStream2,
+    id: &TokenStream2,
+    patch: &Path,
+    field_name: &Ident,
+    field_ty: &syn::Type,
+    anim: &AnimConfig,
+) -> TokenStream2 {
+    let base_tween = tween_of(
+        root,
+        field_ty,
+        &anim.duration,
+        anim.ease.as_ref(),
+        anim.interp.as_ref(),
+    );
+
+    let lines = anim.lines.iter().map(|line| {
+        let tag = &line.tag;
+        let read = match &line.from {
+            LineValue::Field(field) => quote! {
+                |__elements, __node| __elements
+                    .get::<#name #ty>(&__node)
+                    .map(|__element| &__element.#field)
+            },
+            LineValue::Read(path) => quote! {
+                |__elements, __node| __elements
+                    .get::<#name #ty>(&__node)
+                    .map(#path)
+            },
+        };
+        let tween = tween_of(
+            root,
+            field_ty,
+            line.duration.as_ref().unwrap_or(&anim.duration),
+            line.ease.as_ref().or(anim.ease.as_ref()),
+            anim.interp.as_ref(),
+        );
+        quote! {
+            .on(
+                |__elements, __node| #root::anim::tagged::<#host, _>(
+                    __elements, __node, #tag,
+                ),
+                #read,
+                #tween,
+            )
+        }
+    });
+
+    quote! {
+        __registrar.field(
+            #id,
+            <#patch as #root::ui::FieldPatch<#host>>::patch,
+            |__elements, __node| __elements
+                .get::<#name #ty>(&__node)
+                .map(|__element| &__element.#field_name),
+            #base_tween,
+            |__lines| {
+                __lines #(#lines)*;
+            },
+        );
+    }
+}
+
+fn parse_anim(
+    meta: &syn::meta::ParseNestedMeta,
+) -> syn::Result<AnimConfig> {
+    let mut duration = None;
+    let mut ease = None;
+    let mut interp = None;
+    let mut lines = Vec::new();
+
+    meta.parse_nested_meta(|item| {
+        if item.path.is_ident("ms") {
+            duration = Some(Duration::Millis(item.value()?.parse()?));
+        } else if item.path.is_ident("duration") {
+            duration = Some(Duration::Exact(item.value()?.parse()?));
+        } else if item.path.is_ident("ease") {
+            ease = Some(item.value()?.parse()?);
+        } else if item.path.is_ident("interp") {
+            interp = Some(item.value()?.parse()?);
+        } else if item.path.is_ident("on") {
+            lines.push(parse_line(&item)?);
+        } else {
+            return Err(item.error(
+                "expected `ms`, `duration`, `ease`, `interp`, or \
+                 `on(...)`",
+            ));
+        }
+        Ok(())
+    })?;
+
+    let Some(duration) = duration else {
+        return Err(
+            meta.error("`anim` needs `ms = ...` or `duration = ...`")
+        );
+    };
+
+    Ok(AnimConfig {
+        duration,
+        ease,
+        interp,
+        lines,
+    })
+}
+
+fn parse_line(
+    meta: &syn::meta::ParseNestedMeta,
+) -> syn::Result<AnimLine> {
+    let mut tag: Option<Expr> = None;
+    let mut from: Option<LineValue> = None;
+    let mut duration = None;
+    let mut ease = None;
+
+    meta.parse_nested_meta(|item| {
+        if item.path.is_ident("read") {
+            from = Some(LineValue::read(item.value()?.parse()?));
+        } else if item.path.is_ident("ms") {
+            duration = Some(Duration::Millis(item.value()?.parse()?));
+        } else if item.path.is_ident("duration") {
+            duration = Some(Duration::Exact(item.value()?.parse()?));
+        } else if item.path.is_ident("ease") {
+            ease = Some(item.value()?.parse()?);
+        } else if tag.is_none() {
+            // The bare leading path is the tag itself, read as a
+            // value so `Pressed` and `ToggleState::On` are alike.
+            let path = item.path.clone();
+            tag = Some(parse_quote!(#path));
+        } else {
+            return Err(item.error(
+                "expected `read`, `ms`, `duration`, or `ease`",
+            ));
+        }
+        Ok(())
+    })?;
+
+    let Some(tag) = tag else {
+        return Err(meta.error("`on` needs a tag"));
+    };
+    let Some(from) = from else {
+        return Err(meta.error("`on` needs `read = ...`"));
+    };
+
+    Ok(AnimLine {
+        tag,
+        from,
+        duration,
+        ease,
+    })
 }
 
 /// The value a field starts from in `ElementBase::base`.
@@ -89,10 +337,12 @@ fn field_config(field: &Field) -> syn::Result<FieldConfig> {
                 } else {
                     FieldDefault::Expr(value.parse()?)
                 });
+            } else if meta.path.is_ident("anim") {
+                cfg.anim = Some(parse_anim(&meta)?);
             } else {
                 return Err(meta.error(
-                    "expected `child`, `ignore`, `patch = ...`, or \
-                     `default = ...`",
+                    "expected `child`, `ignore`, `patch = ...`, \
+                     `default = ...`, or `anim(...)`",
                 ));
             }
             Ok(())
@@ -109,6 +359,13 @@ fn field_config(field: &Field) -> syn::Result<FieldConfig> {
         return Err(syn::Error::new_spanned(
             field,
             "`#[elem(ignore)]` and `#[elem(patch)]` are exclusive",
+        ));
+    }
+    if cfg.anim.is_some() && cfg.patch.is_none() {
+        return Err(syn::Error::new_spanned(
+            field,
+            "`#[elem(anim(...))]` needs `patch = ...` to write \
+             through",
         ));
     }
 
@@ -151,6 +408,7 @@ pub fn expand(
     let mut despawns = Vec::new();
     let mut field_inits = Vec::new();
     let mut base_bounds = Vec::new();
+    let mut anim_fields = Vec::new();
 
     for field in fields.iter() {
         let field_name =
@@ -202,9 +460,13 @@ pub fn expand(
                 ),
             };
 
-            elem_bounds.push(
-                quote!(#elem_ty: #root::element::Element<#host>),
-            );
+            elem_bounds.push(quote!(
+                #elem_ty: #root::element::Element<#host>
+                    + ::core::clone::Clone
+                    + ::core::marker::Send
+                    + ::core::marker::Sync
+                    + 'static
+            ));
 
             let as_elem = quote!(
                 <#elem_ty as #root::element::Element<#host>>
@@ -216,6 +478,7 @@ pub fn expand(
                         elem, world, node, records, theme,
                     );
                     records.store_mut().insert(node, #id, child);
+                    records.mount_child(child, ::core::clone::Clone::clone(elem));
                 }
             });
 
@@ -255,14 +518,6 @@ pub fn expand(
             continue;
         }
 
-        let Some(patch) = &cfg.patch else {
-            return Err(syn::Error::new_spanned(
-                field,
-                "an own field needs `#[elem(patch = ...)]` or \
-                 `#[elem(ignore)]`",
-            ));
-        };
-
         let variant = format_ident!("{}", pascal_case(field_name));
         variants.push(quote!(#variant,));
         ids.push(quote!(#field_enum::#variant => #id,));
@@ -273,6 +528,12 @@ pub fn expand(
                 );
             }
         });
+
+        // A field with no `patch` is bare: addressable, and feeds
+        // lines and call sites, but nothing writes it.
+        let Some(patch) = &cfg.patch else {
+            continue;
+        };
 
         field_writes.push(quote! {
             {
@@ -296,6 +557,13 @@ pub fn expand(
                 return;
             }
         });
+
+        if let Some(anim) = &cfg.anim {
+            anim_fields.push(anim_field(
+                &root, host, name, ty, &id, patch, field_name,
+                field_ty, anim,
+            ));
+        }
     }
 
     let subject = rewrite_struct(ast, &root)?;
@@ -303,12 +571,21 @@ pub fn expand(
     let build_hook = opts.build.map(|build_fn| {
         quote! {
             {
-                let (__transitions, __store) = records.build_parts();
                 let mut __draw = #root::ui::Build::new(
-                    world, node, __transitions, __store, theme,
+                    world, node, records.store_mut(), theme,
                 );
                 (#build_fn)(self, &mut __draw);
             }
+        }
+    });
+
+    // Guarded inside, so only the first build of this type pays.
+    let anim_register = (!anim_fields.is_empty()).then(|| {
+        quote! {
+            records.register_anim(
+                ::core::any::TypeId::of::<Self>(),
+                |__registrar| { #(#anim_fields)* },
+            );
         }
     });
 
@@ -383,6 +660,8 @@ pub fn expand(
                 let node =
                     <#host as #root::host::Host>::spawn(world, parent);
 
+                #anim_register
+
                 #(#builds)*
 
                 #build_hook
@@ -441,6 +720,10 @@ fn rewrite_struct(
         #[derive(#root::lenz::Lenz)]
     });
     out.attrs.push(parse_quote!(#[lenz(crate = #root::lenz)]));
+    // A `#[elem(child)]` child is cloned into the element table at
+    // build, for its `anim(...)` lines to resolve against.
+    out.attrs
+        .push(parse_quote!(#[derive(::core::clone::Clone)]));
 
     let Data::Struct(data) = &mut out.data else {
         return Err(syn::Error::new_spanned(

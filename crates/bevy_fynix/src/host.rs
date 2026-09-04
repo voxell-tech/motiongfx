@@ -1,6 +1,7 @@
 //! The ECS as a [`Host`].
 
 use core::marker::PhantomData;
+use core::time::Duration;
 
 use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::prelude::*;
@@ -17,10 +18,10 @@ impl<Theme: Send + Sync + 'static> Host for BevyHost<Theme> {
     type World = World;
     type Theme = Theme;
 
-    fn delta(world: &World) -> f32 {
+    fn delta(world: &World) -> Duration {
         world
             .get_resource::<Time>()
-            .map(|time| time.delta_secs())
+            .map(|time| time.delta())
             .unwrap_or_default()
     }
 

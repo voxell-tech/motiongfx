@@ -4,15 +4,16 @@
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::any::TypeId;
 use core::hash::{Hash, Hasher};
 
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
 use typarena::type_table::TypeTable;
 
+use crate::anim::{AnimTable, Registrar};
 use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::store::Store;
-use crate::transition::TransitionTable;
 use crate::ui::Ui;
 use crate::world_node::WorldNodeRef;
 
@@ -92,7 +93,6 @@ type BoxedBuild<H> =
 type BoxedApply<H> = Box<
     dyn Fn(
             &mut ElementTable<H>,
-            &mut TransitionTable<H>,
             &mut <H as Host>::World,
             <H as Host>::Node,
             &mut Store<H>,
@@ -127,12 +127,13 @@ pub type ElementTable<H> = TypeTable<<H as Host>::Node>;
 pub struct Records<H: Host> {
     /// Keyed by the whole walk. Binding a field twice replaces it.
     pub(crate) bindings: HashMap<FieldKey<H>, Binding<H>>,
-    /// Keyed like `bindings`, one per field.
-    pub(crate) transitions: TransitionTable<H>,
+    /// Tag-driven transitions, and what a build registered for them.
+    pub(crate) anim: AnimTable<H>,
     pub(crate) elements: ElementTable<H>,
-    /// Which nodes have a row in `elements`. Lets a sweep know what
-    /// to drop without asking `elements` what it holds.
-    pub(crate) element_nodes: HashSet<H::Node>,
+    /// The element type on each node with a row in `elements`. Lets a
+    /// sweep know what to drop without asking `elements` what it
+    /// holds, and names the type whose animated fields to re-resolve.
+    pub(crate) element_nodes: HashMap<H::Node, TypeId>,
     pub(crate) store: Store<H>,
     /// Watchers declared during a build, held until the next flush.
     pub(crate) spawned: Vec<Watcher<H>>,
@@ -142,9 +143,9 @@ impl<H: Host> Default for Records<H> {
     fn default() -> Self {
         Self {
             bindings: HashMap::new(),
-            transitions: TransitionTable::default(),
+            anim: AnimTable::default(),
             elements: ElementTable::<H>::new(),
-            element_nodes: HashSet::new(),
+            element_nodes: HashMap::new(),
             store: Store::new(),
             spawned: Vec::new(),
         }
@@ -162,11 +163,29 @@ impl<H: Host> Records<H> {
         &mut self.store
     }
 
-    /// The transition table and the store together, borrowed at once.
+    /// Mounts a `#[elem(child)]` child as an element in its own
+    /// right, so a tag lands on it and its `anim(...)` lines can
+    /// resolve - without this, [`set_tag`](crate::Fynix::set_tag)
+    /// never finds it. A snapshot taken at build; a child whose
+    /// fields are later `bind`-driven keeps travelling from this one.
     #[doc(hidden)]
-    pub fn build_parts(
+    pub fn mount_child<E: Send + Sync + 'static>(
         &mut self,
-    ) -> (&mut TransitionTable<H>, &mut Store<H>) {
-        (&mut self.transitions, &mut self.store)
+        node: H::Node,
+        element: E,
+    ) {
+        self.elements.insert(node, element);
+        self.element_nodes.insert(node, TypeId::of::<E>());
+    }
+
+    /// Register element type `kind`'s animated fields, on its first
+    /// build. Later calls for the same type do nothing.
+    #[doc(hidden)]
+    pub fn register_anim(
+        &mut self,
+        kind: TypeId,
+        fields: impl FnOnce(&mut Registrar<'_, H>),
+    ) {
+        self.anim.register(kind, fields);
     }
 }

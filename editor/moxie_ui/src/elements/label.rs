@@ -1,7 +1,9 @@
 use crate::reactive::FynixBuild;
 use bevy::feathers::theme::ThemedText;
+use bevy::picking::Pickable;
 use bevy::prelude::*;
 use bevy_fynix::WorldEntityMut;
+use bevy_fynix::tag::Hovered;
 use fynix::element::element;
 
 use super::patch::*;
@@ -14,8 +16,15 @@ pub struct Label {
     #[elem(default = theme.text.body, patch = PatchTextSize)]
     pub size: f32,
     /// [`Color::NONE`] leaves the colour to the theme.
-    #[elem(default = ::NONE, patch = PatchTextColor)]
+    #[elem(default = ::NONE, patch = PatchTextColor, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        on(Hovered, read = Self::lit),
+    ))]
     pub color: Color,
+    /// What `color` travels to while hovered; `None` rests. Element
+    /// state: nothing draws it, only the anim line reads it.
+    pub hover_color: Option<Color>,
     #[elem(patch = PatchBold)]
     pub bold: bool,
     #[elem(default = true, patch = PatchWrap)]
@@ -46,11 +55,26 @@ fn layout(wrap: bool) -> TextLayout {
 }
 
 impl Label {
+    /// Where `color` heads under the cursor: the tint if one was
+    /// set, otherwise its own resting colour, so nothing moves.
+    fn lit(&self) -> &Color {
+        match &self.hover_color {
+            Some(color) => color,
+            None => &self.color,
+        }
+    }
+
     fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        // Invisible to picking, for the same reason as [`Icon`]: the
+        // parent widget's hit area owns the pointer.
         build.insert((
             Text::new(self.text.clone()),
             font(self.size, self.bold),
             layout(self.wrap),
+            Pickable {
+                should_block_lower: false,
+                is_hoverable: false,
+            },
         ));
 
         set_color(self.color, build);

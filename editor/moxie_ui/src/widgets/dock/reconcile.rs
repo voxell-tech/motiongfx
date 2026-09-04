@@ -9,6 +9,8 @@
 //! splitter drag writes every frame) and ride on bindings instead.
 //! Only structural edits rebuild the layout.
 
+use bevy::picking::events::{Out, Over, Pointer};
+use bevy_fynix::tag::{Hovered, TagExt as _};
 use std::fmt::Write as _;
 
 use bevy::prelude::*;
@@ -24,13 +26,11 @@ use super::tree::{
     DockAreaStyle, DockLeaf, DockNode, DockSplit, DockTree, NodeId,
     SplitAxis, TabId,
 };
-use crate::elements::FrameCursor;
 use crate::elements::dock::{
     Area, AreaCursor, DockHost, SplitGroup, SplitHandle,
     SplitHandleCursor, SplitPanel, SplitPanelCursor, TabContent,
     TabContentCursor, handle_bar, handle_line,
 };
-use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed, structure_changed};
 
 pub struct ReconcilePlugin;
@@ -131,23 +131,31 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
         .with(move |ui| {
             build_panel(id, split.a, true, a_visible, ui);
 
-            let hover = ui.theme.color.hover;
             let line =
                 handle_line(ui.theme, flex_direction, line_color);
-            let bar = handle_bar(ui.theme, flex_direction);
-            ui.elem(elem!(
+            let mut bar = handle_bar(ui.theme, flex_direction);
+            bar.hover_background = Some(ui.theme.color.hover);
+            let mut handle = ui.elem(elem!(
                 SplitHandle,
                 node = id,
                 axis = flex_direction,
                 visible = handle_visible,
                 line = line,
                 bar = bar
-            ))
-            .lit(
-                |handle| handle.bar().background(),
-                hover,
-                hover,
-            );
+            ));
+
+            // The bar is what lights, and it sits in front of the
+            // handle's hit area, so it has to watch itself: a node
+            // without `Pickable` swallows the pointer.
+            if let Some(bar) = handle.child(|handle| handle.bar()) {
+                handle
+                    .tag_node_from::<Pointer<Over>, _>(
+                        bar, bar, Hovered,
+                    )
+                    .untag_node_from::<Pointer<Out>, Hovered>(
+                        bar, bar,
+                    );
+            }
 
             build_panel(id, split.b, false, b_visible, ui);
         });
