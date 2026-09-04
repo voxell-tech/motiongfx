@@ -14,7 +14,6 @@ use crate::anim::{AnimTable, Registrar};
 use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::store::Store;
-use crate::transition::TransitionTable;
 use crate::ui::Ui;
 use crate::world_node::WorldNodeRef;
 
@@ -94,7 +93,6 @@ type BoxedBuild<H> =
 type BoxedApply<H> = Box<
     dyn Fn(
             &mut ElementTable<H>,
-            &mut TransitionTable<H>,
             &mut <H as Host>::World,
             <H as Host>::Node,
             &mut Store<H>,
@@ -129,8 +127,6 @@ pub type ElementTable<H> = TypeTable<<H as Host>::Node>;
 pub struct Records<H: Host> {
     /// Keyed by the whole walk. Binding a field twice replaces it.
     pub(crate) bindings: HashMap<FieldKey<H>, Binding<H>>,
-    /// Keyed like `bindings`, one per field.
-    pub(crate) transitions: TransitionTable<H>,
     /// Tag-driven transitions, and what a build registered for them.
     pub(crate) anim: AnimTable<H>,
     pub(crate) elements: ElementTable<H>,
@@ -147,7 +143,6 @@ impl<H: Host> Default for Records<H> {
     fn default() -> Self {
         Self {
             bindings: HashMap::new(),
-            transitions: TransitionTable::default(),
             anim: AnimTable::default(),
             elements: ElementTable::<H>::new(),
             element_nodes: HashMap::new(),
@@ -168,13 +163,6 @@ impl<H: Host> Records<H> {
         &mut self.store
     }
 
-    /// The transition table and the store together, borrowed at once.
-    #[doc(hidden)]
-    pub fn build_parts(
-        &mut self,
-    ) -> (&mut TransitionTable<H>, &mut Store<H>) {
-        (&mut self.transitions, &mut self.store)
-    }
 
     /// Register element type `kind`'s animated fields, on its first
     /// build. Later calls for the same type do nothing.

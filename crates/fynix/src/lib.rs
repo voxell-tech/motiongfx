@@ -11,7 +11,6 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use crate::host::Host;
-use crate::lenz::{Cursor, FieldPath, Identity};
 use crate::records::{BuildFn, ChangedFn, Records, Watcher};
 use crate::ui::Ui;
 
@@ -23,7 +22,6 @@ pub mod host;
 pub mod records;
 pub mod store;
 pub mod style;
-pub mod transition;
 pub mod tween;
 pub mod ui;
 pub mod world_node;
@@ -173,7 +171,6 @@ impl<H: Host> Fynix<H> {
         // the app despawned another. Sweep both before touching any
         // dead handle.
         records.bindings.retain(|key, _| H::exists(world, key.node));
-        records.transitions.retain(|node| H::exists(world, node));
         records.anim.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
@@ -191,7 +188,6 @@ impl<H: Host> Fynix<H> {
 
         let Records {
             bindings,
-            transitions,
             elements,
             store,
             ..
@@ -202,20 +198,12 @@ impl<H: Host> Fynix<H> {
             if !(binding.changed)(WorldNodeRef::new(world, node)) {
                 continue;
             }
-            (binding.apply)(
-                elements,
-                transitions,
-                world,
-                node,
-                store,
-                theme,
-            );
+            (binding.apply)(elements, world, node, store, theme);
         }
 
-        // After the bindings, so a transition gets the last word over
-        // the base they left.
+        // After the bindings, so a leg gets the last word over the
+        // value they left.
         let delta = H::delta(world);
-        transitions.advance(delta, world, theme);
         records.anim.tick(delta, world, &records.elements, theme);
     }
 
@@ -266,42 +254,7 @@ impl<H: Host> Fynix<H> {
             .register_anim(core::any::TypeId::of::<E>(), fields);
     }
 
-    /// Point a transitioning field at `target`, or release it back to
-    /// its base with `None`. Aiming a field with no transition does
-    /// nothing.
-    pub fn aim<E, P>(
-        &mut self,
-        node: H::Node,
-        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
-        target: Option<P::Target>,
-    ) where
-        E: 'static,
-        P: FieldPath<Source = E>,
-        P::Target: Clone + Send + Sync + 'static,
-    {
-        let cursor = field(Cursor::new());
-        let key = cursor.key();
 
-        // The transition sits on the node that owns the field, which
-        // for a path through a `#[elem(child)]` is a child of `node`.
-        let mut parents = cursor.hops();
-        parents.pop();
-        let Some(owner) = self.records.store.resolve(node, &parents)
-        else {
-            return;
-        };
-
-        if let Some(transition) =
-            self.records.transitions.running::<P::Target>(owner, key)
-        {
-            transition.aim(target);
-        }
-    }
-
-    /// How many transitioning fields the kernel is holding.
-    pub fn transition_len(&self) -> usize {
-        self.records.transitions.len()
-    }
 }
 
 /// Despawn the kernel's children of `root`. The sweep in

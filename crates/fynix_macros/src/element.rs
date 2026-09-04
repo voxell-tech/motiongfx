@@ -548,9 +548,8 @@ pub fn expand(
     let build_hook = opts.build.map(|build_fn| {
         quote! {
             {
-                let (__transitions, __store) = records.build_parts();
                 let mut __draw = #root::ui::Build::new(
-                    world, node, __transitions, __store, theme,
+                    world, node, records.store_mut(), theme,
                 );
                 (#build_fn)(self, &mut __draw);
             }

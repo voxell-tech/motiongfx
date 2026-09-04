@@ -53,9 +53,6 @@ impl<T> Tween<T> {
         (self.ease)(linear.clamp(0.0, 1.0))
     }
 
-    pub(crate) fn done(&self, elapsed: Duration) -> bool {
-        elapsed >= self.duration
-    }
 }
 
 // A derive would bound `T: Clone`; only the fn pointers get cloned.

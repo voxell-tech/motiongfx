@@ -24,8 +24,6 @@ use crate::records::{
     Watcher,
 };
 use crate::store::Store;
-use crate::transition::{TransitionTable, insert_transition};
-use crate::tween::Tween;
 use crate::world_node::WorldNodeRef;
 
 /// Builds elements under a parent and records their reactivity.
@@ -240,89 +238,6 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         self
     }
 
-    /// Let this field travel rather than snap.
-    ///
-    /// Declares the transition and the tween that shapes it.
-    /// [`Fynix::aim`](crate::Fynix::aim) points it; until then the
-    /// base shows.
-    pub fn transition<P>(
-        &mut self,
-        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
-        tween: Tween<P::Target>,
-    ) -> &mut Self
-    where
-        E: Send + Sync,
-        P: FieldPath<Source = E> + Bindable<H>,
-        P::Target: Clone + Send + Sync,
-    {
-        let cursor = field(Cursor::new());
-        let accessor = cursor.accessor();
-
-        // Where it starts is what the cascade left.
-        let base = self
-            .ui
-            .records
-            .elements
-            .get::<E>(&self.node)
-            .and_then(|element| accessor.get(element))
-            .cloned();
-        let Some(base) = base else {
-            return self;
-        };
-
-        let mut parents = cursor.hops();
-        parents.pop();
-        let Some(owner) =
-            self.ui.records.store.resolve(self.node, &parents)
-        else {
-            return self;
-        };
-
-        insert_transition(
-            &mut self.ui.records.transitions,
-            owner,
-            cursor.key(),
-            <P as Bindable<H>>::patch,
-            base,
-            tween,
-        );
-        self
-    }
-
-    /// As [`transition`](Self::transition), for a
-    /// `#[element(build = ...)]` hook: the element has no entry in the
-    /// kernel's table yet, so `base` is passed in rather than read
-    /// back.
-    pub fn transition_from<P>(
-        &mut self,
-        field: impl FnOnce(Cursor<Identity<E>>) -> Cursor<P>,
-        base: P::Target,
-        tween: Tween<P::Target>,
-    ) -> &mut Self
-    where
-        E: Send + Sync,
-        P: FieldPath<Source = E> + Bindable<H>,
-        P::Target: Clone + Send + Sync,
-    {
-        let cursor = field(Cursor::new());
-        let mut parents = cursor.hops();
-        parents.pop();
-        let Some(owner) =
-            self.ui.records.store.resolve(self.node, &parents)
-        else {
-            return self;
-        };
-
-        insert_transition(
-            &mut self.ui.records.transitions,
-            owner,
-            cursor.key(),
-            <P as Bindable<H>>::patch,
-            base,
-            tween,
-        );
-        self
-    }
 
     /// Write `value` into `cursor` whenever `changed` fires, then push
     /// that one field straight to the backend.
@@ -344,7 +259,6 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
     {
         let cursor = field(Cursor::new());
         let accessor = cursor.accessor();
-        let key = cursor.key();
 
         // The terminal hop is the field; the rest reach its owner.
         let mut parents = cursor.hops();
@@ -356,20 +270,11 @@ impl<H: Host, E: Element<H>> ElementMut<'_, '_, H, E> {
         };
 
         let apply = move |elements: &mut ElementTable<H>,
-                          transitions: &mut TransitionTable<H>,
                           world: &mut H::World,
                           node: H::Node,
                           _store: &mut Store<H>,
                           theme: &H::Theme| {
             let new = value(WorldNodeRef::new(world, node));
-
-            // A transition on the same field takes the new base, so a
-            // release still heads to the right resting value.
-            if let Some(transition) =
-                transitions.running::<P::Target>(owner, key)
-            {
-                transition.rebase(&new);
-            }
 
             // The struct keeps the value too, for `Fynix::element`.
             if let Some(element) = elements.get_mut::<E>(&node)

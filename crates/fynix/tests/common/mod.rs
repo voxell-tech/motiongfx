@@ -9,11 +9,8 @@
 
 use core::time::Duration;
 
-use fynix::Fynix;
-use fynix::element::{Element, element};
+use fynix::element::element;
 use fynix::host::Host;
-use fynix::lenz::{Cursor, FieldPath, Identity};
-use fynix::ui::{Build, ElementMut};
 use hashbrown::HashMap;
 
 /// Defines a `#[elem(patch = ...)]` tag for the tests - a unit struct
@@ -39,83 +36,6 @@ macro_rules! test_patch {
             }
         }
     };
-}
-
-/// What this test stands in for a pointer with: not fynix's concern,
-/// so it is defined here rather than imported.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Interact {
-    Enter,
-    Leave,
-}
-
-/// A backend's response to an interaction: point a transition
-/// somewhere. Takes only the kernel, as [`Fynix::aim`] does.
-type Aim = Box<dyn Fn(&mut Fynix<FynixHost>) + Send + Sync>;
-
-/// The `aim_on` a real backend would build for itself, over whatever
-/// events it actually has. This one is a stand-in for a pointer.
-pub trait TestAim<E> {
-    fn aim_on<P>(
-        &mut self,
-        on: Interact,
-        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
-        target: Option<P::Target>,
-    ) -> &mut Self
-    where
-        P: FieldPath<Source = E>,
-        P::Target: PartialEq + Clone + Send + Sync;
-}
-
-impl<E: Element<FynixHost>> TestAim<E>
-    for ElementMut<'_, '_, FynixHost, E>
-{
-    fn aim_on<P>(
-        &mut self,
-        on: Interact,
-        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
-        target: Option<P::Target>,
-    ) -> &mut Self
-    where
-        P: FieldPath<Source = E>,
-        P::Target: PartialEq + Clone + Send + Sync,
-    {
-        let node = self.id();
-        self.ui.world.interactions.push((
-            node,
-            on,
-            Box::new(move |kernel: &mut Fynix<FynixHost>| {
-                kernel.aim(node, field, target.clone());
-            }),
-        ));
-        self
-    }
-}
-
-/// As above, from a `#[element(build = ...)]` hook: [`Build`] carries
-/// `world` directly rather than through a [`Ui`], but otherwise wires
-/// the same interaction the same way.
-impl<E: Element<FynixHost>> TestAim<E> for Build<'_, FynixHost, E> {
-    fn aim_on<P>(
-        &mut self,
-        on: Interact,
-        field: fn(Cursor<Identity<E>>) -> Cursor<P>,
-        target: Option<P::Target>,
-    ) -> &mut Self
-    where
-        P: FieldPath<Source = E>,
-        P::Target: PartialEq + Clone + Send + Sync,
-    {
-        let node = self.id();
-        self.world.interactions.push((
-            node,
-            on,
-            Box::new(move |kernel: &mut Fynix<FynixHost>| {
-                kernel.aim(node, field, target.clone());
-            }),
-        ));
-        self
-    }
 }
 
 /// Whatever the elements under test write. A real backend would have
@@ -149,9 +69,6 @@ pub struct World {
     /// What a flush advances a transition by. A test sets it outright
     /// rather than owning a clock.
     pub delta: Duration,
-    /// What a style asked to be told about. A real backend would hand
-    /// these to its pointer; a test fires them by hand.
-    interactions: Vec<(usize, Interact, Aim)>,
 }
 
 impl World {
@@ -177,26 +94,6 @@ impl World {
         self.nodes.get(&node).expect("live node")
     }
 
-    /// Do to `node` what a pointer would, and run whatever asked to
-    /// hear about it.
-    pub fn interact(
-        &mut self,
-        kernel: &mut Fynix<FynixHost>,
-        node: usize,
-        on: Interact,
-    ) {
-        // Taken out for the call: an aim is handed the world it was
-        // registered in.
-        let interactions = core::mem::take(&mut self.interactions);
-
-        for (target, kind, aim) in &interactions {
-            if (*target, *kind) == (node, on) {
-                aim(kernel);
-            }
-        }
-
-        self.interactions = interactions;
-    }
 }
 
 pub struct FynixHost;
