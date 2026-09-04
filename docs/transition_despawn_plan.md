@@ -1,129 +1,65 @@
-# Transition despawn: an explicit hook
+# Transition despawn
 
-Planning notes. The `tick`-time liveness check in
-`transition_tag_model.md` is a placeholder. This is what should
-replace it, and what it needs from the kernel.
+Built. This started as a plan to replace the sweep with an explicit
+kernel hook; the implementation found that a hook cannot cover the
+whole problem, and that the sweep's real cost was somewhere else. What
+follows is what shipped and why.
 
-## Why not a lazy sweep
+## What the sweep actually costs
 
-Two lazy options are on the table and both are wrong:
+`AnimTable::retain` walks a key set once per flush, dropping rows whose
+nodes the backend no longer has. The first cut of that set held *every
+field that had ever moved* and never shrank, so a long-running tree
+paid a growing walk every frame to catch a rare event.
 
-- the shipped `TransitionTable::retain(|node| alive(node))`, walking
-  the whole table for corpses, and
-- a `!elements.contains(key.node)` check at the top of the `tick`
-  loop.
+The fix was not to remove the sweep but to shrink what it walks: a key
+goes in when a leg starts and comes out when `tick` drops the settled
+row, so the set is exactly the fields moving right now. A resting tree
+holds none, and the per-flush sweep is free.
 
-- **Despawn is an event, not a state to poll.** The kernel knows the
-  exact moment a node dies. Scanning for the aftermath is backwards.
-- **The cost lands on the wrong path.** The check taxes every moving
-  transition every frame — or `retain` walks every row periodically —
-  to catch a rare event.
-- **Coupled to the tick loop.** If ticking is skipped — nothing
-  animating, playback paused, the kernel idle — dead rows linger until
-  something iterates them.
-- **One frame of lag.** A despawned node's last value can be written
-  once more before the row goes.
+`reresolve` only records a key once `retarget` has actually left a row
+behind - a retarget that finds nothing to move (the destination is
+already where the field rests) starts no leg and must not be tracked.
 
-## The hook
+## Why not an explicit hook
 
-```rust
-impl TransitionTable<H> {
-    /// Drop every per-node row for `node`. Called by the kernel's
-    /// despawn path, once per node, before the element record is torn
-    /// down.
-    fn despawn(&mut self, node: H::Node, kind: TypeId);
-}
-```
+The plan was `TransitionTable::despawn(node, kind)`, called on the
+kernel's despawn walk, reading the element type's animated fields to
+remove each `FieldKey::new(node, field)`. Two things stop that from
+replacing the sweep:
 
-- `kind` is passed in because the caller reads it off the element
-  record, which is about to disappear — the hook must run *before*
-  that teardown.
-- Idempotent: a second call for a node with no rows is a no-op.
+- **fynix does not own every despawn.** `clear_children` is the only
+  path fynix drives, and the app is free to despawn a node behind its
+  back - `Host::exists` is how the kernel finds out at all. A sweep is
+  required for that case whatever else exists.
+- **`clear_children` has no `Records`.** Threading them through, then
+  walking the dying subtree to look up each node's kind, is real
+  machinery for the half of the problem the sweep already covers at no
+  cost now that it only walks moving fields.
 
-## Finding the rows without a per-node index
+So there is no hook. If a profile ever shows the sweep mattering, the
+hook is still available for the fynix-driven half, but it would be an
+addition to the sweep rather than a replacement.
 
-The table is `TypeTable<FieldKey<H>>` keyed by `(node, field)`. There
-is no "all keys for node N" query, and a side
-`HashMap<Node, Vec<FieldKey>>` would tax every transition spawn and
-settle.
+## What is freed
 
-Not needed — the per-type registration already enumerates the
-element's animated fields:
+- **`Transition` rows** - by the sweep, keyed off the moving set.
+- **`Active<T>` tag slots** - columns on the element's own row in
+  `ElementTable`, so `remove_row` in the `element_nodes` sweep takes
+  them along. Nothing extra to call.
+- **Per-type tables** - `Source` pool entries, `animated(kind)`, the
+  tick and retarget registries: keyed by element `TypeId`, shared by
+  every instance, never freed. Despawning one button must not disturb
+  the button type's recipe. Bounded by the count of distinct element
+  types built.
 
-```rust
-fn despawn(&mut self, node: H::Node, kind: TypeId) {
-    for field_lines in animated(kind) {
-        self.table.remove_row(&FieldKey::new(node, field_lines.field));
-    }
-}
-```
+`AnimTable::forget` drops all of it at once, for a theme change: a
+registration bakes in the tweens the theme named, and the rows point
+into the sources being replaced.
 
-`remove_row` drops the row across every value-type column — the same
-behaviour the shipped `TransitionTable::insert` relies on to replace a
-field's transition — so the hook needs neither each field's value type
-nor a check that a row exists.
+## Covered by
 
-`animated(kind) -> &[FieldLines<H>]` is the per-type list already
-built for `set_tag` (`transition_tag_model.md`); despawn just reads
-`.field` off each entry.
+`crates/fynix/tests/tags.rs`:
 
-Cost: O(animated fields of that element type), once, at despawn.
-Nothing per frame.
-
-## The despawn sequence
-
-Per node, on the kernel's despawn walk:
-
-1. `kind = elements.kind(node)`
-2. `transitions.despawn(node, kind)` — drops the `Transition` rows
-3. tear down the element record — drops `Active<T>` with it
-
-`Active<T>` needs no explicit call as long as step 3 always runs and
-frees the record's tag slots. If tag state ever leaves the element
-record, it gets its own line in step 2.
-
-## Subtree despawn
-
-The kernel already walks a despawned subtree node by node (shipped
-`Host::despawn` + `Host::children`). The hook fires once per node on
-that walk — no separate recursion here.
-
-## Same-flush `set_tag` + `despawn`
-
-If `set_tag(node, ..)` and `despawn(node)` land in the same flush, a
-`set_tag` processed after the `despawn` re-inserts rows for a dead
-node. Options:
-
-- the kernel guarantees `despawn` is the last word for a node in a
-  flush, or
-- `set_tag` drops work for a node the `despawn` walk has already
-  marked.
-
-Pin this once the flush order is settled. Until then, `tick` keeping a
-liveness check as a backstop is acceptable — but it is a backstop, not
-the mechanism.
-
-## Not freed, and correct
-
-`Source` pool entries, `animated(kind)`, the `retarget` registry — keyed by
-element `TypeId`, shared by every instance. Despawning one button must
-not disturb the button type's recipe. These live for the process,
-bounded by the count of distinct element types built.
-
-## Migration
-
-Replaces `TransitionTable::retain`. With the hook in place `tick`
-assumes every row it iterates is live; the `elements.contains` check
-in the model doc comes out (or stays only as the documented backstop
-above).
-
-## Open
-
-- **Kernel hook point.** Where the despawn walk calls out — a trait
-  method, a callback list, a direct `TransitionTable` call from the
-  kernel's despawn fn.
-- **`animated(kind)`** — the per-type `FieldLines` list; populated in
-  the same lazy step as `Source`s.
-- **`elements.kind(node)` at despawn time** — must resolve while the
-  record still exists; confirm the despawn sequence orders it first.
-- **Flush order** for the `set_tag` / `despawn` race above.
+- `settled_field_holds_no_row` - arrival drops the row.
+- `despawning_drops_the_row` - a node dying mid-leg is swept.

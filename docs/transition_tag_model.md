@@ -1,9 +1,9 @@
 # Transition: the tag push model
 
-Working notes, converged from a design conversation. Nothing here is
-built. Supersedes the resolver / `WorldNodeRef` sketch in
-`transition_redesign_handover.md` and the shipped `aim` / `aim_on`
-model.
+How a field travels, and what makes it. Built; `crates/fynix/src/anim.rs`
+is the runtime and `crates/fynix/tests/tags.rs` covers it. Replaced the
+`aim` / `aim_on` model and the resolver sketch in
+`transition_redesign_handover.md`, both now deleted.
 
 ## Shape in one paragraph
 
@@ -213,10 +213,6 @@ fn tick<H, T>(
 {
     let mut done: Vec<FieldKey<H>> = Vec::new();   // settled this frame
     for (key, transition) in table.iter_mut::<Transition<H, T>>() {
-        if !elements.contains(key.node) {          // backstop; see transition_despawn_plan.md
-            done.push(*key);
-            continue;
-        }
         transition.elapsed += dt;
         let source = pool.get::<Source<H, T>>(&transition.to).unwrap();
         let to = (source.access)(elements, key.node); // &T

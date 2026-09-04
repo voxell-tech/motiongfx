@@ -249,3 +249,19 @@ fn line_can_set_its_own_duration() {
         "halfway after 100ms of a 200ms line"
     );
 }
+
+/// A node that dies mid-leg takes its row with it, and a resting
+/// tree holds none at all.
+#[test]
+fn despawning_drops_the_row() {
+    let (mut world, mut kernel, node) = button();
+
+    kernel.set_tag(node, Hovered);
+    flush(&mut kernel, &mut world, 1);
+    assert_eq!(kernel.moving_len(), 2, "both fields are travelling");
+
+    FynixHost::despawn(&mut world, node);
+    kernel.flush(&mut world);
+
+    assert_eq!(kernel.moving_len(), 0, "the sweep took them");
+}

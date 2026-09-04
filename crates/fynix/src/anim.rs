@@ -95,6 +95,7 @@ impl<H: Host> FieldLines<H> {
 
 type TickFn<H> = fn(
     &mut TypeTable<FieldKey<H>>,
+    &mut HashSet<FieldKey<H>>,
     &TypePool,
     Duration,
     &mut <H as Host>::World,
@@ -118,8 +119,8 @@ pub struct AnimTable<H: Host> {
     pool: TypePool,
     /// `Transition<T>` per moving field.
     rows: TypeTable<FieldKey<H>>,
-    /// Every field that has ever moved, for the sweep when its node
-    /// dies. Goes away with the despawn hook.
+    /// The fields moving right now, so the sweep for dead nodes
+    /// walks only those and a resting tree costs nothing.
     keys: HashSet<FieldKey<H>>,
     /// One entry per value type a field has been registered for.
     ticks: Vec<(TypeId, TickFn<H>)>,
@@ -203,7 +204,14 @@ impl<H: Host> AnimTable<H> {
             retarget(
                 elements, &mut self.rows, &self.pool, key, from, to,
             );
-            self.keys.insert(key);
+
+            // A retarget that found nothing to move leaves no row,
+            // and nothing for the sweep to hold on to.
+            if self.rows.contains_row(&key) {
+                self.keys.insert(key);
+            } else {
+                self.keys.remove(&key);
+            }
         }
     }
 
@@ -245,6 +253,7 @@ impl<H: Host> AnimTable<H> {
         for i in 0..self.ticks.len() {
             (self.ticks[i].1)(
                 &mut self.rows,
+                &mut self.keys,
                 &self.pool,
                 dt,
                 world,
@@ -282,14 +291,11 @@ impl<H: Host> AnimTable<H> {
 
     /// How many fields are moving.
     pub fn len(&self) -> usize {
-        self.keys
-            .iter()
-            .filter(|key| self.rows.contains_row(key))
-            .count()
+        self.keys.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.keys.is_empty()
     }
 }
 
@@ -374,6 +380,7 @@ where
 /// arrive.
 fn tick<H, T>(
     rows: &mut TypeTable<FieldKey<H>>,
+    keys: &mut HashSet<FieldKey<H>>,
     pool: &TypePool,
     dt: Duration,
     world: &mut H::World,
@@ -412,6 +419,7 @@ fn tick<H, T>(
 
     for key in done {
         rows.remove::<Transition<T>>(&key);
+        keys.remove(&key);
     }
 }
 
