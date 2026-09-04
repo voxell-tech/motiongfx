@@ -144,16 +144,16 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
                 bar = bar
             ));
 
-            // The bar is what lights, but the handle owns the hit
-            // area - the bar is a hairline until it does.
-            let watch = handle.id();
-            if let Some(node) = handle.child(|handle| handle.bar()) {
+            // The bar is what lights, and it sits in front of the
+            // handle's hit area, so it has to watch itself: a node
+            // without `Pickable` swallows the pointer.
+            if let Some(bar) = handle.child(|handle| handle.bar()) {
                 handle
                     .tag_node_from::<Pointer<Over>, _>(
-                        node, watch, Hovered,
+                        bar, bar, Hovered,
                     )
                     .untag_node_from::<Pointer<Out>, Hovered>(
-                        node, watch,
+                        bar, bar,
                     );
             }
 

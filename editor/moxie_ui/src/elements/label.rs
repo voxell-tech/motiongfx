@@ -1,5 +1,6 @@
 use crate::reactive::FynixBuild;
 use bevy::feathers::theme::ThemedText;
+use bevy::picking::Pickable;
 use bevy::prelude::*;
 use bevy_fynix::tag::Hovered;
 use bevy_fynix::WorldEntityMut;
@@ -68,10 +69,16 @@ impl Label {
     }
 
     fn build(&self, build: &mut FynixBuild<'_, Self>) {
+        // Invisible to picking, for the same reason as [`Icon`]: the
+        // parent widget's hit area owns the pointer.
         build.insert((
             Text::new(self.text.clone()),
             font(self.size, self.bold),
             layout(self.wrap),
+            Pickable {
+                should_block_lower: false,
+                is_hoverable: false,
+            },
         ));
 
         set_color(self.color, build);

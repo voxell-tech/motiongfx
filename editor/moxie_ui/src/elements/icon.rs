@@ -1,4 +1,5 @@
 use crate::reactive::FynixBuild;
+use bevy::picking::Pickable;
 use bevy::prelude::*;
 use bevy_fynix::tag::Hovered;
 use bevy::ui::widget::ImageNode;
@@ -52,7 +53,17 @@ impl Icon {
     fn build(&self, build: &mut FynixBuild<'_, Self>) {
         // The handle and colour land through `image` / `color`; this
         // just gives them an `ImageNode` to write into.
-        build.insert(ImageNode::default());
+        //
+        // Invisible to picking: a pickable node of its own would sit
+        // in front of the parent widget's hit area and swallow the
+        // pointer, so the widget never sees `Over`.
+        build.insert((
+            ImageNode::default(),
+            Pickable {
+                should_block_lower: false,
+                is_hoverable: false,
+            },
+        ));
     }
 }
 
