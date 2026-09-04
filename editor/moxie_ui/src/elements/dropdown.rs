@@ -18,7 +18,7 @@ use bevy::ui_widgets::{
 };
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use bevy_fynix::tag::{Hovered, Pressed};
+use bevy_fynix::tag::{Hovered, Pressed, TagExt as _};
 use fynix::element::element;
 
 use super::patch::*;
@@ -64,12 +64,12 @@ pub struct Dropdown {
         duration = theme.motion.interact,
         ease = theme.motion.ease,
         on(Pressed, read = Self::pressed),
-        on(Hovered, read = Self::hovered),
+        on(Hovered, read = hover_fill),
     ))]
     pub fill: Color,
-    /// What `fill` travels to under the cursor; `None` rests.
-    #[elem(ignore)]
-    pub hover_fill: Option<Color>,
+    /// What `fill` travels to under the cursor.
+    #[elem(ignore, default = theme.color.hover)]
+    pub hover_fill: Color,
     /// While held. Falls back to `hover_fill` when unset.
     #[elem(ignore)]
     pub press_fill: Option<Color>,
@@ -135,6 +135,7 @@ impl Dropdown {
             MenuButton,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
+        build.pointer_tags();
         Dropdown::hold_chevron(build);
     }
 }
@@ -197,12 +198,12 @@ pub struct DropdownItem {
         duration = theme.motion.interact,
         ease = theme.motion.ease,
         on(Pressed, read = Self::pressed),
-        on(Hovered, read = Self::hovered),
+        on(Hovered, read = hover_fill),
     ))]
     pub fill: Color,
-    /// What `fill` travels to under the cursor; `None` rests.
-    #[elem(ignore)]
-    pub hover_fill: Option<Color>,
+    /// What `fill` travels to under the cursor.
+    #[elem(ignore, default = theme.color.hover)]
+    pub hover_fill: Color,
     /// While held. Falls back to `hover_fill` when unset.
     #[elem(ignore)]
     pub press_fill: Option<Color>,
@@ -226,43 +227,26 @@ impl DropdownItem {
             TabIndex(0),
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
+        build.pointer_tags();
     }
 }
 
 impl Dropdown {
-    /// Where `fill` heads under the cursor, or its own colour when
-    /// none was set, so it stays put.
-    fn hovered(&self) -> &Color {
-        match &self.hover_fill {
-            Some(color) => color,
-            None => &self.fill,
-        }
-    }
-
     /// While held, falling back to the hover shade.
     fn pressed(&self) -> &Color {
         match &self.press_fill {
             Some(color) => color,
-            None => self.hovered(),
+            None => &self.hover_fill,
         }
     }
 }
 
 impl DropdownItem {
-    /// Where `fill` heads under the cursor, or its own colour when
-    /// none was set, so it stays put.
-    fn hovered(&self) -> &Color {
-        match &self.hover_fill {
-            Some(color) => color,
-            None => &self.fill,
-        }
-    }
-
     /// While held, falling back to the hover shade.
     fn pressed(&self) -> &Color {
         match &self.press_fill {
             Some(color) => color,
-            None => self.hovered(),
+            None => &self.hover_fill,
         }
     }
 }
