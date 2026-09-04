@@ -70,7 +70,7 @@ struct AnimConfig {
     lines: Vec<AnimLine>,
 }
 
-/// One `on(<tag>, value = <field>, ms = .., ease = ..)`.
+/// One `on(<tag>, read = <field | path>, ms = .., ease = ..)`.
 struct AnimLine {
     /// A value of the tag type: a unit struct, or an enum variant.
     tag: Expr,
@@ -82,11 +82,34 @@ struct AnimLine {
 
 /// What a line heads to.
 enum LineValue {
-    /// `value = <field>`, a sibling field read in place.
+    /// `read = <field>`, a sibling field read in place.
     Field(Ident),
     /// `read = <path>`, an `fn(&Self) -> &T` for a value the element
     /// works out rather than stores.
     Read(Expr),
+}
+
+impl LineValue {
+    /// A bare name is a field; a path with a qualifier is a method.
+    fn read(expr: Expr) -> Self {
+        match expr {
+            Expr::Path(expr_path)
+                if expr_path.path.segments.len() == 1 =>
+            {
+                LineValue::Field(
+                    expr_path
+                        .path
+                        .segments
+                        .iter()
+                        .next()
+                        .unwrap()
+                        .ident
+                        .clone(),
+                )
+            }
+            other => LineValue::Read(other),
+        }
+    }
 }
 
 /// How long a leg runs. Either form takes an expression, so a theme
@@ -245,10 +268,8 @@ fn parse_line(
     let mut ease = None;
 
     meta.parse_nested_meta(|item| {
-        if item.path.is_ident("value") {
-            from = Some(LineValue::Field(item.value()?.parse()?));
-        } else if item.path.is_ident("read") {
-            from = Some(LineValue::Read(item.value()?.parse()?));
+        if item.path.is_ident("read") {
+            from = Some(LineValue::read(item.value()?.parse()?));
         } else if item.path.is_ident("ms") {
             duration = Some(Duration::Millis(item.value()?.parse()?));
         } else if item.path.is_ident("duration") {
@@ -262,8 +283,7 @@ fn parse_line(
             tag = Some(parse_quote!(#path));
         } else {
             return Err(item.error(
-                "expected `value`, `read`, `ms`, `duration`, or \
-                 `ease`",
+                "expected `read`, `ms`, `duration`, or `ease`",
             ));
         }
         Ok(())
@@ -273,9 +293,7 @@ fn parse_line(
         return Err(meta.error("`on` needs a tag"));
     };
     let Some(from) = from else {
-        return Err(meta.error(
-            "`on` needs `value = <field>` or `read = <path>`",
-        ));
+        return Err(meta.error("`on` needs `read = ...`"));
     };
 
     Ok(AnimLine {
@@ -493,14 +511,6 @@ pub fn expand(
             continue;
         }
 
-        let Some(patch) = &cfg.patch else {
-            return Err(syn::Error::new_spanned(
-                field,
-                "an own field needs `#[elem(patch = ...)]` or \
-                 `#[elem(ignore)]`",
-            ));
-        };
-
         let variant = format_ident!("{}", pascal_case(field_name));
         variants.push(quote!(#variant,));
         ids.push(quote!(#field_enum::#variant => #id,));
@@ -511,6 +521,12 @@ pub fn expand(
                 );
             }
         });
+
+        // A field with no `patch` is bare: addressable, and feeds
+        // lines and call sites, but nothing writes it.
+        let Some(patch) = &cfg.patch else {
+            continue;
+        };
 
         field_writes.push(quote! {
             {

@@ -25,8 +25,9 @@ pub struct Icon {
     ))]
     pub color: Color,
     /// What `color` travels to while the pointer is over whatever
-    /// owns this icon. [`Color::NONE`] leaves it at rest.
-    #[elem(ignore, default = ::NONE)]
+    /// owns this icon. [`Color::NONE`] leaves it at rest. Element
+    /// state: the lines read it, nothing draws it.
+    #[elem(default = ::NONE)]
     pub hover_color: Color,
     #[elem(default = px(11), patch = PatchIconSize)]
     pub size: Val,

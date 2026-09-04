@@ -23,8 +23,8 @@ pub struct Button {
     #[elem(default = 0, patch = WriteSize, anim(
         ms = 100,
         ease = ease::linear,
-        on(Pressed, value = press_size),
-        on(Hovered, value = hover_size),
+        on(Pressed, read = press_size),
+        on(Hovered, read = hover_size),
     ))]
     pub size: u32,
 
@@ -33,16 +33,13 @@ pub struct Button {
     #[elem(default = 0, patch = WriteBorder, anim(
         ms = 100,
         ease = ease::linear,
-        on(Hovered, value = hover_border),
+        on(Hovered, read = hover_border),
     ))]
     pub border: u32,
 
-    /// Plain fields the lines read through.
-    #[elem(ignore)]
+    /// Element state the lines read through; nothing draws them.
     pub hover_size: u32,
-    #[elem(ignore)]
     pub press_size: u32,
-    #[elem(ignore)]
     pub hover_border: u32,
 }
 
@@ -220,7 +217,7 @@ fn line_can_set_its_own_duration() {
         #[elem(default = 0, patch = WriteSize, anim(
             ms = 100,
             ease = ease::linear,
-            on(Hovered, value = hover_size, ms = 200),
+            on(Hovered, read = hover_size, ms = 200),
         ))]
         pub size: u32,
         #[elem(ignore)]

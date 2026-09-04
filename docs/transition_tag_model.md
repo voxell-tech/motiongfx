@@ -135,19 +135,22 @@ type RetargetFn<H> = fn(
 ## `Access` — the pooled value accessor
 
 ```rust
-type Access<H, T> = for<'a> fn(&'a ElementTable<H>, H::Node) -> &'a T;
+type Access<H, T> = for<'a> fn(
+    &'a ElementTable<H>, H::Node,
+) -> Option<&'a T>;
 ```
 
 `for<'a>` because the returned `&T` borrows from the passed
-`&ElementTable`. `Copy + 'static + Send + Sync`, so it sits in a pool
-column unwrapped.
+`&ElementTable`; `Option` because the node may not hold that element.
+`Copy + 'static + Send + Sync`, so it sits in a pool column unwrapped.
 
-The `value = <field>` in each `on(...)` is authored as `fn(&E) -> &T`;
-the macro wraps the element downcast so the column keys on `T` alone.
-The base source is the field itself:
+`read = <field>` in each `on(...)` is read as `fn(&E) -> &T`; the
+macro wraps the element downcast so the column keys on `T` alone.
+`read = Self::method` passes the method straight through. The base
+source is the field itself:
 
 ```rust
-// on(Pressed, value = active_bg)
+// on(Pressed, read = active_bg)
 //   |elements, node| &elements.get::<ButtonElem>(node).unwrap().active_bg
 // base for `bg`
 //   |elements, node| &elements.get::<ButtonElem>(node).unwrap().bg
@@ -415,18 +418,20 @@ The `ActiveFn` predicates call these. Not consulted per frame.
 ```rust
 #[element]
 struct ButtonElem {
-    #[elem(patch = PatchBg, anim(ms = 120,
-        on(Pressed, value = active_bg),            // higher priority
-        on(Hovered, value = hover_bg, ms = 200),
+    #[elem(patch = PatchBg, anim(duration = theme.motion.interact,
+        on(Pressed, read = active_bg),              // higher priority
+        on(Hovered, read = hover_bg, ms = 200),
     ))]
     bg: Color,
 
     #[elem(patch = PatchBorder, anim(ms = 120,
-        on(Hovered, value = hover_border),         // hover only — press never touches it
+        on(Hovered, read = hover_border),           // hover only — press never touches it
     ))]
     border: Color,
 
-    hover_bg:     Color,   // ordinary bare fields — a style or bind sets them
+    // Bare fields — addressable, no writer. Element state the lines
+    // read through; a style or a call site sets them, nothing draws them.
+    hover_bg:     Color,
     active_bg:    Color,
     hover_border: Color,
 }
@@ -437,10 +442,26 @@ struct ButtonElem {
   No global tag rank; a field may list several tag types, and two
   fields may order the same tags differently. The list is totally
   ordered, so `resolve` never has a tie.
-- `ms = 120` at `anim` level is the default leg duration; a per-`on`
-  `ms` overrides it.
-- `value = <sibling field>` — read in place, stays bindable and
-  theme-driven.
+- `ms = 120` at `anim` level is the default leg duration; `duration =
+  <expr>` names an exact `core::time::Duration` (a theme value serves
+  as well as a literal). A per-`on` `ms` / `duration` overrides it.
+- `read = <sibling field>` reads the field in place, so it stays
+  theme-driven; `read = Self::method` names an `fn(&Self) -> &T` for a
+  value the element works out rather than stores. A bare name is a
+  field, a qualified path a method.
+
+### Field taxonomy
+
+| form | backend writer | addressable | meaning |
+| --- | --- | --- | --- |
+| `#[elem(patch = X)]` | yes | yes | a drawn property |
+| bare (no `#[elem]`) | no | yes | element state: feeds `read =`, not drawn |
+| `#[elem(ignore)]` | no | no | build-time scratch only |
+| `#[elem(child)]` | — | — | sub-element |
+
+`anim(...)` requires `patch = ...`: an animation must be able to
+write through. A bare field can be a `read =` destination but cannot
+be animated directly.
 
 ## Styles
 

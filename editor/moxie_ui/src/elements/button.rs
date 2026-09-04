@@ -1,18 +1,18 @@
+use crate::motion::Lit;
 use crate::reactive::{FynixBuild, FynixHost};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use crate::motion::Lit;
 use fynix::element::element;
 use fynix::style::Style;
 
 use super::patch::*;
 use super::{Icon, Label};
+use crate::theme::EditorTheme;
 use bevy::picking::events::{Out, Over, Pointer};
 use bevy_fynix::tag::{Hovered, TagExt as _};
-use crate::theme::EditorTheme;
 
 /// What lights up under the cursor, and to what colour. A style has
 /// no node to wire this on, so it leaves the choice here for the
