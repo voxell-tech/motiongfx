@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use crate::motion::Lit;
 use bevy_fynix::tag::{Hovered, Pressed};
 use fynix::element::element;
 
@@ -61,7 +60,6 @@ pub struct Frame {
     #[elem(default = ::NONE, patch = PatchBackground, anim(
         duration = theme.motion.interact,
         ease = theme.motion.ease,
-        lerp = <Color as Lit>::mix,
         on(Pressed, read = Self::pressed),
         on(Hovered, read = Self::hovered),
     ))]

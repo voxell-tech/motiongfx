@@ -27,7 +27,7 @@ impl Style for Title {
     type Host = FynixHost;
     type Element = Label;
 
-    fn apply(self, label: &mut Label, _theme: &()) {
+    fn apply(&self, label: &mut Label, _theme: &()) {
         label.size = 10;
     }
 }
@@ -63,7 +63,7 @@ fn the_style_can_be_any_expression() {
         type Host = FynixHost;
         type Element = Label;
 
-        fn apply(self, label: &mut Label, _theme: &()) {
+        fn apply(&self, label: &mut Label, _theme: &()) {
             label.size = self.0;
         }
     }
@@ -99,7 +99,7 @@ fn generic_elements_and_styles_both_carry_their_arguments() {
         type Host = FynixHost;
         type Element = Themed<L>;
 
-        fn apply(self, themed: &mut Themed<L>, _theme: &()) {
+        fn apply(&self, themed: &mut Themed<L>, _theme: &()) {
             themed.size = 10;
         }
     }
@@ -148,7 +148,7 @@ fn field_paths_reach_as_deep_as_they_go() {
         type Host = FynixHost;
         type Element = Card;
 
-        fn apply(self, card: &mut Card, _theme: &()) {
+        fn apply(&self, card: &mut Card, _theme: &()) {
             card.font.size = 1;
         }
     }

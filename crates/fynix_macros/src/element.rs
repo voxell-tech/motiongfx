@@ -59,13 +59,13 @@ struct FieldConfig {
     anim: Option<AnimConfig>,
 }
 
-/// `#[elem(anim(ms = .., ease = .., lerp = .., on(..), ..))]`: how a
-/// field travels, and the tags it answers to.
+/// `#[elem(anim(ms = .., ease = .., interp = .., on(..), ..))]`: how
+/// a field travels, and the tags it answers to.
 struct AnimConfig {
     duration: Duration,
     ease: Option<Expr>,
-    /// Defaults to `<T as Interpolation<()>>::interp`.
-    lerp: Option<Expr>,
+    /// Defaults to `<T as Interpolation<_>>::interp`.
+    interp: Option<Expr>,
     /// In priority order, first match wins.
     lines: Vec<AnimLine>,
 }
@@ -121,27 +121,27 @@ enum Duration {
     Exact(Expr),
 }
 
-/// `Tween::ms(ms, lerp).ease(ease)` for one destination.
+/// `Tween::ms(ms, interp).ease(ease)` for one destination.
 #[allow(clippy::too_many_arguments)]
 fn tween_of(
     root: &TokenStream2,
     field_ty: &syn::Type,
     duration: &Duration,
     ease: Option<&Expr>,
-    lerp: Option<&Expr>,
+    interp: Option<&Expr>,
 ) -> TokenStream2 {
-    let lerp = match lerp {
-        Some(lerp) => quote!(#lerp),
+    let interp = match interp {
+        Some(interp) => quote!(#interp),
         None => quote! {
-            <#field_ty as #root::tween::Interpolation<()>>::interp
+            <#field_ty as #root::tween::Interpolation<_>>::interp
         },
     };
     let tween = match duration {
         Duration::Millis(ms) => {
-            quote!(#root::tween::Tween::ms(#ms, #lerp))
+            quote!(#root::tween::Tween::ms(#ms, #interp))
         }
         Duration::Exact(dur) => {
-            quote!(#root::tween::Tween::new(#dur, #lerp))
+            quote!(#root::tween::Tween::new(#dur, #interp))
         }
     };
     match ease {
@@ -169,7 +169,7 @@ fn anim_field(
         field_ty,
         &anim.duration,
         anim.ease.as_ref(),
-        anim.lerp.as_ref(),
+        anim.interp.as_ref(),
     );
 
     let lines = anim.lines.iter().map(|line| {
@@ -191,7 +191,7 @@ fn anim_field(
             field_ty,
             line.duration.as_ref().unwrap_or(&anim.duration),
             line.ease.as_ref().or(anim.ease.as_ref()),
-            anim.lerp.as_ref(),
+            anim.interp.as_ref(),
         );
         quote! {
             .on(
@@ -219,10 +219,12 @@ fn anim_field(
     }
 }
 
-fn parse_anim(meta: &syn::meta::ParseNestedMeta) -> syn::Result<AnimConfig> {
+fn parse_anim(
+    meta: &syn::meta::ParseNestedMeta,
+) -> syn::Result<AnimConfig> {
     let mut duration = None;
     let mut ease = None;
-    let mut lerp = None;
+    let mut interp = None;
     let mut lines = Vec::new();
 
     meta.parse_nested_meta(|item| {
@@ -232,13 +234,13 @@ fn parse_anim(meta: &syn::meta::ParseNestedMeta) -> syn::Result<AnimConfig> {
             duration = Some(Duration::Exact(item.value()?.parse()?));
         } else if item.path.is_ident("ease") {
             ease = Some(item.value()?.parse()?);
-        } else if item.path.is_ident("lerp") {
-            lerp = Some(item.value()?.parse()?);
+        } else if item.path.is_ident("interp") {
+            interp = Some(item.value()?.parse()?);
         } else if item.path.is_ident("on") {
             lines.push(parse_line(&item)?);
         } else {
             return Err(item.error(
-                "expected `ms`, `duration`, `ease`, `lerp`, or \
+                "expected `ms`, `duration`, `ease`, `interp`, or \
                  `on(...)`",
             ));
         }
@@ -254,7 +256,7 @@ fn parse_anim(meta: &syn::meta::ParseNestedMeta) -> syn::Result<AnimConfig> {
     Ok(AnimConfig {
         duration,
         ease,
-        lerp,
+        interp,
         lines,
     })
 }
@@ -458,9 +460,13 @@ pub fn expand(
                 ),
             };
 
-            elem_bounds.push(
-                quote!(#elem_ty: #root::element::Element<#host>),
-            );
+            elem_bounds.push(quote!(
+                #elem_ty: #root::element::Element<#host>
+                    + ::core::clone::Clone
+                    + ::core::marker::Send
+                    + ::core::marker::Sync
+                    + 'static
+            ));
 
             let as_elem = quote!(
                 <#elem_ty as #root::element::Element<#host>>
@@ -472,6 +478,9 @@ pub fn expand(
                         elem, world, node, records, theme,
                     );
                     records.store_mut().insert(node, #id, child);
+                    // Mount it as an element in its own right, so a tag
+                    // lands on it and its `anim(...)` lines resolve.
+                    records.mount_child(child, ::core::clone::Clone::clone(elem));
                 }
             });
 
@@ -713,6 +722,11 @@ fn rewrite_struct(
         #[derive(#root::lenz::Lenz)]
     });
     out.attrs.push(parse_quote!(#[lenz(crate = #root::lenz)]));
+    // A `#[elem(child)]` child is snapshotted into the element table
+    // at build so its `anim(...)` lines have a value to resolve
+    // against; that snapshot is a clone.
+    out.attrs
+        .push(parse_quote!(#[derive(::core::clone::Clone)]));
 
     let Data::Struct(data) = &mut out.data else {
         return Err(syn::Error::new_spanned(

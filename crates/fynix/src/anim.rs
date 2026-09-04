@@ -404,7 +404,7 @@ fn tick<H, T>(
         };
 
         transition.elapsed += dt;
-        let value = (transition.tween.lerp)(
+        let value = (transition.tween.interp)(
             &transition.from,
             to,
             transition.tween.at(transition.elapsed),
@@ -452,7 +452,7 @@ fn retarget<H, T>(
             .get::<Source<H, T>>(&transition.to)
             .and_then(|source| (source.access)(elements, key.node))
             .map(|target| {
-                (transition.tween.lerp)(
+                (transition.tween.interp)(
                     &transition.from,
                     target,
                     transition.tween.at(transition.elapsed),

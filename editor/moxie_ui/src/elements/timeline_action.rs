@@ -4,7 +4,6 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
-use crate::motion::Lit;
 use bevy_fynix::tag::{Hovered, Pressed};
 use fynix::element::element;
 
@@ -32,7 +31,6 @@ pub struct TimelineAction {
     #[elem(default = Color::NONE, patch = PatchBackground, anim(
         duration = theme.motion.interact,
         ease = theme.motion.ease,
-        lerp = <Color as Lit>::mix,
         on(Pressed, read = Self::pressed),
         on(Hovered, read = Self::hovered),
     ))]

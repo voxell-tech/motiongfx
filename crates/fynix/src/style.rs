@@ -1,8 +1,11 @@
-//! What an element looks like before it is built, in three layers.
+//! What an element looks like before it is built, in four layers.
 //!
 //! An element starts at its own [`ElementBase::base`], a [`Style`]
-//! writes over that, then the call site writes over the style.
-//! [`elem!`](crate::elem!) bundles all three into an
+//! writes over that with [`Style::apply`], the call site writes over
+//! the style, then the style gets the last word with
+//! [`Style::finish`] - late enough to reach a child the call site
+//! just built, which `apply` runs too early to see.
+//! [`elem!`](crate::elem!) bundles all four into an
 //! `FnOnce(&Theme) -> Element` that [`Ui::elem`](crate::ui::Ui::elem)
 //! runs once it has the theme.
 //!
@@ -47,7 +50,7 @@ use crate::host::Host;
 ///     type Host = Backend;
 ///     type Element = Label;
 ///
-///     fn apply(self, label: &mut Label, _theme: &()) {
+///     fn apply(&self, label: &mut Label, _theme: &()) {
 ///         label.size = 20 / self.level;
 ///
 ///         if self.level == 1 {
@@ -68,28 +71,38 @@ pub trait Style {
     type Host: Host;
     type Element: ElementBase<Self::Host>;
 
-    /// Called once, so it consumes rather than borrows: a style
-    /// meant to be applied more than once is implemented for `&Self`.
+    /// Before the call site's own fields land.
     ///
     /// `theme` is [`Host::Theme`] - read from, never written: a style
     /// decides its own look from it, but has no node yet to leave
     /// anything reactive against it.
     fn apply(
-        self,
+        &self,
         element: &mut Self::Element,
         theme: &<Self::Host as Host>::Theme,
-    ) where
-        Self: Sized,
-    {
+    ) {
+        let _ = (element, theme);
+    }
+
+    /// After them - late enough to reach a child the call site just
+    /// built, which `apply` runs too early to see. Most styles never
+    /// need this; the default does nothing.
+    fn finish(
+        &self,
+        element: &mut Self::Element,
+        theme: &<Self::Host as Host>::Theme,
+    ) {
         let _ = (element, theme);
     }
 }
 
-/// [`ElementBase::base`] then the style, the first two layers of an
-/// [`elem!`](crate::elem!) with a `!style`.
+/// [`ElementBase::base`] then [`Style::apply`], the first two layers
+/// of an [`elem!`](crate::elem!) with a `!style`. The style is
+/// borrowed, not consumed: [`Style::finish`] still needs it once the
+/// call site's fields have landed.
 #[doc(hidden)]
 pub fn styled<S: Style>(
-    style: S,
+    style: &S,
     theme: &<S::Host as Host>::Theme,
 ) -> S::Element {
     let mut element =

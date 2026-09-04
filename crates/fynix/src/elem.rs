@@ -53,7 +53,7 @@ use crate::elem;
 /// impl Style for Title {
 ///     type Host = Backend;
 ///     type Element = Label;
-///     fn apply(self, label: &mut Label, _theme: &()) { label.size = 10; }
+///     fn apply(&self, label: &mut Label, _theme: &()) { label.size = 10; }
 /// }
 ///
 /// elem!(!Title);                      // a style
@@ -77,8 +77,10 @@ macro_rules! elem {
     // A style, marked `!`, with an apply of its own.
     (!$style:expr, |$($inline:tt)*) => {
         move |__theme: &_| {
-            let mut __elem = $crate::style::styled($style, __theme);
+            let __style = $style;
+            let mut __elem = $crate::style::styled(&__style, __theme);
             (|$($inline)*)(&mut __elem);
+            $crate::style::Style::finish(&__style, &mut __elem, __theme);
             __elem
         }
     };
@@ -86,8 +88,10 @@ macro_rules! elem {
     // A style, then the fields the call site writes over it.
     (!$style:expr $(, $($field:tt)*)?) => {
         move |__theme: &_| {
-            let mut __elem = $crate::style::styled($style, __theme);
+            let __style = $style;
+            let mut __elem = $crate::style::styled(&__style, __theme);
             $crate::fields!(__elem, __theme $(, $($field)*)?);
+            $crate::style::Style::finish(&__style, &mut __elem, __theme);
             __elem
         }
     };

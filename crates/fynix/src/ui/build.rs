@@ -57,5 +57,4 @@ impl<'a, H: Host, E: Element<H>> Build<'a, H, E> {
     {
         self.store.child(self.node, field)
     }
-
 }

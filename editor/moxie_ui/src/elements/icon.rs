@@ -1,10 +1,9 @@
 use crate::reactive::FynixBuild;
 use bevy::picking::Pickable;
 use bevy::prelude::*;
-use bevy_fynix::tag::Hovered;
 use bevy::ui::widget::ImageNode;
 use bevy_fynix::WorldEntityMut as _;
-use crate::motion::Lit;
+use bevy_fynix::tag::Hovered;
 use fynix::element::element;
 
 use super::patch::*;
@@ -20,15 +19,11 @@ pub struct Icon {
     #[elem(patch = PatchColor, anim(
         duration = theme.motion.interact,
         ease = theme.motion.ease,
-        lerp = <Color as Lit>::mix,
         on(Hovered, read = Self::lit),
     ))]
     pub color: Color,
-    /// What `color` travels to while the pointer is over whatever
-    /// owns this icon. [`Color::NONE`] leaves it at rest. Element
-    /// state: the lines read it, nothing draws it.
-    #[elem(default = ::NONE)]
-    pub hover_color: Color,
+    /// What `color` travels to while the pointer is over.
+    pub hover_color: Option<Color>,
     #[elem(default = px(11), patch = PatchIconSize)]
     pub size: Val,
     /// Clockwise, in degrees.
@@ -44,10 +39,9 @@ impl Icon {
     /// Where `color` heads under the cursor: the tint if one was
     /// set, otherwise its own resting colour, so nothing moves.
     fn lit(&self) -> &Color {
-        if self.hover_color == Color::NONE {
-            &self.color
-        } else {
-            &self.hover_color
+        match &self.hover_color {
+            Some(color) => color,
+            None => &self.color,
         }
     }
 

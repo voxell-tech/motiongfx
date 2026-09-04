@@ -163,6 +163,22 @@ impl<H: Host> Records<H> {
         &mut self.store
     }
 
+    /// Mounts a `#[elem(child)]` child as an element in its own
+    /// right, so a tag lands on it and its `anim(...)` lines can
+    /// resolve - without this, [`set_tag`](crate::Fynix::set_tag)
+    /// never finds it.
+    ///
+    /// A snapshot taken at build; a child whose fields are later
+    /// `bind`-driven keeps travelling from this one.
+    #[doc(hidden)]
+    pub fn mount_child<E: Send + Sync + 'static>(
+        &mut self,
+        node: H::Node,
+        element: E,
+    ) {
+        self.elements.insert(node, element);
+        self.element_nodes.insert(node, TypeId::of::<E>());
+    }
 
     /// Register element type `kind`'s animated fields, on its first
     /// build. Later calls for the same type do nothing.

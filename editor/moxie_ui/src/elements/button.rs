@@ -1,4 +1,3 @@
-use crate::motion::Lit;
 use crate::reactive::{FynixBuild, FynixHost};
 use bevy::feathers::cursor::EntityCursor;
 use bevy::prelude::*;
@@ -25,7 +24,8 @@ pub enum Hover {
     /// The surface itself.
     Fill(Color),
     /// The icon and label, not the surface. Their own `hover_color`
-    /// carries the shade.
+    /// carries the shade - set by a [`Style`]'s
+    /// [`finish`](Style::finish), late enough to reach a child.
     IconLabel,
 }
 
@@ -50,7 +50,6 @@ pub struct Button {
     #[elem(default = theme.color.fill, patch = PatchBackground, anim(
         duration = theme.motion.interact,
         ease = theme.motion.ease,
-        lerp = <Color as Lit>::mix,
         on(Hovered, read = Self::lit),
     ))]
     pub fill: Color,
@@ -144,20 +143,23 @@ impl Style for TintButton {
     type Host = FynixHost;
     type Element = Button;
 
-    fn apply(self, button: &mut Button, theme: &EditorTheme) {
+    fn apply(&self, button: &mut Button, _theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.width = Val::Auto;
         button.height = Val::Auto;
         button.radius = Val::ZERO;
-        // The tint lands on the children, which own the colours
-        // that travel; the button itself stays put.
-        let tint = self.tint.unwrap_or(theme.color.accent);
         button.hover = Hover::IconLabel;
+    }
+
+    // `apply` runs before the call site builds `icon`/`label`, so it
+    // cannot reach them; `finish` runs after and wins instead.
+    fn finish(&self, button: &mut Button, theme: &EditorTheme) {
+        let tint = self.tint.unwrap_or(theme.color.accent);
         if let Some(icon) = &mut button.icon {
-            icon.hover_color = tint;
+            icon.hover_color = Some(tint);
         }
         if let Some(label) = &mut button.label {
-            label.hover_color = tint;
+            label.hover_color = Some(tint);
         }
     }
 }
@@ -170,7 +172,7 @@ impl Style for MenuButton {
     type Host = FynixHost;
     type Element = Button;
 
-    fn apply(self, button: &mut Button, _theme: &EditorTheme) {
+    fn apply(&self, button: &mut Button, _theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.width = Val::Auto;
         button.height = percent(100);
@@ -191,7 +193,7 @@ impl Style for SegmentButton {
     type Host = FynixHost;
     type Element = Button;
 
-    fn apply(self, button: &mut Button, theme: &EditorTheme) {
+    fn apply(&self, button: &mut Button, theme: &EditorTheme) {
         button.width = Val::Auto;
         button.height = px(theme.space.row);
         button.radius = Val::ZERO;
@@ -218,7 +220,7 @@ impl Style for GhostButton {
     type Host = FynixHost;
     type Element = Button;
 
-    fn apply(self, button: &mut Button, theme: &EditorTheme) {
+    fn apply(&self, button: &mut Button, theme: &EditorTheme) {
         button.fill = Color::NONE;
         button.width = Val::Auto;
         button.height = Val::Auto;

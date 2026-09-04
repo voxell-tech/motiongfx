@@ -1,33 +1,22 @@
-//! How a widget's colour moves.
+//! Colour interpolation for `#[elem(anim(...))]`.
 //!
-//! The travelling itself is declared on the element, by
-//! `#[elem(anim(...))]`; what is left here is the interpolation a
-//! colour needs, since [`Color`] is foreign to both crates and cannot
-//! carry fynix's own.
+//! The travelling itself is declared on the element; this crate only
+//! supplies the piece it's missing. `#[elem(anim(...))]` defaults to
+//! a search for a unique `Interpolation<_>` impl on the field's
+//! type, and that search only reaches impls local to this crate, to
+//! the crate defining [`Interpolation`], or to the crate defining
+//! the field type. `Color` and `Interpolation` are both foreign, so
+//! the impl lives here, behind a marker local to this crate.
 
 use bevy::color::Mix;
 use bevy::prelude::*;
+use fynix::tween::Interpolation;
 
-/// How a colour walks to another. Named by a field's
-/// `#[elem(anim(lerp = <Color as Lit>::mix))]`.
-pub trait Lit: Clone + PartialEq + Send + Sync + 'static {
-    fn mix(from: &Self, to: &Self, t: f32) -> Self;
-}
+/// Marks this crate's [`Interpolation`] impls for foreign types.
+pub struct Marker;
 
-impl Lit for Color {
-    fn mix(from: &Self, to: &Self, t: f32) -> Self {
-        from.mix(to, t)
-    }
-}
-
-/// `None` has nothing to fade from or to, so a leg touching it jumps
-/// rather than guesses a colour partway to "no colour".
-impl Lit for Option<Color> {
-    fn mix(from: &Self, to: &Self, t: f32) -> Self {
-        match (from, to) {
-            (Some(from), Some(to)) => Some(from.mix(to, t)),
-            _ if t >= 1.0 => *to,
-            _ => *from,
-        }
+impl Interpolation<Marker> for Color {
+    fn interp(a: &Self, b: &Self, t: f32) -> Self {
+        a.mix(b, t)
     }
 }
