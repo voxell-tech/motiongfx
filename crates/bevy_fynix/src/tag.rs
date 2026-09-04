@@ -54,13 +54,35 @@ pub trait TagExt<Theme: Send + Sync + 'static> {
 
     /// As [`Self::set_tag_on`], but watching `watch` rather than this
     /// node. The tag still lands here: a child's hit area can light
-    /// its owner, and an owner's can light a child.
+    /// its owner.
     fn set_tag_from<V: EntityEvent, T: Tag>(
         &mut self,
         watch: Entity,
         tag: T,
     ) -> &mut Self {
         let node = self.id();
+        self.tag_node_from::<V, T>(node, watch, tag)
+    }
+
+    /// As [`Self::unset_tag_on`], but watching `watch`.
+    fn unset_tag_from<V: EntityEvent, T: Tag>(
+        &mut self,
+        watch: Entity,
+    ) -> &mut Self {
+        let node = self.id();
+        self.untag_node_from::<V, T>(node, watch)
+    }
+
+    /// Tag `node` with `tag` whenever `V` fires on `watch`.
+    ///
+    /// The general form: neither end has to be this element's own
+    /// node, so an owner's hit area can light a child that has none.
+    fn tag_node_from<V: EntityEvent, T: Tag>(
+        &mut self,
+        node: Entity,
+        watch: Entity,
+        tag: T,
+    ) -> &mut Self {
         let world = self.tag_world();
         replace::<V, T>(
             world,
@@ -77,12 +99,12 @@ pub trait TagExt<Theme: Send + Sync + 'static> {
         self
     }
 
-    /// As [`Self::unset_tag_on`], but watching `watch`.
-    fn unset_tag_from<V: EntityEvent, T: Tag>(
+    /// Drop `node`'s tag of type `T` whenever `V` fires on `watch`.
+    fn untag_node_from<V: EntityEvent, T: Tag>(
         &mut self,
+        node: Entity,
         watch: Entity,
     ) -> &mut Self {
-        let node = self.id();
         let world = self.tag_world();
         replace::<V, T>(
             world,

@@ -1,7 +1,9 @@
 use crate::reactive::FynixBuild;
 use bevy::feathers::theme::ThemedText;
 use bevy::prelude::*;
+use bevy_fynix::tag::Hovered;
 use bevy_fynix::WorldEntityMut;
+use crate::motion::Lit;
 use fynix::element::element;
 
 use super::patch::*;
@@ -14,8 +16,17 @@ pub struct Label {
     #[elem(default = theme.text.body, patch = PatchTextSize)]
     pub size: f32,
     /// [`Color::NONE`] leaves the colour to the theme.
-    #[elem(default = ::NONE, patch = PatchTextColor)]
+    #[elem(default = ::NONE, patch = PatchTextColor, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        lerp = <Color as Lit>::mix,
+        on(Hovered, read = Self::lit),
+    ))]
     pub color: Color,
+    /// What `color` travels to while the pointer is over whatever
+    /// owns this label. [`Color::NONE`] leaves it at rest.
+    #[elem(ignore, default = ::NONE)]
+    pub hover_color: Color,
     #[elem(patch = PatchBold)]
     pub bold: bool,
     #[elem(default = true, patch = PatchWrap)]
@@ -46,6 +57,16 @@ fn layout(wrap: bool) -> TextLayout {
 }
 
 impl Label {
+    /// Where `color` heads under the cursor: the tint if one was
+    /// set, otherwise its own resting colour, so nothing moves.
+    fn lit(&self) -> &Color {
+        if self.hover_color == Color::NONE {
+            &self.color
+        } else {
+            &self.hover_color
+        }
+    }
+
     fn build(&self, build: &mut FynixBuild<'_, Self>) {
         build.insert((
             Text::new(self.text.clone()),

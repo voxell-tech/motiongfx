@@ -74,10 +74,19 @@ struct AnimConfig {
 struct AnimLine {
     /// A value of the tag type: a unit struct, or an enum variant.
     tag: Expr,
-    /// The sibling field the destination value is read from.
-    value: Ident,
+    /// Where the destination value comes from.
+    from: LineValue,
     duration: Option<Duration>,
     ease: Option<Expr>,
+}
+
+/// What a line heads to.
+enum LineValue {
+    /// `value = <field>`, a sibling field read in place.
+    Field(Ident),
+    /// `read = <path>`, an `fn(&Self) -> &T` for a value the element
+    /// works out rather than stores.
+    Read(Expr),
 }
 
 /// How long a leg runs. Either form takes an expression, so a theme
@@ -142,7 +151,18 @@ fn anim_field(
 
     let lines = anim.lines.iter().map(|line| {
         let tag = &line.tag;
-        let value = &line.value;
+        let read = match &line.from {
+            LineValue::Field(field) => quote! {
+                |__elements, __node| __elements
+                    .get::<#name #ty>(&__node)
+                    .map(|__element| &__element.#field)
+            },
+            LineValue::Read(path) => quote! {
+                |__elements, __node| __elements
+                    .get::<#name #ty>(&__node)
+                    .map(#path)
+            },
+        };
         let tween = tween_of(
             root,
             field_ty,
@@ -155,9 +175,7 @@ fn anim_field(
                 |__elements, __node| #root::anim::tagged::<#host, _>(
                     __elements, __node, #tag,
                 ),
-                |__elements, __node| __elements
-                    .get::<#name #ty>(&__node)
-                    .map(|__element| &__element.#value),
+                #read,
                 #tween,
             )
         }
@@ -222,13 +240,15 @@ fn parse_line(
     meta: &syn::meta::ParseNestedMeta,
 ) -> syn::Result<AnimLine> {
     let mut tag: Option<Expr> = None;
-    let mut value: Option<Ident> = None;
+    let mut from: Option<LineValue> = None;
     let mut duration = None;
     let mut ease = None;
 
     meta.parse_nested_meta(|item| {
         if item.path.is_ident("value") {
-            value = Some(item.value()?.parse()?);
+            from = Some(LineValue::Field(item.value()?.parse()?));
+        } else if item.path.is_ident("read") {
+            from = Some(LineValue::Read(item.value()?.parse()?));
         } else if item.path.is_ident("ms") {
             duration = Some(Duration::Millis(item.value()?.parse()?));
         } else if item.path.is_ident("duration") {
@@ -242,7 +262,8 @@ fn parse_line(
             tag = Some(parse_quote!(#path));
         } else {
             return Err(item.error(
-                "expected `value`, `ms`, `duration`, or `ease`",
+                "expected `value`, `read`, `ms`, `duration`, or \
+                 `ease`",
             ));
         }
         Ok(())
@@ -251,13 +272,15 @@ fn parse_line(
     let Some(tag) = tag else {
         return Err(meta.error("`on` needs a tag"));
     };
-    let Some(value) = value else {
-        return Err(meta.error("`on` needs `value = <field>`"));
+    let Some(from) = from else {
+        return Err(meta.error(
+            "`on` needs `value = <field>` or `read = <path>`",
+        ));
     };
 
     Ok(AnimLine {
         tag,
-        value,
+        from,
         duration,
         ease,
     })

@@ -1,7 +1,9 @@
 use crate::reactive::FynixBuild;
 use bevy::prelude::*;
+use bevy_fynix::tag::Hovered;
 use bevy::ui::widget::ImageNode;
 use bevy_fynix::WorldEntityMut as _;
+use crate::motion::Lit;
 use fynix::element::element;
 
 use super::patch::*;
@@ -14,8 +16,17 @@ pub struct Icon {
     /// Asset path.
     #[elem(patch = PatchImage)]
     pub image: String,
-    #[elem(patch = PatchColor)]
+    #[elem(patch = PatchColor, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        lerp = <Color as Lit>::mix,
+        on(Hovered, read = Self::lit),
+    ))]
     pub color: Color,
+    /// What `color` travels to while the pointer is over whatever
+    /// owns this icon. [`Color::NONE`] leaves it at rest.
+    #[elem(ignore, default = ::NONE)]
+    pub hover_color: Color,
     #[elem(default = px(11), patch = PatchIconSize)]
     pub size: Val,
     /// Clockwise, in degrees.
@@ -28,6 +39,16 @@ pub(super) fn icon_transform(rotation: f32) -> UiTransform {
 }
 
 impl Icon {
+    /// Where `color` heads under the cursor: the tint if one was
+    /// set, otherwise its own resting colour, so nothing moves.
+    fn lit(&self) -> &Color {
+        if self.hover_color == Color::NONE {
+            &self.color
+        } else {
+            &self.hover_color
+        }
+    }
+
     fn build(&self, build: &mut FynixBuild<'_, Self>) {
         // The handle and colour land through `image` / `color`; this
         // just gives them an `ImageNode` to write into.
