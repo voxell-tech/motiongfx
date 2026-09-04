@@ -7,6 +7,8 @@
 // Each test file uses a different part of this.
 #![allow(dead_code)]
 
+use core::time::Duration;
+
 use fynix::Fynix;
 use fynix::element::{Element, element};
 use fynix::host::Host;
@@ -146,7 +148,7 @@ pub struct World {
     pub source: Source,
     /// What a flush advances a transition by. A test sets it outright
     /// rather than owning a clock.
-    pub delta: f32,
+    pub delta: Duration,
     /// What a style asked to be told about. A real backend would hand
     /// these to its pointer; a test fires them by hand.
     interactions: Vec<(usize, Interact, Aim)>,
@@ -205,7 +207,7 @@ impl Host for FynixHost {
     /// Nothing in these tests reads a theme.
     type Theme = ();
 
-    fn delta(world: &World) -> f32 {
+    fn delta(world: &World) -> Duration {
         world.delta
     }
 

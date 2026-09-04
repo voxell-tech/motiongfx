@@ -7,6 +7,8 @@ mod common;
 use common::{
     FynixHost, Interact, Label, LabelCursor, TestAim, World,
 };
+use core::time::Duration;
+
 use fynix::element::element;
 use fynix::host::Host;
 use fynix::style::Style;
@@ -35,7 +37,7 @@ fn only_child(world: &World, root: usize) -> usize {
 /// The delta is a quarter of that, so a flush is a quarter of the way.
 fn travelling() -> (World, usize, Fynix<FynixHost>, usize) {
     let (mut world, root) = World::with_root();
-    world.delta = 0.25;
+    world.delta = Duration::from_millis(250);
     let mut kernel = Fynix::new(());
 
     kernel.watch(
@@ -242,7 +244,7 @@ fn style_carries_what_moves_as_well_as_what_it_looks_like() {
     }
 
     let (mut world, root) = World::with_root();
-    world.delta = 0.5;
+    world.delta = Duration::from_millis(500);
     let mut kernel = Fynix::new(());
 
     kernel.watch(

@@ -8,6 +8,7 @@
 
 use alloc::vec::Vec;
 use core::any::TypeId;
+use core::time::Duration;
 
 use hashbrown::HashSet;
 use typarena::type_table::TypeTable;
@@ -30,7 +31,7 @@ pub(crate) struct Transition<H: Host, T> {
     target: Option<T>,
     /// The current leg's start.
     from: T,
-    elapsed: f32,
+    elapsed: Duration,
 }
 
 impl<H: Host, T: Clone> Transition<H, T> {
@@ -54,7 +55,7 @@ impl<H: Host, T: Clone> Transition<H, T> {
     pub(crate) fn aim(&mut self, target: Option<T>) {
         // Snapshot before the endpoint moves.
         self.from = self.shown();
-        self.elapsed = 0.0;
+        self.elapsed = Duration::ZERO;
         self.target = target;
     }
 
@@ -63,7 +64,7 @@ impl<H: Host, T: Clone> Transition<H, T> {
     pub(crate) fn rebase(&mut self, base: &T) {
         if self.target.is_none() {
             self.from = self.shown();
-            self.elapsed = 0.0;
+            self.elapsed = Duration::ZERO;
         }
         self.base = base.clone();
     }
@@ -71,7 +72,7 @@ impl<H: Host, T: Clone> Transition<H, T> {
     /// Advance by `dt` and write what it reached.
     fn advance(
         &mut self,
-        dt: f32,
+        dt: Duration,
         world: &mut H::World,
         node: H::Node,
         theme: &H::Theme,
@@ -94,14 +95,14 @@ impl<H: Host, T: Clone> Transition<H, T> {
 /// The per-type advance step in a [`TransitionTable`]'s tick registry.
 type TickFn<H> = fn(
     &mut TypeTable<FieldKey<H>>,
-    f32,
+    Duration,
     &mut <H as Host>::World,
     &<H as Host>::Theme,
 );
 
 fn tick<H, T>(
     table: &mut TypeTable<FieldKey<H>>,
-    dt: f32,
+    dt: Duration,
     world: &mut H::World,
     theme: &H::Theme,
 ) where
@@ -187,7 +188,7 @@ impl<H: Host> TransitionTable<H> {
     /// Advance every transition by `dt`.
     pub(crate) fn advance(
         &mut self,
-        dt: f32,
+        dt: Duration,
         world: &mut H::World,
         theme: &H::Theme,
     ) {

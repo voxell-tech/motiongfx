@@ -36,7 +36,7 @@ use crate::elem;
 /// #     fn exists(_: &(), _: usize) -> bool { true }
 /// #     fn children(_: &(), _: usize) -> Vec<usize> { Vec::new() }
 /// #     fn despawn(_: &mut (), _: usize) {}
-/// #     fn delta(_: &()) -> f32 { 0.0 }
+/// #     fn delta(_: &()) -> core::time::Duration { core::time::Duration::ZERO }
 /// # }
 /// # fn built<E>(_: impl FnOnce(&()) -> E) {}
 /// #[derive(Default)]

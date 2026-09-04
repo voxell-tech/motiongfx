@@ -21,8 +21,8 @@ impl Host for FynixHost {
     type Node = usize;
     type World = ();
     type Theme = ();
-    fn delta(_: &()) -> f32 {
-        0.0
+    fn delta(_: &()) -> core::time::Duration {
+        core::time::Duration::ZERO
     }
     fn spawn(_: &mut (), _: usize) -> usize {
         0
