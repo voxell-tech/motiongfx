@@ -15,6 +15,7 @@ use crate::lenz::{Cursor, FieldPath, Identity};
 use crate::records::{BuildFn, ChangedFn, Records, Watcher};
 use crate::ui::Ui;
 
+pub mod anim;
 pub mod composer;
 mod elem;
 pub mod element;
@@ -167,13 +168,16 @@ impl<H: Host> Fynix<H> {
         // dead handle.
         records.bindings.retain(|key, _| H::exists(world, key.node));
         records.transitions.retain(|node| H::exists(world, node));
+        records.anim.retain(|node| H::exists(world, node));
         records.store.prune(world);
 
         // `elements` is keyed by type as well as node, so it cannot
         // say what it holds. `element_nodes` is the list to sweep.
-        records.element_nodes.retain(|node| {
+        records.element_nodes.retain(|node, _| {
             let alive = H::exists(world, *node);
             if !alive {
+                // Takes the node's tags with it: they are columns on
+                // the same row.
                 records.elements.remove_row(node);
             }
             alive
@@ -206,6 +210,54 @@ impl<H: Host> Fynix<H> {
         // the base they left.
         let delta = H::delta(world);
         transitions.advance(delta, world, theme);
+        records.anim.tick(delta, world, &records.elements, theme);
+    }
+
+    /// Tag `node`, replacing any tag of the same type it already
+    /// carries. Its animated fields re-resolve and travel to whatever
+    /// the new tag set names.
+    pub fn set_tag<T: anim::Tag>(&mut self, node: H::Node, tag: T) {
+        let Records {
+            anim,
+            elements,
+            element_nodes,
+            ..
+        } = &mut self.records;
+        let Some(kind) = element_nodes.get(&node).copied() else {
+            return;
+        };
+        anim.set_tag(elements, kind, node, tag);
+    }
+
+    /// Drop `node`'s tag of type `T`. Its fields fall back to the
+    /// next active line, or to their base.
+    pub fn unset_tag<T: anim::Tag>(&mut self, node: H::Node) {
+        let Records {
+            anim,
+            elements,
+            element_nodes,
+            ..
+        } = &mut self.records;
+        let Some(kind) = element_nodes.get(&node).copied() else {
+            return;
+        };
+        anim.unset_tag::<T>(elements, kind, node);
+    }
+
+    /// How many fields are travelling under a tag.
+    pub fn moving_len(&self) -> usize {
+        self.records.anim.len()
+    }
+
+    /// Register element type `kind`'s animated fields. `#[element]`
+    /// emits this on the type's first build; a hand-rolled element
+    /// calls it itself.
+    pub fn register_anim<E: 'static>(
+        &mut self,
+        fields: impl FnOnce(&mut anim::Registrar<'_, H>),
+    ) {
+        self.records
+            .register_anim(core::any::TypeId::of::<E>(), fields);
     }
 
     /// Point a transitioning field at `target`, or release it back to

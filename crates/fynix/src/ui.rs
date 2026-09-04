@@ -93,7 +93,9 @@ impl<'a, H: Host> Ui<'a, H> {
             self.theme,
         );
         self.records.elements.insert(node, element);
-        self.records.element_nodes.insert(node);
+        self.records
+            .element_nodes
+            .insert(node, core::any::TypeId::of::<E>());
 
         ElementMut {
             ui: self,

@@ -4,11 +4,13 @@
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::any::TypeId;
 use core::hash::{Hash, Hasher};
 
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
 use typarena::type_table::TypeTable;
 
+use crate::anim::{AnimTable, Registrar};
 use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::store::Store;
@@ -129,10 +131,13 @@ pub struct Records<H: Host> {
     pub(crate) bindings: HashMap<FieldKey<H>, Binding<H>>,
     /// Keyed like `bindings`, one per field.
     pub(crate) transitions: TransitionTable<H>,
+    /// Tag-driven transitions, and what a build registered for them.
+    pub(crate) anim: AnimTable<H>,
     pub(crate) elements: ElementTable<H>,
-    /// Which nodes have a row in `elements`. Lets a sweep know what
-    /// to drop without asking `elements` what it holds.
-    pub(crate) element_nodes: HashSet<H::Node>,
+    /// The element type on each node with a row in `elements`. Lets a
+    /// sweep know what to drop without asking `elements` what it
+    /// holds, and names the type whose animated fields to re-resolve.
+    pub(crate) element_nodes: HashMap<H::Node, TypeId>,
     pub(crate) store: Store<H>,
     /// Watchers declared during a build, held until the next flush.
     pub(crate) spawned: Vec<Watcher<H>>,
@@ -143,8 +148,9 @@ impl<H: Host> Default for Records<H> {
         Self {
             bindings: HashMap::new(),
             transitions: TransitionTable::default(),
+            anim: AnimTable::default(),
             elements: ElementTable::<H>::new(),
-            element_nodes: HashSet::new(),
+            element_nodes: HashMap::new(),
             store: Store::new(),
             spawned: Vec::new(),
         }
@@ -168,5 +174,16 @@ impl<H: Host> Records<H> {
         &mut self,
     ) -> (&mut TransitionTable<H>, &mut Store<H>) {
         (&mut self.transitions, &mut self.store)
+    }
+
+    /// Register element type `kind`'s animated fields, on its first
+    /// build. Later calls for the same type do nothing.
+    #[doc(hidden)]
+    pub fn register_anim(
+        &mut self,
+        kind: TypeId,
+        fields: impl FnOnce(&mut Registrar<'_, H>),
+    ) {
+        self.anim.register(kind, fields);
     }
 }

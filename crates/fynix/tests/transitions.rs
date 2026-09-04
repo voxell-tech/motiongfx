@@ -94,7 +94,7 @@ fn aim_reaches_a_transition_on_a_child() {
     }
 
     let (mut world, root) = World::with_root();
-    world.delta = 1.0;
+    world.delta = Duration::from_secs(1);
     let mut kernel = Fynix::new(());
     kernel.watch(
         root,
