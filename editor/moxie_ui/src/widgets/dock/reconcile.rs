@@ -134,7 +134,7 @@ fn build_split(id: NodeId, split: DockSplit, ui: &mut BevyUi) {
             let line =
                 handle_line(ui.theme, flex_direction, line_color);
             let mut bar = handle_bar(ui.theme, flex_direction);
-            bar.hover_background = ui.theme.color.hover;
+            bar.hover_background = Some(ui.theme.color.hover);
             let mut handle = ui.elem(elem!(
                 SplitHandle,
                 node = id,

@@ -64,13 +64,12 @@ pub struct Frame {
         on(Hovered, read = Self::hovered),
     ))]
     pub background: Color,
-    /// What `background` travels to under the cursor. [`Color::NONE`]
-    /// leaves it at rest.
-    #[elem(ignore, default = ::NONE)]
-    pub hover_background: Color,
+    /// What `background` travels to under the cursor; `None` rests.
+    #[elem(ignore)]
+    pub hover_background: Option<Color>,
     /// While held. Falls back to `hover_background` when unset.
-    #[elem(ignore, default = ::NONE)]
-    pub press_background: Color,
+    #[elem(ignore)]
+    pub press_background: Option<Color>,
     /// `None` hides it, which is how a frame that depends on a size it
     /// has not measured yet avoids showing up at its intrinsic size
     /// for a frame.
@@ -87,19 +86,17 @@ impl Frame {
     /// Where `background` heads under the cursor, or its own colour
     /// when none was set, so it stays put.
     fn hovered(&self) -> &Color {
-        if self.hover_background == Color::NONE {
-            &self.background
-        } else {
-            &self.hover_background
+        match &self.hover_background {
+            Some(color) => color,
+            None => &self.background,
         }
     }
 
     /// While held, falling back to the hover shade.
     fn pressed(&self) -> &Color {
-        if self.press_background == Color::NONE {
-            self.hovered()
-        } else {
-            &self.press_background
+        match &self.press_background {
+            Some(color) => color,
+            None => self.hovered(),
         }
     }
 }

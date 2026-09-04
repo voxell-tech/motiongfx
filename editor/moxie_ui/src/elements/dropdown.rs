@@ -67,13 +67,12 @@ pub struct Dropdown {
         on(Hovered, read = Self::hovered),
     ))]
     pub fill: Color,
-    /// What `fill` travels to under the cursor. [`Color::NONE`]
-    /// leaves it at rest.
-    #[elem(ignore, default = ::NONE)]
-    pub hover_fill: Color,
+    /// What `fill` travels to under the cursor; `None` rests.
+    #[elem(ignore)]
+    pub hover_fill: Option<Color>,
     /// While held. Falls back to `hover_fill` when unset.
-    #[elem(ignore, default = ::NONE)]
-    pub press_fill: Color,
+    #[elem(ignore)]
+    pub press_fill: Option<Color>,
     #[elem(default = px(4), patch = PatchRadius)]
     pub radius: Val,
 }
@@ -201,13 +200,12 @@ pub struct DropdownItem {
         on(Hovered, read = Self::hovered),
     ))]
     pub fill: Color,
-    /// What `fill` travels to under the cursor. [`Color::NONE`]
-    /// leaves it at rest.
-    #[elem(ignore, default = ::NONE)]
-    pub hover_fill: Color,
+    /// What `fill` travels to under the cursor; `None` rests.
+    #[elem(ignore)]
+    pub hover_fill: Option<Color>,
     /// While held. Falls back to `hover_fill` when unset.
-    #[elem(ignore, default = ::NONE)]
-    pub press_fill: Color,
+    #[elem(ignore)]
+    pub press_fill: Option<Color>,
     #[elem(default = px(3), patch = PatchRadius)]
     pub radius: Val,
 }
@@ -235,19 +233,17 @@ impl Dropdown {
     /// Where `fill` heads under the cursor, or its own colour when
     /// none was set, so it stays put.
     fn hovered(&self) -> &Color {
-        if self.hover_fill == Color::NONE {
-            &self.fill
-        } else {
-            &self.hover_fill
+        match &self.hover_fill {
+            Some(color) => color,
+            None => &self.fill,
         }
     }
 
     /// While held, falling back to the hover shade.
     fn pressed(&self) -> &Color {
-        if self.press_fill == Color::NONE {
-            self.hovered()
-        } else {
-            &self.press_fill
+        match &self.press_fill {
+            Some(color) => color,
+            None => self.hovered(),
         }
     }
 }
@@ -256,19 +252,17 @@ impl DropdownItem {
     /// Where `fill` heads under the cursor, or its own colour when
     /// none was set, so it stays put.
     fn hovered(&self) -> &Color {
-        if self.hover_fill == Color::NONE {
-            &self.fill
-        } else {
-            &self.hover_fill
+        match &self.hover_fill {
+            Some(color) => color,
+            None => &self.fill,
         }
     }
 
     /// While held, falling back to the hover shade.
     fn pressed(&self) -> &Color {
-        if self.press_fill == Color::NONE {
-            self.hovered()
-        } else {
-            &self.press_fill
+        match &self.press_fill {
+            Some(color) => color,
+            None => self.hovered(),
         }
     }
 }
