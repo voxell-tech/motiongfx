@@ -254,6 +254,20 @@ impl<H: Host> AnimTable<H> {
         }
     }
 
+    /// Forget every element type's registration, and every leg in
+    /// flight with it.
+    ///
+    /// For a theme change: a registration bakes in the tweens the
+    /// theme named, so the next build has to make them again. The
+    /// rows go too - their `PoolKey`s point into the sources being
+    /// dropped.
+    pub fn forget(&mut self) {
+        self.pool = TypePool::new();
+        self.rows = TypeTable::new();
+        self.keys.clear();
+        self.animated.clear();
+    }
+
     /// Drop rows whose nodes the backend no longer has.
     pub fn retain(&mut self, mut keep: impl FnMut(H::Node) -> bool) {
         let rows = &mut self.rows;

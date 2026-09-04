@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use syn::{
-    Data, DeriveInput, Expr, Field, Fields, Ident, LitInt, Path, Token,
+    Data, DeriveInput, Expr, Field, Fields, Ident, Path, Token,
     parse_quote, punctuated::Punctuated,
 };
 
@@ -62,7 +62,7 @@ struct FieldConfig {
 /// `#[elem(anim(ms = .., ease = .., lerp = .., on(..), ..))]`: how a
 /// field travels, and the tags it answers to.
 struct AnimConfig {
-    ms: u32,
+    duration: Duration,
     ease: Option<Expr>,
     /// Defaults to `<T as Interpolation<()>>::interp`.
     lerp: Option<Expr>,
@@ -76,8 +76,17 @@ struct AnimLine {
     tag: Expr,
     /// The sibling field the destination value is read from.
     value: Ident,
-    ms: Option<u32>,
+    duration: Option<Duration>,
     ease: Option<Expr>,
+}
+
+/// How long a leg runs. Either form takes an expression, so a theme
+/// value serves as well as a literal.
+enum Duration {
+    /// `ms = <expr>`, milliseconds.
+    Millis(Expr),
+    /// `duration = <expr>`, a `core::time::Duration`.
+    Exact(Expr),
 }
 
 /// `Tween::ms(ms, lerp).ease(ease)` for one destination.
@@ -85,7 +94,7 @@ struct AnimLine {
 fn tween_of(
     root: &TokenStream2,
     field_ty: &syn::Type,
-    ms: u32,
+    duration: &Duration,
     ease: Option<&Expr>,
     lerp: Option<&Expr>,
 ) -> TokenStream2 {
@@ -95,7 +104,14 @@ fn tween_of(
             <#field_ty as #root::tween::Interpolation<()>>::interp
         },
     };
-    let tween = quote!(#root::tween::Tween::ms(#ms, #lerp));
+    let tween = match duration {
+        Duration::Millis(ms) => {
+            quote!(#root::tween::Tween::ms(#ms, #lerp))
+        }
+        Duration::Exact(dur) => {
+            quote!(#root::tween::Tween::new(#dur, #lerp))
+        }
+    };
     match ease {
         Some(ease) => quote!(#tween.ease(#ease)),
         None => tween,
@@ -119,7 +135,7 @@ fn anim_field(
     let base_tween = tween_of(
         root,
         field_ty,
-        anim.ms,
+        &anim.duration,
         anim.ease.as_ref(),
         anim.lerp.as_ref(),
     );
@@ -130,7 +146,7 @@ fn anim_field(
         let tween = tween_of(
             root,
             field_ty,
-            line.ms.unwrap_or(anim.ms),
+            line.duration.as_ref().unwrap_or(&anim.duration),
             line.ease.as_ref().or(anim.ease.as_ref()),
             anim.lerp.as_ref(),
         );
@@ -163,14 +179,16 @@ fn anim_field(
 }
 
 fn parse_anim(meta: &syn::meta::ParseNestedMeta) -> syn::Result<AnimConfig> {
-    let mut ms = None;
+    let mut duration = None;
     let mut ease = None;
     let mut lerp = None;
     let mut lines = Vec::new();
 
     meta.parse_nested_meta(|item| {
         if item.path.is_ident("ms") {
-            ms = Some(item.value()?.parse::<LitInt>()?.base10_parse()?);
+            duration = Some(Duration::Millis(item.value()?.parse()?));
+        } else if item.path.is_ident("duration") {
+            duration = Some(Duration::Exact(item.value()?.parse()?));
         } else if item.path.is_ident("ease") {
             ease = Some(item.value()?.parse()?);
         } else if item.path.is_ident("lerp") {
@@ -179,18 +197,21 @@ fn parse_anim(meta: &syn::meta::ParseNestedMeta) -> syn::Result<AnimConfig> {
             lines.push(parse_line(&item)?);
         } else {
             return Err(item.error(
-                "expected `ms`, `ease`, `lerp`, or `on(...)`",
+                "expected `ms`, `duration`, `ease`, `lerp`, or \
+                 `on(...)`",
             ));
         }
         Ok(())
     })?;
 
-    let Some(ms) = ms else {
-        return Err(meta.error("`anim` needs `ms = ...`"));
+    let Some(duration) = duration else {
+        return Err(
+            meta.error("`anim` needs `ms = ...` or `duration = ...`")
+        );
     };
 
     Ok(AnimConfig {
-        ms,
+        duration,
         ease,
         lerp,
         lines,
@@ -202,14 +223,16 @@ fn parse_line(
 ) -> syn::Result<AnimLine> {
     let mut tag: Option<Expr> = None;
     let mut value: Option<Ident> = None;
-    let mut ms = None;
+    let mut duration = None;
     let mut ease = None;
 
     meta.parse_nested_meta(|item| {
         if item.path.is_ident("value") {
             value = Some(item.value()?.parse()?);
         } else if item.path.is_ident("ms") {
-            ms = Some(item.value()?.parse::<LitInt>()?.base10_parse()?);
+            duration = Some(Duration::Millis(item.value()?.parse()?));
+        } else if item.path.is_ident("duration") {
+            duration = Some(Duration::Exact(item.value()?.parse()?));
         } else if item.path.is_ident("ease") {
             ease = Some(item.value()?.parse()?);
         } else if tag.is_none() {
@@ -218,9 +241,9 @@ fn parse_line(
             let path = item.path.clone();
             tag = Some(parse_quote!(#path));
         } else {
-            return Err(
-                item.error("expected `value`, `ms`, or `ease`")
-            );
+            return Err(item.error(
+                "expected `value`, `ms`, `duration`, or `ease`",
+            ));
         }
         Ok(())
     })?;
@@ -235,7 +258,7 @@ fn parse_line(
     Ok(AnimLine {
         tag,
         value,
-        ms,
+        duration,
         ease,
     })
 }

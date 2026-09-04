@@ -129,6 +129,12 @@ impl<H: Host> Fynix<H> {
         // still schedules another rebuild.
         let retheme = core::mem::take(&mut self.theme_dirty);
 
+        // Registrations bake in the tweens the old theme named, so
+        // the rebuild below has to make them again.
+        if retheme {
+            self.records.anim.forget();
+        }
+
         // Split so `records` stays writable while `watchers` is
         // borrowed by the loop below.
         let Self {

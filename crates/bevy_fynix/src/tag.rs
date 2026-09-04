@@ -43,9 +43,28 @@ pub trait TagExt<Theme: Send + Sync + 'static> {
         tag: T,
     ) -> &mut Self {
         let node = self.id();
+        self.set_tag_from::<V, T>(node, tag)
+    }
+
+    /// Drop this node's tag of type `T` whenever `V` fires on it.
+    fn unset_tag_on<V: EntityEvent, T: Tag>(&mut self) -> &mut Self {
+        let node = self.id();
+        self.unset_tag_from::<V, T>(node)
+    }
+
+    /// As [`Self::set_tag_on`], but watching `watch` rather than this
+    /// node. The tag still lands here: a child's hit area can light
+    /// its owner, and an owner's can light a child.
+    fn set_tag_from<V: EntityEvent, T: Tag>(
+        &mut self,
+        watch: Entity,
+        tag: T,
+    ) -> &mut Self {
+        let node = self.id();
         let world = self.tag_world();
         replace::<V, T>(
             world,
+            watch,
             node,
             Observer::new(move |_: On<V>, mut commands: Commands| {
                 commands.queue(move |world: &mut World| {
@@ -58,12 +77,16 @@ pub trait TagExt<Theme: Send + Sync + 'static> {
         self
     }
 
-    /// Drop this node's tag of type `T` whenever `V` fires on it.
-    fn unset_tag_on<V: EntityEvent, T: Tag>(&mut self) -> &mut Self {
+    /// As [`Self::unset_tag_on`], but watching `watch`.
+    fn unset_tag_from<V: EntityEvent, T: Tag>(
+        &mut self,
+        watch: Entity,
+    ) -> &mut Self {
         let node = self.id();
         let world = self.tag_world();
         replace::<V, T>(
             world,
+            watch,
             node,
             Observer::new(move |_: On<V>, mut commands: Commands| {
                 commands.queue(move |world: &mut World| {
@@ -83,11 +106,17 @@ pub trait TagExt<Theme: Send + Sync + 'static> {
     /// over the node leaves [`Hovered`] set, so a field falls back to
     /// its hover line rather than to its base.
     fn pointer_tags(&mut self) -> &mut Self {
-        self.set_tag_on::<Pointer<Over>, _>(Hovered)
-            .unset_tag_on::<Pointer<Out>, Hovered>()
-            .set_tag_on::<Pointer<Press>, _>(Pressed)
-            .unset_tag_on::<Pointer<Release>, Pressed>()
-            .unset_tag_on::<Pointer<Cancel>, Pressed>()
+        let node = self.id();
+        self.pointer_tags_from(node)
+    }
+
+    /// As [`Self::pointer_tags`], but driven by `watch`'s hit area.
+    fn pointer_tags_from(&mut self, watch: Entity) -> &mut Self {
+        self.set_tag_from::<Pointer<Over>, _>(watch, Hovered)
+            .unset_tag_from::<Pointer<Out>, Hovered>(watch)
+            .set_tag_from::<Pointer<Press>, _>(watch, Pressed)
+            .unset_tag_from::<Pointer<Release>, Pressed>(watch)
+            .unset_tag_from::<Pointer<Cancel>, Pressed>(watch)
     }
 }
 
@@ -116,15 +145,20 @@ impl<Theme: Send + Sync + 'static, E: Element<BevyHost<Theme>>>
 }
 
 /// The observer currently answering `V` with a change to `T` on this
-/// node. Keyed on both, so two tags driven by one event do not evict
-/// each other.
+/// node.
+///
+/// It lives on the *tagged* node, not the watched one, and is keyed
+/// on both types: two nodes lit by one button's hit area each keep
+/// their own, and two tag types driven by one event do not evict each
+/// other.
 #[derive(Component)]
 struct Tagging<V, T>(Entity, PhantomData<fn() -> (V, T)>);
 
-/// Point `observer` at `node`, dropping whatever `(V, T)` was
-/// watching it before.
+/// Have `observer` watch `watch` on behalf of `node`, dropping
+/// whatever `(V, T)` was answering for `node` before.
 fn replace<V: EntityEvent, T: Tag>(
     world: &mut World,
+    watch: Entity,
     node: Entity,
     observer: Observer,
 ) {
@@ -137,7 +171,7 @@ fn replace<V: EntityEvent, T: Tag>(
         world.despawn(old);
     }
 
-    let observer = world.spawn(observer.with_entity(node)).id();
+    let observer = world.spawn(observer.with_entity(watch)).id();
 
     world
         .entity_mut(node)
