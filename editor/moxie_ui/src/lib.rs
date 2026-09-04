@@ -12,13 +12,19 @@ pub mod fold;
 pub mod icons;
 pub mod inspector;
 pub mod layout;
-pub mod motion;
 pub mod reactive;
 pub mod theme;
 pub mod widgets;
 
 /// The backend `#[element]` builds against by default.
 pub use reactive::{FynixBuild, FynixHost};
+
+// Unreferenced by name, but load-bearing: any `#[elem(anim(...))]`
+// field's default `Interpolation<_>` inference only finds
+// `bevy_motiongfx`'s impls once something in this crate names its
+// `interpolation` module.
+#[expect(unused_imports)]
+use bevy_motiongfx::interpolation::Bevy;
 
 use bevy::feathers::FeathersPlugins;
 use bevy::feathers::dark_theme::create_dark_theme;
