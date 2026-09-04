@@ -28,6 +28,18 @@ pub trait Tag: Copy + PartialEq + Send + Sync + 'static {}
 
 impl<T: Copy + PartialEq + Send + Sync + 'static> Tag for T {}
 
+/// Whether `node` carries exactly `tag`.
+///
+/// What every `on(...)` line's predicate calls. Takes the tag by
+/// value so a unit struct and an enum variant read the same.
+pub fn tagged<H: Host, T: Tag>(
+    elements: &ElementTable<H>,
+    node: H::Node,
+    tag: T,
+) -> bool {
+    elements.get::<T>(&node) == Some(&tag)
+}
+
 /// Reads a destination value out of the element that owns it.
 pub type Access<H, T> = for<'a> fn(
     &'a ElementTable<H>,

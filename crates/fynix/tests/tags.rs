@@ -1,8 +1,5 @@
 //! Tags drive a field to whichever source its highest active line
 //! names, and back down the list as tags come off.
-//!
-//! Registration is written out by hand here; `#[element]` will emit
-//! the same calls.
 
 mod common;
 
@@ -10,11 +7,9 @@ use core::time::Duration;
 
 use common::{FynixHost, World};
 use fynix::element::element;
-use fynix::lenz::FieldPath;
-use fynix::tween::Tween;
+use fynix::host::Host;
 use fynix::{Fynix, WorldNodeRef, elem};
 use motiongfx_interp::ease;
-use motiongfx_interp::interpolation::Interpolation;
 
 /// Tags are plain types. Nothing here implements a fynix trait.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -25,11 +20,21 @@ pub struct Pressed;
 
 #[element(host = FynixHost)]
 pub struct Button {
-    /// Animated. `border` below reacts to `Hovered` only, which is
-    /// what a press must not disturb.
-    #[elem(default = 0, patch = WriteSize)]
+    #[elem(default = 0, patch = WriteSize, anim(
+        ms = 100,
+        ease = ease::linear,
+        on(Pressed, value = press_size),
+        on(Hovered, value = hover_size),
+    ))]
     pub size: u32,
-    #[elem(default = 0, patch = WriteBorder)]
+
+    /// Answers to `Hovered` only, which is what a press must not
+    /// disturb.
+    #[elem(default = 0, patch = WriteBorder, anim(
+        ms = 100,
+        ease = ease::linear,
+        on(Hovered, value = hover_border),
+    ))]
     pub border: u32,
 
     /// Plain fields the lines read through.
@@ -51,12 +56,14 @@ test_patch!(WriteBorder, u32, |patch, v| {
     patch.world.node(node).border_width = *v;
 });
 
-fn lerp(a: &u32, b: &u32, t: f32) -> u32 {
-    <u32 as Interpolation<()>>::interp(a, b, t)
-}
-
-fn tween(ms: u32) -> Tween<u32> {
-    Tween::ms(ms, lerp).ease(ease::linear)
+/// Fires on the first flush and never again, so the node a test
+/// captured stays put.
+fn once() -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
++ Send
++ Sync
++ 'static {
+    let mut pending = true;
+    move |_| core::mem::take(&mut pending)
 }
 
 /// A button whose `size` runs base -> hover -> press and whose
@@ -68,65 +75,6 @@ fn button() -> (World, Fynix<FynixHost>, usize) {
     world.delta = Duration::from_millis(25);
 
     let mut kernel = Fynix::new(());
-
-    kernel.register_anim::<Button>(|registrar| {
-        registrar.field(
-            <button_path::size as FieldPath>::id(),
-            <WriteSize as fynix::ui::FieldPatch<FynixHost>>::patch,
-            |elements, node| {
-                elements.get::<Button>(&node).map(|b| &b.size)
-            },
-            tween(100),
-            |lines| {
-                lines
-                    .on(
-                        |elements, node| {
-                            elements.contains::<Pressed>(&node)
-                        },
-                        |elements, node| {
-                            elements
-                                .get::<Button>(&node)
-                                .map(|b| &b.press_size)
-                        },
-                        tween(100),
-                    )
-                    .on(
-                        |elements, node| {
-                            elements.contains::<Hovered>(&node)
-                        },
-                        |elements, node| {
-                            elements
-                                .get::<Button>(&node)
-                                .map(|b| &b.hover_size)
-                        },
-                        tween(100),
-                    );
-            },
-        );
-
-        registrar.field(
-            <button_path::border as FieldPath>::id(),
-            <WriteBorder as fynix::ui::FieldPatch<FynixHost>>::patch,
-            |elements, node| {
-                elements.get::<Button>(&node).map(|b| &b.border)
-            },
-            tween(100),
-            |lines| {
-                lines.on(
-                    |elements, node| {
-                        elements.contains::<Hovered>(&node)
-                    },
-                    |elements, node| {
-                        elements
-                            .get::<Button>(&node)
-                            .map(|b| &b.hover_border)
-                    },
-                    tween(100),
-                );
-            },
-        );
-    });
-
     kernel.watch(
         root,
         once(),
@@ -143,19 +91,8 @@ fn button() -> (World, Fynix<FynixHost>, usize) {
         &mut world,
     );
 
-    let node = <FynixHost as fynix::host::Host>::children(&world, root)
-        [0];
+    let node = FynixHost::children(&world, root)[0];
     (world, kernel, node)
-}
-
-/// Fires on the first flush and never again, so the node a test
-/// captured stays put.
-fn once() -> impl for<'w> FnMut(WorldNodeRef<'w, FynixHost>) -> bool
-+ Send
-+ Sync
-+ 'static {
-    let mut pending = true;
-    move |_| core::mem::take(&mut pending)
 }
 
 /// Run `n` flushes.
@@ -263,8 +200,7 @@ fn reversing_cuts_the_duration() {
 
     kernel.set_tag(node, Hovered);
     flush(&mut kernel, &mut world, 1);
-    let quarter = world.get(node).size;
-    assert_eq!(quarter, 25, "a quarter of the way to hover");
+    assert_eq!(world.get(node).size, 25, "a quarter of the way");
 
     kernel.unset_tag::<Hovered>(node);
     flush(&mut kernel, &mut world, 1);
@@ -273,5 +209,43 @@ fn reversing_cuts_the_duration() {
         world.get(node).size,
         0,
         "one flush undoes the one flush it had spent"
+    );
+}
+
+/// A per-line `ms` overrides the `anim` default.
+#[test]
+fn line_can_set_its_own_duration() {
+    #[element(host = FynixHost)]
+    pub struct Slow {
+        #[elem(default = 0, patch = WriteSize, anim(
+            ms = 100,
+            ease = ease::linear,
+            on(Hovered, value = hover_size, ms = 200),
+        ))]
+        pub size: u32,
+        #[elem(ignore)]
+        pub hover_size: u32,
+    }
+
+    let (mut world, root) = World::with_root();
+    world.delta = Duration::from_millis(50);
+    let mut kernel = Fynix::new(());
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(Slow, size = 0u32, hover_size = 100u32));
+        },
+        &mut world,
+    );
+    let node = FynixHost::children(&world, root)[0];
+
+    kernel.set_tag(node, Hovered);
+    flush(&mut kernel, &mut world, 2);
+
+    assert_eq!(
+        world.get(node).size,
+        50,
+        "halfway after 100ms of a 200ms line"
     );
 }

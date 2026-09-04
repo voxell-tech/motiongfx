@@ -9,6 +9,9 @@ use core::time::Duration;
 pub type LerpFn<T> = fn(&T, &T, f32) -> T;
 
 pub use motiongfx_interp::ease::EaseFn;
+/// How a value walks between two of itself. What `#[elem(anim(...))]`
+/// reaches for unless the field names its own `lerp = ...`.
+pub use motiongfx_interp::interpolation::Interpolation;
 
 /// A field's curve to a new value: duration, easing, interpolation.
 pub struct Tween<T> {
