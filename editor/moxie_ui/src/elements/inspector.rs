@@ -9,6 +9,7 @@
 //! Each is empty when what it points at is not there. A missing
 //! component and an inspector pointed nowhere read the same.
 
+use bevy_fynix::tag::TagExt as _;
 use std::any::TypeId;
 use std::borrow::Cow;
 
@@ -26,7 +27,7 @@ use fynix::records::{BuildFn, ChangedFn};
 use fynix::ui::ElementHandle;
 
 use super::{
-    Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
+    Dropdown, DropdownItem, DropdownList,
     DropdownMenu, Frame, Icon, Label, TintButton,
 };
 use crate::icons;
@@ -34,7 +35,6 @@ use crate::inspector::{
     Field, FieldRow, InspectorFields, ReflectInspectable, Section,
     inspect_value, single_value,
 };
-use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, FynixHost, value_changed};
 use crate::theme::EditorTheme;
 
@@ -251,7 +251,7 @@ fn add_component_item(
             color = theme.color.text
         )
     ))
-    .lit(|item| item.fill(), theme.color.hover, theme.color.hover)
+    .pointer_tags()
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(move |world: &mut World| {
             add_component(world, entity, component);

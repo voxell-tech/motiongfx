@@ -1,6 +1,7 @@
 //! The menu bar above the dock, holding what acts on the project as a
 //! whole rather than on anything a panel is showing.
 
+use bevy_fynix::tag::TagExt as _;
 use bevy::prelude::*;
 use bevy::ui_widgets::{
     Activate, ActivateOnPress, MenuButton as MenuButtonBehavior,
@@ -10,10 +11,9 @@ use fynix::composer::Composer;
 use fynix::elem;
 use fynix::ui::ElementHandle;
 use moxie_ui::elements::{
-    Dropdown, DropdownItem, DropdownItemCursor, DropdownList,
+    Dropdown, DropdownItem, DropdownList,
     DropdownMenu, Frame, Label, MenuButton,
 };
-use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{BevyUi, FynixHost};
 use moxie_ui::theme::EditorTheme;
 
@@ -121,6 +121,7 @@ fn item(
     ui.elem(elem!(
         DropdownItem,
         radius = Val::ZERO,
+        hover_fill = theme.color.hover,
         label = elem!(
             Label,
             text = entry.to_string(),
@@ -128,7 +129,7 @@ fn item(
             color = theme.color.text
         )
     ))
-    .lit(|item| item.fill(), theme.color.hover, theme.color.hover)
+    .pointer_tags()
     .observe(move |_: On<Activate>, mut commands: Commands| {
         commands.queue(run);
     });

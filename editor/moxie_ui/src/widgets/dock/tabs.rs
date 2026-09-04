@@ -1,8 +1,9 @@
 //! Tab bar widget: a row of `DockTab`s + an "add tab" button for a
 //! leaf, built as kernel nodes.
 
+use bevy_fynix::tag::{Hovered, TagExt as _};
 use bevy::feathers::constants::icons as feathers_icons;
-use bevy::picking::events::{Click, Pointer};
+use bevy::picking::events::{Click, Out, Over, Pointer};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use bevy_fynix::WorldEntityMut;
@@ -16,7 +17,6 @@ use crate::elements::{
     Tab, TabBar, TabCursor, TabRow, TintButton,
 };
 use crate::icons;
-use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, resource_changed};
 
 #[derive(Component)]
@@ -107,6 +107,7 @@ fn build_tab(
                 Icon,
                 image = feathers_icons::X,
                 color = close_color,
+                hover_color = close_hover,
                 size = px(10)
             )
         )
@@ -159,12 +160,12 @@ fn build_tab(
             },
         );
 
-        tab.lit_entity(
-            close,
-            |tab| tab.close().icon().color(),
-            close_hover,
-            close_hover,
-        );
+        if let Some(icon) = tab.child(|tab| tab.close().icon()) {
+            tab.tag_node_from::<Pointer<Over>, _>(
+                icon, close, Hovered,
+            );
+            tab.untag_node_from::<Pointer<Out>, Hovered>(icon, close);
+        }
     }
 }
 

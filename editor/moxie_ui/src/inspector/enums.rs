@@ -14,6 +14,7 @@
 //! whichever variant it is already on, with that variant's fields
 //! walked underneath like a struct's.
 
+use bevy_fynix::tag::TagExt as _;
 use bevy::prelude::*;
 use bevy::reflect::enums::{
     DynamicEnum, DynamicVariant, VariantInfo,
@@ -34,11 +35,10 @@ use fynix::ui::ElementHandle;
 
 use super::{Source, when_changed};
 use crate::elements::{
-    Dropdown, DropdownCursor, DropdownItem, DropdownItemCursor,
+    Dropdown, DropdownCursor, DropdownItem,
     DropdownList, DropdownMenu, Frame, Icon, Label, LabelCursor,
 };
 use crate::icons;
-use crate::motion::MotionExt;
 use crate::reactive::{BevyUi, FynixHost};
 use crate::theme::EditorTheme;
 
@@ -250,11 +250,7 @@ fn control(
             rotation = 180.0f32
         )
     ))
-    .lit(
-        |dropdown| dropdown.fill(),
-        theme.color.hover,
-        theme.color.hover,
-    )
+    .pointer_tags()
     .bind(
         |dropdown| dropdown.label().text(),
         when_changed(source),
@@ -299,7 +295,7 @@ fn option(
             color = theme.color.text
         )
     ))
-    .lit(|item| item.fill(), theme.color.hover, theme.color.hover)
+    .pointer_tags()
     .observe(move |_: On<Activate>, mut commands: Commands| {
         let (source, variant) = (edited.boxed(), chosen.clone());
 

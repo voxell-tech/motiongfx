@@ -18,6 +18,8 @@ use bevy::ui_widgets::{
 };
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
+use crate::motion::Lit;
+use bevy_fynix::tag::{Hovered, Pressed};
 use fynix::element::element;
 
 use super::patch::*;
@@ -59,8 +61,21 @@ pub struct Dropdown {
     pub max_width: Val,
     #[elem(default = px(22), patch = PatchHeight)]
     pub height: Val,
-    #[elem(default = theme.color.fill, patch = PatchBackground)]
+    #[elem(default = theme.color.fill, patch = PatchBackground, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        lerp = <Color as Lit>::mix,
+        on(Pressed, read = Self::pressed),
+        on(Hovered, read = Self::hovered),
+    ))]
     pub fill: Color,
+    /// What `fill` travels to under the cursor. [`Color::NONE`]
+    /// leaves it at rest.
+    #[elem(ignore, default = ::NONE)]
+    pub hover_fill: Color,
+    /// While held. Falls back to `hover_fill` when unset.
+    #[elem(ignore, default = ::NONE)]
+    pub press_fill: Color,
     #[elem(default = px(4), patch = PatchRadius)]
     pub radius: Val,
 }
@@ -181,8 +196,21 @@ pub struct DropdownItem {
     pub label: Label,
     #[elem(default = px(20), patch = PatchHeight)]
     pub height: Val,
-    #[elem(default = ::NONE, patch = PatchBackground)]
+    #[elem(default = ::NONE, patch = PatchBackground, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        lerp = <Color as Lit>::mix,
+        on(Pressed, read = Self::pressed),
+        on(Hovered, read = Self::hovered),
+    ))]
     pub fill: Color,
+    /// What `fill` travels to under the cursor. [`Color::NONE`]
+    /// leaves it at rest.
+    #[elem(ignore, default = ::NONE)]
+    pub hover_fill: Color,
+    /// While held. Falls back to `hover_fill` when unset.
+    #[elem(ignore, default = ::NONE)]
+    pub press_fill: Color,
     #[elem(default = px(3), patch = PatchRadius)]
     pub radius: Val,
 }
@@ -203,5 +231,47 @@ impl DropdownItem {
             TabIndex(0),
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
+    }
+}
+
+impl Dropdown {
+    /// Where `fill` heads under the cursor, or its own colour when
+    /// none was set, so it stays put.
+    fn hovered(&self) -> &Color {
+        if self.hover_fill == Color::NONE {
+            &self.fill
+        } else {
+            &self.hover_fill
+        }
+    }
+
+    /// While held, falling back to the hover shade.
+    fn pressed(&self) -> &Color {
+        if self.press_fill == Color::NONE {
+            self.hovered()
+        } else {
+            &self.press_fill
+        }
+    }
+}
+
+impl DropdownItem {
+    /// Where `fill` heads under the cursor, or its own colour when
+    /// none was set, so it stays put.
+    fn hovered(&self) -> &Color {
+        if self.hover_fill == Color::NONE {
+            &self.fill
+        } else {
+            &self.hover_fill
+        }
+    }
+
+    /// While held, falling back to the hover shade.
+    fn pressed(&self) -> &Color {
+        if self.press_fill == Color::NONE {
+            self.hovered()
+        } else {
+            &self.press_fill
+        }
     }
 }

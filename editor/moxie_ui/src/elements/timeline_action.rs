@@ -4,6 +4,8 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Button as ButtonBehavior;
 use bevy::window::SystemCursorIcon;
 use bevy_fynix::WorldEntityMut as _;
+use crate::motion::Lit;
+use bevy_fynix::tag::{Hovered, Pressed};
 use fynix::element::element;
 
 use super::Label;
@@ -27,8 +29,21 @@ pub struct TimelineAction {
     pub width: Val,
     #[elem(patch = PatchHeight)]
     pub height: Val,
-    #[elem(default = Color::NONE, patch = PatchBackground)]
+    #[elem(default = Color::NONE, patch = PatchBackground, anim(
+        duration = theme.motion.interact,
+        ease = theme.motion.ease,
+        lerp = <Color as Lit>::mix,
+        on(Pressed, read = Self::pressed),
+        on(Hovered, read = Self::hovered),
+    ))]
     pub fill: Color,
+    /// What `fill` travels to under the cursor. [`Color::NONE`]
+    /// leaves it at rest.
+    #[elem(ignore, default = ::NONE)]
+    pub hover_fill: Color,
+    /// While held. Falls back to `hover_fill` when unset.
+    #[elem(ignore, default = ::NONE)]
+    pub press_fill: Color,
     #[elem(default = Color::NONE, patch = PatchBorderColor)]
     pub border: Color,
     /// Thickens the border - the caller still chooses `border`'s
@@ -54,5 +69,26 @@ impl TimelineAction {
             ButtonBehavior,
             EntityCursor::System(SystemCursorIcon::Pointer),
         ));
+    }
+}
+
+impl TimelineAction {
+    /// Where `fill` heads under the cursor, or its own colour when
+    /// none was set, so it stays put.
+    fn hovered(&self) -> &Color {
+        if self.hover_fill == Color::NONE {
+            &self.fill
+        } else {
+            &self.hover_fill
+        }
+    }
+
+    /// While held, falling back to the hover shade.
+    fn pressed(&self) -> &Color {
+        if self.press_fill == Color::NONE {
+            self.hovered()
+        } else {
+            &self.press_fill
+        }
     }
 }

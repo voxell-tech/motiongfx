@@ -8,6 +8,7 @@ mod pattern;
 pub(crate) use drag::{Dragging, cancel_on_escape};
 pub(crate) use pattern::DelayPattern;
 
+use bevy_fynix::tag::TagExt as _;
 use core::time::Duration;
 use std::collections::BTreeSet;
 
@@ -30,14 +31,13 @@ use fynix::composer::Composer;
 use fynix::elem;
 use fynix::ui::ElementHandle;
 use moxie_ui::elements::{
-    Button, ButtonCursor, Frame, FrameCursor, GhostButton, Icon,
+    Button, ButtonCursor, Frame, GhostButton, Icon,
     IconCursor, Label, LabelCursor, Panel, PlayheadLine,
     PlayheadLineCursor, ScrollArea, TimeLabel, TimeTick,
-    TimelineAction, TimelineActionCursor, TimelineBlock, TimelineGap,
+    TimelineAction, TimelineBlock, TimelineGap,
     TintButton,
 };
 use moxie_ui::fold::{CHEVRON_OPEN, CHEVRON_SHUT};
-use moxie_ui::motion::MotionExt;
 use moxie_ui::reactive::{
     BevyUi, FynixHost, resource_changed, value_changed,
 };
@@ -528,15 +528,13 @@ fn build_block_boxes(ui: &mut BevyUi) {
                     width = px(placed.w),
                     height = px(placed.h),
                     fill = fill,
+                    hover_fill = theme.color.clip_hover,
+                    press_fill = theme.color.clip_press,
                     border = border,
                     selected = is_selected
                 ));
                 clip.insert(drag::BoxPath(placed.path.clone()))
-                    .lit(
-                        |action| action.fill(),
-                        theme.color.clip_hover,
-                        theme.color.clip_press,
-                    )
+                    .pointer_tags()
                     .observe({
                         let path = path.clone();
                         move |_: On<Activate>,
@@ -609,12 +607,10 @@ fn edge_handle(
         position = PositionType::Absolute,
         inset = UiRect::new(px(x), auto(), px(y), auto()),
         width = px(drag::EDGE_HANDLE_PX),
-        height = px(h)
+        height = px(h),
+        hover_background = accent.with_alpha(0.35),
+        press_background = accent.with_alpha(0.6)
     ));
-    handle.lit(
-        |frame| frame.background(),
-        accent.with_alpha(0.35),
-        accent.with_alpha(0.6),
-    );
+    handle.pointer_tags();
     drag::edge(&mut handle, path, kind);
 }
