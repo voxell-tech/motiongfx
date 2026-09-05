@@ -33,22 +33,20 @@ mod timeline_track;
 // The cursor traits come too: a binding names a field by walking to
 // it, and the walk is what those provide.
 pub use button::{
-    Button, ButtonCursor, ButtonField, GhostButton, MenuButton,
-    SegmentButton, TintButton,
+    Button, ButtonCursor, GhostButton, MenuButton, SegmentButton,
+    TintButton,
 };
-pub use divider::{Divider, DividerCursor, DividerField};
+pub use divider::{Divider, DividerCursor};
 pub use dropdown::{
-    Dropdown, DropdownCursor, DropdownField, DropdownItem,
-    DropdownItemCursor, DropdownItemField, DropdownList,
-    DropdownListCursor, DropdownListField, DropdownMenu,
+    Dropdown, DropdownCursor, DropdownItem, DropdownItemCursor,
+    DropdownList, DropdownListCursor, DropdownMenu,
 };
 pub use field::{
-    CheckBox, CheckBoxCursor, CheckBoxField, NumberField,
-    NumberFieldCursor, NumberFieldField, TextField, TextFieldCursor,
-    TextFieldField,
+    CheckBox, CheckBoxCursor, NumberField, NumberFieldCursor,
+    TextField, TextFieldCursor,
 };
-pub use frame::{Frame, FrameCursor, FrameField};
-pub use icon::{Icon, IconCursor, IconField};
+pub use frame::{Frame, FrameCursor};
+pub use icon::{Icon, IconCursor};
 // Composers rather than elements, so no cursor or field type: what
 // they are handed picks a subtree rather than naming a value, and
 // nothing about them is stored to be patched later.
@@ -56,33 +54,20 @@ pub use inspector::{
     ComponentInspector, EntityInspector, ResourceInspector,
     display_name,
 };
-pub use label::{Label, LabelCursor, LabelField};
-pub use overlay::{Overlay, OverlayCursor, OverlayField};
-pub use panel::{Panel, PanelCursor, PanelField};
-pub use playhead::{
-    PlayheadLine, PlayheadLineCursor, PlayheadLineField,
-};
-pub use scroll_area::{
-    ScrollArea, ScrollAreaCursor, ScrollAreaField,
-};
+pub use label::{Label, LabelCursor};
+pub use overlay::{Overlay, OverlayCursor};
+pub use panel::{Panel, PanelCursor};
+pub use playhead::{PlayheadLine, PlayheadLineCursor};
+pub use scroll_area::{ScrollArea, ScrollAreaCursor};
 pub use segmented_control::SegmentedControl;
 pub use tab::{
-    Tab, TabBar, TabBarCursor, TabBarField, TabCursor, TabField,
-    TabRow, TabRowCursor, TabRowField,
+    Tab, TabBar, TabBarCursor, TabCursor, TabRow, TabRowCursor,
 };
-pub use timeline_action::{
-    TimelineAction, TimelineActionCursor, TimelineActionField,
-};
-pub use timeline_block::{
-    TimelineBlock, TimelineBlockCursor, TimelineBlockField,
-};
-pub use timeline_gap::{
-    TimelineGap, TimelineGapCursor, TimelineGapField,
-};
-pub use timeline_track::{
-    TimelineTrack, TimelineTrackCursor, TimelineTrackField,
-};
+pub use timeline_action::{TimelineAction, TimelineActionCursor};
+pub use timeline_block::{TimelineBlock, TimelineBlockCursor};
+pub use timeline_gap::{TimelineGap, TimelineGapCursor};
+pub use timeline_track::{TimelineTrack, TimelineTrackCursor};
 
-pub use time_tick::{TimeTick, TimeTickCursor, TimeTickField};
+pub use time_tick::{TimeTick, TimeTickCursor};
 
-pub use time_label::{TimeLabel, TimeLabelCursor, TimeLabelField};
+pub use time_label::{TimeLabel, TimeLabelCursor};

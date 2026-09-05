@@ -6,7 +6,7 @@ mod common;
 use core::marker::PhantomData;
 
 use common::{FynixHost, Label, LabelCursor, World};
-use fynix::element::{Element, ElementBase, Fields, element};
+use fynix::element::{Element, ElementBase, element};
 use fynix::records::Records;
 use fynix::ui::{FieldPatch, Patch};
 
@@ -74,13 +74,4 @@ fn generic_element_patches_through_its_child() {
     themed.patch(&mut world, node, &ids, records.store_mut(), &());
 
     assert_eq!(world.get(label).text, "Saved");
-}
-
-#[test]
-fn generic_elem_field_is_still_left_out_of_the_enum() {
-    let label = Themed::<Dark>::cursor().label().hops();
-    assert!(Themed::<Dark>::field(label[0]).is_none());
-
-    let look = Themed::<Dark>::field_id(ThemedField::Look);
-    assert_eq!(Themed::<Dark>::field(look), Some(ThemedField::Look));
 }
