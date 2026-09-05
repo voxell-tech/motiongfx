@@ -5,7 +5,7 @@ mod common;
 
 use common::{FynixHost, Label, LabelCursor, World};
 use fynix::elem;
-use fynix::element::{Element, ElementBase, Fields, element};
+use fynix::element::{Element, ElementBase, element};
 use fynix::host::Host;
 use fynix::lenz::{FieldPath, Lenz};
 use fynix::records::Records;
@@ -141,19 +141,6 @@ fn path_into_plain_data_is_finished_by_its_owner() {
 
     assert_eq!(world.get(node).border_width, 2);
     assert_eq!(world.get(node).border_radius, 0);
-}
-
-#[test]
-fn elem_field_is_not_one_of_our_own() {
-    // `label` and `icon` are elements, so they never reach `Button`'s
-    // own dispatch: nothing there can name them.
-    assert!(Button::field(button_path::label::id()).is_none());
-    assert!(Button::field(button_path::icon::id()).is_none());
-
-    assert_eq!(
-        Button::field(button_path::padding::id()),
-        Some(ButtonField::Padding)
-    );
 }
 
 #[test]

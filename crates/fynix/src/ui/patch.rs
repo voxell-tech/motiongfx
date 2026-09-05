@@ -1,7 +1,7 @@
 //! One field's write to the backend, and the traits that name one.
 
 use crate::host::Host;
-use crate::lenz::{FieldPath, Tagged};
+use crate::lenz::{FieldId, FieldPath, Tagged};
 
 /// What a `#[elem(patch = ...)]` writer writes through: the node the
 /// value lands on, `world`, and `theme`.
@@ -43,6 +43,44 @@ pub trait FieldPatch<H: Host> {
 /// A field path whose terminal hop is a `#[elem(patch = ...)]` field.
 pub trait Bindable<H: Host>: FieldPath {
     fn patch(patch: &mut Patch<H>, value: &Self::Target);
+}
+
+/// Writes an own field's value through its `#[elem(patch = ...)]`
+/// writer.
+#[doc(hidden)]
+pub fn write_field<H, P>(
+    world: &mut H::World,
+    node: H::Node,
+    theme: &H::Theme,
+    value: &P::Target,
+) where
+    H: Host,
+    P: FieldPatch<H>,
+{
+    let mut patch = Patch::new(world, node, theme);
+    P::patch(&mut patch, value);
+}
+
+/// As [`write_field`], but only if `head` names this field, returning
+/// whether it did.
+#[doc(hidden)]
+pub fn patch_field<H, P>(
+    id: FieldId,
+    head: FieldId,
+    world: &mut H::World,
+    node: H::Node,
+    theme: &H::Theme,
+    value: &P::Target,
+) -> bool
+where
+    H: Host,
+    P: FieldPatch<H>,
+{
+    if head != id {
+        return false;
+    }
+    write_field::<H, P>(world, node, theme, value);
+    true
 }
 
 impl<P, H> Bindable<H> for P

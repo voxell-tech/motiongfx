@@ -17,13 +17,12 @@ pub struct Generics {
     pub decl: TokenStream2,
     /// The arguments as written on the type: `<S, T>`, or nothing.
     pub ty: TokenStream2,
-    /// The struct's own `where`, plus `'static` for every parameter.
+    /// The struct's own predicates, plus `'static` for every
+    /// parameter, comma terminated, for an impl that adds predicates
+    /// of its own.
     ///
     /// A path is named by its `TypeId`, so nothing along it may
     /// borrow.
-    pub where_clause: TokenStream2,
-    /// The same predicates without the `where`, comma terminated, for
-    /// an impl that adds predicates of its own.
     pub predicates: TokenStream2,
 }
 
@@ -66,16 +65,9 @@ pub fn generics(ast: &DeriveInput) -> syn::Result<Generics> {
     let predicates =
         predicates(ast.generics.where_clause.as_ref(), &idents);
 
-    let where_clause = if predicates.is_empty() {
-        TokenStream2::new()
-    } else {
-        quote!(where #predicates)
-    };
-
     Ok(Generics {
         decl,
         ty,
-        where_clause,
         predicates,
     })
 }
@@ -158,25 +150,6 @@ pub fn crate_path() -> TokenStream2 {
         }
         Ok(FoundCrate::Itself) | Err(_) => quote!(::fynix),
     }
-}
-
-pub fn pascal_case(ident: &Ident) -> String {
-    let name = ident.to_string();
-    let mut out = String::with_capacity(name.len());
-    let mut capitalize = true;
-
-    for ch in name.chars() {
-        if ch == '_' {
-            capitalize = true;
-        } else if capitalize {
-            out.extend(ch.to_uppercase());
-            capitalize = false;
-        } else {
-            out.push(ch);
-        }
-    }
-
-    out
 }
 
 pub fn snake_case(ident: &Ident) -> String {

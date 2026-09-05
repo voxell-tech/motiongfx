@@ -6,6 +6,7 @@
 //! A field's own value writer and the optional structural hook are
 //! named by `#[elem(patch = ...)]` and `#[element(build = ...)]`.
 
+use crate::anim::Access;
 use crate::host::Host;
 use crate::lenz::FieldId;
 use crate::records::Records;
@@ -25,8 +26,9 @@ pub trait ElementBase<H: Host>: Sized {
 
 /// An element and the `#[elem(child)]` children beneath it.
 ///
-/// Written by `#[element]`, for one backend.
-pub trait Element<H: Host>: Fields {
+/// Written by `#[element]`, for one backend. `'static` so a built
+/// element can go into a type-erased table.
+pub trait Element<H: Host>: 'static {
     /// Build this element under `parent`, children and all.
     ///
     /// Each child's node is recorded in `records`, so
@@ -63,29 +65,69 @@ pub trait Element<H: Host>: Fields {
     );
 }
 
-/// A struct whose own fields can be named one by one.
-///
-/// [`FieldId`] is opaque and can only be compared. Recovering the
-/// enum instead gives a `match` the compiler checks against new
-/// fields.
-///
-/// Fields marked `#[elem(child)]` are absent from the enum.
-/// [`Element`] reaches those instead.
-pub trait Fields: 'static {
-    type Field: Copy + 'static;
+/// Builds a `#[elem(child)]` field, if present, then records and
+/// mounts it; see [`Records::mount_child`].
+#[doc(hidden)]
+pub fn build_child<H, E>(
+    elem: Option<&E>,
+    id: FieldId,
+    world: &mut H::World,
+    node: H::Node,
+    records: &mut Records<H>,
+    theme: &H::Theme,
+    read: Access<H, E>,
+) where
+    H: Host,
+    E: Element<H> + Send + Sync + 'static,
+{
+    let Some(elem) = elem else {
+        return;
+    };
+    let child = elem.build(world, node, records, theme);
+    records.store_mut().insert(node, id, child);
+    records.mount_child(child, node, read);
+}
 
-    /// The field this id names, or `None` if it is not one this
-    /// element draws.
-    fn field(id: FieldId) -> Option<Self::Field>
-    where
-        Self: Sized;
+/// Patches a `#[elem(child)]` field if `head` names it, returning
+/// whether it did.
+#[doc(hidden)]
+#[expect(clippy::too_many_arguments)]
+pub fn patch_child<H, E>(
+    elem: Option<&E>,
+    id: FieldId,
+    node: H::Node,
+    head: FieldId,
+    rest: &[FieldId],
+    world: &mut H::World,
+    store: &mut Store<H>,
+    theme: &H::Theme,
+) -> bool
+where
+    H: Host,
+    E: Element<H>,
+{
+    if head != id {
+        return false;
+    }
+    if let (Some(elem), Some(child)) = (elem, store.get(node, head)) {
+        elem.patch(world, child, rest, store, theme);
+    }
+    true
+}
 
-    /// What `field` is called once the types are gone.
-    ///
-    /// Hangs off the struct, not the enum: a generic struct has one
-    /// path marker per set of arguments, so the id cannot come from
-    /// the variant alone.
-    fn field_id(field: Self::Field) -> FieldId
-    where
-        Self: Sized;
+/// Despawns a `#[elem(child)]` field's subtree, if present and built.
+#[doc(hidden)]
+pub fn despawn_child<H, E>(
+    elem: Option<&E>,
+    id: FieldId,
+    node: H::Node,
+    world: &mut H::World,
+    store: &mut Store<H>,
+) where
+    H: Host,
+    E: Element<H>,
+{
+    if let (Some(elem), Some(child)) = (elem, store.take(node, id)) {
+        elem.despawn(world, child, store);
+    }
 }
