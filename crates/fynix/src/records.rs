@@ -166,16 +166,20 @@ impl<H: Host> Records<H> {
     /// Mounts a `#[elem(child)]` child as an element in its own
     /// right, so a tag lands on it and its `anim(...)` lines can
     /// resolve - without this, [`set_tag`](crate::Fynix::set_tag)
-    /// never finds it. A snapshot taken at build; a child whose
-    /// fields are later `bind`-driven keeps travelling from this one.
+    /// never finds it. `read` reaches the child's real value through
+    /// `parent`; see [`crate::anim::resolve`].
     #[doc(hidden)]
-    pub fn mount_child<E: Send + Sync + 'static>(
+    pub fn mount_child<C: Send + Sync + 'static>(
         &mut self,
         node: H::Node,
-        element: E,
+        parent: H::Node,
+        read: crate::anim::Access<H, C>,
     ) {
-        self.elements.insert(node, element);
-        self.element_nodes.insert(node, TypeId::of::<E>());
+        self.elements.insert(
+            node,
+            crate::anim::MountedIn::<H, C> { parent, read },
+        );
+        self.element_nodes.insert(node, TypeId::of::<C>());
     }
 
     /// Register element type `kind`'s animated fields, on its first

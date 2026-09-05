@@ -18,7 +18,7 @@ pub struct Icon {
 
 /// Plain data, not an element: no node of its own, so `Button` draws
 /// it.
-#[derive(Debug, Default, Clone, Lenz)]
+#[derive(Debug, Default, Lenz)]
 pub struct Border {
     pub width: u32,
     pub radius: u32,

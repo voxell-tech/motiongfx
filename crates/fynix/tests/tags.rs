@@ -266,3 +266,64 @@ fn despawning_drops_the_row() {
 
     assert_eq!(kernel.moving_len(), 0, "the sweep took them");
 }
+
+/// A `#[elem(child)]` two levels deep resolves through both of its
+/// mount points, not just one hop up.
+#[test]
+fn a_grandchild_still_resolves_its_own_field() {
+    #[element(host = FynixHost)]
+    pub struct Leaf {
+        #[elem(default = 0, patch = WriteSize, anim(
+            ms = 100,
+            ease = ease::linear,
+            on(Hovered, read = hover_size),
+        ))]
+        pub size: u32,
+        #[elem(ignore)]
+        pub hover_size: u32,
+    }
+
+    #[element(host = FynixHost)]
+    pub struct Middle {
+        #[elem(child)]
+        pub leaf: Leaf,
+    }
+
+    #[element(host = FynixHost)]
+    pub struct Outer {
+        #[elem(child)]
+        pub middle: Middle,
+    }
+
+    let (mut world, root) = World::with_root();
+    world.delta = Duration::from_millis(25);
+    let mut kernel = Fynix::new(());
+    kernel.watch(
+        root,
+        once(),
+        |ui| {
+            ui.elem(elem!(
+                Outer,
+                middle = elem!(
+                    Middle,
+                    leaf =
+                        elem!(Leaf, size = 0u32, hover_size = 100u32)
+                )
+            ));
+        },
+        &mut world,
+    );
+
+    let outer = FynixHost::children(&world, root)[0];
+    let middle = FynixHost::children(&world, outer)[0];
+    let leaf = FynixHost::children(&world, middle)[0];
+
+    kernel.set_tag(leaf, Hovered);
+    flush(&mut kernel, &mut world, 4);
+
+    assert_eq!(
+        world.get(leaf).size,
+        100,
+        "arrived through both hops"
+    );
+}
