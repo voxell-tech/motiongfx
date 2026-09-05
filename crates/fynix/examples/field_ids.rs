@@ -8,7 +8,7 @@
 
 use core::marker::PhantomData;
 
-use fynix::element::{Fields, element};
+use fynix::element::element;
 use fynix::host::Host;
 use fynix::lenz::FieldId;
 use fynix::ui::{FieldPatch, Patch};
@@ -116,7 +116,6 @@ fn main() {
     same_name_two_owners();
     same_field_two_arguments();
     same_walk_twice();
-    same_field_two_ways();
     hops_of_a_walk();
     whole_walk_keys();
 
@@ -164,16 +163,6 @@ fn same_walk_twice() {
     assert_eq!(once, again, "ids are stable");
 }
 
-/// Walking to a field and naming it from the enum are the same thing.
-fn same_field_two_ways() {
-    println!("\nthe same field, reached two ways");
-    let walked = Pair::cursor().gap().hops()[0];
-    let named = Pair::field_id(PairField::Gap);
-    show("Pair::cursor().gap()", walked);
-    show("PairField::Gap", named);
-    assert_eq!(walked, named, "one field, one id");
-}
-
 /// One id per hop, so a walk says where it crosses into a child.
 fn hops_of_a_walk() {
     println!("\ntwo hops name two ids");
@@ -181,11 +170,6 @@ fn hops_of_a_walk() {
     show("Pair::bottom", ids[0]);
     show("  then Label::text", ids[1]);
     assert_eq!(ids[0], Pair::cursor().bottom().hops()[0]);
-
-    // The second hop is `Label`'s own field, so `Label` recognises it
-    // and `Pair` does not: a child patches itself.
-    assert_eq!(Label::field(ids[1]), Some(LabelField::Text));
-    assert!(Pair::field(ids[0]).is_none(), "`bottom` is an element");
 }
 
 /// A walk is one type however long, so it has one id: enough to key a

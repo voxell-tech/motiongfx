@@ -135,6 +135,22 @@ type RetargetFn<H> = fn(
     PoolKey,
 );
 
+/// `F`, registered for one field value type.
+struct TypeEntry<F> {
+    ty: TypeId,
+    value: F,
+}
+
+impl<F: Copy> TypeEntry<F> {
+    /// The value registered for `ty`, if any.
+    fn lookup(ty: TypeId, table: &[Self]) -> Option<F> {
+        table
+            .iter()
+            .find(|entry| entry.ty == ty)
+            .map(|entry| entry.value)
+    }
+}
+
 /// Every animated field's sources, lines, and moves in progress.
 pub struct AnimTable<H: Host> {
     /// [`Source`] per `(field, destination)`, shared by every instance
@@ -146,8 +162,8 @@ pub struct AnimTable<H: Host> {
     /// walks only those and a resting tree costs nothing.
     keys: HashSet<FieldKey<H>>,
     /// One entry per value type a field has been registered for.
-    ticks: Vec<(TypeId, TickFn<H>)>,
-    retargets: Vec<(TypeId, RetargetFn<H>)>,
+    ticks: Vec<TypeEntry<TickFn<H>>>,
+    retargets: Vec<TypeEntry<RetargetFn<H>>>,
     /// Per element type, its animated fields. Written once.
     animated: HashMap<TypeId, Box<[FieldLines<H>]>>,
 }
@@ -215,11 +231,8 @@ impl<H: Host> AnimTable<H> {
 
         for (field, from) in fields.iter().zip(resting) {
             let to = field.resolve(elements, node);
-            let Some(retarget) = self
-                .retargets
-                .iter()
-                .find(|(id, _)| *id == field.value_ty)
-                .map(|(_, retarget)| *retarget)
+            let Some(retarget) =
+                TypeEntry::lookup(field.value_ty, &self.retargets)
             else {
                 continue;
             };
@@ -278,8 +291,8 @@ impl<H: Host> AnimTable<H> {
         elements: &ElementTable<H>,
         theme: &H::Theme,
     ) {
-        for i in 0..self.ticks.len() {
-            (self.ticks[i].1)(
+        for entry in &self.ticks {
+            (entry.value)(
                 &mut self.rows,
                 &mut self.keys,
                 &self.pool,
@@ -330,8 +343,8 @@ impl<H: Host> AnimTable<H> {
 /// Collects one element type's animated fields at registration.
 pub struct Registrar<'a, H: Host> {
     pool: &'a mut TypePool,
-    ticks: &'a mut Vec<(TypeId, TickFn<H>)>,
-    retargets: &'a mut Vec<(TypeId, RetargetFn<H>)>,
+    ticks: &'a mut Vec<TypeEntry<TickFn<H>>>,
+    retargets: &'a mut Vec<TypeEntry<RetargetFn<H>>>,
     lines: Vec<FieldLines<H>>,
 }
 
@@ -349,9 +362,15 @@ impl<H: Host> Registrar<'_, H> {
         T: Clone + Send + Sync + 'static,
     {
         let value_ty = TypeId::of::<T>();
-        if !self.ticks.iter().any(|(seen, _)| *seen == value_ty) {
-            self.ticks.push((value_ty, tick::<H, T>));
-            self.retargets.push((value_ty, retarget::<H, T>));
+        if !self.ticks.iter().any(|entry| entry.ty == value_ty) {
+            self.ticks.push(TypeEntry {
+                ty: value_ty,
+                value: tick::<H, T>,
+            });
+            self.retargets.push(TypeEntry {
+                ty: value_ty,
+                value: retarget::<H, T>,
+            });
         }
 
         let base = self.pool.insert(Source {

@@ -10,7 +10,9 @@ mod build;
 mod patch;
 
 pub use self::build::Build;
-pub use self::patch::{Bindable, FieldPatch, Patch};
+pub use self::patch::{
+    Bindable, FieldPatch, Patch, patch_field, write_field,
+};
 
 use alloc::boxed::Box;
 use core::marker::PhantomData;

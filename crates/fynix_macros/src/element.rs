@@ -6,8 +6,7 @@ use syn::{
 };
 
 use crate::common::{
-    crate_path, generics, named_fields, option_inner, pascal_case,
-    snake_case,
+    crate_path, generics, named_fields, option_inner, snake_case,
 };
 
 /// What `#[element(...)]` carries: the backend to build against and an
@@ -383,19 +382,13 @@ pub fn expand(
     let generics = generics(ast)?;
     let decl = &generics.decl;
     let ty = &generics.ty;
-    let bounds = &generics.where_clause;
     let predicates = &generics.predicates;
 
     let path_mod = format_ident!("{}_path", snake_case(name));
-    let field_enum = format_ident!("{}Field", name);
 
     let host_node = quote!(<#host as #root::host::Host>::Node);
     let host_world = quote!(<#host as #root::host::Host>::World);
     let host_theme = quote!(<#host as #root::host::Host>::Theme);
-
-    let mut variants = Vec::new();
-    let mut ids = Vec::new();
-    let mut lookups = Vec::new();
 
     let mut elem_bounds = Vec::new();
     let mut builds = Vec::new();
@@ -468,75 +461,41 @@ pub fn expand(
                     + 'static
             ));
 
-            let as_elem = quote!(
-                <#elem_ty as #root::element::Element<#host>>
-            );
-
             builds.push(quote! {
-                if let ::core::option::Option::Some(elem) = #elem {
-                    let child = #as_elem::build(
-                        elem, world, node, records, theme,
-                    );
-                    records.store_mut().insert(node, #id, child);
-                    records.mount_child(
-                        child,
-                        node,
-                        |__elements, __parent| {
-                            #root::anim::resolve::<#host, #name #ty>(
-                                __elements, __parent,
-                            )
-                            .and_then(|__parent| #reach)
-                        },
-                    );
-                }
+                #root::element::build_child(
+                    #elem, #id, world, node, records, theme,
+                    |__elements, __parent| {
+                        #root::anim::resolve::<#host, #name #ty>(
+                            __elements, __parent,
+                        )
+                        .and_then(|__parent| #reach)
+                    },
+                );
             });
 
             child_patches.push(quote! {
-                if *head == #id {
-                    if let (
-                        ::core::option::Option::Some(elem),
-                        ::core::option::Option::Some(child),
-                    ) = (#elem, store.get(node, *head))
-                    {
-                        #as_elem::patch(
-                            elem, world, child, rest, store, theme,
-                        );
-                    }
+                if #root::element::patch_child(
+                    #elem, #id, node, *head, rest, world, store, theme,
+                ) {
                     return;
                 }
             });
 
             despawns.push(quote! {
-                if let (
-                    ::core::option::Option::Some(elem),
-                    ::core::option::Option::Some(child),
-                ) = (#elem, store.take(node, #id))
-                {
-                    #as_elem::despawn(elem, world, child, store);
-                }
+                #root::element::despawn_child(
+                    #elem, #id, node, world, store,
+                );
             });
 
             continue;
         }
 
         // A `#[elem(ignore)]` field only ever changes at build. It is
-        // left out of the enum and, through `#[lenz(ignore)]` on the
-        // re-emitted struct, out of the cursor: nothing can name a
-        // path there.
+        // left out, through `#[lenz(ignore)]` on the re-emitted
+        // struct, of the cursor: nothing can name a path there.
         if cfg.ignore {
             continue;
         }
-
-        let variant = format_ident!("{}", pascal_case(field_name));
-        variants.push(quote!(#variant,));
-        ids.push(quote!(#field_enum::#variant => #id,));
-        lookups.push(quote! {
-            if id == #id {
-                return ::core::option::Option::Some(
-                    #field_enum::#variant,
-                );
-            }
-        });
 
         // A field with no `patch` is bare: addressable, and feeds
         // lines and call sites, but nothing writes it.
@@ -545,24 +504,15 @@ pub fn expand(
         };
 
         field_writes.push(quote! {
-            {
-                let mut __patch = #root::ui::Patch::new(
-                    world, node, theme,
-                );
-                <#patch as #root::ui::FieldPatch<#host>>::patch(
-                    &mut __patch, &self.#field_name,
-                );
-            }
+            #root::ui::write_field::<#host, #patch>(
+                world, node, theme, &self.#field_name,
+            );
         });
 
         own_patches.push(quote! {
-            if *head == #id {
-                let mut __patch = #root::ui::Patch::new(
-                    world, node, theme,
-                );
-                <#patch as #root::ui::FieldPatch<#host>>::patch(
-                    &mut __patch, &self.#field_name,
-                );
+            if #root::ui::patch_field::<#host, #patch>(
+                #id, *head, world, node, theme, &self.#field_name,
+            ) {
                 return;
             }
         });
@@ -607,28 +557,6 @@ pub fn expand(
 
     Ok(quote! {
         #subject
-
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-        pub enum #field_enum {
-            #(#variants)*
-        }
-
-        impl<#decl> #root::element::Fields for #name #ty #bounds {
-            type Field = #field_enum;
-
-            fn field(
-                id: #root::lenz::FieldId,
-            ) -> ::core::option::Option<#field_enum> {
-                #(#lookups)*
-                ::core::option::Option::None
-            }
-
-            fn field_id(field: #field_enum) -> #root::lenz::FieldId {
-                match field {
-                    #(#ids)*
-                }
-            }
-        }
 
         impl<#decl> #root::element::ElementBase<#host> for #name #ty
         where
