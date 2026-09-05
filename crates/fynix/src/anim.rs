@@ -46,6 +46,29 @@ pub type Access<H, T> = for<'a> fn(
     <H as Host>::Node,
 ) -> Option<&'a T>;
 
+/// Where a `#[elem(child)]`'s real value lives: not at its own node,
+/// at `parent`'s. `read` reaches from there into the field, generated
+/// once by the parent's own build codegen, which is the only place
+/// that knows both concrete types.
+pub struct MountedIn<H: Host, C> {
+    pub parent: H::Node,
+    pub read: Access<H, C>,
+}
+
+/// `E`'s value at `node`, walking up through however many
+/// [`MountedIn`] hops it takes to reach a node that holds one
+/// outright - a top-level element, built by [`Ui::elem`](crate::ui::Ui::elem).
+/// A mounted child holds none itself, only a pointer to where it is.
+pub fn resolve<H: Host, E: Send + Sync + 'static>(
+    elements: &ElementTable<H>,
+    node: H::Node,
+) -> Option<&E> {
+    elements.get::<E>(&node).or_else(|| {
+        let mount = elements.get::<MountedIn<H, E>>(&node)?;
+        (mount.read)(elements, mount.parent)
+    })
+}
+
 /// Whether one `on(...)` line's tag is currently set on the node.
 pub type ActiveFn<H> =
     fn(&ElementTable<H>, <H as Host>::Node) -> bool;

@@ -176,13 +176,11 @@ fn anim_field(
         let tag = &line.tag;
         let read = match &line.from {
             LineValue::Field(field) => quote! {
-                |__elements, __node| __elements
-                    .get::<#name #ty>(&__node)
+                |__elements, __node| #root::anim::resolve::<#host, #name #ty>(__elements, __node)
                     .map(|__element| &__element.#field)
             },
             LineValue::Read(path) => quote! {
-                |__elements, __node| __elements
-                    .get::<#name #ty>(&__node)
+                |__elements, __node| #root::anim::resolve::<#host, #name #ty>(__elements, __node)
                     .map(#path)
             },
         };
@@ -208,8 +206,7 @@ fn anim_field(
         __registrar.field(
             #id,
             <#patch as #root::ui::FieldPatch<#host>>::patch,
-            |__elements, __node| __elements
-                .get::<#name #ty>(&__node)
+            |__elements, __node| #root::anim::resolve::<#host, #name #ty>(__elements, __node)
                 .map(|__element| &__element.#field_name),
             #base_tween,
             |__lines| {
@@ -450,19 +447,22 @@ pub fn expand(
         // is absent from the enum: naming it there would offer a
         // second, redundant way in.
         if cfg.child {
-            let (elem_ty, elem) = match option_inner(&field.ty) {
-                Some(inner) => {
-                    (inner, quote!(self.#field_name.as_ref()))
-                }
+            let (elem_ty, elem, reach) = match option_inner(&field.ty)
+            {
+                Some(inner) => (
+                    inner,
+                    quote!(self.#field_name.as_ref()),
+                    quote!(__parent.#field_name.as_ref()),
+                ),
                 None => (
                     &field.ty,
                     quote!(::core::option::Option::Some(&self.#field_name)),
+                    quote!(::core::option::Option::Some(&__parent.#field_name)),
                 ),
             };
 
             elem_bounds.push(quote!(
                 #elem_ty: #root::element::Element<#host>
-                    + ::core::clone::Clone
                     + ::core::marker::Send
                     + ::core::marker::Sync
                     + 'static
@@ -478,7 +478,16 @@ pub fn expand(
                         elem, world, node, records, theme,
                     );
                     records.store_mut().insert(node, #id, child);
-                    records.mount_child(child, ::core::clone::Clone::clone(elem));
+                    records.mount_child(
+                        child,
+                        node,
+                        |__elements, __parent| {
+                            #root::anim::resolve::<#host, #name #ty>(
+                                __elements, __parent,
+                            )
+                            .and_then(|__parent| #reach)
+                        },
+                    );
                 }
             });
 
@@ -720,10 +729,6 @@ fn rewrite_struct(
         #[derive(#root::lenz::Lenz)]
     });
     out.attrs.push(parse_quote!(#[lenz(crate = #root::lenz)]));
-    // A `#[elem(child)]` child is cloned into the element table at
-    // build, for its `anim(...)` lines to resolve against.
-    out.attrs
-        .push(parse_quote!(#[derive(::core::clone::Clone)]));
 
     let Data::Struct(data) = &mut out.data else {
         return Err(syn::Error::new_spanned(
