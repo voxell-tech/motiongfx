@@ -2,6 +2,9 @@ use core::f32::consts::PI;
 
 use crate::ops::*;
 
+/// What a curve is: `0.0` at the start, `1.0` at the end.
+pub type EaseFn = fn(f32) -> f32;
+
 pub fn linear(t: f32) -> f32 {
     t
 }

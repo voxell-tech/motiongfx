@@ -1,0 +1,267 @@
+//! A mock of the fynix element model.
+
+#![no_std]
+
+extern crate alloc;
+
+// Lets the derive emit `::fynix::...` everywhere, including here.
+extern crate self as fynix;
+
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
+use crate::host::Host;
+use crate::records::{BuildFn, ChangedFn, Records, Watcher};
+use crate::ui::Ui;
+
+pub mod anim;
+pub mod composer;
+mod elem;
+pub mod element;
+pub mod host;
+pub mod records;
+pub mod store;
+pub mod style;
+pub mod tween;
+pub mod ui;
+pub mod world_node;
+
+pub use crate::world_node::{WorldNodeMut, WorldNodeRef};
+/// Field paths - the [`lenz`] crate, re-exported so `fynix::lenz::…`
+/// keeps naming it.
+pub use ::lenz;
+
+/// Owns every watcher and binding, and the tree they maintain.
+pub struct Fynix<H: Host> {
+    watchers: Vec<Watcher<H>>,
+    records: Records<H>,
+    /// Not read from `World`.
+    theme: H::Theme,
+    /// Set by [`Self::theme_mut`], cleared by [`Self::flush`]. Forces
+    /// a full rebuild on the next flush, since every element already
+    /// built has the old theme baked in.
+    theme_dirty: bool,
+}
+
+impl<H: Host> Fynix<H> {
+    /// Starts empty, themed with `theme`.
+    pub fn new(theme: H::Theme) -> Self {
+        Self {
+            watchers: Vec::new(),
+            records: Records::default(),
+            theme,
+            theme_dirty: false,
+        }
+    }
+
+    /// The current theme.
+    pub fn theme(&self) -> &H::Theme {
+        &self.theme
+    }
+
+    /// The theme, to edit in place. Any edit rebuilds the whole tree
+    /// on the next [`Self::flush`].
+    pub fn theme_mut(&mut self) -> &mut H::Theme {
+        self.theme_dirty = true;
+        &mut self.theme
+    }
+
+    /// Rebuild the subtree under `root` whenever `changed` fires.
+    /// Mirrors [`ElementMut::watch`](crate::ui::ElementMut::watch).
+    ///
+    /// This is the bootstrap watcher. Every other one is added
+    /// through `ElementMut::watch` inside a build.
+    pub fn watch(
+        &mut self,
+        root: H::Node,
+        changed: impl ChangedFn<H>,
+        build: impl BuildFn<H>,
+        world: &mut H::World,
+    ) {
+        let mut changed = changed;
+        if changed(WorldNodeRef::new(world, root)) {
+            clear_children::<H>(world, root);
+            let mut ui =
+                Ui::new(world, root, &mut self.records, &self.theme);
+            build(&mut ui);
+        }
+
+        self.watchers.push(Watcher {
+            root,
+            changed: Box::new(changed),
+            build: Box::new(build),
+        });
+    }
+
+    /// How many watchers the kernel is holding.
+    pub fn watcher_len(&self) -> usize {
+        self.watchers.len()
+    }
+
+    /// How many elements the kernel is holding.
+    pub fn element_len(&self) -> usize {
+        self.records.element_nodes.len()
+    }
+
+    /// The current value of `E` built on `node`, if the kernel still
+    /// has one. The same value
+    /// [`ElementMut::bind`](crate::ui::ElementMut::bind) patches on
+    /// change, so this always reads the latest.
+    pub fn element<E: 'static>(&self, node: H::Node) -> Option<&E> {
+        self.records.elements.get(&node)
+    }
+
+    /// How many bindings the kernel is holding.
+    pub fn binding_len(&self) -> usize {
+        self.records.bindings.len()
+    }
+
+    /// Stop watching `root`. Its nodes are left alone.
+    pub fn unwatch(&mut self, root: H::Node) {
+        self.watchers.retain(|watcher| watcher.root != root);
+    }
+
+    /// Run every watcher and binding whose predicate fires.
+    pub fn flush(&mut self, world: &mut H::World) {
+        // Taken, not read, so a `theme_mut` call during this flush
+        // still schedules another rebuild.
+        let retheme = core::mem::take(&mut self.theme_dirty);
+
+        // Registrations bake in the tweens the old theme named, so
+        // the rebuild below has to make them again.
+        if retheme {
+            self.records.anim.forget();
+        }
+
+        // Split so `records` stays writable while `watchers` is
+        // borrowed by the loop below.
+        let Self {
+            watchers,
+            records,
+            theme,
+            ..
+        } = self;
+
+        for watcher in watchers.iter_mut() {
+            // Checked per watcher: an earlier rebuild this flush can
+            // despawn a later watcher's root.
+            if !H::exists(world, watcher.root) {
+                continue;
+            }
+            // Called even when `retheme` forces the rebuild anyway.
+            // Some `changed` closures are one-shot; skipping the call
+            // would leave them armed for a later flush.
+            let changed = (watcher.changed)(WorldNodeRef::new(
+                world,
+                watcher.root,
+            ));
+            if !retheme && !changed {
+                continue;
+            }
+
+            clear_children::<H>(world, watcher.root);
+            let mut ui = Ui::new(world, watcher.root, records, theme);
+            (watcher.build)(&mut ui);
+        }
+
+        watchers.append(&mut records.spawned);
+        watchers.retain(|watcher| H::exists(world, watcher.root));
+
+        // A node can die at any time: a rebuild above cleared one, or
+        // the app despawned another. Sweep both before touching any
+        // dead handle.
+        records.bindings.retain(|key, _| H::exists(world, key.node));
+        records.anim.retain(|node| H::exists(world, node));
+        records.store.prune(world);
+
+        // `elements` is keyed by type as well as node, so it cannot
+        // say what it holds. `element_nodes` is the list to sweep.
+        records.element_nodes.retain(|node, _| {
+            let alive = H::exists(world, *node);
+            if !alive {
+                // Takes the node's tags with it: they are columns on
+                // the same row.
+                records.elements.remove_row(node);
+            }
+            alive
+        });
+
+        let Records {
+            bindings,
+            elements,
+            store,
+            ..
+        } = records;
+
+        for (key, binding) in bindings.iter_mut() {
+            let node = key.node;
+            if !(binding.changed)(WorldNodeRef::new(world, node)) {
+                continue;
+            }
+            (binding.apply)(elements, world, node, store, theme);
+        }
+
+        // After the bindings, so a leg gets the last word over the
+        // value they left.
+        let delta = H::delta(world);
+        records.anim.tick(delta, world, &records.elements, theme);
+    }
+
+    /// Tag `node`, replacing any tag of the same type it already
+    /// carries. Its animated fields re-resolve and travel to whatever
+    /// the new tag set names.
+    pub fn set_tag<T: anim::Tag>(&mut self, node: H::Node, tag: T) {
+        let Records {
+            anim,
+            elements,
+            element_nodes,
+            ..
+        } = &mut self.records;
+        let Some(kind) = element_nodes.get(&node).copied() else {
+            return;
+        };
+        anim.set_tag(elements, kind, node, tag);
+    }
+
+    /// Drop `node`'s tag of type `T`. Its fields fall back to the
+    /// next active line, or to their base.
+    pub fn unset_tag<T: anim::Tag>(&mut self, node: H::Node) {
+        let Records {
+            anim,
+            elements,
+            element_nodes,
+            ..
+        } = &mut self.records;
+        let Some(kind) = element_nodes.get(&node).copied() else {
+            return;
+        };
+        anim.unset_tag::<T>(elements, kind, node);
+    }
+
+    /// How many fields are travelling under a tag.
+    pub fn moving_len(&self) -> usize {
+        self.records.anim.len()
+    }
+
+    /// Register element type `kind`'s animated fields. `#[element]`
+    /// emits this on the type's first build; a hand-rolled element
+    /// calls it itself.
+    pub fn register_anim<E: 'static>(
+        &mut self,
+        fields: impl FnOnce(&mut anim::Registrar<'_, H>),
+    ) {
+        self.records
+            .register_anim(core::any::TypeId::of::<E>(), fields);
+    }
+}
+
+/// Despawn the kernel's children of `root`. The sweep in
+/// [`Fynix::flush`] then drops whatever those nodes left behind.
+pub(crate) fn clear_children<H: Host>(
+    world: &mut H::World,
+    root: H::Node,
+) {
+    for child in H::children(world, root) {
+        H::despawn(world, child);
+    }
+}

@@ -37,9 +37,8 @@ impl<B: SceneBackend> Scene<B> {
         )?;
 
         let track = root_fragment.compile();
-        builder.add_tracks([track]);
 
-        builder.try_compile().ok_or(CompileError::EmptyTimeline)
+        Ok(builder.compile(track))
     }
 
     /// Writes the [`Stage`](crate::scene::Stage)'s initial values into
@@ -80,6 +79,9 @@ fn walk_node<B: SceneBackend>(
             delay,
             resolve_action(action, registry, values, builder)?,
         ),
+        Node::Draft {
+            delay, duration, ..
+        } => (delay, TrackFragment::silent(*duration)),
     };
 
     Ok(match offset {
@@ -105,7 +107,6 @@ fn walk_block<B: SceneBackend>(
     let result = match block.combinator {
         Combinator::Chain => fragments.ord_chain(),
         Combinator::All => fragments.ord_all(),
-        Combinator::Any => fragments.ord_any(),
         Combinator::Flow(delay) => fragments.ord_flow(delay),
     };
 

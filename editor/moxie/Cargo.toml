@@ -1,0 +1,30 @@
+[package]
+name = "moxie"
+description = "A bevy_ui based editor for the MotionGfx framework."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+bevy_motiongfx = { workspace = true, default-features = true, features = [
+    "scene",
+] }
+motiongfx_scene = { workspace = true, features = ["std"] }
+moxie_ui = { workspace = true }
+moxie_asset = { workspace = true }
+bevy_fynix = { workspace = true }
+fynix = { workspace = true }
+bevy = { workspace = true, default-features = true, features = [
+    "bevy_feathers",
+    "bevy_ui_widgets",
+    "bevy_settings",
+    "scene",
+    "serialize",
+] }
+ron = { workspace = true }
+rfd = { workspace = true }
+serde = { workspace = true }
+
+[lints]
+workspace = true

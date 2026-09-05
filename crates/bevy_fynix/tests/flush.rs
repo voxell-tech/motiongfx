@@ -1,0 +1,122 @@
+//! An element built into a real `World`, through the plugin.
+
+use bevy_app::prelude::*;
+use bevy_ecs::hierarchy::Children;
+use bevy_ecs::prelude::*;
+use bevy_fynix::host::BevyHost;
+use bevy_fynix::{FynixPlugin, WorldEntityRef as _, watch_root};
+use bevy_ui::Node;
+use fynix::elem;
+use fynix::element::element;
+use fynix::ui::{FieldPatch, Patch};
+
+/// Nothing in these tests reads a theme - a host still needs one.
+#[derive(Resource, Clone, Default)]
+struct NoTheme;
+
+type FynixHost = BevyHost<NoTheme>;
+
+/// What the element writes. A real one would write `bevy_ui`
+/// components; this only has to be visible from a test.
+#[derive(Component, Debug, PartialEq)]
+struct Caption(String);
+
+#[element]
+pub struct Label {
+    #[elem(default = String::from("Label"), patch = WriteCaption)]
+    pub text: String,
+}
+
+pub struct WriteCaption;
+
+impl FieldPatch<FynixHost> for WriteCaption {
+    type Target = String;
+
+    fn patch(patch: &mut Patch<FynixHost>, text: &String) {
+        let node = patch.id();
+        patch.world.entity_mut(node).insert(Caption(text.clone()));
+    }
+}
+
+/// The one child a build put under `root`.
+fn only_child(world: &World, root: Entity) -> Entity {
+    let children = world.get::<Children>(root).expect("a child");
+    assert_eq!(children.len(), 1, "one element was built");
+    children[0]
+}
+
+fn app_with_root() -> (App, Entity) {
+    let mut app = App::new();
+    app.add_plugins(FynixPlugin::<NoTheme>::default());
+
+    let root = app.world_mut().spawn(Node::default()).id();
+    (app, root)
+}
+
+#[test]
+fn flush_builds_what_a_root_declares() {
+    let (mut app, root) = app_with_root();
+
+    watch_root::<NoTheme>(app.world_mut(), root, |ui| {
+        ui.elem(elem!(Label, text = "Save"));
+    });
+
+    app.update();
+
+    let world = app.world();
+    let label = only_child(world, root);
+
+    assert_eq!(world.get::<Caption>(label).unwrap().0, "Save");
+    assert!(world.get::<Node>(label).is_some(), "a layout node");
+}
+
+#[test]
+fn root_is_built_once() {
+    let (mut app, root) = app_with_root();
+
+    watch_root(app.world_mut(), root, |ui| {
+        ui.elem(elem!(Label));
+    });
+
+    app.update();
+    let first = only_child(app.world(), root);
+
+    app.update();
+    let again = only_child(app.world(), root);
+
+    assert_eq!(first, again, "not rebuilt, so not respawned");
+}
+
+#[test]
+fn binding_patches_the_node_it_built() {
+    #[derive(Resource, Default)]
+    struct Source {
+        text: String,
+        changed: bool,
+    }
+
+    let (mut app, root) = app_with_root();
+    app.init_resource::<Source>();
+
+    watch_root(app.world_mut(), root, |ui| {
+        ui.elem(elem!(Label)).bind(
+            |label| label.text(),
+            |world_node| world_node.resource::<Source>().changed,
+            |world_node| world_node.resource::<Source>().text.clone(),
+        );
+    });
+
+    app.update();
+    let label = only_child(app.world(), root);
+    assert_eq!(app.world().get::<Caption>(label).unwrap().0, "Label");
+
+    {
+        let mut source = app.world_mut().resource_mut::<Source>();
+        source.text = "Saved".into();
+        source.changed = true;
+    }
+    app.update();
+
+    assert_eq!(only_child(app.world(), root), label, "the same node");
+    assert_eq!(app.world().get::<Caption>(label).unwrap().0, "Saved");
+}

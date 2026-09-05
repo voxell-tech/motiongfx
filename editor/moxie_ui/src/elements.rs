@@ -1,0 +1,88 @@
+//! What the editor is built out of.
+//!
+//! A widget is a struct rather than a `bsn!` scene: its fields are
+//! the data, its `#[elem(patch = ...)]` writers and
+//! `#[element(build = ...)]` hook say what they mean to bevy, and a
+//! binding names one of them, so a value can change without the node
+//! being rebuilt.
+
+pub mod dock;
+
+mod button;
+mod divider;
+mod dropdown;
+mod field;
+mod frame;
+mod icon;
+mod inspector;
+mod label;
+mod overlay;
+mod panel;
+mod patch;
+mod playhead;
+mod scroll_area;
+mod segmented_control;
+mod tab;
+mod time_label;
+mod time_tick;
+mod timeline_action;
+mod timeline_block;
+mod timeline_gap;
+mod timeline_track;
+
+// The cursor traits come too: a binding names a field by walking to
+// it, and the walk is what those provide.
+pub use button::{
+    Button, ButtonCursor, ButtonField, GhostButton, MenuButton,
+    SegmentButton, TintButton,
+};
+pub use divider::{Divider, DividerCursor, DividerField};
+pub use dropdown::{
+    Dropdown, DropdownCursor, DropdownField, DropdownItem,
+    DropdownItemCursor, DropdownItemField, DropdownList,
+    DropdownListCursor, DropdownListField, DropdownMenu,
+};
+pub use field::{
+    CheckBox, CheckBoxCursor, CheckBoxField, NumberField,
+    NumberFieldCursor, NumberFieldField, TextField, TextFieldCursor,
+    TextFieldField,
+};
+pub use frame::{Frame, FrameCursor, FrameField};
+pub use icon::{Icon, IconCursor, IconField};
+// Composers rather than elements, so no cursor or field type: what
+// they are handed picks a subtree rather than naming a value, and
+// nothing about them is stored to be patched later.
+pub use inspector::{
+    ComponentInspector, EntityInspector, ResourceInspector,
+    display_name,
+};
+pub use label::{Label, LabelCursor, LabelField};
+pub use overlay::{Overlay, OverlayCursor, OverlayField};
+pub use panel::{Panel, PanelCursor, PanelField};
+pub use playhead::{
+    PlayheadLine, PlayheadLineCursor, PlayheadLineField,
+};
+pub use scroll_area::{
+    ScrollArea, ScrollAreaCursor, ScrollAreaField,
+};
+pub use segmented_control::SegmentedControl;
+pub use tab::{
+    Tab, TabBar, TabBarCursor, TabBarField, TabCursor, TabField,
+    TabRow, TabRowCursor, TabRowField,
+};
+pub use timeline_action::{
+    TimelineAction, TimelineActionCursor, TimelineActionField,
+};
+pub use timeline_block::{
+    TimelineBlock, TimelineBlockCursor, TimelineBlockField,
+};
+pub use timeline_gap::{
+    TimelineGap, TimelineGapCursor, TimelineGapField,
+};
+pub use timeline_track::{
+    TimelineTrack, TimelineTrackCursor, TimelineTrackField,
+};
+
+pub use time_tick::{TimeTick, TimeTickCursor, TimeTickField};
+
+pub use time_label::{TimeLabel, TimeLabelCursor, TimeLabelField};

@@ -66,8 +66,7 @@ let frag = action.play(s(1));
 // See "Track Ordering" section for composing fragments.
 let track = frag.compile();
 
-b.add_tracks(track);
-let mut timeline = b.compile();
+let mut timeline = b.compile(track);
 
 // Bake must run once before sampling.
 timeline.bake_actions(&registry, &world);
@@ -171,8 +170,7 @@ let frag = action.play(s(1));
 let track = frag.compile();
 
 // Add the track and compile into a Timeline.
-b.add_tracks(track);
-let timeline = b.compile();
+let timeline = b.compile(track);
 ```
 
 ### Bake and Sample

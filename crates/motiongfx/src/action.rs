@@ -116,8 +116,7 @@ pub type InterpFn<T> = fn(start: &T, end: &T, t: f32) -> T;
 #[derive(Debug, Clone, Copy)]
 pub struct InterpStorage<T>(pub InterpFn<T>);
 
-/// Easing function on a [`f32`] time.
-pub type EaseFn = fn(t: f32) -> f32;
+pub use motiongfx_interp::ease::EaseFn;
 
 /// A storage value for a custom [`EaseFn`].
 ///

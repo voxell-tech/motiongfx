@@ -113,8 +113,8 @@ pub(crate) type Cleanup = fn(&mut Resources, UId);
 /// the whole [`ActionTable`](crate::action::ActionTable), keyed by
 /// `I`'s [`TypeId`]. Stored as a [`Resources`] entry itself, right
 /// alongside each `I`'s [`IdRegistry`], rather than duplicated once
-/// per action — the function is identical for every action sharing
-/// the same `I`.
+/// per action, since the function is identical for every action
+/// sharing the same `I`.
 pub(crate) type CleanupRegistry = HashMap<TypeId, Cleanup>;
 
 pub(crate) fn cleanup_fn<I: SubjectId>(

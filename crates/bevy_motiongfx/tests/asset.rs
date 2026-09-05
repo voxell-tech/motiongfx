@@ -54,6 +54,7 @@ fn cube_scene_deserializes() {
                         action.subject
                     );
                 }
+                Node::Draft { .. } => {}
             }
         }
     }

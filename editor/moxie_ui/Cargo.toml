@@ -1,0 +1,21 @@
+[package]
+name = "moxie_ui"
+description = "Reusable bevy_ui widgets, docking and theming for the MotionGfx editor."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+bevy_fynix = { workspace = true }
+bevy_motiongfx = { workspace = true, features = ["color"] }
+fynix = { workspace = true }
+motiongfx_interp = { workspace = true }
+moxie_asset = { workspace = true }
+bevy = { workspace = true, default-features = true, features = [
+    "bevy_feathers",
+    "bevy_ui_widgets",
+] }
+
+[lints]
+workspace = true

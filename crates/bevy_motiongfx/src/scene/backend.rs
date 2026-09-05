@@ -5,9 +5,8 @@
 use alloc::boxed::Box;
 
 use bevy_asset::uuid::Uuid;
-use bevy_reflect::TypePath;
+use bevy_reflect::{Reflect, TypePath};
 use bevy_transform::components::Transform;
-use motiongfx::interpolation::Interpolation;
 use motiongfx::prelude::*;
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;
@@ -16,6 +15,23 @@ use serde::{Deserialize, Serialize};
 use crate::scene::id::{EntityUid, SceneUid};
 use crate::scene::value_pool::ValuePool;
 use crate::world::BevyWorld;
+
+/// The [`FieldRef`] a [`FieldAccessor`] resolves to once registered
+/// through [`SceneRegistryExt::register_reflected_field`] - same
+/// name-building rule
+/// ([`SceneRegistry::register_field_with_key`](motiongfx_scene::registry::SceneRegistry::register_field_with_key)),
+/// exposed so callers building [`ActionCmd`]s
+/// by hand (an editor, a scene author) can name a field the same way
+/// the registry does, without duplicating the `TypeName::new(S::type_path())`
+/// pairing themselves.
+pub fn field_ref<S: TypePath, T>(
+    field_acc: FieldAccessor<S, T>,
+) -> FieldRef {
+    FieldRef::new(
+        TypeName::new(S::type_path()),
+        field_acc.field.field_path(),
+    )
+}
 
 /// The concrete [`SceneBackend`] for Bevy.
 pub struct Backend;
@@ -33,23 +49,50 @@ impl SceneBackend for Backend {
 pub type BackendRegistry = SceneRegistry<Backend>;
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    Reflect,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
+#[reflect(Debug, PartialEq, Hash)]
 pub enum AnimOp {
     /// Sets the field directly to the action's value.
     To,
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    Reflect,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
+#[reflect(Debug, PartialEq, Hash)]
 pub enum AnimInterp {
     Linear,
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize,
+    Reflect,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
+#[reflect(Debug, PartialEq, Hash)]
 pub enum AnimEase {
     Linear,
     CubicEaseInOut,

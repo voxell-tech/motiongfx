@@ -4,9 +4,6 @@
 extern crate alloc;
 
 pub mod action;
-pub mod ease;
-pub mod interpolation;
-mod ops;
 pub mod pipeline;
 pub mod registry;
 mod resources;
@@ -17,19 +14,21 @@ pub mod timeline;
 pub mod track;
 pub mod world;
 
-// Re-exports field_path as it is essential for motiongfx to work!
 pub use field_path;
+pub use motiongfx_interp;
+pub use nonempty;
 
 pub mod prelude {
     pub use field_path::field_accessor::FieldAccessor;
+    pub use motiongfx_interp::ease;
+    pub use motiongfx_interp::interpolation::Interpolation;
 
     pub use crate::ThreadSafe;
     pub use crate::action::{
         Action, ActionBuilder, ActionId, EaseFn, InterpActionBuilder,
         InterpFn,
     };
-    pub use crate::ease;
-    pub use crate::interpolation::Interpolation;
+    pub use crate::nonempty::{self, nonempty};
     pub use crate::path;
     pub use crate::pipeline::PipelineKey;
     pub use crate::registry::{
@@ -37,7 +36,9 @@ pub mod prelude {
     };
     pub use crate::time::{cs, ms, ns, s};
     pub use crate::timeline::{Timeline, TimelineBuilder};
-    pub use crate::track::{Track, TrackFragment, TrackOrdering};
+    pub use crate::track::{
+        Track, TrackFragment, TrackList, TrackOrdering,
+    };
     pub use crate::world::SubjectSource;
 }
 

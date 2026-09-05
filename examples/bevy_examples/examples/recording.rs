@@ -115,9 +115,7 @@ fn spawn_timeline(
         .play(s(1))
         .compile();
 
-    b.add_tracks(track);
-
-    let timeline = b.compile();
+    let timeline = b.compile(track);
     commands.spawn((
         motiongfx.add_timeline(timeline),
         FixedRatePlayer::new(144),
