@@ -321,8 +321,8 @@ impl Range {
 
 #[cfg(test)]
 mod tests {
-    use crate::interpolation::Interpolation;
     use crate::time::s;
+    use motiongfx_interp::interpolation::Interpolation;
 
     use super::*;
 
@@ -420,7 +420,7 @@ mod tests {
         let id = action_table
             .add(0u32, field, |x: &f32| *x + 10.0)
             .with_interp(<f32 as Interpolation<()>>::interp)
-            .with_ease(crate::ease::quad::ease_in)
+            .with_ease(motiongfx_interp::ease::quad::ease_in)
             .id();
         let seg_col = action_table.ensure_segment_column::<f32>();
         action_table.set_segment_by_column(

@@ -7,7 +7,6 @@ use alloc::boxed::Box;
 use bevy_asset::uuid::Uuid;
 use bevy_reflect::TypePath;
 use bevy_transform::components::Transform;
-use motiongfx::interpolation::Interpolation;
 use motiongfx::prelude::*;
 use motiongfx_scene::prelude::*;
 use motiongfx_scene::registry::SceneRegistry;

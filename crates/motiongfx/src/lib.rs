@@ -4,9 +4,6 @@
 extern crate alloc;
 
 pub mod action;
-pub mod ease;
-pub mod interpolation;
-mod ops;
 pub mod pipeline;
 pub mod registry;
 mod resources;
@@ -19,17 +16,18 @@ pub mod world;
 
 // Re-exports field_path as it is essential for motiongfx to work!
 pub use field_path;
+pub use motiongfx_interp;
 
 pub mod prelude {
     pub use field_path::field_accessor::FieldAccessor;
+    pub use motiongfx_interp::ease::{self, EaseFn};
+    pub use motiongfx_interp::interpolation::Interpolation;
 
     pub use crate::ThreadSafe;
     pub use crate::action::{
-        Action, ActionBuilder, ActionId, EaseFn, InterpActionBuilder,
+        Action, ActionBuilder, ActionId, InterpActionBuilder,
         InterpFn,
     };
-    pub use crate::ease;
-    pub use crate::interpolation::Interpolation;
     pub use crate::path;
     pub use crate::pipeline::PipelineKey;
     pub use crate::registry::{
