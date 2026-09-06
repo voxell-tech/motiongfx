@@ -18,5 +18,5 @@ pub use peniko;
 
 /// Marker for [`Interpolation<Peniko>`] impls on [`peniko`] types.
 ///
-/// [`Interpolation<Peniko>`]: motiongfx::interpolation::Interpolation
+/// [`Interpolation<Peniko>`]: motiongfx::motiongfx_interp::interpolation::Interpolation
 pub struct Peniko;

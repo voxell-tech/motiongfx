@@ -1,5 +1,5 @@
 use bevy_math::*;
-use motiongfx::impl_float_interpolation;
+use motiongfx::motiongfx_interp::impl_float_interpolation;
 use motiongfx::prelude::*;
 
 #[derive(Debug)]
@@ -8,7 +8,7 @@ pub struct Bevy;
 macro_rules! impl_slerp_interpolation {
     ($ty: ty, $base: ty) => {
         impl
-            ::motiongfx::interpolation::Interpolation<
+            ::motiongfx::motiongfx_interp::interpolation::Interpolation<
                 $crate::interpolation::Bevy,
             > for $ty
         {
