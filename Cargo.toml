@@ -20,9 +20,8 @@ moxie = { version = "0.3.0", path = "editor/moxie" }
 moxie_ui = { version = "0.3.0", path = "editor/moxie_ui" }
 moxie_asset = { version = "0.3.0", path = "editor/moxie_asset" }
 lenz = { version = "0.1", git = "https://github.com/nixonyh/lenz" }
-fynix = { version = "0.3.0", path = "crates/fynix" }
-fynix_macros = { version = "0.3.0", path = "crates/fynix_macros" }
-bevy_fynix = { version = "0.3.0", path = "crates/bevy_fynix" }
+fynix = { git = "https://github.com/voxell-tech/fynix" }
+bevy_fynix = { git = "https://github.com/voxell-tech/fynix" }
 
 # bevy
 bevy = { version = "0.19", default-features = false }
@@ -59,6 +58,11 @@ pollster = "0.4"
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
+
+# `fynix` pulls `motiongfx_interp` from git; redirect it to the copy in
+# this workspace so the editor and `fynix` share one `EaseFn` etc.
+[patch."https://github.com/voxell-tech/motiongfx"]
+motiongfx_interp = { path = "crates/motiongfx_interp" }
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
