@@ -20,12 +20,12 @@ pub use nonempty;
 
 pub mod prelude {
     pub use field_path::field_accessor::FieldAccessor;
-    pub use motiongfx_interp::ease;
+    pub use motiongfx_interp::ease::{self, EaseFn};
     pub use motiongfx_interp::interpolation::Interpolation;
 
     pub use crate::ThreadSafe;
     pub use crate::action::{
-        Action, ActionBuilder, ActionId, EaseFn, InterpActionBuilder,
+        Action, ActionBuilder, ActionId, InterpActionBuilder,
         InterpFn,
     };
     pub use crate::nonempty::{self, nonempty};

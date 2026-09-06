@@ -3,6 +3,7 @@ use core::time::Duration;
 
 use alloc::boxed::Box;
 use field_path::field::UntypedField;
+use motiongfx_interp::ease::EaseFn;
 
 use crate::ThreadSafe;
 use crate::subject::SubjectId;
@@ -115,8 +116,6 @@ pub type InterpFn<T> = fn(start: &T, end: &T, t: f32) -> T;
 /// to customize the action.
 #[derive(Debug, Clone, Copy)]
 pub struct InterpStorage<T>(pub InterpFn<T>);
-
-pub use motiongfx_interp::ease::EaseFn;
 
 /// A storage value for a custom [`EaseFn`].
 ///

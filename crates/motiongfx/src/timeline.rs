@@ -6,6 +6,7 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use field_path::field_accessor::FieldAccessor;
 use hashbrown::HashMap;
+use motiongfx_interp::interpolation::Interpolation;
 
 use crate::ThreadSafe;
 use crate::action::{
@@ -17,7 +18,6 @@ use crate::registry::Registry;
 use crate::subject::SubjectId;
 use crate::track::{Track, TrackList};
 use crate::world::SubjectSource;
-use motiongfx_interp::interpolation::Interpolation;
 
 pub struct Timeline<W> {
     action_table: ActionTable,

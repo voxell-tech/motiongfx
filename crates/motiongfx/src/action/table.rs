@@ -3,6 +3,7 @@ use core::marker::PhantomData;
 use core::time::Duration;
 
 use field_path::field::UntypedField;
+use motiongfx_interp::ease::EaseFn;
 use typarena::ColumnId;
 use typarena::id::{GenId, IdGenerator};
 use typarena::type_table::TypeTable;
@@ -11,8 +12,8 @@ use super::id_registry::{
     CleanupRegistry, IdRegistry, UId, cleanup_fn,
 };
 use super::{
-    Action, ActionClip, ActionKey, ActionStorage, EaseFn,
-    EaseStorage, InterpFn, InterpStorage, Segment, UntypedSubjectId,
+    Action, ActionClip, ActionKey, ActionStorage, EaseStorage,
+    InterpFn, InterpStorage, Segment, UntypedSubjectId,
 };
 use crate::ThreadSafe;
 use crate::resources::Resources;
