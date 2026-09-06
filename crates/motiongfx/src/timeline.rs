@@ -6,13 +6,13 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use field_path::field_accessor::FieldAccessor;
 use hashbrown::HashMap;
+use motiongfx_interp::interpolation::Interpolation;
 
 use crate::ThreadSafe;
 use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionTable,
     InterpActionBuilder, SampleMode,
 };
-use crate::interpolation::Interpolation;
 use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
 use crate::registry::Registry;
 use crate::subject::SubjectId;

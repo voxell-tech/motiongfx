@@ -10,8 +10,9 @@ use hashbrown::HashMap;
 use typarena::type_table::TypeTable;
 
 use motiongfx::ThreadSafe;
-use motiongfx::action::{Action, EaseFn, InterpFn};
+use motiongfx::action::{Action, InterpFn};
 use motiongfx::field_path::field::UntypedField;
+use motiongfx::motiongfx_interp::ease::EaseFn;
 use motiongfx::prelude::*;
 use motiongfx::registry::Registry;
 use motiongfx::subject::SubjectId;

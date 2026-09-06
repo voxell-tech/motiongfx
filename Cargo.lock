@@ -3642,10 +3642,17 @@ dependencies = [
  "criterion",
  "field_path",
  "hashbrown 0.17.1",
- "libm",
+ "motiongfx_interp",
  "nonempty",
  "tracing",
  "typarena",
+]
+
+[[package]]
+name = "motiongfx_interp"
+version = "0.3.0"
+dependencies = [
+ "libm",
 ]
 
 [[package]]

@@ -13,9 +13,9 @@ repository.workspace = true
 [dependencies]
 field_path = { workspace = true }
 hashbrown = { workspace = true }
+motiongfx_interp = { workspace = true, default-features = false }
 nonempty = { workspace = true }
 typarena = { workspace = true }
-libm = { workspace = true }
 tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
@@ -31,4 +31,4 @@ workspace = true
 [features]
 default = ["std", "tracing"]
 tracing = ["dep:tracing"]
-std = []
+std = ["motiongfx_interp/std"]
