@@ -3,8 +3,7 @@ use core::any::{Any, TypeId};
 
 use hashbrown::HashMap;
 
-/// A type-keyed singleton map, playing the role of a `bevy_ecs`
-/// `Resource` store without depending on `bevy_ecs`.
+/// A type-keyed singleton map.
 #[derive(Default)]
 pub(crate) struct Resources {
     map: HashMap<TypeId, Box<dyn Any + Send + Sync>>,

@@ -1,9 +1,10 @@
 //! The animation tree: nested [`Block`]s of [`Node`]s.
 //!
 //! A [`Block`] carries a [`Combinator`] for how its children combine;
-//! a [`Node`] is a nested block, an action leaf, or a delayed wrapper.
-//! Each maps 1:1 onto a `motiongfx` track combinator.
+//! a [`Node`] is a nested block, an action leaf, or an unassigned
+//! draft, each with its own delay.
 
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::time::Duration;
 
@@ -24,6 +25,8 @@ use crate::refs::FieldRef;
 pub struct Block<B: SceneBackend> {
     pub combinator: Combinator,
     pub children: Vec<Node<B>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 impl<B: SceneBackend> Block<B> {
@@ -32,6 +35,7 @@ impl<B: SceneBackend> Block<B> {
         Self {
             combinator: Combinator::Chain,
             children,
+            name: None,
         }
     }
 }
@@ -44,8 +48,6 @@ pub enum Combinator {
     Chain,
     /// Simultaneous; children share a start, wait for all. (`ord_all`)
     All,
-    /// Simultaneous; wait for any. (`ord_any`)
-    Any,
     /// Staggered starts, one `delay` apart. (`ord_flow`)
     Flow(Duration),
 }
@@ -70,6 +72,15 @@ pub enum Node<B: SceneBackend> {
         delay: Option<Duration>,
         action: ActionCmd<B>,
     },
+    /// Not yet a real action: reserves a timing slot without a
+    /// subject or field picked yet.
+    Draft {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        delay: Option<Duration>,
+        duration: Duration,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
+    },
 }
 
 impl<B: SceneBackend> Node<B> {
@@ -86,12 +97,22 @@ impl<B: SceneBackend> Node<B> {
         }
     }
 
+    /// An unassigned slot of `duration`, starting with its parent.
+    pub fn draft(duration: Duration) -> Self {
+        Self::Draft {
+            delay: None,
+            duration,
+            name: None,
+        }
+    }
+
     /// Offsets this node's start by `offset`, replacing any existing
     /// delay.
     pub fn delay(mut self, offset: Duration) -> Self {
         *match &mut self {
             Self::Block { delay, .. }
-            | Self::Action { delay, .. } => delay,
+            | Self::Action { delay, .. }
+            | Self::Draft { delay, .. } => delay,
         } = Some(offset);
         self
     }
@@ -115,4 +136,6 @@ pub struct ActionCmd<B: SceneBackend> {
     /// `None` = the field type's default interpolation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub interp: Option<B::InterpId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }

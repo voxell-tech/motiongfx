@@ -22,8 +22,9 @@ Pure data, no engine and no backend. A `Scene<B>` is three parts:
 - **`stage`**: The value every animated field starts from. One
   `FieldSeed` (a `FieldRef` plus a value id) per subject field.
 - **`animation`**: A tree of `Block`s. Each block has a `Combinator`
-  (`Chain`, `All`, `Any`, `Flow`) and children that are nested blocks
-  or leaf `Node::action(ActionCmd)`s. A `Node` can carry a `delay`.
+  (`Chain`, `All`, `Flow`) and children that are nested blocks, leaf
+  `Node::action(ActionCmd)`s, or `Node::draft` timing slots. A `Node`
+  can carry a `delay`.
 - **`values`**: The `ValuePool`. Every number an action or seed refers
   to, addressed by id so the tree itself stays plain data.
 
@@ -53,6 +54,7 @@ let scene: Scene<Toy> = Scene {
         duration: ms(200),
         ease: None,
         interp: None,
+        name: None,
     })]),
     values,
 };

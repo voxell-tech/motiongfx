@@ -65,8 +65,7 @@ fn build_timeline(
     .ord_all()
     .compile();
 
-    b.add_tracks(track);
-    let timeline = b.compile();
+    let timeline = b.compile(track);
 
     // Spawns the timeline and start playing.
     commands.spawn((

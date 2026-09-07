@@ -50,9 +50,6 @@ pub enum CompileError<B: SceneBackend> {
         type_name: &'static str,
         field: FieldRef,
     },
-
-    /// The builder produced no tracks, so there is nothing to play.
-    EmptyTimeline,
 }
 
 // Manual Display to keep the crate `no_std` + `alloc`.
@@ -97,9 +94,6 @@ impl<B: SceneBackend> fmt::Display for CompileError<B> {
                     field.type_name(),
                     field.path()
                 )
-            }
-            Self::EmptyTimeline => {
-                write!(f, "scene compiled to an empty timeline")
             }
         }
     }
