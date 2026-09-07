@@ -11,11 +11,11 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-field_path = { workspace = true }
-hashbrown = { workspace = true, features = ["default-hasher"] }
 motiongfx_interp = { workspace = true, default-features = false }
-nonempty = { workspace = true }
+field_path = { workspace = true }
 typarena = { workspace = true }
+nonempty = { workspace = true }
+hashbrown = { workspace = true, features = ["default-hasher"] }
 tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
