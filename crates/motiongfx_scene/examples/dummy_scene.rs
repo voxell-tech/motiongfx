@@ -44,6 +44,7 @@ fn main() {
                 duration: ms(600),
                 ease: Some(Ease::CubicEaseInOut),
                 interp: None,
+                name: None,
             }),
             Node::action(ActionCmd {
                 subject: 0,
@@ -53,6 +54,7 @@ fn main() {
                 duration: Duration::ZERO,
                 ease: None,
                 interp: None,
+                name: None,
             }),
         ]),
         values,

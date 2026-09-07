@@ -66,8 +66,7 @@ let frag = action.play(s(1));
 // See "Track Ordering" section for composing fragments.
 let track = frag.compile();
 
-b.add_tracks(track);
-let mut timeline = b.compile();
+let mut timeline = b.compile(track);
 
 // Bake must run once before sampling.
 timeline.bake_actions(&registry, &world);
@@ -171,8 +170,7 @@ let frag = action.play(s(1));
 let track = frag.compile();
 
 // Add the track and compile into a Timeline.
-b.add_tracks(track);
-let timeline = b.compile();
+let timeline = b.compile(track);
 ```
 
 ### Bake and Sample
@@ -279,14 +277,6 @@ You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ).
 
 - [Motion Canvas](https://motioncanvas.io/)
 - [Manim](https://www.manim.community/)
-
-## Version Matrix
-
-| Bevy    | MotionGfx  |
-| ------- | ---------- |
-| 0.19    | 0.3        |
-| 0.18    | 0.2        |
-| 0.17    | 0.1        |
 
 ## License
 

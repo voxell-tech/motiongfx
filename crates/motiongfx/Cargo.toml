@@ -30,5 +30,5 @@ workspace = true
 
 [features]
 default = ["std", "tracing"]
-tracing = ["dep:tracing"]
 std = ["motiongfx_interp/std"]
+tracing = ["dep:tracing"]

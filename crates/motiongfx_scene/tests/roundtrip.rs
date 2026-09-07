@@ -68,6 +68,7 @@ fn sample() -> Scene<RoundtripBackend> {
         duration: ms(500),
         ease: Some(Ease::CubicEaseInOut),
         interp: None,
+        name: None,
     };
 
     let animation = Block::chain(vec![
@@ -77,6 +78,7 @@ fn sample() -> Scene<RoundtripBackend> {
                 Node::action(action(1.0)),
                 Node::action(action(0.5)),
             ],
+            name: None,
         }),
         Node::action(action(2.0)).delay(ms(200)),
     ]);

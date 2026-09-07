@@ -41,6 +41,7 @@ use tracing::error;
 )]
 #[reflect(Component, Hash, PartialEq)]
 #[serde(transparent)]
+#[require(Name = Name("Unamed Entity".into()))]
 pub struct EntityUid(Uuid);
 
 impl EntityUid {
