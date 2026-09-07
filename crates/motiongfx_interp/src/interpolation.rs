@@ -1,3 +1,6 @@
+/// Function for interpolating a type based on a [`f32`] time.
+pub type InterpFn<T> = fn(start: &T, end: &T, t: f32) -> T;
+
 /// Trait for interpolating between two values.
 ///
 /// The `M` marker parameter exists solely to satisfy the orphan rule:

@@ -4,6 +4,7 @@ use core::time::Duration;
 use alloc::boxed::Box;
 use field_path::field::UntypedField;
 use motiongfx_interp::ease::EaseFn;
+use motiongfx_interp::interpolation::InterpFn;
 
 use crate::ThreadSafe;
 use crate::subject::SubjectId;
@@ -106,9 +107,6 @@ impl<T> ActionStorage<T> {
         }
     }
 }
-
-/// Function for interpolating a type based on a [`f32`] time.
-pub type InterpFn<T> = fn(start: &T, end: &T, t: f32) -> T;
 
 /// A storage value for a custom [`InterpFn`].
 ///
