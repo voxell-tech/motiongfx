@@ -3,6 +3,7 @@ name = "motiongfx_scene"
 description = "Serializable scene & animation document for motiongfx, backend agnostic."
 keywords = ["motion", "animation", "serialization", "timeline", "scene"]
 categories = ["multimedia", "graphics", "data-structures"]
+readme = "./README.md"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
