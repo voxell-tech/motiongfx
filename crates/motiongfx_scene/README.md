@@ -53,7 +53,6 @@ let scene: Scene<Toy> = Scene {
         duration: ms(200),
         ease: None,
         interp: None,
-        name: None,
     })]),
     values,
 };
