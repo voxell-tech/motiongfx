@@ -6,7 +6,9 @@ use bevy_app::App;
 use bevy_asset::uuid::Uuid;
 use bevy_math::{Quat, Vec3};
 use bevy_platform::hash::FixedHasher;
-use bevy_reflect::{FromReflect, FromType, PartialReflect, TypeRegistry};
+use bevy_reflect::{
+    FromReflect, FromType, PartialReflect, TypeRegistry,
+};
 use indexmap::IndexMap;
 use motiongfx_scene::prelude::*;
 use serde::{Deserialize, Serialize};
