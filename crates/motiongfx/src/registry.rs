@@ -6,9 +6,10 @@ use field_path::field_accessor::FieldAccessor;
 use hashbrown::HashMap;
 
 use crate::ThreadSafe;
+use crate::pipeline::bake::BakeCtx;
+use crate::pipeline::sample::SampleCtx;
 use crate::pipeline::{
-    BakeCtx, Pipeline, PipelineHandle, PipelineKey, PipelineUntyped,
-    SampleCtx,
+    Pipeline, PipelineHandle, PipelineKey, PipelineUntyped,
 };
 use crate::prelude::{SubjectSource, TimelineBuilder};
 use crate::subject::SubjectId;

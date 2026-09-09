@@ -13,7 +13,9 @@ use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionTable,
     InterpActionBuilder, SampleMode,
 };
-use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
+use crate::pipeline::bake::BakeCtx;
+use crate::pipeline::sample::SampleCtx;
+use crate::pipeline::{PipelineKey, Range};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
 use crate::track::{Track, TrackList};

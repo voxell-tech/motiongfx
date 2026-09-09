@@ -1,4 +1,5 @@
-use super::{BakeCtx, SampleCtx};
+use crate::pipeline::bake::BakeCtx;
+use crate::pipeline::sample::SampleCtx;
 
 /// A type-erased bake function pointer.
 #[derive(Debug, Clone, Copy)]
