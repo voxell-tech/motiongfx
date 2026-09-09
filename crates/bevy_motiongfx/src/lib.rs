@@ -8,8 +8,6 @@ use bevy_ecs::prelude::*;
 
 use crate::controller::ControllerPlugin;
 use crate::manager::MotionGfxManagerPlugin;
-#[cfg(feature = "scene")]
-use crate::scene::MotionGfxScenePlugin;
 
 pub mod controller;
 pub mod interpolation;
@@ -50,12 +48,13 @@ impl Plugin for BevyMotionGfxPlugin {
                 .chain(),
         );
 
-        scene::value_pool::register_scene_values(app);
-
         app.add_plugins((MotionGfxManagerPlugin, ControllerPlugin));
 
         #[cfg(feature = "scene")]
-        app.add_plugins(MotionGfxScenePlugin);
+        {
+            app.add_plugins(scene::MotionGfxScenePlugin);
+            scene::value_pool::register_scene_values(app);
+        }
     }
 }
 
