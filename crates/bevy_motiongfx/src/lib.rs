@@ -49,6 +49,9 @@ impl Plugin for BevyMotionGfxPlugin {
             )
                 .chain(),
         );
+
+        scene::value_pool::register_scene_values(app);
+
         app.add_plugins((MotionGfxManagerPlugin, ControllerPlugin));
 
         #[cfg(feature = "scene")]
