@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 
 use bevy_asset::io::Reader;
 use bevy_asset::{Asset, AssetLoader, LoadContext};
+use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::error::BevyError;
 use bevy_ecs::world::World;
 use bevy_reflect::TypePath;
@@ -20,7 +21,7 @@ use crate::world::BevyWorld;
 /// `TypePath` are foreign traits and `Scene` is a foreign type from
 /// this crate's perspective, so the orphan rule requires a local
 /// wrapper.
-#[derive(Asset, TypePath)]
+#[derive(Asset, TypePath, Deref, DerefMut)]
 pub struct MotionGfxScene(pub Scene<Backend>);
 
 impl MotionGfxScene {

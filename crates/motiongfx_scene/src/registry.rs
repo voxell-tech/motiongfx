@@ -328,6 +328,21 @@ impl<B: SceneBackend> SceneRegistry<B> {
         self
     }
 
+    /// Whether `field` resolves: an [`ActionCmd`] or [`FieldSeed`]
+    /// naming it will not raise [`CompileError::UnknownField`].
+    pub fn is_field_registered(&self, field: &FieldRef) -> bool {
+        self.fields.contains::<UntypedField>(field)
+    }
+
+    /// Every registered [`FieldRef`], in arbitrary order.
+    pub fn registered_fields(
+        &self,
+    ) -> impl Iterator<Item = &FieldRef> {
+        self.fields
+            .iter::<UntypedField>()
+            .map(|(field_ref, _)| field_ref)
+    }
+
     pub(crate) fn resolve_field(
         &self,
         field_ref: &FieldRef,
