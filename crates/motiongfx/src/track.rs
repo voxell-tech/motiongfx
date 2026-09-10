@@ -352,10 +352,9 @@ fn resolve_conflicts(
     #[cfg(feature = "diagnostics")]
     let mut conflicts = Vec::new();
 
-    for (i, (key_a, seq_a)) in sequences.iter().enumerate() {
-        for (j, (key_b, seq_b)) in sequences.iter().enumerate() {
-            if i == j
-                || key_a.subject_id() != key_b.subject_id()
+    for (key_a, seq_a) in sequences.iter() {
+        for (key_b, seq_b) in sequences.iter() {
+            if key_a.subject_id() != key_b.subject_id()
                 || key_a.field().source_id()
                     != key_b.field().source_id()
                 || !paths_alias(
@@ -968,6 +967,25 @@ mod tests {
             // `""` (the source) aliases `::x`; the later clip overlaps.
             let track = TrackFragment::new()
                 .upsert_sequence(key(""), seq(&[clip(id[0], 0, 100)]))
+                .upsert_sequence(
+                    key("::x"),
+                    seq(&[clip(id[1], 50, 100)]),
+                )
+                .compile();
+
+            assert_eq!(baked(&track), [id[1]]);
+        }
+
+        #[test]
+        fn overlapping_clips_under_one_key_drop_the_earlier() {
+            let id = ids(2);
+            // Both clips land on the same `ActionKey` via an upsert
+            // append and overlap in time; the later one wins outright.
+            let track = TrackFragment::new()
+                .upsert_sequence(
+                    key("::x"),
+                    seq(&[clip(id[0], 0, 100)]),
+                )
                 .upsert_sequence(
                     key("::x"),
                     seq(&[clip(id[1], 50, 100)]),
