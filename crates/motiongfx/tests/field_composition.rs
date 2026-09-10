@@ -54,10 +54,7 @@ fn lerp_vec3(from: &Vec3, to: &Vec3, t: f32) -> Vec3 {
 
 fn world_starting_at(translation: Vec3) -> World {
     World {
-        subjects: HashMap::from([(
-            CUBE,
-            Transform { translation },
-        )]),
+        subjects: HashMap::from([(CUBE, Transform { translation })]),
     }
 }
 
@@ -91,17 +88,26 @@ fn sub_field_then_whole_field_composes() {
             .with_interp(lerp_f32)
             .play(s(2)),
         builder
-            .act_builder(CUBE, path!(<Transform>::translation), |_| {
-                Vec3 { x: 3.0, y: 1.0, z: 2.0 }
-            })
+            .act_builder(
+                CUBE,
+                path!(<Transform>::translation),
+                |_| Vec3 {
+                    x: 3.0,
+                    y: 1.0,
+                    z: 2.0,
+                },
+            )
             .with_interp(lerp_vec3)
             .play(s(2)),
     ]
     .ord_chain();
 
     let mut timeline = builder.compile(track.compile());
-    let mut world =
-        world_starting_at(Vec3 { x: 0.0, y: 1.0, z: 0.0 });
+    let mut world = world_starting_at(Vec3 {
+        x: 0.0,
+        y: 1.0,
+        z: 0.0,
+    });
     timeline.bake_actions(&registry, &world);
 
     // Step past `translation::x` so only the whole-`translation` clip
@@ -126,9 +132,15 @@ fn whole_field_then_sub_field_composes() {
 
     let track = [
         builder
-            .act_builder(CUBE, path!(<Transform>::translation), |_| {
-                Vec3 { x: 5.0, y: 5.0, z: 5.0 }
-            })
+            .act_builder(
+                CUBE,
+                path!(<Transform>::translation),
+                |_| Vec3 {
+                    x: 5.0,
+                    y: 5.0,
+                    z: 5.0,
+                },
+            )
             .with_interp(lerp_vec3)
             .play(s(2)),
         builder
@@ -218,9 +230,15 @@ fn overlapping_whole_and_sub_field_drops_the_earlier() {
 
     let track = [
         builder
-            .act_builder(CUBE, path!(<Transform>::translation), |_| {
-                Vec3 { x: 5.0, y: 5.0, z: 5.0 }
-            })
+            .act_builder(
+                CUBE,
+                path!(<Transform>::translation),
+                |_| Vec3 {
+                    x: 5.0,
+                    y: 5.0,
+                    z: 5.0,
+                },
+            )
             .with_interp(lerp_vec3)
             .play(s(4)),
         builder

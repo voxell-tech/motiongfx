@@ -966,10 +966,7 @@ mod tests {
             let id = ids(2);
             // `""` (the source) aliases `::x`; the later clip overlaps.
             let track = TrackFragment::new()
-                .upsert_sequence(
-                    key(""),
-                    seq(&[clip(id[0], 0, 100)]),
-                )
+                .upsert_sequence(key(""), seq(&[clip(id[0], 0, 100)]))
                 .upsert_sequence(
                     key("::x"),
                     seq(&[clip(id[1], 50, 100)]),
@@ -986,10 +983,7 @@ mod tests {
 
             let id = ids(2);
             let track = TrackFragment::new()
-                .upsert_sequence(
-                    key(""),
-                    seq(&[clip(id[0], 0, 100)]),
-                )
+                .upsert_sequence(key(""), seq(&[clip(id[0], 0, 100)]))
                 .upsert_sequence(
                     key("::x"),
                     seq(&[clip(id[1], 50, 100)]),
@@ -1002,11 +996,17 @@ mod tests {
             assert_eq!(conflicts[0].winner, id[1]);
             assert_eq!(
                 conflicts[0].dropped_span,
-                Range { start: cs(0), end: cs(100) },
+                Range {
+                    start: cs(0),
+                    end: cs(100)
+                },
             );
             assert_eq!(
                 conflicts[0].overlap,
-                Range { start: cs(50), end: cs(100) },
+                Range {
+                    start: cs(50),
+                    end: cs(100)
+                },
             );
         }
     }

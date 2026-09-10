@@ -75,10 +75,22 @@ mod tests {
 
     #[test]
     fn range_overlap_counts_boundary_touch() {
-        let a = Range { start: s(0), end: s(5) };
-        let b = Range { start: s(3), end: s(8) };
-        let c = Range { start: s(6), end: s(10) };
-        let touching = Range { start: s(5), end: s(5) };
+        let a = Range {
+            start: s(0),
+            end: s(5),
+        };
+        let b = Range {
+            start: s(3),
+            end: s(8),
+        };
+        let c = Range {
+            start: s(6),
+            end: s(10),
+        };
+        let touching = Range {
+            start: s(5),
+            end: s(5),
+        };
 
         assert!(a.overlap(&b));
         assert!(!a.overlap(&c));
@@ -87,14 +99,29 @@ mod tests {
 
     #[test]
     fn range_intersect_drops_boundary_touch() {
-        let a = Range { start: s(0), end: s(5) };
-        let b = Range { start: s(3), end: s(8) };
-        let c = Range { start: s(6), end: s(10) };
-        let touching = Range { start: s(5), end: s(8) };
+        let a = Range {
+            start: s(0),
+            end: s(5),
+        };
+        let b = Range {
+            start: s(3),
+            end: s(8),
+        };
+        let c = Range {
+            start: s(6),
+            end: s(10),
+        };
+        let touching = Range {
+            start: s(5),
+            end: s(8),
+        };
 
         assert_eq!(
             a.intersect(&b),
-            Some(Range { start: s(3), end: s(5) }),
+            Some(Range {
+                start: s(3),
+                end: s(5)
+            }),
         );
         assert_eq!(a.intersect(&c), None);
         assert_eq!(a.intersect(&touching), None);
