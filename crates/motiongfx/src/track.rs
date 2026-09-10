@@ -352,21 +352,22 @@ fn resolve_conflicts(
     #[cfg(feature = "diagnostics")]
     let mut conflicts = Vec::new();
 
-    for (i, (ka, sa)) in sequences.iter().enumerate() {
-        for (j, (kb, sb)) in sequences.iter().enumerate() {
+    for (i, (key_a, seq_a)) in sequences.iter().enumerate() {
+        for (j, (key_b, seq_b)) in sequences.iter().enumerate() {
             if i == j
-                || ka.subject_id() != kb.subject_id()
-                || ka.field().source_id() != kb.field().source_id()
+                || key_a.subject_id() != key_b.subject_id()
+                || key_a.field().source_id()
+                    != key_b.field().source_id()
                 || !paths_alias(
-                    ka.field().field_path(),
-                    kb.field().field_path(),
+                    key_a.field().field_path(),
+                    key_b.field().field_path(),
                 )
             {
                 continue;
             }
 
-            for ca in sa.clips.iter() {
-                for cb in sb.clips.iter() {
+            for ca in seq_a.clips.iter() {
+                for cb in seq_b.clips.iter() {
                     if cb.id > ca.id
                         && ca.start < cb.end()
                         && cb.start < ca.end()
@@ -375,13 +376,13 @@ fn resolve_conflicts(
                         #[cfg(feature = "diagnostics")]
                         conflicts.push(FieldConflict {
                             dropped: ca.id,
-                            dropped_field: *ka.field(),
+                            dropped_field: *key_a.field(),
                             dropped_span: Range {
                                 start: ca.start,
                                 end: ca.end(),
                             },
                             winner: cb.id,
-                            winner_field: *kb.field(),
+                            winner_field: *key_b.field(),
                             overlap: Range {
                                 start: ca.start.max(cb.start),
                                 end: ca.end().min(cb.end()),
@@ -390,10 +391,10 @@ fn resolve_conflicts(
                         #[cfg(feature = "tracing")]
                         tracing::warn!(
                             "dropping action on `{}` ({:?}..{:?}): a later action on `{}` overlaps it",
-                            ka.field().field_path(),
+                            key_a.field().field_path(),
                             ca.start,
                             ca.end(),
-                            kb.field().field_path(),
+                            key_b.field().field_path(),
                         );
                     }
                 }
