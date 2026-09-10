@@ -174,6 +174,60 @@ fn whole_field_then_sub_field_composes() {
     );
 }
 
+/// A seek that lands inside a later `translation::x` clip while the
+/// earlier whole-`translation` clip resolves to its end in the same
+/// pass. The `x` slide is newer and wins, whichever pipeline samples
+/// first.
+#[test]
+fn boundary_crossing_seek_applies_child_alias_last() {
+    let mut registry = Registry::new();
+    let mut builder = registry.create_builder::<World>();
+
+    let track = [
+        builder
+            .act_builder(
+                CUBE,
+                path!(<Transform>::translation),
+                |_| Vec3 {
+                    x: 2.0,
+                    y: 5.0,
+                    z: 5.0,
+                },
+            )
+            .with_interp(lerp_vec3)
+            .play(s(2)),
+        builder
+            .act_builder(
+                CUBE,
+                path!(<Transform>::translation::x),
+                |_| 9.0,
+            )
+            .with_interp(lerp_f32)
+            .play(s(2)),
+    ]
+    .ord_chain();
+
+    let mut timeline = builder.compile(track.compile());
+    let mut world = world_starting_at(Vec3::default());
+    timeline.bake_actions(&registry, &world);
+
+    // From t = 0 straight to t = 3: past the whole-`translation` clip
+    // [0, 2] (-> its end) and halfway through `translation::x` [2, 4].
+    let translation =
+        sample_at(&registry, &mut timeline, &mut world, s(3));
+
+    assert!(
+        (translation.x - 5.5).abs() < 1e-3,
+        "x eases 2 -> 9 and is not clobbered by `translation`'s end, got {}",
+        translation.x,
+    );
+    assert!(
+        (translation.y - 5.0).abs() < 1e-3
+            && (translation.z - 5.0).abs() < 1e-3,
+        "y and z hold where `translation` ended, got {translation:?}",
+    );
+}
+
 /// `translation::x` and `translation::y` fully overlap in time but do
 /// not alias, so both run.
 #[test]

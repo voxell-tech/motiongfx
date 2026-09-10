@@ -3,9 +3,9 @@ use core::marker::PhantomData;
 use core::time::Duration;
 
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 use field_path::field_accessor::FieldAccessor;
-use hashbrown::HashMap;
+use hashbrown::{DefaultHashBuilder, HashMap};
+use indexmap::IndexMap;
 use motiongfx_interp::interpolation::Interpolation;
 
 use crate::ThreadSafe;
@@ -26,16 +26,9 @@ pub struct Timeline<W> {
     /// Track length is guaranteed to be at least 1 by construction.
     /// See [`TimelineBuilder::compile()`].
     tracks: Box<[Track]>,
-    /// Cached actions that are queued to be sampled.
-    ///
-    /// This cache will be cleared everytime [`Timeline::queue_actions`]
-    /// is called.
-    queue_cache: QueueCache,
-    /// Queued actions grouped by pipeline, each carrying its resolved
-    /// [`SampleMode`]. Rebuilt from `queue_cache` every
-    /// [`Timeline::queue_actions`] so sampling touches only the marked
-    /// actions of each type, with no per-action column lookup.
-    sample_queue: HashMap<PipelineKey, Vec<(ActionId, SampleMode)>>,
+    /// Fields to sample this frame, deduped per field and ordered so
+    /// overlapping writes to aliasing memory resolve deterministically.
+    queue: IndexMap<ActionKey, QueuedSample, DefaultHashBuilder>,
     /// The current time of the current track.
     curr_time: Duration,
     /// The target time of the target track.
@@ -45,6 +38,15 @@ pub struct Timeline<W> {
     /// The index of the target track.
     target_index: usize,
     _marker: PhantomData<fn() -> W>,
+}
+
+/// One field's resolved sample for the current frame.
+#[derive(Debug, Clone, Copy)]
+struct QueuedSample {
+    id: ActionId,
+    mode: SampleMode,
+    /// Start of the clip this resolved to.
+    clip_start: Duration,
 }
 
 impl<W: 'static> Timeline<W> {
@@ -100,7 +102,7 @@ impl<W: 'static> Timeline<W> {
             return;
         }
 
-        self.reset_queues();
+        self.queue.clear();
         // Current time will change if the track index changes.
         let mut curr_time = self.curr_time();
 
@@ -140,10 +142,13 @@ impl<W: 'static> Timeline<W> {
                         SampleMode::Interp(_) => unreachable!(),
                     };
 
-                    self.queue_cache.cache(
+                    self.queue.insert(
                         *key,
-                        clip.id,
-                        sample_mode,
+                        QueuedSample {
+                            id: clip.id,
+                            mode: sample_mode,
+                            clip_start: clip.start,
+                        },
                     );
                 }
             }
@@ -196,12 +201,15 @@ impl<W: 'static> Timeline<W> {
                 Ok(index) => {
                     let clip = &clips[index];
 
-                    self.queue_cache.cache(
+                    self.queue.insert(
                         *key,
-                        clip.id,
-                        SampleMode::Interp(
-                            clip.progress(self.target_time),
-                        ),
+                        QueuedSample {
+                            id: clip.id,
+                            mode: SampleMode::Interp(
+                                clip.progress(self.target_time),
+                            ),
+                            clip_start: clip.start,
+                        },
                     );
                 }
                 // `target_time` is out of bounds.
@@ -227,67 +235,59 @@ impl<W: 'static> Timeline<W> {
                         SampleMode::End
                     };
 
-                    self.queue_cache.cache(
+                    self.queue.insert(
                         *key,
-                        clip.id,
-                        sample_mode,
+                        QueuedSample {
+                            id: clip.id,
+                            mode: sample_mode,
+                            clip_start: clip.start,
+                        },
                     );
                 }
             }
         }
 
-        // Group the deduped queue by pipeline so each typed sampler
-        // iterates only its own actions, with the `SampleMode` in hand.
-        for (key, &(id, sample_mode)) in self.queue_cache.iter() {
-            let pkey = PipelineKey::from_action_key::<W>(*key);
-            self.sample_queue
-                .entry(pkey)
-                .or_default()
-                .push((id, sample_mode));
-        }
+        // `Start`/`End` before the frame's `Interp`, then by clip
+        // start, so overlapping writes to aliasing memory land the
+        // same way every frame.
+        self.queue.sort_unstable_by(|_, a, _, b| {
+            let key = |q: &QueuedSample| {
+                (
+                    matches!(q.mode, SampleMode::Interp(_)),
+                    q.clip_start,
+                )
+            };
+            key(a).cmp(&key(b))
+        });
 
         self.curr_time = self.target_time;
     }
 
+    /// Writes every sample marked by [`Self::queue_actions`] into the
+    /// world.
     pub fn sample_queued_actions(
         &self,
         registry: &Registry,
         subject_world: &mut W,
     ) {
-        for (key, samples) in self.sample_queue.iter() {
-            if samples.is_empty() {
-                continue;
-            }
+        for (key, queued) in &self.queue {
+            let pkey = PipelineKey::from_action_key::<W>(*key);
             let ok = registry.pipeline.sample(
-                key,
+                &pkey,
                 SampleCtx {
                     world: subject_world,
                     action_table: &self.action_table,
                     accessor_registry: &registry.accessor,
-                    samples,
+                    samples: &[(queued.id, queued.mode)],
                 },
             );
-            debug_assert!(ok, "pipeline not found for key {key:?}");
-        }
-    }
-
-    fn reset_queues(&mut self) {
-        self.queue_cache.clear();
-        // Retain the per-pipeline `Vec` capacities across frames.
-        for samples in self.sample_queue.values_mut() {
-            samples.clear();
+            debug_assert!(ok, "pipeline not found for key {pkey:?}");
         }
     }
 }
 
 // Getter methods.
 impl<W> Timeline<W> {
-    /// Returns the current queue cache.
-    #[inline]
-    pub fn queue_cache(&self) -> &QueueCache {
-        &self.queue_cache
-    }
-
     /// Returns the current playback time.
     #[inline]
     pub fn curr_time(&self) -> Duration {
@@ -403,66 +403,6 @@ impl<W> Timeline<W> {
 
         self.target_index = target_index.clamp(0, max_index);
         self
-    }
-}
-
-/// Cached actions that are queued to be sampled.
-///
-/// This cache prevents duplicated samples on the same [`ActionKey`]
-/// which result in sampling the same target field on the same entity
-/// more than once. This is crucial as the sampling pipeline happens
-/// in an unordered manner.
-#[derive(Debug)]
-pub struct QueueCache {
-    cache: HashMap<ActionKey, (ActionId, SampleMode)>,
-}
-
-impl QueueCache {
-    pub fn new() -> Self {
-        Self {
-            cache: HashMap::new(),
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.cache.is_empty()
-    }
-
-    pub fn iter(
-        &self,
-    ) -> impl Iterator<Item = (&ActionKey, &(ActionId, SampleMode))>
-    {
-        self.cache.iter()
-    }
-
-    pub fn iter_keys(&self) -> impl Iterator<Item = &ActionKey> {
-        self.cache.keys()
-    }
-
-    pub fn iter_ids(&self) -> impl Iterator<Item = ActionId> + '_ {
-        self.cache.values().map(|(id, _)| *id)
-    }
-
-    /// Clear all the cached contents.
-    pub fn clear(&mut self) {
-        self.cache.clear();
-    }
-
-    /// Cache an [`ActionKey`] with its [`SampleMode`], overwriting any
-    /// previous entry for the same key (dedup per field per subject).
-    pub fn cache(
-        &mut self,
-        key: ActionKey,
-        id: ActionId,
-        sample_mode: SampleMode,
-    ) {
-        self.cache.insert(key, (id, sample_mode));
-    }
-}
-
-impl Default for QueueCache {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -592,8 +532,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
         Timeline {
             action_table: self.action_table,
             tracks: tracks.into().into_boxed_slice(),
-            queue_cache: QueueCache::new(),
-            sample_queue: HashMap::new(),
+            queue: IndexMap::default(),
             curr_time: Duration::ZERO,
             target_time: Duration::ZERO,
             curr_index: 0,
