@@ -4,7 +4,6 @@ pub mod sample;
 
 use core::any::TypeId;
 use core::marker::PhantomData;
-use core::time::Duration;
 
 use bake::{BakeClipCtx, bake_clip};
 use func_pointers::{BakeClipFnPtr, SampleFnPtr};
@@ -172,93 +171,4 @@ impl PipelineUntyped {
     }
 }
 
-#[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Range {
-    pub start: Duration,
-    pub end: Duration,
-}
-
-impl Range {
-    /// Calculate if 2 [`Range`]s overlap.
-    pub fn overlap(&self, other: &Self) -> bool {
-        self.start <= other.end && other.start <= self.end
-    }
-
-    /// The span shared by both [`Range`]s, or `None` when they share
-    /// no span of positive length. A boundary-only touch is `None`.
-    pub fn intersect(&self, other: &Self) -> Option<Self> {
-        let start = self.start.max(other.start);
-        let end = self.end.min(other.end);
-        (start < end).then_some(Self { start, end })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::time::s;
-
-    use super::*;
-
-    #[test]
-    fn range_overlap_behavior() {
-        let a = Range {
-            start: s(0),
-            end: s(5),
-        };
-        let b = Range {
-            start: s(3),
-            end: s(8),
-        };
-        let c = Range {
-            start: s(6),
-            end: s(10),
-        };
-        let d = Range {
-            start: s(5),
-            end: s(5),
-        }; // touching boundary
-
-        assert!(
-            a.overlap(&b),
-            "Overlapping ranges should return true"
-        );
-        assert!(
-            !a.overlap(&c),
-            "Separated ranges should return false"
-        );
-        assert!(
-            a.overlap(&d),
-            "Touching at end should count as overlap"
-        );
-    }
-
-    #[test]
-    fn range_intersect_returns_shared_span() {
-        let a = Range {
-            start: s(0),
-            end: s(5),
-        };
-        let b = Range {
-            start: s(3),
-            end: s(8),
-        };
-        let c = Range {
-            start: s(6),
-            end: s(10),
-        };
-        let d = Range {
-            start: s(5),
-            end: s(8),
-        }; // touches `a` at the boundary only
-
-        assert_eq!(
-            a.intersect(&b),
-            Some(Range {
-                start: s(3),
-                end: s(5),
-            }),
-        );
-        assert_eq!(a.intersect(&c), None);
-        assert_eq!(a.intersect(&d), None);
-    }
-}
+pub use crate::time::Range;
