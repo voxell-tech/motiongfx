@@ -54,6 +54,10 @@ tracing = [
     "motiongfx/tracing",
     "motiongfx_scene?/tracing",
 ]
+diagnostics = [
+    "motiongfx/diagnostics",
+    "motiongfx_scene?/diagnostics",
+]
 asset = ["dep:bevy_asset"]
 transform = ["dep:bevy_transform"]
 color = ["dep:bevy_color"]

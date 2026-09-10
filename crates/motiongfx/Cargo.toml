@@ -32,3 +32,5 @@ workspace = true
 default = ["std", "tracing"]
 std = ["motiongfx_interp/std"]
 tracing = ["dep:tracing"]
+# Records dropped clips on the compiled `Track` for editor tooling.
+diagnostics = []

@@ -318,6 +318,15 @@ impl<W> Timeline<W> {
         &self.tracks
     }
 
+    /// Every clip dropped across the tracks to resolve overlapping
+    /// actions on aliasing field paths.
+    #[cfg(feature = "diagnostics")]
+    pub fn conflicts(
+        &self,
+    ) -> impl Iterator<Item = &crate::track::FieldConflict> {
+        self.tracks.iter().flat_map(Track::conflicts)
+    }
+
     /// Returns a reference the current playing track.
     #[inline]
     pub fn curr_track(&self) -> &Track {

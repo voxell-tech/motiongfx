@@ -8,6 +8,8 @@ use nonempty::NonEmpty;
 
 use crate::action::{ActionClip, ActionId, ActionKey, paths_alias};
 use crate::sequence::Sequence;
+#[cfg(feature = "diagnostics")]
+use crate::time::Range;
 
 pub trait TrackOrdering {
     /// Run all [`TrackFragment`]s one after another.
@@ -214,6 +216,9 @@ impl TrackFragment {
         let mut sequences =
             self.sequences.into_iter().collect::<Vec<_>>();
 
+        #[cfg(feature = "diagnostics")]
+        let conflicts = resolve_conflicts(&mut sequences);
+        #[cfg(not(feature = "diagnostics"))]
         resolve_conflicts(&mut sequences);
 
         if sequences.is_empty() {
@@ -222,6 +227,8 @@ impl TrackFragment {
                 sequence_spans: Box::new([]),
                 clip_arena: Box::new([]),
                 bake_order: Box::new([]),
+                #[cfg(feature = "diagnostics")]
+                conflicts,
                 duration: self.duration,
             };
         }
@@ -302,6 +309,8 @@ impl TrackFragment {
             sequence_spans: sequence_spans.into_boxed_slice(),
             clip_arena,
             bake_order,
+            #[cfg(feature = "diagnostics")]
+            conflicts,
             duration,
         }
     }
@@ -313,11 +322,35 @@ impl Default for TrackFragment {
     }
 }
 
+/// A clip dropped when the track compiled because a later action on
+/// an aliasing field path of the same subject overlapped it.
+#[cfg(feature = "diagnostics")]
+#[derive(Debug, Clone, Copy)]
+pub struct FieldConflict {
+    pub dropped: ActionId,
+    pub dropped_field: UntypedField,
+    /// Time span of the dropped clip.
+    pub dropped_span: Range,
+    pub winner: ActionId,
+    pub winner_field: UntypedField,
+    /// Where the two clips overlapped.
+    pub overlap: Range,
+}
+
+#[cfg(feature = "diagnostics")]
+type ConflictReport = Box<[FieldConflict]>;
+#[cfg(not(feature = "diagnostics"))]
+type ConflictReport = ();
+
 /// Drops any clip that a later-authored action on an aliasing field
 /// path of the same subject overlaps in time. The later action wins
 /// the whole clip, not just the overlapped span.
-fn resolve_conflicts(sequences: &mut Vec<(ActionKey, Sequence)>) {
+fn resolve_conflicts(
+    sequences: &mut Vec<(ActionKey, Sequence)>,
+) -> ConflictReport {
     let mut removed = HashSet::<ActionId>::new();
+    #[cfg(feature = "diagnostics")]
+    let mut conflicts = Vec::new();
 
     for (i, (ka, sa)) in sequences.iter().enumerate() {
         for (j, (kb, sb)) in sequences.iter().enumerate() {
@@ -339,6 +372,21 @@ fn resolve_conflicts(sequences: &mut Vec<(ActionKey, Sequence)>) {
                         && cb.start < ca.end()
                         && removed.insert(ca.id)
                     {
+                        #[cfg(feature = "diagnostics")]
+                        conflicts.push(FieldConflict {
+                            dropped: ca.id,
+                            dropped_field: *ka.field(),
+                            dropped_span: Range {
+                                start: ca.start,
+                                end: ca.end(),
+                            },
+                            winner: cb.id,
+                            winner_field: *kb.field(),
+                            overlap: Range {
+                                start: ca.start.max(cb.start),
+                                end: ca.end().min(cb.end()),
+                            },
+                        });
                         #[cfg(feature = "tracing")]
                         tracing::warn!(
                             "dropping action on `{}` ({:?}..{:?}): a later action on `{}` overlaps it",
@@ -353,26 +401,29 @@ fn resolve_conflicts(sequences: &mut Vec<(ActionKey, Sequence)>) {
         }
     }
 
-    if removed.is_empty() {
-        return;
+    if !removed.is_empty() {
+        sequences.retain_mut(|(_, seq)| {
+            let kept = seq
+                .clips
+                .iter()
+                .copied()
+                .filter(|clip| !removed.contains(&clip.id))
+                .collect::<Vec<_>>();
+
+            match NonEmpty::from_vec(kept) {
+                Some(clips) => {
+                    seq.clips = clips;
+                    true
+                }
+                None => false,
+            }
+        });
     }
 
-    sequences.retain_mut(|(_, seq)| {
-        let kept = seq
-            .clips
-            .iter()
-            .copied()
-            .filter(|clip| !removed.contains(&clip.id))
-            .collect::<Vec<_>>();
-
-        match NonEmpty::from_vec(kept) {
-            Some(clips) => {
-                seq.clips = clips;
-                true
-            }
-            None => false,
-        }
-    });
+    #[cfg(feature = "diagnostics")]
+    {
+        conflicts.into_boxed_slice()
+    }
 }
 
 /// A compiled dense action sequences, optimized for playback and
@@ -402,6 +453,11 @@ pub struct Track {
 
     /// `clip_arena` indices in start-time order, ties by `ActionId`.
     bake_order: Box<[u32]>,
+
+    /// Clips this track dropped to resolve overlapping actions on
+    /// aliasing field paths.
+    #[cfg(feature = "diagnostics")]
+    conflicts: Box<[FieldConflict]>,
 
     /// Total duration of the track.
     ///
@@ -455,6 +511,14 @@ impl Track {
     #[inline]
     pub fn duration(&self) -> Duration {
         self.duration
+    }
+
+    /// Clips this track dropped to resolve overlapping actions on
+    /// aliasing field paths.
+    #[cfg(feature = "diagnostics")]
+    #[inline]
+    pub fn conflicts(&self) -> &[FieldConflict] {
+        &self.conflicts
     }
 }
 
@@ -775,7 +839,7 @@ mod tests {
         );
     }
 
-    mod bake_order {
+    mod compile {
         use typarena::id::IdGenerator;
 
         use crate::action::ActionMarker;
@@ -895,6 +959,55 @@ mod tests {
         fn empty_track_has_no_bake_order() {
             let track = TrackFragment::new().compile();
             assert_eq!(track.bake_clips().count(), 0);
+        }
+
+        #[test]
+        fn overlapping_aliasing_actions_drop_the_earlier() {
+            let id = ids(2);
+            // `""` (the source) aliases `::x`; the later clip overlaps.
+            let track = TrackFragment::new()
+                .upsert_sequence(
+                    key(""),
+                    seq(&[clip(id[0], 0, 100)]),
+                )
+                .upsert_sequence(
+                    key("::x"),
+                    seq(&[clip(id[1], 50, 100)]),
+                )
+                .compile();
+
+            assert_eq!(baked(&track), [id[1]]);
+        }
+
+        #[cfg(feature = "diagnostics")]
+        #[test]
+        fn conflicts_report_the_dropped_and_winning_clips() {
+            use crate::time::{Range, cs};
+
+            let id = ids(2);
+            let track = TrackFragment::new()
+                .upsert_sequence(
+                    key(""),
+                    seq(&[clip(id[0], 0, 100)]),
+                )
+                .upsert_sequence(
+                    key("::x"),
+                    seq(&[clip(id[1], 50, 100)]),
+                )
+                .compile();
+
+            let conflicts = track.conflicts();
+            assert_eq!(conflicts.len(), 1);
+            assert_eq!(conflicts[0].dropped, id[0]);
+            assert_eq!(conflicts[0].winner, id[1]);
+            assert_eq!(
+                conflicts[0].dropped_span,
+                Range { start: cs(0), end: cs(100) },
+            );
+            assert_eq!(
+                conflicts[0].overlap,
+                Range { start: cs(50), end: cs(100) },
+            );
         }
     }
 }

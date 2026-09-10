@@ -25,6 +25,7 @@ uuid = { workspace = true, features = ["v4", "serde"] }
 default = ["std"]
 std = ["serde/std", "motiongfx/std"]
 tracing = ["motiongfx/tracing"]
+diagnostics = ["motiongfx/diagnostics"]
 
 [lints]
 workspace = true
