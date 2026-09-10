@@ -72,6 +72,16 @@ pub struct ActionKey {
     field: UntypedField,
 }
 
+/// Whether two field paths reach overlapping memory: one is a
+/// segment-prefix of the other. The source itself (`""`) is a prefix
+/// of every path.
+pub(crate) fn paths_alias(a: &str, b: &str) -> bool {
+    let (short, long) =
+        if a.len() <= b.len() { (a, b) } else { (b, a) };
+    long.strip_prefix(short)
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with("::"))
+}
+
 impl ActionKey {
     pub fn new(
         subject_id: UntypedSubjectId,
