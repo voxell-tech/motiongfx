@@ -1,24 +1,24 @@
-use crate::pipeline::bake::BakeCtx;
+use crate::pipeline::bake::BakeClipCtx;
 use crate::pipeline::sample::SampleCtx;
 
-/// A type-erased bake function pointer.
+/// A type-erased per-clip bake function pointer.
 #[derive(Debug, Clone, Copy)]
-pub struct BakeFnPtr(*const ());
+pub struct BakeClipFnPtr(*const ());
 
-unsafe impl Send for BakeFnPtr {}
-unsafe impl Sync for BakeFnPtr {}
+unsafe impl Send for BakeClipFnPtr {}
+unsafe impl Sync for BakeClipFnPtr {}
 
-impl BakeFnPtr {
-    pub const fn new<W>(f: BakeFn<W>) -> Self {
+impl BakeClipFnPtr {
+    pub const fn new<W>(f: BakeClipFn<W>) -> Self {
         Self(f as *const ())
     }
 
     /// # Safety
     ///
     /// `W` must match the type used when constructing this pointer.
-    pub const unsafe fn typed_unchecked<W>(&self) -> BakeFn<W> {
+    pub const unsafe fn typed_unchecked<W>(&self) -> BakeClipFn<W> {
         unsafe {
-            core::mem::transmute::<*const (), BakeFn<W>>(self.0)
+            core::mem::transmute::<*const (), BakeClipFn<W>>(self.0)
         }
     }
 }
@@ -45,5 +45,5 @@ impl SampleFnPtr {
     }
 }
 
-pub type BakeFn<W> = fn(BakeCtx<'_, W>);
+pub type BakeClipFn<W> = fn(BakeClipCtx<'_, W>);
 pub type SampleFn<W> = fn(SampleCtx<'_, W>);

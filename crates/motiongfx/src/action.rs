@@ -72,9 +72,8 @@ pub struct ActionKey {
     field: UntypedField,
 }
 
-/// Whether two field paths reach overlapping memory: one is a
-/// segment-prefix of the other. The source itself (`""`) is a prefix
-/// of every path.
+/// Two field paths alias in memory when one is a segment-prefix of
+/// the other. The source itself (`""`) prefixes every path.
 pub(crate) fn paths_alias(a: &str, b: &str) -> bool {
     let (short, long) =
         if a.len() <= b.len() { (a, b) } else { (b, a) };

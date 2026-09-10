@@ -13,7 +13,7 @@ use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionTable,
     InterpActionBuilder, SampleMode,
 };
-use crate::pipeline::bake::BakeCtx;
+use crate::pipeline::bake::{BakeClipCtx, BakeScratch};
 use crate::pipeline::sample::SampleCtx;
 use crate::pipeline::{PipelineKey, Range};
 use crate::registry::Registry;
@@ -23,7 +23,6 @@ use crate::world::SubjectSource;
 
 pub struct Timeline<W> {
     action_table: ActionTable,
-    pipeline_counts: Box<[(PipelineKey, u32)]>,
     /// Track length is guaranteed to be at least 1 by construction.
     /// See [`TimelineBuilder::compile()`].
     tracks: Box<[Track]>,
@@ -49,25 +48,40 @@ pub struct Timeline<W> {
 }
 
 impl<W: 'static> Timeline<W> {
+    /// Bakes every clip's [`Segment`](crate::action::Segment). Clips
+    /// are visited in start-time order over a per-track working copy
+    /// of each source, so an action composes on top of every earlier
+    /// one.
     pub fn bake_actions(
         &mut self,
         registry: &Registry,
         subject_world: &W,
     ) {
-        for key in self.pipeline_counts.iter().map(|(key, _)| key) {
-            for track in self.tracks.iter() {
-                let ok = registry.pipeline.bake(
-                    key,
-                    BakeCtx {
+        for track in self.tracks.iter() {
+            let mut scratch = BakeScratch::default();
+
+            for clip in track.bake_clips() {
+                let Some(key) =
+                    self.action_table.key(&clip.id).copied()
+                else {
+                    continue;
+                };
+                let pkey = PipelineKey::from_action_key::<W>(key);
+                let ok = registry.pipeline.bake_clip(
+                    &pkey,
+                    BakeClipCtx {
                         world: subject_world,
-                        track,
+                        subject: *key.subject_id(),
+                        field: *key.field(),
+                        action_id: clip.id,
+                        scratch: &mut scratch,
                         action_table: &mut self.action_table,
                         accessor_registry: &registry.accessor,
                     },
                 );
                 debug_assert!(
                     ok,
-                    "pipeline not found for key {key:?}"
+                    "pipeline not found for key {pkey:?}"
                 );
             }
         }
@@ -478,7 +492,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: Interpolation<M> + Clone + ThreadSafe,
     {
         self.act_builder(target, field_acc, action)
@@ -495,7 +509,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: Clone + ThreadSafe,
     {
         self.act_builder(target, field_acc, action).with_interp(
@@ -516,7 +530,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: Clone + ThreadSafe,
     {
         let field = field_acc.field;
@@ -564,12 +578,10 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
         self,
         tracks: impl Into<TrackList>,
     ) -> Timeline<W> {
+        // `pipeline_counts` is builder-only; baking resolves a
+        // pipeline per clip.
         Timeline {
             action_table: self.action_table,
-            pipeline_counts: self
-                .pipeline_counts
-                .into_iter()
-                .collect(),
             tracks: tracks.into().into_boxed_slice(),
             queue_cache: QueueCache::new(),
             sample_queue: HashMap::new(),

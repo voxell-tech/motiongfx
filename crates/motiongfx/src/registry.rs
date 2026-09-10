@@ -6,7 +6,7 @@ use field_path::field_accessor::FieldAccessor;
 use hashbrown::HashMap;
 
 use crate::ThreadSafe;
-use crate::pipeline::bake::BakeCtx;
+use crate::pipeline::bake::BakeClipCtx;
 use crate::pipeline::sample::SampleCtx;
 use crate::pipeline::{
     Pipeline, PipelineHandle, PipelineKey, PipelineUntyped,
@@ -33,7 +33,7 @@ impl Registry {
     ) where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: Clone + ThreadSafe,
     {
         self.accessor.register(field_acc);
@@ -107,10 +107,10 @@ impl PipelineRegistry {
         }
     }
 
-    pub(crate) fn bake<W: 'static>(
+    pub(crate) fn bake_clip<W: 'static>(
         &self,
         key: &PipelineKey,
-        ctx: BakeCtx<W>,
+        ctx: BakeClipCtx<W>,
     ) -> bool {
         if key.world_id() != TypeId::of::<W>() {
             return false;
@@ -118,7 +118,7 @@ impl PipelineRegistry {
 
         if let Some(pipeline) = self.pipelines.get(key) {
             // SAFETY: verified above that key.world_id == TypeId::of::<W>().
-            unsafe { pipeline.bake(ctx) };
+            unsafe { pipeline.bake_clip(ctx) };
             return true;
         }
 
@@ -149,7 +149,7 @@ impl PipelineRegistry {
     where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: Clone + ThreadSafe,
     {
         let key = PipelineHandle::<W, I, S, T>::new().as_key();

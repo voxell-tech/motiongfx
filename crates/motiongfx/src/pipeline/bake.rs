@@ -1,69 +1,90 @@
+use field_path::field::UntypedField;
+use typarena::type_table::TypeTable;
+
 use crate::ThreadSafe;
-use crate::action::{ActionClip, ActionTable, Segment};
+use crate::action::{
+    ActionId, ActionTable, Segment, UntypedSubjectId,
+};
 use crate::registry::AccessorRegistry;
 use crate::subject::SubjectId;
-use crate::track::Track;
 use crate::world::SubjectSource;
 
-pub struct BakeCtx<'a, W> {
+/// Working copies of the sources touched during one bake pass.
+#[derive(Default)]
+pub struct BakeScratch {
+    sources: TypeTable<UntypedSubjectId>,
+}
+
+impl BakeScratch {
+    /// The working copy of `subject`'s source, seeded from `seed` the
+    /// first time it is asked for.
+    fn source<S: Clone + ThreadSafe>(
+        &mut self,
+        subject: UntypedSubjectId,
+        seed: impl FnOnce() -> Option<S>,
+    ) -> Option<&mut S> {
+        if !self.sources.contains::<S>(&subject) {
+            self.sources.insert::<S>(subject, seed()?);
+        }
+        // TODO: collapse this contains + insert + get_mut once
+        // typarena's `TypeTable` grows an entry API.
+        Some(
+            self.sources
+                .get_mut::<S>(&subject)
+                .expect("just inserted or already present"),
+        )
+    }
+}
+
+pub struct BakeClipCtx<'a, W> {
     pub world: &'a W,
-    pub track: &'a Track,
+    pub subject: UntypedSubjectId,
+    pub field: UntypedField,
+    pub action_id: ActionId,
+    pub scratch: &'a mut BakeScratch,
     pub action_table: &'a mut ActionTable,
     pub accessor_registry: &'a AccessorRegistry,
 }
 
-pub fn bake<W, I, S, T>(ctx: BakeCtx<W>)
+/// Bakes one clip's [`Segment`] against the source's working copy, so
+/// it composes on top of every earlier clip.
+pub fn bake_clip<W, I, S, T>(ctx: BakeClipCtx<'_, W>)
 where
     W: SubjectSource<I, S>,
     I: SubjectId,
-    S: 'static,
+    S: Clone + ThreadSafe,
     T: Clone + ThreadSafe,
 {
-    // Resolve the per-`T` columns once so the clip loop doesn't
-    // re-hash the `TypeId` on every access. No `T` action, no bake.
-    let Some(action_col) = ctx.action_table.action_column::<T>()
+    let Some(&subject_id) =
+        ctx.action_table.get_id::<I>(&ctx.subject.uid())
     else {
         return;
     };
-    let segment_col = ctx.action_table.ensure_segment_column::<T>();
+    let Some(accessor) =
+        ctx.accessor_registry.get::<S, T>(&ctx.field)
+    else {
+        return;
+    };
+    let Some(source) = ctx.scratch.source::<S>(ctx.subject, || {
+        ctx.world.get_source(subject_id).cloned()
+    }) else {
+        return;
+    };
+    let Some(action) =
+        ctx.action_table.get_action::<T>(&ctx.action_id)
+    else {
+        return;
+    };
 
-    for (key, span) in ctx.track.sequences_spans() {
-        let Some(accessor) =
-            ctx.accessor_registry.get::<S, T>(key.field())
-        else {
-            continue;
-        };
+    let start = accessor.get_ref(source).clone();
+    let end = action(&start);
 
-        let Some(&id) =
-            ctx.action_table.get_id(&key.subject_id().uid())
-        else {
-            continue;
-        };
+    let seg_col = ctx.action_table.ensure_segment_column::<T>();
+    ctx.action_table.set_segment_by_column(
+        ctx.action_id,
+        Segment::new(start, end.clone()),
+        seg_col,
+    );
 
-        let Some(source) = ctx.world.get_source(id) else {
-            continue;
-        };
-
-        let mut start = accessor.get_ref(source).clone();
-
-        for ActionClip { id, .. } in ctx.track.clips(*span) {
-            let Some(action) = ctx
-                .action_table
-                .get_action_by_column::<T>(action_col, id)
-            else {
-                continue;
-            };
-
-            let end = action(&start);
-            let segment = Segment::new(start.clone(), end.clone());
-
-            ctx.action_table.set_segment_by_column(
-                *id,
-                segment,
-                segment_col,
-            );
-
-            start = end;
-        }
-    }
+    *accessor.get_mut(source) = end;
 }

@@ -38,12 +38,14 @@ fn lissajous_pt(
     )
 }
 
+#[derive(Clone)]
 struct GridLine {
     line: kurbo::Line,
     width: f64,
     color: Color,
 }
 
+#[derive(Clone)]
 struct CurveState {
     tracer: PathTracer,
 }

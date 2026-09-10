@@ -6,15 +6,17 @@ use core::any::TypeId;
 use core::marker::PhantomData;
 use core::time::Duration;
 
-use bake::{BakeCtx, bake};
-use func_pointers::{BakeFnPtr, SampleFnPtr};
+use bake::{BakeClipCtx, bake_clip};
+use func_pointers::{BakeClipFnPtr, SampleFnPtr};
 use sample::{SampleCtx, sample};
 
 use crate::ThreadSafe;
 use crate::action::ActionKey;
-use crate::pipeline::func_pointers::{BakeFn, SampleFn};
+use crate::pipeline::func_pointers::{BakeClipFn, SampleFn};
 use crate::subject::SubjectId;
 use crate::world::SubjectSource;
+
+pub use bake::BakeScratch;
 
 pub struct PipelineHandle<W, I, S, T> {
     #[expect(clippy::type_complexity)]
@@ -105,7 +107,7 @@ impl PipelineKey {
 /// The world type `W` is erased at storage; it must match at call sites.
 #[derive(Debug, Clone, Copy)]
 pub struct Pipeline<W, I, S, T> {
-    bake: BakeFn<W>,
+    bake_clip: BakeClipFn<W>,
     sample: SampleFn<W>,
     #[expect(clippy::type_complexity)]
     _marker: PhantomData<fn() -> (I, S, T)>,
@@ -116,11 +118,11 @@ impl<W, I, S, T> Pipeline<W, I, S, T> {
     where
         W: SubjectSource<I, S>,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: Clone + ThreadSafe,
     {
         Self {
-            bake: bake::<W, I, S, T>,
+            bake_clip: bake_clip::<W, I, S, T>,
             sample: sample::<W, I, S, T>,
             _marker: PhantomData,
         }
@@ -128,7 +130,7 @@ impl<W, I, S, T> Pipeline<W, I, S, T> {
 
     pub fn untyped(&self) -> PipelineUntyped {
         PipelineUntyped {
-            bake: BakeFnPtr::new(self.bake),
+            bake_clip: BakeClipFnPtr::new(self.bake_clip),
             sample: SampleFnPtr::new(self.sample),
         }
     }
@@ -138,7 +140,7 @@ impl<W, I, S, T> Default for Pipeline<W, I, S, T>
 where
     W: SubjectSource<I, S>,
     I: SubjectId,
-    S: 'static,
+    S: Clone + ThreadSafe,
     T: Clone + ThreadSafe,
 {
     fn default() -> Self {
@@ -148,7 +150,7 @@ where
 
 #[derive(Debug, Clone, Copy)]
 pub struct PipelineUntyped {
-    bake: BakeFnPtr,
+    bake_clip: BakeClipFnPtr,
     sample: SampleFnPtr,
 }
 
@@ -156,8 +158,8 @@ impl PipelineUntyped {
     /// # Safety
     ///
     /// `W` must match the type used when registering this pipeline.
-    pub(crate) unsafe fn bake<W>(&self, ctx: BakeCtx<W>) {
-        let f = unsafe { self.bake.typed_unchecked::<W>() };
+    pub(crate) unsafe fn bake_clip<W>(&self, ctx: BakeClipCtx<W>) {
+        let f = unsafe { self.bake_clip.typed_unchecked::<W>() };
         f(ctx)
     }
 

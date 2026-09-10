@@ -143,24 +143,6 @@ impl ActionTable {
         self.table.ensure_column::<Segment<T>>()
     }
 
-    /// The [`ActionStorage<T>`] column, if any `T` action exists.
-    pub(crate) fn action_column<T: ThreadSafe>(
-        &self,
-    ) -> Option<ColumnId> {
-        self.table.type_column::<ActionStorage<T>>()
-    }
-
-    /// Read an action through a cached [`ActionStorage`] column.
-    pub(crate) fn get_action_by_column<T: ThreadSafe>(
-        &self,
-        col: ColumnId,
-        id: &ActionId,
-    ) -> Option<&impl Action<T>> {
-        self.table
-            .get_by_column::<ActionStorage<T>>(col, id)
-            .map(|a| &a.action)
-    }
-
     /// Write a segment through a cached [`Segment`] column.
     pub(crate) fn set_segment_by_column<T: ThreadSafe>(
         &mut self,
