@@ -250,7 +250,7 @@ impl<W: 'static> Timeline<W> {
                         start: clip.start,
                         end: clip.end(),
                     };
-                    // Skip if the the animation range does not
+                    // Skip if the animation range does not
                     // overlap with the span range.
                     if !time_range.overlap(&clip_range) {
                         continue;
@@ -355,10 +355,10 @@ impl<W> Timeline<W> {
         self.tracks.iter().flat_map(Track::conflicts)
     }
 
-    /// Returns a reference the current playing track.
+    /// Returns a reference to the current playing track.
     #[inline]
     pub fn curr_track(&self) -> &Track {
-        // SAFETY: Track length is garuanteed to be at least 1.
+        // SAFETY: Track length is guaranteed to be at least 1.
         &self.tracks[self.curr_index]
     }
 
@@ -366,7 +366,7 @@ impl<W> Timeline<W> {
     /// index you can provide in [`Timeline::set_target_track`].
     #[inline]
     pub fn last_track_index(&self) -> usize {
-        // SAFETY: Track length is garuanteed to be at least 1.
+        // SAFETY: Track length is guaranteed to be at least 1.
         self.tracks.len() - 1
     }
 
@@ -380,7 +380,7 @@ impl<W> Timeline<W> {
     /// [`Self::curr_index()`]?
     #[inline]
     pub fn is_track_end(&self) -> bool {
-        // SAFETY: Track length is garuanteed to be at least 1.
+        // SAFETY: Track length is guaranteed to be at least 1.
         self.curr_time >= self.tracks[self.curr_index()].duration()
     }
 
@@ -393,7 +393,7 @@ impl<W> Timeline<W> {
 
 // Setter methods.
 impl<W> Timeline<W> {
-    /// Set the target time of the current track, clamping the value
+    /// Set the target time of the target track, clamping the value
     /// within \[0.0..=track.duration\]
     pub fn set_target_time(
         &mut self,
