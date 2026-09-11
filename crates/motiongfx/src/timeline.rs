@@ -40,6 +40,23 @@ pub struct Timeline<W> {
     _marker: PhantomData<fn() -> W>,
 }
 
+/// A track switch only ever samples a sequence's first or last clip,
+/// never mid-clip.
+#[derive(Clone, Copy)]
+enum BoundaryMode {
+    Start,
+    End,
+}
+
+impl From<BoundaryMode> for SampleMode {
+    fn from(mode: BoundaryMode) -> Self {
+        match mode {
+            BoundaryMode::Start => Self::Start,
+            BoundaryMode::End => Self::End,
+        }
+    }
+}
+
 /// One field's resolved sample for the current frame.
 #[derive(Debug, Clone, Copy)]
 struct QueuedSample {
@@ -112,20 +129,20 @@ impl<W: 'static> Timeline<W> {
 
         // Handle index changes.
         if self.target_index() != self.curr_index() {
-            let (sample_mode, track_range) = if self.target_index()
+            let (boundary, track_range) = if self.target_index()
                 > self.curr_index()
             {
                 // From the start.
                 curr_time = Duration::ZERO;
                 (
-                    SampleMode::End,
+                    BoundaryMode::End,
                     self.curr_index()..self.target_index(),
                 )
             } else {
                 // From the end.
                 curr_time = self.tracks[self.target_index].duration();
                 (
-                    SampleMode::Start,
+                    BoundaryMode::Start,
                     (self.target_index() + 1)
                         ..(self.curr_index() + 1),
                 )
@@ -139,14 +156,13 @@ impl<W: 'static> Timeline<W> {
 
                     let clips = self.tracks[i].clips(*span);
 
-                    let entry = match sample_mode {
-                        SampleMode::Start => {
+                    let entry = match boundary {
+                        BoundaryMode::Start => {
                             clips.first().map(|c| (c, c.start))
                         }
-                        SampleMode::End => {
+                        BoundaryMode::End => {
                             clips.last().map(|c| (c, c.end()))
                         }
-                        SampleMode::Interp(_) => unreachable!(),
                     };
                     let Some((clip, keyframe)) = entry else {
                         continue;
@@ -156,7 +172,7 @@ impl<W: 'static> Timeline<W> {
                         *key,
                         QueuedSample {
                             id: clip.id,
-                            mode: sample_mode,
+                            mode: boundary.into(),
                             keyframe,
                         },
                     );
