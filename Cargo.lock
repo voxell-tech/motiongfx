@@ -3642,6 +3642,7 @@ dependencies = [
  "criterion",
  "field_path",
  "hashbrown 0.17.1",
+ "indexmap",
  "motiongfx_interp",
  "nonempty",
  "tracing",

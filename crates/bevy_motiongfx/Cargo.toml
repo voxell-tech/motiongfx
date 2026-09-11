@@ -40,7 +40,7 @@ bevy = { workspace = true, features = ["bevy_pbr"] }
 workspace = true
 
 [features]
-default = ["std", "asset", "transform", "color"]
+default = ["std", "tracing", "asset", "transform", "color"]
 std = [
     "motiongfx/std",
     "motiongfx_scene?/std",
@@ -49,15 +49,24 @@ std = [
     "bevy_platform/std",
     "bevy_time/std",
 ]
+tracing = [
+    "dep:tracing",
+    "motiongfx/tracing",
+    "motiongfx_scene?/tracing",
+]
+diagnostics = [
+    "motiongfx/diagnostics",
+    "motiongfx_scene?/diagnostics",
+]
 asset = ["dep:bevy_asset"]
 transform = ["dep:bevy_transform"]
 color = ["dep:bevy_color"]
 scene = [
     "dep:motiongfx_scene",
     "dep:indexmap",
-    "dep:tracing",
     "dep:ron",
     "dep:bevy_reflect",
+    "tracing",
     "bevy_math/serialize",
     "bevy_transform/bevy_reflect",
     "asset",

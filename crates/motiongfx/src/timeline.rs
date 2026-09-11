@@ -3,9 +3,9 @@ use core::marker::PhantomData;
 use core::time::Duration;
 
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 use field_path::field_accessor::FieldAccessor;
-use hashbrown::HashMap;
+use hashbrown::{DefaultHashBuilder, HashMap};
+use indexmap::IndexMap;
 use motiongfx_interp::interpolation::Interpolation;
 
 use crate::ThreadSafe;
@@ -13,7 +13,9 @@ use crate::action::{
     Action, ActionBuilder, ActionId, ActionKey, ActionTable,
     InterpActionBuilder, SampleMode,
 };
-use crate::pipeline::{BakeCtx, PipelineKey, Range, SampleCtx};
+use crate::pipeline::bake::{BakeClipCtx, BakeScratch};
+use crate::pipeline::sample::SampleCtx;
+use crate::pipeline::{PipelineKey, Range};
 use crate::registry::Registry;
 use crate::subject::SubjectId;
 use crate::track::{Track, TrackList};
@@ -21,20 +23,12 @@ use crate::world::SubjectSource;
 
 pub struct Timeline<W> {
     action_table: ActionTable,
-    pipeline_counts: Box<[(PipelineKey, u32)]>,
     /// Track length is guaranteed to be at least 1 by construction.
     /// See [`TimelineBuilder::compile()`].
     tracks: Box<[Track]>,
-    /// Cached actions that are queued to be sampled.
-    ///
-    /// This cache will be cleared everytime [`Timeline::queue_actions`]
-    /// is called.
-    queue_cache: QueueCache,
-    /// Queued actions grouped by pipeline, each carrying its resolved
-    /// [`SampleMode`]. Rebuilt from `queue_cache` every
-    /// [`Timeline::queue_actions`] so sampling touches only the marked
-    /// actions of each type, with no per-action column lookup.
-    sample_queue: HashMap<PipelineKey, Vec<(ActionId, SampleMode)>>,
+    /// Fields to sample this frame, deduped per field and ordered so
+    /// overlapping writes to aliasing memory resolve deterministically.
+    queue: IndexMap<ActionKey, QueuedSample, DefaultHashBuilder>,
     /// The current time of the current track.
     curr_time: Duration,
     /// The target time of the target track.
@@ -46,26 +40,71 @@ pub struct Timeline<W> {
     _marker: PhantomData<fn() -> W>,
 }
 
+/// A track switch only ever samples a sequence's first or last clip,
+/// never mid-clip.
+#[derive(Clone, Copy)]
+enum BoundaryMode {
+    Start,
+    End,
+}
+
+impl From<BoundaryMode> for SampleMode {
+    fn from(mode: BoundaryMode) -> Self {
+        match mode {
+            BoundaryMode::Start => Self::Start,
+            BoundaryMode::End => Self::End,
+        }
+    }
+}
+
+/// One field's resolved sample for the current frame.
+#[derive(Debug, Clone, Copy)]
+struct QueuedSample {
+    id: ActionId,
+    mode: SampleMode,
+    /// The instant this sample represents.
+    ///
+    /// The clip's start for [`SampleMode::Start`] or end for
+    /// [`SampleMode::End`], the playhead itself for
+    /// [`SampleMode::Interp`].
+    keyframe: Duration,
+}
+
 impl<W: 'static> Timeline<W> {
+    /// Bakes every clip's [`Segment`](crate::action::Segment). Clips
+    /// are visited in start-time order over a per-track working copy
+    /// of each source, so an action composes on top of every earlier
+    /// one.
     pub fn bake_actions(
         &mut self,
         registry: &Registry,
         subject_world: &W,
     ) {
-        for key in self.pipeline_counts.iter().map(|(key, _)| key) {
-            for track in self.tracks.iter() {
-                let ok = registry.pipeline.bake(
-                    key,
-                    BakeCtx {
+        for track in self.tracks.iter() {
+            let mut scratch = BakeScratch::default();
+
+            for clip in track.bake_clips() {
+                let Some(key) =
+                    self.action_table.key(&clip.id).copied()
+                else {
+                    continue;
+                };
+                let pkey = PipelineKey::from_action_key::<W>(key);
+                let ok = registry.pipeline.bake_clip(
+                    &pkey,
+                    BakeClipCtx {
                         world: subject_world,
-                        track,
+                        subject: *key.subject_id(),
+                        field: *key.field(),
+                        action_id: clip.id,
+                        scratch: &mut scratch,
                         action_table: &mut self.action_table,
                         accessor_registry: &registry.accessor,
                     },
                 );
                 debug_assert!(
                     ok,
-                    "pipeline not found for key {key:?}"
+                    "pipeline not found for key {pkey:?}"
                 );
             }
         }
@@ -84,26 +123,26 @@ impl<W: 'static> Timeline<W> {
             return;
         }
 
-        self.reset_queues();
+        self.queue.clear();
         // Current time will change if the track index changes.
         let mut curr_time = self.curr_time();
 
         // Handle index changes.
         if self.target_index() != self.curr_index() {
-            let (sample_mode, track_range) = if self.target_index()
+            let (boundary, track_range) = if self.target_index()
                 > self.curr_index()
             {
                 // From the start.
                 curr_time = Duration::ZERO;
                 (
-                    SampleMode::End,
+                    BoundaryMode::End,
                     self.curr_index()..self.target_index(),
                 )
             } else {
                 // From the end.
                 curr_time = self.tracks[self.target_index].duration();
                 (
-                    SampleMode::Start,
+                    BoundaryMode::Start,
                     (self.target_index() + 1)
                         ..(self.curr_index() + 1),
                 )
@@ -117,17 +156,25 @@ impl<W: 'static> Timeline<W> {
 
                     let clips = self.tracks[i].clips(*span);
 
-                    // SAFETY: `clips` is not empty.
-                    let clip = match sample_mode {
-                        SampleMode::Start => clips.first().unwrap(),
-                        SampleMode::End => clips.last().unwrap(),
-                        SampleMode::Interp(_) => unreachable!(),
+                    let entry = match boundary {
+                        BoundaryMode::Start => {
+                            clips.first().map(|c| (c, c.start))
+                        }
+                        BoundaryMode::End => {
+                            clips.last().map(|c| (c, c.end()))
+                        }
+                    };
+                    let Some((clip, keyframe)) = entry else {
+                        continue;
                     };
 
-                    self.queue_cache.cache(
+                    self.queue.insert(
                         *key,
-                        clip.id,
-                        sample_mode,
+                        QueuedSample {
+                            id: clip.id,
+                            mode: boundary.into(),
+                            keyframe,
+                        },
                     );
                 }
             }
@@ -149,10 +196,14 @@ impl<W: 'static> Timeline<W> {
 
             let clips = self.tracks[self.curr_index].clips(*span);
 
-            // SAFETY: `clips` is not empty.
+            let (Some(first), Some(last)) =
+                (clips.first(), clips.last())
+            else {
+                continue;
+            };
             let clips_range = Range {
-                start: clips.first().unwrap().start,
-                end: clips.last().unwrap().end(),
+                start: first.start,
+                end: last.end(),
             };
 
             if !time_range.overlap(&clips_range) {
@@ -180,12 +231,15 @@ impl<W: 'static> Timeline<W> {
                 Ok(index) => {
                     let clip = &clips[index];
 
-                    self.queue_cache.cache(
+                    self.queue.insert(
                         *key,
-                        clip.id,
-                        SampleMode::Interp(
-                            clip.progress(self.target_time),
-                        ),
+                        QueuedSample {
+                            id: clip.id,
+                            mode: SampleMode::Interp(
+                                clip.progress(self.target_time),
+                            ),
+                            keyframe: self.target_time,
+                        },
                     );
                 }
                 // `target_time` is out of bounds.
@@ -196,7 +250,7 @@ impl<W: 'static> Timeline<W> {
                         start: clip.start,
                         end: clip.end(),
                     };
-                    // Skip if the the animation range does not
+                    // Skip if the animation range does not
                     // overlap with the span range.
                     if !time_range.overlap(&clip_range) {
                         continue;
@@ -205,73 +259,63 @@ impl<W: 'static> Timeline<W> {
                     // Target time before the sequence -> Start,
                     // otherwise it is past `index - 1` -> End (the
                     // saturating sub above handles the indexing).
-                    let sample_mode = if index == 0 {
-                        SampleMode::Start
+                    let (sample_mode, keyframe) = if index == 0 {
+                        (SampleMode::Start, clip.start)
                     } else {
-                        SampleMode::End
+                        (SampleMode::End, clip.end())
                     };
 
-                    self.queue_cache.cache(
+                    self.queue.insert(
                         *key,
-                        clip.id,
-                        sample_mode,
+                        QueuedSample {
+                            id: clip.id,
+                            mode: sample_mode,
+                            keyframe,
+                        },
                     );
                 }
             }
         }
 
-        // Group the deduped queue by pipeline so each typed sampler
-        // iterates only its own actions, with the `SampleMode` in hand.
-        for (key, &(id, sample_mode)) in self.queue_cache.iter() {
-            let pkey = PipelineKey::from_action_key::<W>(*key);
-            self.sample_queue
-                .entry(pkey)
-                .or_default()
-                .push((id, sample_mode));
-        }
+        // Farthest keyframe first, closest last, so overlapping
+        // writes to aliasing memory land on the value nearest the
+        // playhead every frame. `Interp` sits exactly on the playhead
+        // (distance zero), so it always sorts last on its own.
+        let target_time = self.target_time;
+        self.queue.sort_unstable_by(|_, a, _, b| {
+            target_time
+                .abs_diff(b.keyframe)
+                .cmp(&target_time.abs_diff(a.keyframe))
+        });
 
         self.curr_time = self.target_time;
     }
 
+    /// Writes every sample marked by [`Self::queue_actions`] into the
+    /// world.
     pub fn sample_queued_actions(
         &self,
         registry: &Registry,
         subject_world: &mut W,
     ) {
-        for (key, samples) in self.sample_queue.iter() {
-            if samples.is_empty() {
-                continue;
-            }
+        for (key, queued) in &self.queue {
+            let pkey = PipelineKey::from_action_key::<W>(*key);
             let ok = registry.pipeline.sample(
-                key,
+                &pkey,
                 SampleCtx {
                     world: subject_world,
                     action_table: &self.action_table,
                     accessor_registry: &registry.accessor,
-                    samples,
+                    samples: &[(queued.id, queued.mode)],
                 },
             );
-            debug_assert!(ok, "pipeline not found for key {key:?}");
-        }
-    }
-
-    fn reset_queues(&mut self) {
-        self.queue_cache.clear();
-        // Retain the per-pipeline `Vec` capacities across frames.
-        for samples in self.sample_queue.values_mut() {
-            samples.clear();
+            debug_assert!(ok, "pipeline not found for key {pkey:?}");
         }
     }
 }
 
 // Getter methods.
 impl<W> Timeline<W> {
-    /// Returns the current queue cache.
-    #[inline]
-    pub fn queue_cache(&self) -> &QueueCache {
-        &self.queue_cache
-    }
-
     /// Returns the current playback time.
     #[inline]
     pub fn curr_time(&self) -> Duration {
@@ -302,10 +346,19 @@ impl<W> Timeline<W> {
         &self.tracks
     }
 
-    /// Returns a reference the current playing track.
+    /// Every clip dropped across the tracks to resolve overlapping
+    /// actions on aliasing field paths.
+    #[cfg(feature = "diagnostics")]
+    pub fn conflicts(
+        &self,
+    ) -> impl Iterator<Item = &crate::track::FieldConflict> {
+        self.tracks.iter().flat_map(Track::conflicts)
+    }
+
+    /// Returns a reference to the current playing track.
     #[inline]
     pub fn curr_track(&self) -> &Track {
-        // SAFETY: Track length is garuanteed to be at least 1.
+        // SAFETY: Track length is guaranteed to be at least 1.
         &self.tracks[self.curr_index]
     }
 
@@ -313,7 +366,7 @@ impl<W> Timeline<W> {
     /// index you can provide in [`Timeline::set_target_track`].
     #[inline]
     pub fn last_track_index(&self) -> usize {
-        // SAFETY: Track length is garuanteed to be at least 1.
+        // SAFETY: Track length is guaranteed to be at least 1.
         self.tracks.len() - 1
     }
 
@@ -327,7 +380,7 @@ impl<W> Timeline<W> {
     /// [`Self::curr_index()`]?
     #[inline]
     pub fn is_track_end(&self) -> bool {
-        // SAFETY: Track length is garuanteed to be at least 1.
+        // SAFETY: Track length is guaranteed to be at least 1.
         self.curr_time >= self.tracks[self.curr_index()].duration()
     }
 
@@ -340,7 +393,7 @@ impl<W> Timeline<W> {
 
 // Setter methods.
 impl<W> Timeline<W> {
-    /// Set the target time of the current track, clamping the value
+    /// Set the target time of the target track, clamping the value
     /// within \[0.0..=track.duration\]
     pub fn set_target_time(
         &mut self,
@@ -381,66 +434,6 @@ impl<W> Timeline<W> {
     }
 }
 
-/// Cached actions that are queued to be sampled.
-///
-/// This cache prevents duplicated samples on the same [`ActionKey`]
-/// which result in sampling the same target field on the same entity
-/// more than once. This is crucial as the sampling pipeline happens
-/// in an unordered manner.
-#[derive(Debug)]
-pub struct QueueCache {
-    cache: HashMap<ActionKey, (ActionId, SampleMode)>,
-}
-
-impl QueueCache {
-    pub fn new() -> Self {
-        Self {
-            cache: HashMap::new(),
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.cache.is_empty()
-    }
-
-    pub fn iter(
-        &self,
-    ) -> impl Iterator<Item = (&ActionKey, &(ActionId, SampleMode))>
-    {
-        self.cache.iter()
-    }
-
-    pub fn iter_keys(&self) -> impl Iterator<Item = &ActionKey> {
-        self.cache.keys()
-    }
-
-    pub fn iter_ids(&self) -> impl Iterator<Item = ActionId> + '_ {
-        self.cache.values().map(|(id, _)| *id)
-    }
-
-    /// Clear all the cached contents.
-    pub fn clear(&mut self) {
-        self.cache.clear();
-    }
-
-    /// Cache an [`ActionKey`] with its [`SampleMode`], overwriting any
-    /// previous entry for the same key (dedup per field per subject).
-    pub fn cache(
-        &mut self,
-        key: ActionKey,
-        id: ActionId,
-        sample_mode: SampleMode,
-    ) {
-        self.cache.insert(key, (id, sample_mode));
-    }
-}
-
-impl Default for QueueCache {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 pub struct TimelineBuilder<'a, W> {
     registry: &'a mut Registry,
     action_table: ActionTable,
@@ -476,7 +469,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: Interpolation<M> + Clone + ThreadSafe,
     {
         self.act_builder(target, field_acc, action)
@@ -493,7 +486,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: Clone + ThreadSafe,
     {
         self.act_builder(target, field_acc, action).with_interp(
@@ -514,7 +507,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: Clone + ThreadSafe,
     {
         let field = field_acc.field;
@@ -562,15 +555,12 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
         self,
         tracks: impl Into<TrackList>,
     ) -> Timeline<W> {
+        // `pipeline_counts` is builder-only; baking resolves a
+        // pipeline per clip.
         Timeline {
             action_table: self.action_table,
-            pipeline_counts: self
-                .pipeline_counts
-                .into_iter()
-                .collect(),
             tracks: tracks.into().into_boxed_slice(),
-            queue_cache: QueueCache::new(),
-            sample_queue: HashMap::new(),
+            queue: IndexMap::default(),
             curr_time: Duration::ZERO,
             target_time: Duration::ZERO,
             curr_index: 0,

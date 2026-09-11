@@ -104,7 +104,7 @@ pub trait SceneRegistryExt {
         field_acc: FieldAccessor<S, T>,
     ) -> &mut Self
     where
-        S: TypePath,
+        S: TypePath + Clone + ThreadSafe,
         BevyWorld: SubjectSource<EntityUid, S>,
         ValuePool: ValueColumn<Uuid, T>,
         T: ThreadSafe + Clone;
@@ -129,7 +129,7 @@ pub trait SceneRegistryExt {
         field_acc: FieldAccessor<S, T>,
     ) -> &mut Self
     where
-        S: TypePath,
+        S: TypePath + Clone + ThreadSafe,
         BevyWorld: SubjectSource<EntityUid, S>,
         ValuePool: ValueColumn<Uuid, T>,
         T: Interpolation<M> + ThreadSafe + Clone,
@@ -146,7 +146,7 @@ impl SceneRegistryExt for BackendRegistry {
         field_acc: FieldAccessor<S, T>,
     ) -> &mut Self
     where
-        S: TypePath,
+        S: TypePath + Clone + ThreadSafe,
         BevyWorld: SubjectSource<EntityUid, S>,
         ValuePool: ValueColumn<Uuid, T>,
         T: ThreadSafe + Clone,

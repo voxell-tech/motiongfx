@@ -59,7 +59,7 @@ where
     B::World: SubjectSource<I, S>,
     B::ValuePool: ValueColumn<B::ValueId, T>,
     I: SubjectId,
-    S: 'static,
+    S: Clone + ThreadSafe,
     T: ThreadSafe + Clone,
 {
     fn build(
@@ -170,7 +170,7 @@ fn register_field_accessor<B, S, T, I>(
     B: SceneBackend,
     B::World: SubjectSource<I, S>,
     I: SubjectId,
-    S: 'static,
+    S: Clone + ThreadSafe,
     T: ThreadSafe + Clone,
 {
     if let Some(field_acc) =
@@ -219,7 +219,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
     where
         B::World: SubjectSource<B::Id, S>,
         B::ValuePool: ValueColumn<B::ValueId, T>,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: ThreadSafe + Clone,
     {
         self.register_field_with_key::<S, T, B::Id>(
@@ -241,7 +241,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
         B::World: SubjectSource<I, S>,
         B::ValuePool: ValueColumn<B::ValueId, T>,
         I: SubjectId,
-        S: 'static,
+        S: Clone + ThreadSafe,
         T: ThreadSafe + Clone,
     {
         let field_ref =

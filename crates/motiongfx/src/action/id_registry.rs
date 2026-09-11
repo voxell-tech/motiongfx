@@ -51,8 +51,10 @@ impl<I: SubjectId> IdRegistry<I> {
             self.next_uid
         });
 
-        // SAFETY: `uid_counts` is added for every new UId!
-        *self.instance_counts.get_mut(&uid).unwrap() += 1;
+        *self
+            .instance_counts
+            .get_mut(&uid)
+            .expect("above logic made sure this slot exists") += 1;
 
         uid
     }
@@ -72,7 +74,10 @@ impl<I: SubjectId> IdRegistry<I> {
 
         // Remove the underlying data when it's the last instance.
         if *count == 0 {
-            let id = self.id_map.get(uid).unwrap();
+            let id = self
+                .id_map
+                .get(uid)
+                .expect("above check made sure this slot exists");
             self.uid_map.remove(id);
             self.id_map.remove(uid);
             self.instance_counts.remove(uid);

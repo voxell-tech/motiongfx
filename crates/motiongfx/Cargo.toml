@@ -16,6 +16,7 @@ field_path = { workspace = true }
 typarena = { workspace = true }
 nonempty = { workspace = true }
 hashbrown = { workspace = true, features = ["default-hasher"] }
+indexmap = { workspace = true }
 tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
@@ -32,3 +33,5 @@ workspace = true
 default = ["std", "tracing"]
 std = ["motiongfx_interp/std"]
 tracing = ["dep:tracing"]
+# Records dropped clips on the compiled `Track` for editor tooling.
+diagnostics = []
