@@ -45,8 +45,12 @@ pub struct Timeline<W> {
 struct QueuedSample {
     id: ActionId,
     mode: SampleMode,
-    /// Start of the clip this resolved to.
-    clip_start: Duration,
+    /// The instant this sample represents.
+    ///
+    /// The clip's start for [`SampleMode::Start`] or end for
+    /// [`SampleMode::End`], the playhead itself for
+    /// [`SampleMode::Interp`].
+    keyframe: Duration,
 }
 
 impl<W: 'static> Timeline<W> {
@@ -135,11 +139,17 @@ impl<W: 'static> Timeline<W> {
 
                     let clips = self.tracks[i].clips(*span);
 
-                    // SAFETY: `clips` is not empty.
-                    let clip = match sample_mode {
-                        SampleMode::Start => clips.first().unwrap(),
-                        SampleMode::End => clips.last().unwrap(),
+                    let entry = match sample_mode {
+                        SampleMode::Start => {
+                            clips.first().map(|c| (c, c.start))
+                        }
+                        SampleMode::End => {
+                            clips.last().map(|c| (c, c.end()))
+                        }
                         SampleMode::Interp(_) => unreachable!(),
+                    };
+                    let Some((clip, keyframe)) = entry else {
+                        continue;
                     };
 
                     self.queue.insert(
@@ -147,7 +157,7 @@ impl<W: 'static> Timeline<W> {
                         QueuedSample {
                             id: clip.id,
                             mode: sample_mode,
-                            clip_start: clip.start,
+                            keyframe,
                         },
                     );
                 }
@@ -170,10 +180,14 @@ impl<W: 'static> Timeline<W> {
 
             let clips = self.tracks[self.curr_index].clips(*span);
 
-            // SAFETY: `clips` is not empty.
+            let (Some(first), Some(last)) =
+                (clips.first(), clips.last())
+            else {
+                continue;
+            };
             let clips_range = Range {
-                start: clips.first().unwrap().start,
-                end: clips.last().unwrap().end(),
+                start: first.start,
+                end: last.end(),
             };
 
             if !time_range.overlap(&clips_range) {
@@ -208,7 +222,7 @@ impl<W: 'static> Timeline<W> {
                             mode: SampleMode::Interp(
                                 clip.progress(self.target_time),
                             ),
-                            clip_start: clip.start,
+                            keyframe: self.target_time,
                         },
                     );
                 }
@@ -229,10 +243,10 @@ impl<W: 'static> Timeline<W> {
                     // Target time before the sequence -> Start,
                     // otherwise it is past `index - 1` -> End (the
                     // saturating sub above handles the indexing).
-                    let sample_mode = if index == 0 {
-                        SampleMode::Start
+                    let (sample_mode, keyframe) = if index == 0 {
+                        (SampleMode::Start, clip.start)
                     } else {
-                        SampleMode::End
+                        (SampleMode::End, clip.end())
                     };
 
                     self.queue.insert(
@@ -240,24 +254,22 @@ impl<W: 'static> Timeline<W> {
                         QueuedSample {
                             id: clip.id,
                             mode: sample_mode,
-                            clip_start: clip.start,
+                            keyframe,
                         },
                     );
                 }
             }
         }
 
-        // `Start`/`End` before the frame's `Interp`, then by clip
-        // start, so overlapping writes to aliasing memory land the
-        // same way every frame.
+        // Farthest keyframe first, closest last, so overlapping
+        // writes to aliasing memory land on the value nearest the
+        // playhead every frame. `Interp` sits exactly on the playhead
+        // (distance zero), so it always sorts last on its own.
+        let target_time = self.target_time;
         self.queue.sort_unstable_by(|_, a, _, b| {
-            let key = |q: &QueuedSample| {
-                (
-                    matches!(q.mode, SampleMode::Interp(_)),
-                    q.clip_start,
-                )
-            };
-            key(a).cmp(&key(b))
+            target_time
+                .abs_diff(b.keyframe)
+                .cmp(&target_time.abs_diff(a.keyframe))
         });
 
         self.curr_time = self.target_time;
