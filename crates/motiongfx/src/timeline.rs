@@ -246,16 +246,6 @@ impl<W: 'static> Timeline<W> {
                 Err(index) => {
                     let clip = &clips[index.saturating_sub(1)];
 
-                    let clip_range = Range {
-                        start: clip.start,
-                        end: clip.end(),
-                    };
-                    // Skip if the animation range does not
-                    // overlap with the span range.
-                    if !time_range.overlap(&clip_range) {
-                        continue;
-                    }
-
                     // Target time before the sequence -> Start,
                     // otherwise it is past `index - 1` -> End (the
                     // saturating sub above handles the indexing).
