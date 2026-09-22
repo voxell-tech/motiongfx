@@ -4144,7 +4144,7 @@ dependencies = [
 [[package]]
 name = "kanva"
 version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
+source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
 dependencies = [
  "hashbrown 0.17.1",
  "imaging",
@@ -4154,7 +4154,7 @@ dependencies = [
 [[package]]
 name = "kanva_svg"
 version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
+source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
 dependencies = [
  "image",
  "kanva",
@@ -4164,7 +4164,7 @@ dependencies = [
 [[package]]
 name = "kanva_typst"
 version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
+source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
 dependencies = [
  "hayro-svg",
  "kanva",
@@ -7141,7 +7141,7 @@ dependencies = [
 [[package]]
 name = "typst_imaging"
 version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
+source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
 dependencies = [
  "hayro-svg",
  "imaging",
@@ -7535,7 +7535,7 @@ dependencies = [
 [[package]]
 name = "velyst"
 version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
+source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
 dependencies = [
  "bevy",
  "bevy_vello",
@@ -8063,7 +8063,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

@@ -193,8 +193,10 @@ impl KanvaAnim {
 
 /// Progressively reveals the path geometry (stroke-based trace animation).
 pub fn trace_phase(kanva: &mut Kanva, path_idx: usize, t: f32) {
-    let Some(orig) = kanva.get_path(path_idx).map(|p| p.path.clone())
-    else {
+    let Some(id) = kanva.get_path(path_idx).map(|p| p.path) else {
+        return;
+    };
+    let Some(orig) = kanva.get_geometry(id).cloned() else {
         return;
     };
     kanva.mod_path(path_idx).shape(orig.trace(t));
@@ -244,7 +246,10 @@ pub fn scale_phase(kanva: &mut Kanva, path_idx: usize, t: f32) {
     let t = ease::cubic::ease_in(t);
     // Scale from the center.
     let scale = Interpolation::interp(&0.5_f64, &1.0_f64, t);
-    let center = path.path.bounding_box().center();
+    let Some(geometry) = kanva.get_geometry(path.path) else {
+        return;
+    };
+    let center = geometry.bounding_box().center();
     kanva.mod_path(path_idx).transform(
         transform
             .pre_translate(center.to_vec2())
@@ -269,7 +274,10 @@ pub fn scale_pulse_phase(kanva: &mut Kanva, path_idx: usize, t: f32) {
     // Peak extra scale at the midpoint.
     const AMP: f64 = 0.3;
     let scale = 1.0 + AMP * (core::f32::consts::PI * t).sin() as f64;
-    let center = path.path.bounding_box().center();
+    let Some(geometry) = kanva.get_geometry(path.path) else {
+        return;
+    };
+    let center = geometry.bounding_box().center();
     kanva.mod_path(path_idx).transform(
         transform
             .pre_translate(center.to_vec2())
