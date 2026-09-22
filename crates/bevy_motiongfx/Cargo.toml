@@ -14,6 +14,7 @@ repository.workspace = true
 # motiongfx
 motiongfx = { workspace = true }
 motiongfx_scene = { workspace = true, optional = true }
+peniko_motiongfx = { workspace = true, optional = true }
 
 # bevy
 bevy_ecs = { workspace = true }
@@ -32,6 +33,9 @@ serde = { workspace = true, features = ["derive"] }
 indexmap = { workspace = true, features = ["serde"], optional = true }
 tracing = { workspace = true, optional = true }
 ron = { workspace = true, optional = true }
+
+# other
+velyst = { workspace = true, optional = true }
 
 [dev-dependencies]
 bevy = { workspace = true, features = ["bevy_pbr"] }
@@ -61,6 +65,7 @@ diagnostics = [
 asset = ["dep:bevy_asset"]
 transform = ["dep:bevy_transform"]
 color = ["dep:bevy_color"]
+velyst = ["dep:velyst", "dep:peniko_motiongfx"]
 scene = [
     "dep:motiongfx_scene",
     "dep:indexmap",

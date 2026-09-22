@@ -8,6 +8,8 @@ pub mod prelude {
     pub use peniko;
     pub use peniko::kurbo;
 
+    pub use motiongfx::prelude::*;
+
     pub use crate::Peniko;
     pub use crate::trace::{
         CubicTracer, LineTracer, PathTracer, QuadTracer, Trace,

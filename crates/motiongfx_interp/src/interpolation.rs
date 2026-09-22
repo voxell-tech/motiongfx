@@ -61,6 +61,9 @@ macro_rules! impl_int_interpolation {
 impl_int_interpolation!(i32);
 impl_int_interpolation!(u32);
 impl_int_interpolation!(u8);
+impl_int_interpolation!(i64);
+impl_int_interpolation!(u64);
+impl_int_interpolation!(usize);
 
 #[cfg(test)]
 mod tests {
