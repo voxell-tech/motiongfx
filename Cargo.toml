@@ -52,11 +52,6 @@ pollster = "0.4"
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"
 
-# `VelystFunc<F>` needs `Clone` for `TimelineBuilder::act`; not yet
-# upstream. Points at a sibling checkout with that derive added.
-[patch."https://github.com/voxell-tech/velyst"]
-velyst = { path = "../velyst/crates/velyst" }
-
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
 opt-level = 1

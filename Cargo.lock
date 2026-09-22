@@ -4144,6 +4144,7 @@ dependencies = [
 [[package]]
 name = "kanva"
 version = "0.1.0"
+source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
 dependencies = [
  "hashbrown 0.17.1",
  "imaging",
@@ -4153,6 +4154,7 @@ dependencies = [
 [[package]]
 name = "kanva_svg"
 version = "0.1.0"
+source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
 dependencies = [
  "image",
  "kanva",
@@ -4162,6 +4164,7 @@ dependencies = [
 [[package]]
 name = "kanva_typst"
 version = "0.1.0"
+source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
 dependencies = [
  "hayro-svg",
  "kanva",
@@ -7138,6 +7141,7 @@ dependencies = [
 [[package]]
 name = "typst_imaging"
 version = "0.1.0"
+source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
 dependencies = [
  "hayro-svg",
  "imaging",
@@ -7531,6 +7535,7 @@ dependencies = [
 [[package]]
 name = "velyst"
 version = "0.1.0"
+source = "git+https://github.com/voxell-tech/velyst?branch=nixon%2Fbevy-0.19#11f0e29ee698660b9063c30568273bd1c22ca992"
 dependencies = [
  "bevy",
  "bevy_vello",
