@@ -44,7 +44,8 @@ use motiongfx_interp::interpolation::Interpolation;
 let x = f32::interp(&0.0, &10.0, 0.25); // 2.5
 ```
 
-It is implemented for `f32`, `f64`, `i32`, `u32`, and `u8`. Integers
+It is implemented for `f32`, `f64`, `i32`, `u32`, `u8`, `i64`, `u64`,
+and `usize`. Integers
 are computed through `f64` and rounded, so the endpoints stay exact at
 `t == 0.0` and `t == 1.0`.
 
