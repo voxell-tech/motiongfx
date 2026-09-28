@@ -1,11 +1,13 @@
-use peniko::kurbo::{BezPath, CubicBez, Line, ParamCurve, QuadBez};
+use peniko::kurbo::{
+    BezPath, CubicBez, Line, ParamCurve, Point, QuadBez,
+};
 
 pub type LineTracer = Tracer<Line>;
 pub type QuadTracer = Tracer<QuadBez>;
 pub type CubicTracer = Tracer<CubicBez>;
 pub type PathTracer = Tracer<BezPath>;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct Tracer<T: Trace> {
     /// The original full path.
     pub path: T,
@@ -96,6 +98,11 @@ fn trace_bez_path_range(
     let end_frac = end_scaled - end_seg as f64;
 
     let mut result = BezPath::new();
+    // Track the previous segment's end so we can detect subpath boundaries.
+    // `BezPath::segments()` discards `MoveTo` markers, so a new subpath shows
+    // up only as a segment whose start doesn't match the previous end. Without
+    // re-emitting a `move_to` there, the gap gets drawn as a spurious line.
+    let mut last_end: Option<Point> = None;
     for (i, seg) in path.segments().enumerate() {
         if i < start_seg {
             continue;
@@ -113,10 +120,13 @@ fn trace_bez_path_range(
             1.0
         };
         let sub = seg.subsegment(lo..hi);
-        if result.is_empty() {
+        let new_subpath = last_end
+            .is_none_or(|end| (sub.start() - end).hypot() > 1e-9);
+        if new_subpath {
             result.move_to(sub.start());
         }
         result.push(sub.as_path_el());
+        last_end = Some(sub.end());
     }
     result
 }
