@@ -7,27 +7,13 @@
 [![CI](https://github.com/voxell-tech/motiongfx/workflows/CI/badge.svg)](https://github.com/voxell-tech/motiongfx/actions)
 [![Discord](https://img.shields.io/discord/442334985471655946.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/Mhnyp6VYEQ)
 
-**Peniko MotionGfx** adds
-[MotionGfx](https://crates.io/crates/motiongfx) support for the 2D
-types from [`peniko`](https://crates.io/crates/peniko) and
-[`kurbo`](https://crates.io/crates/kurbo).
+**Peniko MotionGfx** lets [MotionGfx](https://crates.io/crates/motiongfx)
+animate the 2D vector types from [`peniko`](https://crates.io/crates/peniko)
+and [`kurbo`](https://crates.io/crates/kurbo). Colors, points and shapes
+interpolate like any other value, and curves and paths can be traced
+so they draw on over time.
 
-## Interpolation
-
-`Interpolation<Peniko>` is implemented for `Color` and the `kurbo`
-shapes - `Point`, `Vec2`, `Size`, `Rect`, `RoundedRect`, `Circle`,
-`Line`, `QuadBez`, `CubicBez` - so they animate like any other value.
-`Peniko` is the local marker the orphan rule needs.
-
-## Tracing
-
-`trace` slices a curve or `BezPath` to a visible sub-range: `Tracer`
-holds the full path plus a normalized `t_start..t_end`, and `trace()`
-returns just that segment - a draw-on effect when the range is
-animated. `LineTracer`, `QuadTracer`, `CubicTracer`, and `PathTracer`
-are the ready-made aliases.
-
-`#![no_std]`.
+The crate is `no_std`.
 
 ## Join the community!
 

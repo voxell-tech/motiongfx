@@ -7,21 +7,19 @@
 [![CI](https://github.com/voxell-tech/motiongfx/workflows/CI/badge.svg)](https://github.com/voxell-tech/motiongfx/actions)
 [![Discord](https://img.shields.io/discord/442334985471655946.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/Mhnyp6VYEQ)
 
-**MotionGfx Interp** is the math layer behind
-[MotionGfx](https://crates.io/crates/motiongfx): easing curves and
-value interpolation, with nothing else attached. It lives in its own
-crate so projects that only need to move a number from `a` to `b` can
-depend on it without pulling in the animation runtime.
-
-The crate is two independent pieces.
+**MotionGfx Interp** holds the easing curves and value interpolation
+that [MotionGfx](https://crates.io/crates/motiongfx) is built on. It
+lives in its own crate so projects that only need to move a number
+from `a` to `b` can depend on it without pulling in the animation
+runtime. Easing and interpolation are independent of each other.
 
 ## Easing
 
 `ease` holds pure shaping functions of type `fn(f32) -> f32`. Each
 takes a progress value in `0.0..=1.0` and returns a reshaped one in
 the same range, anchored at `0.0` and `1.0`. `ease::linear` is the
-identity; every other curve is grouped into a module by family, each
-exposing `ease_in`, `ease_out`, and `ease_in_out`.
+identity. The other curves are grouped into one module per family, and
+each module has `ease_in`, `ease_out`, and `ease_in_out`.
 
 ```rust
 use motiongfx_interp::ease;
@@ -35,8 +33,8 @@ Families: `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`,
 
 ## Interpolation
 
-`Interpolation` blends two values of one type by a progress value —
-typically the output of an easing function.
+`Interpolation` blends two values of the same type by a progress
+value, usually the output of an easing function.
 
 ```rust
 use motiongfx_interp::interpolation::Interpolation;
@@ -64,8 +62,8 @@ reuses the built-in integer impls under a marker.
 ## `no_std`
 
 The `std` feature is on by default and uses the standard library's
-float intrinsics. Disable it and the same math routes through
-[`libm`](https://crates.io/crates/libm), leaving the crate `no_std`.
+float intrinsics. With it disabled, the same math goes through
+[`libm`](https://crates.io/crates/libm) and the crate is `no_std`.
 
 ## Join the community!
 
