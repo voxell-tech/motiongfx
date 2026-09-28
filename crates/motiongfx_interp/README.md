@@ -45,8 +45,8 @@ let x = f32::interp(&0.0, &10.0, 0.25); // 2.5
 ```
 
 It is implemented for `f32`, `f64`, `i32`, `u32`, `u8`, `i64`, `u64`,
-and `usize`. Integers
-are computed through `f64` and rounded, so the endpoints stay exact at
+and `usize`. Integers add a rounded offset to the start value, so
+large values keep their precision and the endpoints stay exact at
 `t == 0.0` and `t == 1.0`.
 
 The trait carries a marker type parameter:
@@ -57,9 +57,9 @@ pub trait Interpolation<M> { /* ... */ }
 
 `M` exists only for the orphan rule. A downstream crate that wants to
 interpolate a type it does not own can implement the trait against a
-local marker instead. The `impl_float_interpolation!` and
-`impl_int_interpolation!` macros generate these impls, with or without
-a marker.
+local marker instead. `impl_float_interpolation!` generates these
+impls for any type with float arithmetic, and `impl_int_interpolation!`
+reuses the built-in integer impls under a marker.
 
 ## `no_std`
 
