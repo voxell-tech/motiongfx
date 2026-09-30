@@ -30,22 +30,6 @@ macro_rules! impl_float_interpolation {
 impl_float_interpolation!(f32, f32);
 impl_float_interpolation!(f64, f64);
 
-/// Implements [`Interpolation`] for a built-in integer type under a
-/// downstream marker, reusing the crate's own `Interpolation<()>` impl.
-#[macro_export]
-macro_rules! impl_int_interpolation {
-    ($ty:ty, $marker:ty) => {
-        impl $crate::interpolation::Interpolation<$marker> for $ty {
-            #[inline]
-            fn interp(a: &Self, b: &Self, t: f32) -> Self {
-                <$ty as $crate::interpolation::Interpolation<()>>::interp(
-                    a, b, t,
-                )
-            }
-        }
-    };
-}
-
 /// Integer interpolation that stays in the type's own width.
 ///
 /// Exact at both ends, monotonic in `t`, bounded for `t` in `0..=1`,
@@ -61,25 +45,59 @@ macro_rules! builtin_int_interpolation {
                 let (a, b) = (*a, *b);
                 let lo = a.min(b);
                 let dist = a.abs_diff(b);
-                // Measure from the lower end: `t` for `a <= b`, `1 - t`
-                // otherwise.
-                let t =
+                // Progress measured up from `lo`: `t` when `a <= b`,
+                // `1 - t` when the range descends.
+                let t_lo =
                     if a <= b { t as f64 } else { 1.0 - t as f64 };
-                if t == 1.0 {
+                if t_lo == 1.0 {
+                    // The upper end: `b` at `t == 1`, or `a` at
+                    // `t == 0` when the range descends.
                     return a.max(b);
                 }
-                let offset = crate::ops::round(dist as f64 * t);
+                let offset = crate::ops::round(dist as f64 * t_lo);
                 if offset < 0.0 {
                     return lo.$sub(-offset as $dist);
                 }
                 // `dist as f64` may round past `dist`, so clamp to keep
-                // each side of `t == 1` on its side of the far end.
+                // each side of `t_lo == 1` on its side of the upper end.
                 let offset = offset as $dist;
-                lo.$add(if t < 1.0 {
+                lo.$add(if t_lo < 1.0 {
                     offset.min(dist)
                 } else {
                     offset.max(dist)
                 })
+            }
+        }
+    };
+}
+
+/// Implements integer `Interpolation` for a vector type, lane-wise.
+///
+/// Each lane goes through the scalar integer interpolation for
+/// `$scalar`, so the guarantees carry over per component: exact at both
+/// ends, monotonic, bounded for `t` in `0..=1`, and symmetric under
+/// swapping the endpoints with `1 - t`. `$ty` only needs `to_array`
+/// and `from_array` for the scalar's array type (all glam vectors
+/// qualify), so this crate does not depend on glam.
+#[macro_export]
+macro_rules! impl_int_interpolation {
+    ($ty:ty, $scalar:ty) => {
+        $crate::impl_int_interpolation!($ty, $scalar, ());
+    };
+
+    ($ty:ty, $scalar:ty, $marker:ty) => {
+        impl $crate::interpolation::Interpolation<$marker> for $ty {
+            #[inline]
+            fn interp(a: &Self, b: &Self, t: f32) -> Self {
+                let (a, b) = (a.to_array(), b.to_array());
+                let out = core::array::from_fn(|i| {
+                    <$scalar as $crate::interpolation::Interpolation<()>>::interp(
+                        &a[i],
+                        &b[i],
+                        t,
+                    )
+                });
+                Self::from_array(out)
             }
         }
     };
@@ -127,15 +145,6 @@ mod tests {
         let v = 4_000_000_001_u32; // past 2^24 and past i32::MAX
         assert_eq!(lerp(v, v, 0.0), v);
         assert_eq!(lerp(v, v, 1.0), v);
-    }
-
-    #[test]
-    fn marker_impl_matches_builtin() {
-        struct Marker;
-        crate::impl_int_interpolation!(u8, Marker);
-
-        let v = <u8 as Interpolation<Marker>>::interp(&10, &200, 0.3);
-        assert_eq!(v, lerp(10_u8, 200, 0.3));
     }
 
     #[test]
@@ -218,5 +227,64 @@ mod tests {
     fn large_i64_midpoint_keeps_precision() {
         let a = 9_007_199_254_740_993_i64; // 2^53 + 1
         assert_eq!(lerp(a, a + 4, 0.5), a + 2);
+    }
+
+    #[derive(Copy, Clone, PartialEq, Debug)]
+    struct V2([u32; 2]);
+
+    impl V2 {
+        fn to_array(self) -> [u32; 2] {
+            self.0
+        }
+
+        fn from_array(a: [u32; 2]) -> Self {
+            V2(a)
+        }
+    }
+
+    crate::impl_int_interpolation!(V2, u32);
+
+    #[test]
+    fn lane_wise_interpolation_matches_the_scalar_impl() {
+        let cases = [
+            (V2([0, 100]), V2([4_000_000_001, 0]), 0.0),
+            (V2([0, 100]), V2([4_000_000_001, 0]), 0.25),
+            (V2([0, 100]), V2([4_000_000_001, 0]), 0.5),
+            (V2([0, 100]), V2([4_000_000_001, 0]), 1.0),
+            (V2([7, 7]), V2([7, 7]), 0.3),
+        ];
+        for (a, b, t) in cases {
+            let expected = V2([
+                lerp(a.0[0], b.0[0], t),
+                lerp(a.0[1], b.0[1], t),
+            ]);
+            assert_eq!(
+                lerp(a, b, t),
+                expected,
+                "{a:?}->{b:?} at {t}"
+            );
+        }
+    }
+
+    #[test]
+    fn lane_wise_endpoints_are_exact() {
+        let a = V2([4_000_000_001, 0]);
+        let b = V2([0, u32::MAX]);
+        assert_eq!(lerp(a, b, 0.0), a);
+        assert_eq!(lerp(a, b, 1.0), b);
+        assert_eq!(lerp(b, a, 0.0), b);
+        assert_eq!(lerp(b, a, 1.0), a);
+    }
+
+    #[test]
+    fn lane_wise_reversed_endpoints_land_on_same_value() {
+        for i in 0..=1024 {
+            let t = i as f32 / 1024.0;
+            let s = 1.0 - t;
+            assert_eq!(
+                lerp(V2([3, 100]), V2([250, 0]), t),
+                lerp(V2([250, 0]), V2([3, 100]), s),
+            );
+        }
     }
 }
