@@ -1,5 +1,5 @@
-//! `f32` math used by [`crate::ease`]: `std`'s intrinsics when
-//! available, `libm` otherwise. Replaces `bevy_math::ops`, which
+//! Float math used by [`crate::ease`] and integer interpolation:
+//! `std`'s intrinsics when available, `libm` otherwise. Replaces `bevy_math::ops`, which
 //! pulled in `glam`/`itertools` for four functions.
 
 #[cfg(feature = "std")]
@@ -48,4 +48,16 @@ pub fn powf(x: f32, y: f32) -> f32 {
 #[inline]
 pub fn powf(x: f32, y: f32) -> f32 {
     libm::powf(x, y)
+}
+
+#[cfg(feature = "std")]
+#[inline]
+pub fn round(x: f64) -> f64 {
+    x.round()
+}
+
+#[cfg(not(feature = "std"))]
+#[inline]
+pub fn round(x: f64) -> f64 {
+    libm::round(x)
 }

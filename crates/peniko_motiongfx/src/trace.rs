@@ -1,11 +1,13 @@
-use peniko::kurbo::{BezPath, CubicBez, Line, ParamCurve, QuadBez};
+use peniko::kurbo::{
+    self, BezPath, CubicBez, Line, ParamCurve, PathEl, QuadBez,
+};
 
 pub type LineTracer = Tracer<Line>;
 pub type QuadTracer = Tracer<QuadBez>;
 pub type CubicTracer = Tracer<CubicBez>;
 pub type PathTracer = Tracer<BezPath>;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct Tracer<T: Trace> {
     /// The original full path.
     pub path: T,
@@ -95,8 +97,17 @@ fn trace_bez_path_range(
     let end_seg = end_scaled.floor() as usize;
     let end_frac = end_scaled - end_seg as f64;
 
+    // Split at each `MoveTo` so every segment knows whether it starts
+    // a subpath, which `path.segments()` alone would not tell us.
+    let segments = path
+        .elements()
+        .chunk_by(|_, el| !matches!(el, PathEl::MoveTo(_)))
+        .flat_map(|subpath| {
+            kurbo::segments(subpath.iter().copied()).enumerate()
+        });
+
     let mut result = BezPath::new();
-    for (i, seg) in path.segments().enumerate() {
+    for (i, (subpath_i, seg)) in segments.enumerate() {
         if i < start_seg {
             continue;
         }
@@ -113,7 +124,7 @@ fn trace_bez_path_range(
             1.0
         };
         let sub = seg.subsegment(lo..hi);
-        if result.is_empty() {
+        if subpath_i == 0 || result.is_empty() {
             result.move_to(sub.start());
         }
         result.push(sub.as_path_el());
