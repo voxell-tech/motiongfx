@@ -27,7 +27,7 @@ The format is plain data with no engine or backend attached. A
   (`Chain`, `All`, `Flow`) and children that are nested blocks, leaf
   `Node::action(ActionCmd)`s, or `Node::draft` timing slots. A `Node`
   can carry a `delay`.
-- `values` is the `ValuePool`, which holds every number an action or
+- `values` is the `ValuePool`, which holds every value an action or
   seed refers to. They are addressed by id so the tree stays plain
   data.
 

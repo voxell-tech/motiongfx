@@ -13,7 +13,7 @@ and [`kurbo`](https://crates.io/crates/kurbo). Colors, points and shapes
 interpolate like any other value, and curves and paths can be traced
 so they draw on over time.
 
-The crate is `no_std`.
+The crate supports `no_std` when built with `default-features = false`.
 
 ## Join the community!
 
