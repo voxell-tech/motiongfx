@@ -10,65 +10,23 @@
 **MotionGfx** is a backend-agnostic motion graphics creation framework
 for Rust. Free and open-source forever.
 
-[Documentation](https://motiongfx.voxell.dev) ·
-[API reference](https://docs.rs/motiongfx) ·
-[Discord](https://discord.gg/Mhnyp6VYEQ)
+## Features
 
-## Relative, not absolute
+- **Backend agnostic**: MotionGfx describes what changes and leaves
+  drawing to the backend.
+- **Just code**: Scenes are plain Rust, built with loops, functions
+  and variables.
+- **Relative actions**: Each action starts from the field's current
+  value, so steps chain naturally.
+- **Two-way playback**: Play at any speed, in either direction, or
+  jump to any frame without re-simulating.
+- **Batteries included**: Common easing and interpolation functions
+  are built in.
 
-An action's closure receives the field's current value, so each step
-picks up wherever the last one left off.
-
-```rust
-let deltas = [
-    Vec2 { x: 180.0, y: 50.0 },
-    Vec2 { x: 180.0, y: -100.0 },
-    Vec2 { x: 180.0, y: 50.0 },
-];
-let tracks = deltas.map(|delta| {
-    b.act(dot, path!(<Dot>::position), move |p| *p + delta)
-        .with_ease(ease::cubic::ease_in_out)
-        .play(cs(50))
-});
-
-let track = tracks.ord_chain().compile();
-```
-
-## It's just code
-
-A scene is plain Rust, built with the same loops and variables you
-already use. Here, ten bars share one `.map()` and one stagger.
+## Quick Start
 
 ```rust
-let stagger = ms(60);
-let tracks = HEIGHTS
-    .iter()
-    .enumerate()
-    .map(|(i, &height)| {
-        [
-            b.act(i, path!(<Bar>::height), move |_| height)
-                .with_ease(ease::cubic::ease_in_out)
-                .play(ms(600)),
-            b.act(i, path!(<Bar>::y), move |_| {
-                BASELINE - height / 2.0
-            })
-            .with_ease(ease::cubic::ease_in_out)
-            .play(ms(600)),
-        ]
-        .ord_all()
-    })
-    .collect::<Vec<_>>();
-
-let track = tracks.ord_flow(stagger).compile();
-```
-
-## Scrub forward and backward, for free
-
-A timeline bakes once. After that it plays at any speed, in either
-direction, or jumps straight to any frame without re-simulating
-anything.
-
-```rust
+// Move a ball up, then back down.
 let track = [
     b.act(ball, path!(<Ball>::y), |_| 30.0)
         .with_ease(ease::quad::ease_out)
@@ -81,50 +39,16 @@ let track = [
 .compile();
 ```
 
-Try these live in the
-[playground](https://motiongfx.voxell.dev).
+## Where Next
 
-## Backend agnostic
+- [Website](https://motiongfx.voxell.dev): guides and live demos.
+- [`motiongfx`](crates/motiongfx): the core crate, with a full
+  walkthrough.
+- [`bevy_motiongfx`](crates/bevy_motiongfx): the Bevy backend.
+- [Moxie](https://github.com/voxell-tech/moxie): a visual editor for
+  MotionGfx.
 
-MotionGfx describes what changes and leaves drawing to the backend.
-Bevy is supported today, and any renderer that can read and write its
-own values can be next.
-
-```text
-                MotionGfx
-                    │
-      ┌─────────────┼─────────────┐
-      ▼             ▼             ▼
-    Bevy      Your renderer      ...
-```
-
-Building your own? See the
-[backend guide](https://motiongfx.voxell.dev/docs/advanced).
-
-## Start with Bevy
-
-[Bevy MotionGfx](https://crates.io/crates/bevy_motiongfx) handles the
-setup for you. Add the plugin, describe what should change, and it
-plays. See the
-[setup guide](https://motiongfx.voxell.dev/docs/bevy).
-
-## Prefer a timeline you can see?
-
-[Moxie](https://github.com/voxell-tech/moxie) is a Bevy editor for
-MotionGfx, with a hierarchy, an inspector, and a scrubbable timeline
-built on the same chain, all, and flow combinators. You arrange them
-visually, without writing code.
-
-## Learn more
-
-The [crate docs](https://docs.rs/motiongfx) walk through the world,
-registry, timeline builder, and track ordering step by step.
-
-## Community
-
-Join the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ).
-
-## Inspirations and similar projects
+## Inspirations and Similar Projects
 
 - [Motion Canvas](https://motioncanvas.io/)
 - [Manim](https://www.manim.community/)
