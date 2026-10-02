@@ -1,0 +1,25 @@
+[package]
+name = "velyst_motiongfx"
+description = "Velyst typesetting support for the Bevy MotionGfx framework."
+keywords = ["motion", "animation", "typst", "bevy", "plugin"]
+categories = ["multimedia", "graphics", "visualization"]
+readme = "./README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+bevy_motiongfx = { workspace = true }
+peniko_motiongfx = { workspace = true, features = ["std"] }
+
+bevy_app = { workspace = true }
+bevy_ecs = { workspace = true }
+
+velyst = { workspace = true }
+
+[dev-dependencies]
+bevy = { workspace = true }
+
+[lints]
+workspace = true
