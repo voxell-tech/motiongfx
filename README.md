@@ -23,7 +23,7 @@ for Rust. Free and open-source forever.
 - **Batteries included**: Common easing and interpolation functions
   are built in.
 
-## Quick Start
+## Example
 
 ```rust
 // Move a ball up, then back down.
