@@ -95,7 +95,7 @@ registry.register_op::<f32, _>(Op::To, |value: &f32| {
 ```
 
 Ops are registered per value type, so one
-`register_op::<f32, _>(Op::To, ..)` serves `Point::x`, `Circle::radius`,
+`register_op::<f32, _>(Op::To, ..)` serves `Point.x`, `Circle.radius`,
 and every other `f32` field.
 
 ## 3. Runtime

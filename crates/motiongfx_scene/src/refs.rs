@@ -37,7 +37,7 @@ impl<T: Into<Box<str>>> From<T> for TypeName {
 }
 
 /// Names a field to animate: its owning source type plus a field path
-/// like `"translation::x"`.
+/// like `".translation.x"`.
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
 )]

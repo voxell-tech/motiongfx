@@ -22,7 +22,7 @@ fn spawn_kanva_anim(mut commands: Commands, scene: Entity) {
 }
 ```
 
-Drive `KanvaAnim::t` from `0.0` to `1.0` with the `Timeline` API to
+Drive `KanvaAnim.t` from `0.0` to `1.0` with the `Timeline` API to
 play the animation.
 
 ## Join the community!

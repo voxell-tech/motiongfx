@@ -78,7 +78,7 @@ pub(crate) fn paths_alias(a: &str, b: &str) -> bool {
     let (short, long) =
         if a.len() <= b.len() { (a, b) } else { (b, a) };
     long.strip_prefix(short)
-        .is_some_and(|rest| rest.is_empty() || rest.starts_with("::"))
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with('.'))
 }
 
 impl ActionKey {

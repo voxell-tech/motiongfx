@@ -59,7 +59,7 @@ fn backward_jump_resamples_an_earlier_clip() {
 /// A gap that sits after an earlier clip must show that clip's end
 /// state, even when the seek that lands there never traverses the
 /// clip itself - jumping straight back from well past a later clip.
-/// Both clips act on `translation::x`, an inner sub-field action, the
+/// Both clips act on `translation.x`, an inner sub-field action, the
 /// case reported as "not being sampled" when scrubbing backward.
 #[test]
 fn backward_jump_into_a_gap_holds_the_preceding_clips_end() {

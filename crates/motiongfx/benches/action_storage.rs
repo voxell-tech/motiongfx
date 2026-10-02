@@ -68,7 +68,7 @@ fn make_world(n: u64) -> SubjectWorld {
     }
 }
 
-/// Build a timeline with `n` subjects, each animating `Point::x` over a
+/// Build a timeline with `n` subjects, each animating `Point.x` over a
 /// 1s clip. All `n` sequences run concurrently in a single track.
 fn build_timeline(
     registry: &mut Registry,

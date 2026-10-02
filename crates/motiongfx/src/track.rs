@@ -964,11 +964,11 @@ mod tests {
         #[test]
         fn overlapping_aliasing_actions_drop_the_earlier() {
             let id = ids(2);
-            // `""` (the source) aliases `::x`; the later clip overlaps.
+            // `""` (the source) aliases `.x`; the later clip overlaps.
             let track = TrackFragment::new()
                 .upsert_sequence(key(""), seq(&[clip(id[0], 0, 100)]))
                 .upsert_sequence(
-                    key("::x"),
+                    key(".x"),
                     seq(&[clip(id[1], 50, 100)]),
                 )
                 .compile();
@@ -983,11 +983,11 @@ mod tests {
             // append and overlap in time; the later one wins outright.
             let track = TrackFragment::new()
                 .upsert_sequence(
-                    key("::x"),
+                    key(".x"),
                     seq(&[clip(id[0], 0, 100)]),
                 )
                 .upsert_sequence(
-                    key("::x"),
+                    key(".x"),
                     seq(&[clip(id[1], 50, 100)]),
                 )
                 .compile();
@@ -1004,7 +1004,7 @@ mod tests {
             let track = TrackFragment::new()
                 .upsert_sequence(key(""), seq(&[clip(id[0], 0, 100)]))
                 .upsert_sequence(
-                    key("::x"),
+                    key(".x"),
                     seq(&[clip(id[1], 50, 100)]),
                 )
                 .compile();
