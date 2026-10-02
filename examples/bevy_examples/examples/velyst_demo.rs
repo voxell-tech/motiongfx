@@ -123,7 +123,13 @@ fn metrics(
     diag: Res<DiagnosticsStore>,
 ) {
     let Ok(mut text) = q.single_mut() else { return };
-    let fps = (1.0 / time.delta_secs_f64() * 100.0).round() / 100.0;
+    // The first frame has no delta.
+    let delta = time.delta_secs_f64();
+    let fps = if delta > 0.0 {
+        (1.0 / delta * 100.0).round() / 100.0
+    } else {
+        0.0
+    };
     let elapsed = (time.elapsed_secs_f64() * 100.0).round() / 100.0;
     let world_scenes = diag
         .get(&WORLD_SCENE_COUNT)

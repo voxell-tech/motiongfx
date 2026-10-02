@@ -338,9 +338,12 @@ fn animate_kanva_anim(
             continue;
         };
 
+        // Outside `(0, 1]` the window divides by zero or reverses the
+        // stagger, so clamp it.
+        let path_window = anim.path_window.clamp(f32::EPSILON, 1.0);
         let n = range.len();
         let stagger = if n > 1 {
-            (1.0 - anim.path_window) / (n - 1) as f32
+            (1.0 - path_window) / (n - 1) as f32
         } else {
             0.0
         };
@@ -349,7 +352,7 @@ fn animate_kanva_anim(
             // Clamp to [0, 1] so completed paths always hold their final
             // state rather than reverting to the raw Typst fill.
             let local_t = ((anim.t - i as f32 * stagger)
-                / anim.path_window)
+                / path_window)
                 .clamp(0.0, 1.0);
 
             for phase in &anim.phases {
