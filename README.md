@@ -10,6 +10,8 @@
 **MotionGfx** is a backend-agnostic motion graphics creation framework
 for Rust. Free and open-source forever.
 
+![Ten bars grow upward one after another, then play back in reverse.](assets/hero.webp)
+
 ## Features
 
 - **Backend agnostic**: MotionGfx describes what changes and leaves
@@ -38,6 +40,8 @@ let track = [
 .ord_chain()
 .compile();
 ```
+
+![A ball rises with an ease-out, then falls with an ease-in.](assets/example.webp)
 
 ## Where Next
 
