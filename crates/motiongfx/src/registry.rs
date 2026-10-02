@@ -27,14 +27,14 @@ impl Registry {
         }
     }
 
-    pub fn register<W, I, S, T>(&mut self, field_acc: Path<S, T>)
+    pub fn register<W, I, S, T>(&mut self, path: Path<S, T>)
     where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: Clone + ThreadSafe,
         T: Clone + ThreadSafe,
     {
-        self.lens.register(field_acc);
+        self.lens.register(path);
         self.pipeline.register::<W, I, S, T>();
     }
 
@@ -68,14 +68,14 @@ impl LensRegistry {
     #[inline]
     pub fn register<S: 'static, T: 'static>(
         &mut self,
-        field_acc: Path<S, T>,
+        path: Path<S, T>,
     ) {
-        let untyped_field = field_acc.field.untyped();
+        let untyped_field = path.field.untyped();
         if self.lenses.contains_key(&untyped_field) {
             return;
         }
 
-        self.lenses.insert(untyped_field, field_acc.lens.untyped());
+        self.lenses.insert(untyped_field, path.lens.untyped());
     }
 
     /// Retrieve a typed [`Lens`] from the registry.

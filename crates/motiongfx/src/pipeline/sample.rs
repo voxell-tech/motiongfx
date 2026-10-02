@@ -118,11 +118,11 @@ mod tests {
     /// with the `SampleMode` supplied by the queue.
     #[test]
     fn sample_join_reads_all_required_columns() {
-        let field_acc = crate::path!(f32);
-        let field = field_acc.field.untyped();
+        let path = crate::path!(f32);
+        let field = path.field.untyped();
 
         let mut lens_registry = LensRegistry::new();
-        lens_registry.register(field_acc);
+        lens_registry.register(path);
 
         let mut action_table = ActionTable::new();
         let id = action_table
@@ -167,11 +167,11 @@ mod tests {
     /// present column should reshape `t` before interpolating.
     #[test]
     fn sample_join_applies_custom_ease() {
-        let field_acc = crate::path!(f32);
-        let field = field_acc.field.untyped();
+        let path = crate::path!(f32);
+        let field = path.field.untyped();
 
         let mut lens_registry = LensRegistry::new();
-        lens_registry.register(field_acc);
+        lens_registry.register(path);
 
         let mut action_table = ActionTable::new();
         let id = action_table
