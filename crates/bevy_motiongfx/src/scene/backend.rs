@@ -24,10 +24,10 @@ use crate::world::BevyWorld;
 /// by hand (an editor, a scene author) can name a field the same way
 /// the registry does, without duplicating the `TypeName::new(S::type_path())`
 /// pairing themselves.
-pub fn field_ref<S: TypePath, T>(field_acc: Path<S, T>) -> FieldRef {
+pub fn field_ref<S: TypePath, T>(path: Path<S, T>) -> FieldRef {
     FieldRef::new(
         TypeName::new(S::type_path()),
-        field_acc.field.field_path(),
+        path.field.field_path(),
     )
 }
 
@@ -99,7 +99,7 @@ pub enum AnimEase {
 pub trait SceneRegistryExt {
     fn register_reflected_field<S, T>(
         &mut self,
-        field_acc: Path<S, T>,
+        path: Path<S, T>,
     ) -> &mut Self
     where
         S: TypePath + Clone + ThreadSafe,
@@ -124,7 +124,7 @@ pub trait SceneRegistryExt {
     /// one call - just pass `path!(S.field)`.
     fn register_bundle<S, T, M>(
         &mut self,
-        field_acc: Path<S, T>,
+        path: Path<S, T>,
     ) -> &mut Self
     where
         S: TypePath + Clone + ThreadSafe,
@@ -132,7 +132,7 @@ pub trait SceneRegistryExt {
         ValuePool: ValueColumn<Uuid, T>,
         T: Interpolation<M> + ThreadSafe + Clone,
     {
-        self.register_reflected_field(field_acc)
+        self.register_reflected_field(path)
             .register_to_op::<T>()
             .register_linear_interp::<T, M>()
     }
@@ -141,7 +141,7 @@ pub trait SceneRegistryExt {
 impl SceneRegistryExt for BackendRegistry {
     fn register_reflected_field<S, T>(
         &mut self,
-        field_acc: Path<S, T>,
+        path: Path<S, T>,
     ) -> &mut Self
     where
         S: TypePath + Clone + ThreadSafe,
@@ -151,7 +151,7 @@ impl SceneRegistryExt for BackendRegistry {
     {
         self.register_field_with_key::<S, T, EntityUid>(
             TypeName::new(S::type_path()),
-            field_acc,
+            path,
         )
     }
 

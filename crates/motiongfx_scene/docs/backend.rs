@@ -99,7 +99,7 @@ pub fn registry() -> SceneRegistry<Toy> {
     r
 }
 
-/// `Point::<path>` as a [`FieldRef`].
+/// `Point.<path>` as a [`FieldRef`].
 pub fn field(path: &str) -> FieldRef {
     FieldRef::new("Point", format!(".{path}"))
 }

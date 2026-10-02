@@ -90,7 +90,7 @@ where
                 }
             })?;
 
-        let field_acc = Path::new(field, lens);
+        let path = Path::new(field, lens);
 
         // Pulled from the pool *before* op resolution: by the time
         // `build_action` runs, `T` is already concrete, so the op
@@ -110,7 +110,7 @@ where
             CompileError::UnknownSubjectKind(cmd.field.clone())
         })?;
         let mut tb = builder
-            .act_builder(key, field_acc, action)
+            .act_builder(key, path, action)
             .with_interp(interp_fn);
 
         if let Some(ease) = ease {
@@ -128,14 +128,14 @@ where
         values: &B::ValuePool,
         world: &mut B::World,
     ) -> Result<(), CompileError<B>> {
-        let field_acc = registry
+        let path = registry
             .fields
             .get::<Path<S, T>>(&state.field)
             .ok_or_else(|| CompileError::TypeMismatch {
                 type_name: core::any::type_name::<T>(),
                 field: state.field.clone(),
             })?;
-        let lens = field_acc.lens;
+        let lens = path.lens;
 
         let value: T = values
             .get(state.value)
@@ -173,10 +173,9 @@ fn register_field_lens<B, S, T, I>(
     S: Clone + ThreadSafe,
     T: ThreadSafe + Clone,
 {
-    if let Some(field_acc) = fields.get::<Path<S, T>>(field_ref) {
+    if let Some(path) = fields.get::<Path<S, T>>(field_ref) {
         runtime.register::<B::World, I, S, T>(Path::new(
-            field_acc.field,
-            field_acc.lens,
+            path.field, path.lens,
         ));
     }
 }
@@ -212,7 +211,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
     pub fn register_field<S, T>(
         &mut self,
         type_name: TypeName,
-        field_acc: Path<S, T>,
+        path: Path<S, T>,
     ) -> &mut Self
     where
         B::World: SubjectSource<B::Id, S>,
@@ -220,9 +219,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
         S: Clone + ThreadSafe,
         T: ThreadSafe + Clone,
     {
-        self.register_field_with_key::<S, T, B::Id>(
-            type_name, field_acc,
-        )
+        self.register_field_with_key::<S, T, B::Id>(type_name, path)
     }
 
     /// Registers a field mapping, resolving the subject id into
@@ -232,7 +229,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
     pub fn register_field_with_key<S, T, I>(
         &mut self,
         type_name: TypeName,
-        field_acc: Path<S, T>,
+        path: Path<S, T>,
     ) -> &mut Self
     where
         B::Id: IntoSubjectId<I>,
@@ -243,8 +240,8 @@ impl<B: SceneBackend> SceneRegistry<B> {
         T: ThreadSafe + Clone,
     {
         let field_ref =
-            FieldRef::new(type_name, field_acc.field.field_path());
-        let untyped = field_acc.field.untyped();
+            FieldRef::new(type_name, path.field.field_path());
+        let untyped = path.field.untyped();
         self.fields
             .insert::<UntypedField>(field_ref.clone(), untyped);
         self.fields.insert::<FieldResolverBox<B>>(
@@ -252,8 +249,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
             Box::new(ConcreteFieldResolver::<B, S, T, I>::default()),
         );
 
-        self.fields
-            .insert::<Path<S, T>>(field_ref.clone(), field_acc);
+        self.fields.insert::<Path<S, T>>(field_ref.clone(), path);
         self.fields.insert::<FieldRegistrar>(
             field_ref,
             register_field_lens::<B, S, T, I>,
