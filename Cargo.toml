@@ -15,6 +15,7 @@ motiongfx_interp = { version = "0.3.1", path = "crates/motiongfx_interp", defaul
 motiongfx_scene = { version = "0.3.1", path = "crates/motiongfx_scene", default-features = false }
 bevy_motiongfx = { version = "0.3.1", path = "crates/bevy_motiongfx", default-features = false }
 peniko_motiongfx = { version = "0.3.1", path = "crates/peniko_motiongfx", default-features = false }
+velyst_motiongfx = { version = "0.3.1", path = "crates/velyst_motiongfx" }
 
 # bevy
 bevy = { version = "0.19", default-features = false }
@@ -29,7 +30,7 @@ bevy_time = { version = "0.19", default-features = false }
 bevy_transform = { version = "0.19", default-features = false, features = ["bevy-support"] }
 bevy_color = { version = "0.19", default-features = false }
 bevy_vello = { version = "0.14", default-features = false }
-velyst = { git = "https://github.com/voxell-tech/velyst", branch = "main" }
+velyst = "0.0.1"
 
 # other
 field_path = "0.4.1"

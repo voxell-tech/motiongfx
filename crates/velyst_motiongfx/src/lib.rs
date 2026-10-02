@@ -1,29 +1,38 @@
-//! Velyst animation support for the MotionGfx framework.
-//!
-//! Provides components and systems for animating Velyst typesetting
-//! graphics using the MotionGfx timeline-based animation framework.
-//! Enabled via the `velyst` feature.
+#![doc = include_str!("../README.md")]
 
-use alloc::vec;
-use alloc::vec::Vec;
 use core::ops::Range;
-use velyst::VelystPlugin;
 
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::prelude::*;
+use bevy_motiongfx::MotionGfxSystems;
 use peniko_motiongfx::prelude::*;
 use velyst::imaging::kurbo::{Shape, Vec2};
 use velyst::kanva::Kanva;
 use velyst::prelude::{VelystKanva, VelystSet};
 
-pub struct VelystIntegrationPlugin;
+pub mod prelude {
+    pub use velyst::prelude::*;
 
-impl Plugin for VelystIntegrationPlugin {
+    pub use crate::{
+        KanvaAnim, KanvaGroup, KanvaGroupKind, KanvaPhase,
+        VelystMotionGfxPlugin,
+    };
+}
+
+pub use velyst;
+
+/// Applies [`KanvaAnim`]s to their [`VelystKanva`] targets.
+///
+/// Requires `VelystPlugin` and `BevyMotionGfxPlugin` to be added.
+pub struct VelystMotionGfxPlugin;
+
+impl Plugin for VelystMotionGfxPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(VelystPlugin).add_systems(
+        app.add_systems(
             PostUpdate,
             (clear_kanva_mods, animate_kanva_anim)
                 .chain()
+                .after(MotionGfxSystems::Sample)
                 .in_set(VelystSet::PostLayout),
         );
     }

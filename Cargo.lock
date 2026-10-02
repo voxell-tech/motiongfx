@@ -804,6 +804,7 @@ version = "0.3.1"
 dependencies = [
  "bevy",
  "bevy_motiongfx",
+ "velyst_motiongfx",
 ]
 
 [[package]]
@@ -1237,11 +1238,9 @@ dependencies = [
  "indexmap",
  "motiongfx",
  "motiongfx_scene",
- "peniko_motiongfx",
  "ron",
  "serde",
  "tracing",
- "velyst",
 ]
 
 [[package]]
@@ -4143,8 +4142,9 @@ dependencies = [
 
 [[package]]
 name = "kanva"
-version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cfd0d1de4f2571deeb7197558f2d11a7f9cc937802866b4d3c7252dadb97ca7"
 dependencies = [
  "hashbrown 0.17.1",
  "imaging",
@@ -4153,8 +4153,9 @@ dependencies = [
 
 [[package]]
 name = "kanva_svg"
-version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50f061bf5b5aeb980ff39f2eea6a1fa1a3d95cee5f80b3930b166e0d2dd29986"
 dependencies = [
  "image",
  "kanva",
@@ -4163,8 +4164,9 @@ dependencies = [
 
 [[package]]
 name = "kanva_typst"
-version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "736c4af98a560319561df123b03688cac30e407022d9f3d351a2a6ec2a723ac1"
 dependencies = [
  "hayro-svg",
  "kanva",
@@ -7140,8 +7142,9 @@ dependencies = [
 
 [[package]]
 name = "typst_imaging"
-version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8cb14ce39b5bdc4aeac9a2905a20da9d34af1a19352bed4e1f88b761c7e2fa6"
 dependencies = [
  "hayro-svg",
  "imaging",
@@ -7534,8 +7537,9 @@ dependencies = [
 
 [[package]]
 name = "velyst"
-version = "0.1.0"
-source = "git+https://github.com/voxell-tech/velyst?branch=main#5c1534c42660be527db6822c28585a8ffe605923"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bb8823cb898c0523615ad514b88f51df307d430bd5506c9e1965d9564e66474"
 dependencies = [
  "bevy",
  "bevy_vello",
@@ -7557,6 +7561,18 @@ dependencies = [
  "typst-layout",
  "typst_imaging",
  "ureq",
+]
+
+[[package]]
+name = "velyst_motiongfx"
+version = "0.3.1"
+dependencies = [
+ "bevy",
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_motiongfx",
+ "peniko_motiongfx",
+ "velyst",
 ]
 
 [[package]]
@@ -8063,7 +8079,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

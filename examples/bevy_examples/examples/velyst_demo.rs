@@ -3,9 +3,11 @@ use bevy::prelude::*;
 use bevy_examples::timeline_movement;
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::prelude::*;
-use bevy_motiongfx::velyst::bevy_vello::VelloPlugin;
-use bevy_motiongfx::velyst::bevy_vello::prelude::*;
-use bevy_motiongfx::velyst::bevy_vello::render::diagnostics::{
+use velyst_motiongfx::prelude::*;
+use velyst_motiongfx::velyst::VelystPlugin;
+use velyst_motiongfx::velyst::bevy_vello::VelloPlugin;
+use velyst_motiongfx::velyst::bevy_vello::prelude::*;
+use velyst_motiongfx::velyst::bevy_vello::render::diagnostics::{
     PATH_COUNT, PATH_SEGMENTS_COUNT, UI_SCENE_COUNT,
     WORLD_SCENE_COUNT,
 };
@@ -16,6 +18,8 @@ fn main() {
             DefaultPlugins,
             VelloPlugin::default(),
             BevyMotionGfxPlugin,
+            VelystPlugin,
+            VelystMotionGfxPlugin,
         ))
         .register_typst_func::<PlotFunc>()
         .add_systems(Startup, setup)
