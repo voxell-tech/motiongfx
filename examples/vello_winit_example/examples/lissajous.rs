@@ -169,12 +169,12 @@ impl LissajousTableDemo {
         let mut pair_tracks = Vec::with_capacity(n_steps);
         for i in 0..n_steps {
             let v = vert_entries.get(i).map(|&(id, p1)| {
-                b.act(id, path!(<GridLine>::line::p1), move |_| p1)
+                b.act(id, path!(GridLine.line.p1), move |_| p1)
                     .with_ease(ease::cubic::ease_in_out)
                     .play(cs(60))
             });
             let h = horiz_entries.get(i).map(|&(id, p1)| {
-                b.act(id, path!(<GridLine>::line::p1), move |_| p1)
+                b.act(id, path!(GridLine.line.p1), move |_| p1)
                     .with_ease(ease::cubic::ease_in_out)
                     .play(cs(60))
             });
@@ -202,7 +202,7 @@ impl LissajousTableDemo {
                         let draw_in = b
                             .act(
                                 id,
-                                path!(<CurveState>::tracer::t_end),
+                                path!(CurveState.tracer.t_end),
                                 |_| 1.0f32,
                             )
                             .with_ease(ease::cubic::ease_in_out)
@@ -210,7 +210,7 @@ impl LissajousTableDemo {
                         let draw_out = b
                             .act(
                                 id,
-                                path!(<CurveState>::tracer::t_start),
+                                path!(CurveState.tracer.t_start),
                                 |_| 1.0f32,
                             )
                             .with_ease(ease::cubic::ease_in_out)

@@ -51,7 +51,7 @@ fn build_timeline(
     // Build the timeline.
     let mut b = motiongfx.create_builder();
     let track = b
-        .act(entity, path!(<Transform>::translation::x), |x| {
+        .act(entity, path!(Transform.translation.x), |x| {
             x + 6.0
         })
         .play(s(1))
@@ -87,7 +87,7 @@ fn build_timeline(
         .act(
           // AssetIds must be type-erased.
           material.untyped().id(),
-          path!(<StandardMaterial>::base_color),
+          path!(StandardMaterial.base_color),
           |_| Srgba::RED.into(),
         )
         .play(s(1))

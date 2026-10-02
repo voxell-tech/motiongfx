@@ -2,14 +2,14 @@ use crate::ThreadSafe;
 use crate::action::{
     ActionId, ActionTable, InterpStorage, SampleMode, Segment,
 };
-use crate::registry::AccessorRegistry;
+use crate::registry::LensRegistry;
 use crate::subject::SubjectId;
 use crate::world::SubjectSource;
 
 pub struct SampleCtx<'a, W> {
     pub world: &'a mut W,
     pub action_table: &'a ActionTable,
-    pub accessor_registry: &'a AccessorRegistry,
+    pub lens_registry: &'a LensRegistry,
     /// The queued actions for this pipeline, each with its
     /// [`SampleMode`] resolved at queue time.
     pub samples: &'a [(ActionId, SampleMode)],
@@ -47,8 +47,7 @@ where
             continue;
         };
         let ease = ctx.action_table.ease(&id);
-        let Some(accessor) =
-            ctx.accessor_registry.get::<S, T>(key.field())
+        let Some(lens) = ctx.lens_registry.get::<S, T>(key.field())
         else {
             continue;
         };
@@ -73,7 +72,7 @@ where
         };
 
         ctx.world.apply_source(sid, |source| {
-            *accessor.get_mut(source) = target;
+            *lens.get_mut(source) = target;
         });
     }
 }
@@ -102,14 +101,14 @@ mod tests {
 
     fn sample_mock(
         action_table: &ActionTable,
-        accessor_registry: &AccessorRegistry,
+        lens_registry: &LensRegistry,
         world: &mut MockWorld,
         samples: &[(ActionId, SampleMode)],
     ) {
         sample::<MockWorld, u32, f32, f32>(SampleCtx {
             world,
             action_table,
-            accessor_registry,
+            lens_registry,
             samples,
         });
     }
@@ -119,11 +118,11 @@ mod tests {
     /// with the `SampleMode` supplied by the queue.
     #[test]
     fn sample_join_reads_all_required_columns() {
-        let field_acc = crate::path!(<f32>);
+        let field_acc = crate::path!(f32);
         let field = field_acc.field.untyped();
 
-        let mut accessor_registry = AccessorRegistry::new();
-        accessor_registry.register(field_acc);
+        let mut lens_registry = LensRegistry::new();
+        lens_registry.register(field_acc);
 
         let mut action_table = ActionTable::new();
         let id = action_table
@@ -141,7 +140,7 @@ mod tests {
 
         sample_mock(
             &action_table,
-            &accessor_registry,
+            &lens_registry,
             &mut world,
             &[(id, SampleMode::Start)],
         );
@@ -149,7 +148,7 @@ mod tests {
 
         sample_mock(
             &action_table,
-            &accessor_registry,
+            &lens_registry,
             &mut world,
             &[(id, SampleMode::End)],
         );
@@ -157,7 +156,7 @@ mod tests {
 
         sample_mock(
             &action_table,
-            &accessor_registry,
+            &lens_registry,
             &mut world,
             &[(id, SampleMode::Interp(0.5))],
         );
@@ -168,11 +167,11 @@ mod tests {
     /// present column should reshape `t` before interpolating.
     #[test]
     fn sample_join_applies_custom_ease() {
-        let field_acc = crate::path!(<f32>);
+        let field_acc = crate::path!(f32);
         let field = field_acc.field.untyped();
 
-        let mut accessor_registry = AccessorRegistry::new();
-        accessor_registry.register(field_acc);
+        let mut lens_registry = LensRegistry::new();
+        lens_registry.register(field_acc);
 
         let mut action_table = ActionTable::new();
         let id = action_table
@@ -189,7 +188,7 @@ mod tests {
         let mut world = MockWorld(0.0);
         sample_mock(
             &action_table,
-            &accessor_registry,
+            &lens_registry,
             &mut world,
             &[(id, SampleMode::Interp(0.5))],
         );

@@ -62,7 +62,7 @@ fn sample() -> Scene<RoundtripBackend> {
     let mut values = RoundtripValuePool::default();
     let mut action = |value: f32| ActionCmd {
         subject: 7,
-        field: FieldRef::new("Transform", "translation::x"),
+        field: FieldRef::new("Transform", ".translation.x"),
         op: Op::To,
         value: values.insert(value),
         duration: ms(500),
@@ -91,7 +91,7 @@ fn sample() -> Scene<RoundtripBackend> {
                 fields: vec![FieldSeed {
                     field: FieldRef::new(
                         "Transform",
-                        "translation::x",
+                        ".translation.x",
                     ),
                     value: state,
                 }],

@@ -13,7 +13,7 @@
 A scene never names a concrete type. It refers to fields, ops, and
 values *by name*. A `SceneBackend` supplies the id and pool types, and
 a `SceneRegistry` supplies the code that turns those names back into
-typed accessors and `motiongfx` actions. The crate is split into the
+typed lenses and `motiongfx` actions. The crate is split into the
 three layers below.
 
 ## 1. Format
@@ -77,15 +77,15 @@ assert_eq!(scene, back);
 
 `SceneRegistry<B>` is where the app registers its types before any
 scene is compiled. `register_field` binds a `FieldRef` (owner
-`"Point"`, path `"::x"`) to a typed `FieldAccessor`, and `register_op`
+`"Point"`, path `".x"`) to a typed `Path`, and `register_op`
 binds an `OpId` to a closure that builds a `motiongfx` `Action<T>`.
 
 ```rust
 # #[path = "docs/backend.rs"] mod _doc; use _doc::*;
 let mut registry: SceneRegistry<Toy> = SceneRegistry::new();
 
-// "Point" + "::x" now resolves to a real accessor.
-registry.register_field::<Point, f32>("Point".into(), path!(<Point>::x));
+// "Point" + ".x" now resolves to a real lens.
+registry.register_field::<Point, f32>("Point".into(), path!(Point.x));
 
 // `Op::To` builds an action that ignores the previous value.
 registry.register_op::<f32, _>(Op::To, |value: &f32| {

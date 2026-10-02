@@ -81,14 +81,14 @@ fn spawn_timeline(
             [
                 b.act(
                     sphere_ids[i],
-                    path!(<Transform>::translation::x),
+                    path!(Transform.translation.x),
                     |x| x + 10.0,
                 )
                 .with_ease(ease_fn)
                 .play(s(1)),
                 b.act(
                     sphere_mat_ids[i],
-                    path!(<StandardMaterial>::emissive),
+                    path!(StandardMaterial.emissive),
                     move |_| red,
                 )
                 .with_ease(ease_fn)

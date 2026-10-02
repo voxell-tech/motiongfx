@@ -53,30 +53,28 @@ fn spawn_timeline(
 
     // Generate slide sequences.
     let slide0 = b
-        .act(cube, path!(<Transform>::scale), |_| Vec3::ONE)
+        .act(cube, path!(Transform.scale), |_| Vec3::ONE)
         .with_ease(ease::cubic::ease_out)
         .play(s(1))
         .compile();
 
     let slide1 = [
         [
-            b.act(
-                cube,
-                path!(<Transform>::translation::x),
-                move |_| -X_OFFSET,
-            )
+            b.act(cube, path!(Transform.translation.x), move |_| {
+                -X_OFFSET
+            })
             .with_ease(ease::cubic::ease_out)
             .play(s(1)),
             b.act(
                 cube_mat_id,
-                path!(<StandardMaterial>::base_color),
+                path!(StandardMaterial.base_color),
                 move |_| palettes::tailwind::ZINC_700.into(),
             )
             .with_ease(ease::cubic::ease_out)
             .play(s(1)),
         ]
         .ord_all(),
-        b.act(sphere, path!(<Transform>::scale), |_| Vec3::ONE)
+        b.act(sphere, path!(Transform.scale), |_| Vec3::ONE)
             .with_ease(ease::cubic::ease_out)
             .play(s(1)),
     ]

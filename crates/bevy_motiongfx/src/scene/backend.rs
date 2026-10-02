@@ -16,7 +16,7 @@ use crate::scene::id::{EntityUid, SceneUid};
 use crate::scene::value_pool::ValuePool;
 use crate::world::BevyWorld;
 
-/// The [`FieldRef`] a [`FieldAccessor`] resolves to once registered
+/// The [`FieldRef`] a [`Path`] resolves to once registered
 /// through [`SceneRegistryExt::register_reflected_field`] - same
 /// name-building rule
 /// ([`SceneRegistry::register_field_with_key`](motiongfx_scene::registry::SceneRegistry::register_field_with_key)),
@@ -24,9 +24,7 @@ use crate::world::BevyWorld;
 /// by hand (an editor, a scene author) can name a field the same way
 /// the registry does, without duplicating the `TypeName::new(S::type_path())`
 /// pairing themselves.
-pub fn field_ref<S: TypePath, T>(
-    field_acc: FieldAccessor<S, T>,
-) -> FieldRef {
+pub fn field_ref<S: TypePath, T>(field_acc: Path<S, T>) -> FieldRef {
     FieldRef::new(
         TypeName::new(S::type_path()),
         field_acc.field.field_path(),
@@ -101,7 +99,7 @@ pub enum AnimEase {
 pub trait SceneRegistryExt {
     fn register_reflected_field<S, T>(
         &mut self,
-        field_acc: FieldAccessor<S, T>,
+        field_acc: Path<S, T>,
     ) -> &mut Self
     where
         S: TypePath + Clone + ThreadSafe,
@@ -123,10 +121,10 @@ pub trait SceneRegistryExt {
         T: Interpolation<M> + 'static;
 
     /// Registers a field plus its `To` op and linear interpolation, in
-    /// one call - just pass `path!(<S>::field)`.
+    /// one call - just pass `path!(S.field)`.
     fn register_bundle<S, T, M>(
         &mut self,
-        field_acc: FieldAccessor<S, T>,
+        field_acc: Path<S, T>,
     ) -> &mut Self
     where
         S: TypePath + Clone + ThreadSafe,
@@ -143,7 +141,7 @@ pub trait SceneRegistryExt {
 impl SceneRegistryExt for BackendRegistry {
     fn register_reflected_field<S, T>(
         &mut self,
-        field_acc: FieldAccessor<S, T>,
+        field_acc: Path<S, T>,
     ) -> &mut Self
     where
         S: TypePath + Clone + ThreadSafe,
@@ -184,9 +182,9 @@ pub fn default_scene_registry() -> BackendRegistry {
     let mut registry = SceneRegistry::new();
 
     registry
-        .register_bundle(path!(<Transform>::translation))
-        .register_bundle(path!(<Transform>::rotation))
-        .register_bundle(path!(<Transform>::scale))
+        .register_bundle(path!(Transform.translation))
+        .register_bundle(path!(Transform.rotation))
+        .register_bundle(path!(Transform.scale))
         .register_eases(&[
             (AnimEase::Linear, ease::linear),
             (AnimEase::CubicEaseInOut, ease::cubic::ease_in_out),

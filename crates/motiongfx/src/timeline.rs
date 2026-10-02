@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use core::time::Duration;
 
 use alloc::boxed::Box;
-use field_path::field_accessor::FieldAccessor;
+use field_path::path::Path;
 use hashbrown::{DefaultHashBuilder, HashMap};
 use indexmap::IndexMap;
 use motiongfx_interp::interpolation::Interpolation;
@@ -99,7 +99,7 @@ impl<W: 'static> Timeline<W> {
                         action_id: clip.id,
                         scratch: &mut scratch,
                         action_table: &mut self.action_table,
-                        accessor_registry: &registry.accessor,
+                        lens_registry: &registry.lens,
                     },
                 );
                 debug_assert!(
@@ -295,7 +295,7 @@ impl<W: 'static> Timeline<W> {
                 SampleCtx {
                     world: subject_world,
                     action_table: &self.action_table,
-                    accessor_registry: &registry.accessor,
+                    lens_registry: &registry.lens,
                     samples: &[(queued.id, queued.mode)],
                 },
             );
@@ -443,7 +443,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     }
 
     /// Access the underlying runtime registry (needed by the scene
-    /// compile step to look up typed accessors).
+    /// compile step to look up typed lenses).
     pub fn registry(&self) -> &Registry {
         self.registry
     }
@@ -453,7 +453,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     pub fn act<I, S, T, M>(
         &mut self,
         target: I,
-        field_acc: FieldAccessor<S, T>,
+        field_acc: Path<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
@@ -470,7 +470,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     pub fn act_step<I, S, T>(
         &mut self,
         target: I,
-        field_acc: FieldAccessor<S, T>,
+        field_acc: Path<S, T>,
         action: impl Action<T>,
     ) -> InterpActionBuilder<'_, T>
     where
@@ -491,7 +491,7 @@ impl<'a, W: 'static> TimelineBuilder<'a, W> {
     pub fn act_builder<I, S, T>(
         &mut self,
         target: I,
-        field_acc: FieldAccessor<S, T>,
+        field_acc: Path<S, T>,
         action: impl Action<T>,
     ) -> ActionBuilder<'_, T>
     where

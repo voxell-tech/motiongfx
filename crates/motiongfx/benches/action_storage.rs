@@ -79,7 +79,7 @@ fn build_timeline(
     let fragments = (0..n)
         .map(|i| {
             builder
-                .act_builder(Id(i), path!(<Point>::x), |x| x + 72.0)
+                .act_builder(Id(i), path!(Point.x), |x| x + 72.0)
                 .with_interp(linear_f32)
                 .play(s(1))
         })
@@ -272,45 +272,37 @@ fn build_mixed(
         .flat_map(|i| {
             [
                 builder
-                    .act_builder(Id(i), path!(<Widget>::s), |v| {
-                        v + 1.0
-                    })
+                    .act_builder(Id(i), path!(Widget.s), |v| v + 1.0)
                     .with_interp(linear_f32)
                     .play(s(1)),
                 builder
-                    .act_builder(
-                        Id(i),
-                        path!(<Widget>::p),
-                        |v: &V2| V2 {
+                    .act_builder(Id(i), path!(Widget.p), |v: &V2| {
+                        V2 {
                             x: v.x + 1.0,
                             y: v.y + 1.0,
-                        },
-                    )
+                        }
+                    })
                     .with_interp(lerp2)
                     .play(s(1)),
                 builder
-                    .act_builder(
-                        Id(i),
-                        path!(<Widget>::r),
-                        |v: &V3| V3 {
+                    .act_builder(Id(i), path!(Widget.r), |v: &V3| {
+                        V3 {
                             x: v.x + 1.0,
                             y: v.y + 1.0,
                             z: v.z + 1.0,
-                        },
-                    )
+                        }
+                    })
                     .with_interp(lerp3)
                     .play(s(1)),
                 builder
-                    .act_builder(
-                        Id(i),
-                        path!(<Widget>::c),
-                        |v: &V4| V4 {
+                    .act_builder(Id(i), path!(Widget.c), |v: &V4| {
+                        V4 {
                             x: v.x + 1.0,
                             y: v.y + 1.0,
                             z: v.z + 1.0,
                             w: v.w + 1.0,
-                        },
-                    )
+                        }
+                    })
                     .with_interp(lerp4)
                     .play(s(1)),
             ]

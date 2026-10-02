@@ -87,8 +87,8 @@ impl SubjectSource<u64, Point> for World {
 /// A registry that knows `Point::x` / `Point::y` and the `To` op.
 pub fn registry() -> SceneRegistry<Toy> {
     let mut r = SceneRegistry::new();
-    r.register_field::<Point, f32>("Point".into(), path!(<Point>::x));
-    r.register_field::<Point, f32>("Point".into(), path!(<Point>::y));
+    r.register_field::<Point, f32>("Point".into(), path!(Point.x));
+    r.register_field::<Point, f32>("Point".into(), path!(Point.y));
     r.register_op::<f32, _>(
         Op::To,
         |value: &f32| -> Box<dyn Action<f32>> {

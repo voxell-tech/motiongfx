@@ -20,23 +20,19 @@ fn sub_field_then_whole_field_composes() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 6.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                6.0
+            })
             .with_interp(lerp_f32)
             .play(s(2)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 3.0,
                     y: 1.0,
                     z: 2.0,
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(2)),
     ]
@@ -72,23 +68,19 @@ fn whole_field_then_sub_field_composes() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 5.0,
                     y: 5.0,
                     z: 5.0,
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(2)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 9.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                9.0
+            })
             .with_interp(lerp_f32)
             .play(s(2)),
     ]
@@ -125,23 +117,19 @@ fn boundary_crossing_seek_applies_child_alias_last() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 2.0,
                     y: 5.0,
                     z: 5.0,
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(2)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 9.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                9.0
+            })
             .with_interp(lerp_f32)
             .play(s(2)),
     ]
@@ -177,19 +165,15 @@ fn sibling_sub_fields_do_not_conflict() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 6.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                6.0
+            })
             .with_interp(lerp_f32)
             .play(s(4)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::y),
-                |_| 8.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.y), |_| {
+                8.0
+            })
             .with_interp(lerp_f32)
             .play(s(4)),
     ]
@@ -224,23 +208,19 @@ fn overlapping_whole_and_sub_field_drops_the_earlier() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 5.0,
                     y: 5.0,
                     z: 5.0,
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(4)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 9.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                9.0
+            })
             .with_interp(lerp_f32)
             .play(s(2)),
     ]
