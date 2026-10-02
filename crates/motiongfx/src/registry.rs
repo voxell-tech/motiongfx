@@ -1,8 +1,8 @@
 use core::any::TypeId;
 
-use field_path::accessor::{Accessor, UntypedAccessor};
 use field_path::field::UntypedField;
-use field_path::field_accessor::FieldAccessor;
+use field_path::lens::{Lens, UntypedLens};
+use field_path::path::Path;
 use hashbrown::HashMap;
 
 use crate::ThreadSafe;
@@ -15,28 +15,26 @@ use crate::prelude::{SubjectSource, TimelineBuilder};
 use crate::subject::SubjectId;
 
 pub struct Registry {
-    pub accessor: AccessorRegistry,
+    pub lens: LensRegistry,
     pub pipeline: PipelineRegistry,
 }
 
 impl Registry {
     pub fn new() -> Self {
         Self {
-            accessor: AccessorRegistry::new(),
+            lens: LensRegistry::new(),
             pipeline: PipelineRegistry::new(),
         }
     }
 
-    pub fn register<W, I, S, T>(
-        &mut self,
-        field_acc: FieldAccessor<S, T>,
-    ) where
+    pub fn register<W, I, S, T>(&mut self, path: Path<S, T>)
+    where
         W: SubjectSource<I, S> + 'static,
         I: SubjectId,
         S: Clone + ThreadSafe,
         T: Clone + ThreadSafe,
     {
-        self.accessor.register(field_acc);
+        self.lens.register(path);
         self.pipeline.register::<W, I, S, T>();
     }
 
@@ -54,43 +52,42 @@ impl Default for Registry {
     }
 }
 
-pub struct AccessorRegistry {
-    accessors: HashMap<UntypedField, UntypedAccessor>,
+pub struct LensRegistry {
+    lenses: HashMap<UntypedField, UntypedLens>,
 }
 
-impl AccessorRegistry {
+impl LensRegistry {
     pub fn new() -> Self {
         Self {
-            accessors: HashMap::new(),
+            lenses: HashMap::new(),
         }
     }
 
-    /// Registers a [`FieldAccessor`] pair.
+    /// Registers a [`Path`] pair.
     /// Skips fields already registered.
     #[inline]
     pub fn register<S: 'static, T: 'static>(
         &mut self,
-        field_acc: FieldAccessor<S, T>,
+        path: Path<S, T>,
     ) {
-        let untyped_field = field_acc.field.untyped();
-        if self.accessors.contains_key(&untyped_field) {
+        let untyped_field = path.field.untyped();
+        if self.lenses.contains_key(&untyped_field) {
             return;
         }
 
-        self.accessors
-            .insert(untyped_field, field_acc.accessor.untyped());
+        self.lenses.insert(untyped_field, path.lens.untyped());
     }
 
-    /// Retrieve a typed [`Accessor`] from the registry.
+    /// Retrieve a typed [`Lens`] from the registry.
     pub fn get<S: 'static, T: 'static>(
         &self,
         field: &UntypedField,
-    ) -> Option<Accessor<S, T>> {
-        self.accessors.get(field)?.typed()
+    ) -> Option<Lens<S, T>> {
+        self.lenses.get(field)?.typed()
     }
 }
 
-impl Default for AccessorRegistry {
+impl Default for LensRegistry {
     fn default() -> Self {
         Self::new()
     }

@@ -19,7 +19,7 @@ pub use motiongfx_interp;
 pub use nonempty;
 
 pub mod prelude {
-    pub use field_path::field_accessor::FieldAccessor;
+    pub use field_path::path::Path;
     pub use motiongfx_interp::ease::{self, EaseFn};
     pub use motiongfx_interp::interpolation::{
         InterpFn, Interpolation,
@@ -33,7 +33,7 @@ pub mod prelude {
     pub use crate::path;
     pub use crate::pipeline::PipelineKey;
     pub use crate::registry::{
-        AccessorRegistry, PipelineRegistry, Registry,
+        LensRegistry, PipelineRegistry, Registry,
     };
     pub use crate::time::{cs, ms, ns, s};
     pub use crate::timeline::{Timeline, TimelineBuilder};
@@ -43,7 +43,7 @@ pub mod prelude {
     pub use crate::world::SubjectSource;
 }
 
-/// See [`field_path::field_accessor!`].
+/// See [`field_path::path!`].
 ///
 /// This macro just forwards the tokens to the mentioned macro.
 ///
@@ -54,12 +54,12 @@ pub mod prelude {
 ///
 /// struct Foo(u32);
 ///
-/// let path = path!(<Foo>::0);
+/// let path = path!(Foo.0);
 /// ```
 #[macro_export]
 macro_rules! path {
     ($($t:tt)*) => {
-        $crate::field_path::field_accessor!($($t)*)
+        $crate::field_path::path!($($t)*)
     };
 }
 

@@ -10,7 +10,7 @@ use common::{
     world_starting_at,
 };
 
-/// `translation::x` then a chained (non-overlapping) whole
+/// `translation.x` then a chained (non-overlapping) whole
 /// `translation`. The second action bakes its start from the composed
 /// `x`, so `x` eases from 6, not from the initial 0.
 #[test]
@@ -20,23 +20,19 @@ fn sub_field_then_whole_field_composes() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 6.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                6.0
+            })
             .with_interp(lerp_f32)
             .play(s(2)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 3.0,
                     y: 1.0,
                     z: 2.0,
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(2)),
     ]
@@ -50,7 +46,7 @@ fn sub_field_then_whole_field_composes() {
     });
     timeline.bake_actions(&registry, &world);
 
-    // Step past `translation::x` so only the whole-`translation` clip
+    // Step past `translation.x` so only the whole-`translation` clip
     // is live, then land halfway through it.
     sample_at(&registry, &mut timeline, &mut world, cs(210));
     let translation =
@@ -63,7 +59,7 @@ fn sub_field_then_whole_field_composes() {
     );
 }
 
-/// Whole `translation` then a chained `translation::x`. `translation::x`
+/// Whole `translation` then a chained `translation.x`. `translation.x`
 /// bakes its start from where `translation` left `x`.
 #[test]
 fn whole_field_then_sub_field_composes() {
@@ -72,23 +68,19 @@ fn whole_field_then_sub_field_composes() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 5.0,
                     y: 5.0,
                     z: 5.0,
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(2)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 9.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                9.0
+            })
             .with_interp(lerp_f32)
             .play(s(2)),
     ]
@@ -114,7 +106,7 @@ fn whole_field_then_sub_field_composes() {
     );
 }
 
-/// A seek that lands inside a later `translation::x` clip while the
+/// A seek that lands inside a later `translation.x` clip while the
 /// earlier whole-`translation` clip resolves to its end in the same
 /// pass. The `x` slide is newer and wins, whichever pipeline samples
 /// first.
@@ -125,23 +117,19 @@ fn boundary_crossing_seek_applies_child_alias_last() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 2.0,
                     y: 5.0,
                     z: 5.0,
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(2)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 9.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                9.0
+            })
             .with_interp(lerp_f32)
             .play(s(2)),
     ]
@@ -152,7 +140,7 @@ fn boundary_crossing_seek_applies_child_alias_last() {
     timeline.bake_actions(&registry, &world);
 
     // From t = 0 straight to t = 3: past the whole-`translation` clip
-    // [0, 2] (-> its end) and halfway through `translation::x` [2, 4].
+    // [0, 2] (-> its end) and halfway through `translation.x` [2, 4].
     let translation =
         sample_at(&registry, &mut timeline, &mut world, s(3));
 
@@ -168,7 +156,7 @@ fn boundary_crossing_seek_applies_child_alias_last() {
     );
 }
 
-/// `translation::x` and `translation::y` fully overlap in time but do
+/// `translation.x` and `translation.y` fully overlap in time but do
 /// not alias, so both run.
 #[test]
 fn sibling_sub_fields_do_not_conflict() {
@@ -177,19 +165,15 @@ fn sibling_sub_fields_do_not_conflict() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 6.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                6.0
+            })
             .with_interp(lerp_f32)
             .play(s(4)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::y),
-                |_| 8.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.y), |_| {
+                8.0
+            })
             .with_interp(lerp_f32)
             .play(s(4)),
     ]
@@ -214,7 +198,7 @@ fn sibling_sub_fields_do_not_conflict() {
     );
 }
 
-/// Whole `translation` then an overlapping `translation::x`. The
+/// Whole `translation` then an overlapping `translation.x`. The
 /// `translation` clip is dropped at compile, so only the `x` slide
 /// runs and `y`/`z` never move.
 #[test]
@@ -224,23 +208,19 @@ fn overlapping_whole_and_sub_field_drops_the_earlier() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 5.0,
                     y: 5.0,
                     z: 5.0,
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(4)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 9.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                9.0
+            })
             .with_interp(lerp_f32)
             .play(s(2)),
     ]
@@ -250,7 +230,7 @@ fn overlapping_whole_and_sub_field_drops_the_earlier() {
     let mut world = world_starting_at(Vec3::default());
     timeline.bake_actions(&registry, &world);
 
-    // The surviving `translation::x` clip is [1, 3]; halfway is t = 2.
+    // The surviving `translation.x` clip is [1, 3]; halfway is t = 2.
     let translation =
         sample_at(&registry, &mut timeline, &mut world, s(2));
 

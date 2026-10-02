@@ -84,11 +84,11 @@ impl SubjectSource<u64, Point> for World {
     }
 }
 
-/// A registry that knows `Point::x` / `Point::y` and the `To` op.
+/// A registry that knows `Point.x` / `Point.y` and the `To` op.
 pub fn registry() -> SceneRegistry<Toy> {
     let mut r = SceneRegistry::new();
-    r.register_field::<Point, f32>("Point".into(), path!(<Point>::x));
-    r.register_field::<Point, f32>("Point".into(), path!(<Point>::y));
+    r.register_field::<Point, f32>("Point".into(), path!(Point.x));
+    r.register_field::<Point, f32>("Point".into(), path!(Point.y));
     r.register_op::<f32, _>(
         Op::To,
         |value: &f32| -> Box<dyn Action<f32>> {
@@ -99,9 +99,9 @@ pub fn registry() -> SceneRegistry<Toy> {
     r
 }
 
-/// `Point::<path>` as a [`FieldRef`].
+/// `Point.<path>` as a [`FieldRef`].
 pub fn field(path: &str) -> FieldRef {
-    FieldRef::new("Point", format!("::{path}"))
+    FieldRef::new("Point", format!(".{path}"))
 }
 
 /// Subject 0 starts at `x = 0.0`; one action drives it to `5.0` over

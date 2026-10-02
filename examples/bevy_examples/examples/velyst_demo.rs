@@ -89,19 +89,19 @@ fn setup(
         .id();
 
     let frag = [
-        b.act(grid, path!(<KanvaAnim>::t), |_| 1.0)
+        b.act(grid, path!(KanvaAnim.t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(s(2)),
-        b.act(circle, path!(<KanvaAnim>::t), |_| 1.0)
+        b.act(circle, path!(KanvaAnim.t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(s(1)),
-        b.act(equation, path!(<KanvaAnim>::t), |_| 1.0)
+        b.act(equation, path!(KanvaAnim.t), |_| 1.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(s(2)),
-        b.act(plot, path!(<VPlotFunc>::data::circle_x), |_| 3.0)
+        b.act(plot, path!(VPlotFunc.data.circle_x), |_| 3.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(s(2)),
-        b.act(plot, path!(<VPlotFunc>::data::circle_y), |_| 4.0)
+        b.act(plot, path!(VPlotFunc.data.circle_y), |_| 4.0)
             .with_ease(ease::cubic::ease_in_out)
             .play(s(2)),
     ]

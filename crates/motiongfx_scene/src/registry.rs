@@ -33,7 +33,7 @@ trait FieldResolver<B: SceneBackend> {
 
     /// Writes one [`FieldSeed`] into `world`, reusing the same
     /// name-to-type resolution [`Self::build`] does but assigning
-    /// through the accessor instead of building an action.
+    /// through the lens instead of building an action.
     fn seed(
         &self,
         subject: B::Id,
@@ -71,17 +71,17 @@ where
     ) -> Result<TrackFragment, CompileError<B>> {
         let untyped_field = registry.resolve_field(&cmd.field)?;
 
-        // Verify type match and get the typed accessor.
-        let accessor = builder
+        // Verify type match and get the typed lens.
+        let lens = builder
             .registry()
-            .accessor
+            .lens
             .get::<S, T>(&untyped_field)
             .ok_or_else(|| CompileError::TypeMismatch {
                 type_name: core::any::type_name::<T>(),
                 field: cmd.field.clone(),
             })?;
 
-        // Reconstruct the typed Field and FieldAccessor.
+        // Reconstruct the typed Field and Path.
         let field =
             untyped_field.typed::<S, T>().ok_or_else(|| {
                 CompileError::TypeMismatch {
@@ -90,7 +90,7 @@ where
                 }
             })?;
 
-        let field_acc = FieldAccessor::new(field, accessor);
+        let path = Path::new(field, lens);
 
         // Pulled from the pool *before* op resolution: by the time
         // `build_action` runs, `T` is already concrete, so the op
@@ -110,7 +110,7 @@ where
             CompileError::UnknownSubjectKind(cmd.field.clone())
         })?;
         let mut tb = builder
-            .act_builder(key, field_acc, action)
+            .act_builder(key, path, action)
             .with_interp(interp_fn);
 
         if let Some(ease) = ease {
@@ -128,14 +128,14 @@ where
         values: &B::ValuePool,
         world: &mut B::World,
     ) -> Result<(), CompileError<B>> {
-        let field_acc = registry
+        let path = registry
             .fields
-            .get::<FieldAccessor<S, T>>(&state.field)
+            .get::<Path<S, T>>(&state.field)
             .ok_or_else(|| CompileError::TypeMismatch {
                 type_name: core::any::type_name::<T>(),
                 field: state.field.clone(),
             })?;
-        let accessor = field_acc.accessor;
+        let lens = path.lens;
 
         let value: T = values
             .get(state.value)
@@ -148,7 +148,7 @@ where
 
         world
             .apply_source(key, |source: &mut S| {
-                *accessor.get_mut(source) = value;
+                *lens.get_mut(source) = value;
             })
             .ok_or(CompileError::UnknownSubject(subject))
     }
@@ -162,7 +162,7 @@ type FieldResolverBox<B> = Box<dyn FieldResolver<B> + Send + Sync>;
 type FieldRegistrar =
     fn(&mut Registry, &TypeTable<FieldRef>, &FieldRef);
 
-fn register_field_accessor<B, S, T, I>(
+fn register_field_lens<B, S, T, I>(
     runtime: &mut Registry,
     fields: &TypeTable<FieldRef>,
     field_ref: &FieldRef,
@@ -173,12 +173,9 @@ fn register_field_accessor<B, S, T, I>(
     S: Clone + ThreadSafe,
     T: ThreadSafe + Clone,
 {
-    if let Some(field_acc) =
-        fields.get::<FieldAccessor<S, T>>(field_ref)
-    {
-        runtime.register::<B::World, I, S, T>(FieldAccessor::new(
-            field_acc.field,
-            field_acc.accessor,
+    if let Some(path) = fields.get::<Path<S, T>>(field_ref) {
+        runtime.register::<B::World, I, S, T>(Path::new(
+            path.field, path.lens,
         ));
     }
 }
@@ -190,7 +187,7 @@ fn register_field_accessor<B, S, T, I>(
 /// optionally [`Self::register_ease`]/[`Self::register_interp`].
 pub struct SceneRegistry<B: SceneBackend> {
     /// Columns are [`UntypedField`], [`FieldResolverBox`],
-    /// [`FieldAccessor`], and [`FieldRegistrar`].
+    /// [`Path`], and [`FieldRegistrar`].
     fields: TypeTable<FieldRef>,
     action_resolvers: TypeTable<B::OpId>,
     eases: HashMap<B::EaseId, EaseFn>,
@@ -214,7 +211,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
     pub fn register_field<S, T>(
         &mut self,
         type_name: TypeName,
-        field_acc: FieldAccessor<S, T>,
+        path: Path<S, T>,
     ) -> &mut Self
     where
         B::World: SubjectSource<B::Id, S>,
@@ -222,9 +219,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
         S: Clone + ThreadSafe,
         T: ThreadSafe + Clone,
     {
-        self.register_field_with_key::<S, T, B::Id>(
-            type_name, field_acc,
-        )
+        self.register_field_with_key::<S, T, B::Id>(type_name, path)
     }
 
     /// Registers a field mapping, resolving the subject id into
@@ -234,7 +229,7 @@ impl<B: SceneBackend> SceneRegistry<B> {
     pub fn register_field_with_key<S, T, I>(
         &mut self,
         type_name: TypeName,
-        field_acc: FieldAccessor<S, T>,
+        path: Path<S, T>,
     ) -> &mut Self
     where
         B::Id: IntoSubjectId<I>,
@@ -245,8 +240,8 @@ impl<B: SceneBackend> SceneRegistry<B> {
         T: ThreadSafe + Clone,
     {
         let field_ref =
-            FieldRef::new(type_name, field_acc.field.field_path());
-        let untyped = field_acc.field.untyped();
+            FieldRef::new(type_name, path.field.field_path());
+        let untyped = path.field.untyped();
         self.fields
             .insert::<UntypedField>(field_ref.clone(), untyped);
         self.fields.insert::<FieldResolverBox<B>>(
@@ -254,20 +249,17 @@ impl<B: SceneBackend> SceneRegistry<B> {
             Box::new(ConcreteFieldResolver::<B, S, T, I>::default()),
         );
 
-        self.fields.insert::<FieldAccessor<S, T>>(
-            field_ref.clone(),
-            field_acc,
-        );
+        self.fields.insert::<Path<S, T>>(field_ref.clone(), path);
         self.fields.insert::<FieldRegistrar>(
             field_ref,
-            register_field_accessor::<B, S, T, I>,
+            register_field_lens::<B, S, T, I>,
         );
         self
     }
 
-    /// Installs every registered field's accessor into the runtime
+    /// Installs every registered field's lens into the runtime
     /// [`Registry`].
-    pub(crate) fn install_accessors(
+    pub(crate) fn install_lenses(
         &self,
         runtime_registry: &mut Registry,
     ) {

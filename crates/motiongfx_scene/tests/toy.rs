@@ -101,7 +101,7 @@ impl SubjectSource<u64, Circle> for ToyWorld {
 }
 
 fn field(path: &str) -> FieldRef {
-    FieldRef::new("Point", format!("::{path}"))
+    FieldRef::new("Point", format!(".{path}"))
 }
 
 fn action_cmd(
@@ -144,14 +144,10 @@ fn subject(
 /// `to(value)` command.
 fn registry_with_to_op() -> SceneRegistry<ToyBackend> {
     let mut registry = SceneRegistry::new();
-    registry.register_field::<Point, f32>(
-        "Point".into(),
-        path!(<Point>::x),
-    );
-    registry.register_field::<Point, f32>(
-        "Point".into(),
-        path!(<Point>::y),
-    );
+    registry
+        .register_field::<Point, f32>("Point".into(), path!(Point.x));
+    registry
+        .register_field::<Point, f32>("Point".into(), path!(Point.y));
     registry.register_op::<f32, _>(
         Op::To,
         |value: &f32| -> Box<dyn Action<f32>> {
@@ -379,13 +375,11 @@ fn delayed_node_shifts_the_start_time() {
 fn one_op_registration_covers_every_owning_type_sharing_t() {
     let mut scene_registry: SceneRegistry<ToyBackend> =
         SceneRegistry::new();
-    scene_registry.register_field::<Point, f32>(
-        "Point".into(),
-        path!(<Point>::x),
-    );
+    scene_registry
+        .register_field::<Point, f32>("Point".into(), path!(Point.x));
     scene_registry.register_field::<Circle, f32>(
         "Circle".into(),
-        path!(<Circle>::radius),
+        path!(Circle.radius),
     );
     // Registered once, for T = f32; never registered again for Circle.
     scene_registry.register_op::<f32, _>(
@@ -399,7 +393,7 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
     let mut values = ToyValuePool::default();
     let circle_action = ActionCmd {
         subject: 0,
-        field: FieldRef::new("Circle", "::radius"),
+        field: FieldRef::new("Circle", ".radius"),
         op: Op::To,
         value: values.insert(3.0),
         duration: ms(100),
@@ -410,7 +404,7 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
     // Two owning types on one subject, so two initial entries.
     let mut staged = subject(&mut values, 0, &["x"]);
     staged.fields.push(FieldSeed {
-        field: FieldRef::new("Circle", "::radius"),
+        field: FieldRef::new("Circle", ".radius"),
         value: values.insert(0.0),
     });
     let scene: Scene<ToyBackend> = Scene {
@@ -477,10 +471,8 @@ fn unregistered_op_is_a_compile_error() {
     // Field is registered, but no op is.
     let mut scene_registry: SceneRegistry<ToyBackend> =
         SceneRegistry::new();
-    scene_registry.register_field::<Point, f32>(
-        "Point".into(),
-        path!(<Point>::x),
-    );
+    scene_registry
+        .register_field::<Point, f32>("Point".into(), path!(Point.x));
 
     let mut values = ToyValuePool::default();
     let scene: Scene<ToyBackend> = Scene {

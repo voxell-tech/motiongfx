@@ -25,7 +25,7 @@ impl<B: SceneBackend> Scene<B> {
         scene_registry: &SceneRegistry<B>,
         runtime_registry: &mut Registry,
     ) -> Result<Timeline<B::World>, CompileError<B>> {
-        scene_registry.install_accessors(runtime_registry);
+        scene_registry.install_lenses(runtime_registry);
         let mut builder =
             runtime_registry.create_builder::<B::World>();
 

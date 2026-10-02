@@ -5,7 +5,7 @@ use crate::ThreadSafe;
 use crate::action::{
     ActionId, ActionTable, Segment, UntypedSubjectId,
 };
-use crate::registry::AccessorRegistry;
+use crate::registry::LensRegistry;
 use crate::subject::SubjectId;
 use crate::world::SubjectSource;
 
@@ -43,7 +43,7 @@ pub struct BakeClipCtx<'a, W> {
     pub action_id: ActionId,
     pub scratch: &'a mut BakeScratch,
     pub action_table: &'a mut ActionTable,
-    pub accessor_registry: &'a AccessorRegistry,
+    pub lens_registry: &'a LensRegistry,
 }
 
 /// Bakes one clip's [`Segment`] against the source's working copy, so
@@ -60,9 +60,7 @@ where
     else {
         return;
     };
-    let Some(accessor) =
-        ctx.accessor_registry.get::<S, T>(&ctx.field)
-    else {
+    let Some(lens) = ctx.lens_registry.get::<S, T>(&ctx.field) else {
         return;
     };
     let Some(source) = ctx.scratch.source::<S>(ctx.subject, || {
@@ -76,7 +74,7 @@ where
         return;
     };
 
-    let start = accessor.get_ref(source).clone();
+    let start = lens.get_ref(source).clone();
     let end = action(&start);
 
     let seg_col = ctx.action_table.ensure_segment_column::<T>();
@@ -86,5 +84,5 @@ where
         seg_col,
     );
 
-    *accessor.get_mut(source) = end;
+    *lens.get_mut(source) = end;
 }

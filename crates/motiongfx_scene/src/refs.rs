@@ -2,7 +2,7 @@
 //!
 //! Everything the animation portion points at is a name or an id, never
 //! a Rust type or a runtime handle. The [`registry`](crate::registry)
-//! resolves these into concrete accessors, ops, and subjects at compile
+//! resolves these into concrete lenses, ops, and subjects at compile
 //! time.
 
 use alloc::boxed::Box;
@@ -37,7 +37,7 @@ impl<T: Into<Box<str>>> From<T> for TypeName {
 }
 
 /// Names a field to animate: its owning source type plus a field path
-/// like `"translation::x"`.
+/// like `".translation.x"`.
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize,
 )]

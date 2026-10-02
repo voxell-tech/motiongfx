@@ -1,10 +1,10 @@
 //! Two actions on one `Transform` whose field paths overlap in memory
-//! (`translation` and `translation::x`).
+//! (`translation` and `translation.x`).
 //!
 //! - top cube: the two actions are chained, so they never overlap in
-//!   time. Baking composes them: `translation::x` starts from the `x`
+//!   time. Baking composes them: `translation.x` starts from the `x`
 //!   that `translation` left, so the motion is continuous.
-//! - bottom cube: the `translation::x` action overlaps `translation`
+//! - bottom cube: the `translation.x` action overlaps `translation`
 //!   in time. At compile the `translation` clip is dropped entirely,
 //!   so the cube only does the x-slide and never rises.
 
@@ -51,8 +51,8 @@ fn setup(mut commands: Commands) {
 
     commands.spawn((
         Text::new(
-            "top: chained translation then translation::x, baking composes them (continuous)\n\
-             bottom: overlapping translation::x removed the translation clip at compile\n\
+            "top: chained translation then translation.x, baking composes them (continuous)\n\
+             bottom: overlapping translation.x removed the translation clip at compile\n\
              space = play,  A/Left | D/Right = scrub",
         ),
         Node {
@@ -109,14 +109,14 @@ fn spawn_timeline(
     let ease = ease::cubic::ease_in_out;
 
     // Top: chained, so no time overlap. `translation` lifts the cube,
-    // then `translation::x` continues x from the composed position.
+    // then `translation.x` continues x from the composed position.
     let compose_track = [
-        b.act(compose, path!(<Transform>::translation), |_| {
+        b.act(compose, path!(Transform.translation), |_| {
             START + Vec3::new(3.0, 6.0, 0.0)
         })
         .with_ease(ease)
         .play(s(2)),
-        b.act(compose, path!(<Transform>::translation::x), |_| {
+        b.act(compose, path!(Transform.translation.x), |_| {
             START.x + 10.0
         })
         .with_ease(ease)
@@ -124,15 +124,15 @@ fn spawn_timeline(
     ]
     .ord_chain();
 
-    // Bottom: `translation::x` starts one second in, overlapping
+    // Bottom: `translation.x` starts one second in, overlapping
     // `translation`. The `translation` clip is removed at compile.
     let conflict_track = [
-        b.act(conflict, path!(<Transform>::translation), |_| {
+        b.act(conflict, path!(Transform.translation), |_| {
             START + Vec3::new(3.0, 6.0, 0.0)
         })
         .with_ease(ease)
         .play(s(4)),
-        b.act(conflict, path!(<Transform>::translation::x), |_| {
+        b.act(conflict, path!(Transform.translation.x), |_| {
             START.x + 10.0
         })
         .with_ease(ease)

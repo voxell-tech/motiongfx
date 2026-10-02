@@ -19,25 +19,21 @@ fn backward_jump_resamples_an_earlier_clip() {
 
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 10.0,
                     ..Default::default()
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(2)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation),
-                |_| Vec3 {
+            .act_builder(CUBE, path!(Transform.translation), |_| {
+                Vec3 {
                     x: 20.0,
                     ..Default::default()
-                },
-            )
+                }
+            })
             .with_interp(lerp_vec3)
             .play(s(2)),
     ]
@@ -63,7 +59,7 @@ fn backward_jump_resamples_an_earlier_clip() {
 /// A gap that sits after an earlier clip must show that clip's end
 /// state, even when the seek that lands there never traverses the
 /// clip itself - jumping straight back from well past a later clip.
-/// Both clips act on `translation::x`, an inner sub-field action, the
+/// Both clips act on `translation.x`, an inner sub-field action, the
 /// case reported as "not being sampled" when scrubbing backward.
 #[test]
 fn backward_jump_into_a_gap_holds_the_preceding_clips_end() {
@@ -73,20 +69,16 @@ fn backward_jump_into_a_gap_holds_the_preceding_clips_end() {
     // A: [0,1] -> x=10.  gap [1,2].  B: [2,3] -> x=20.
     let track = [
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 10.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                10.0
+            })
             .with_interp(lerp_f32)
             .play(s(1)),
         TrackFragment::silent(s(1)),
         builder
-            .act_builder(
-                CUBE,
-                path!(<Transform>::translation::x),
-                |_| 20.0,
-            )
+            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+                20.0
+            })
             .with_interp(lerp_f32)
             .play(s(1)),
     ]

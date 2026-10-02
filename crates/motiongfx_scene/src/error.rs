@@ -62,7 +62,7 @@ impl<B: SceneBackend> fmt::Display for CompileError<B> {
             Self::UnknownField(field) => {
                 write!(
                     f,
-                    "unknown field {}::{}",
+                    "unknown field {}{}",
                     field.type_name(),
                     field.path()
                 )
@@ -82,7 +82,7 @@ impl<B: SceneBackend> fmt::Display for CompileError<B> {
             Self::UnknownSubjectKind(field) => {
                 write!(
                     f,
-                    "unknown subject kind for field {}::{}",
+                    "unknown subject kind for field {}{}",
                     field.type_name(),
                     field.path()
                 )
@@ -90,7 +90,7 @@ impl<B: SceneBackend> fmt::Display for CompileError<B> {
             Self::TypeMismatch { type_name, field } => {
                 write!(
                     f,
-                    "type mismatch for {type_name} field {}::{}",
+                    "type mismatch for {type_name} field {}{}",
                     field.type_name(),
                     field.path()
                 )

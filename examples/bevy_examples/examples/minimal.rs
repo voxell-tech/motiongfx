@@ -51,13 +51,11 @@ fn build_timeline(
     // Build the timeline.
     let mut b = motiongfx.create_builder();
     let track = [
-        b.act(cube_id, path!(<Transform>::translation::x), |x| {
-            x + 6.0
-        })
-        .play(s(1)),
+        b.act(cube_id, path!(Transform.translation.x), |x| x + 6.0)
+            .play(s(1)),
         b.act(
             cube_mat_id,
-            path!(<StandardMaterial>::base_color),
+            path!(StandardMaterial.base_color),
             |_| Srgba::RED.into(),
         )
         .play(s(1)),
