@@ -13,20 +13,23 @@
 A scene never names a concrete type. It refers to fields, ops, and
 values *by name*. A `SceneBackend` supplies the id and pool types, and
 a `SceneRegistry` supplies the code that turns those names back into
-typed accessors and `motiongfx` actions. Three layers:
+typed accessors and `motiongfx` actions. The crate is split into the
+three layers below.
 
 ## 1. Format
 
-Pure data, no engine and no backend. A `Scene<B>` is three parts:
+The format is plain data with no engine or backend attached. A
+`Scene<B>` has three parts:
 
-- **`stage`**: The value every animated field starts from. One
+- `stage` holds the value every animated field starts from, as one
   `FieldSeed` (a `FieldRef` plus a value id) per subject field.
-- **`animation`**: A tree of `Block`s. Each block has a `Combinator`
+- `animation` is a tree of `Block`s. Each block has a `Combinator`
   (`Chain`, `All`, `Flow`) and children that are nested blocks, leaf
   `Node::action(ActionCmd)`s, or `Node::draft` timing slots. A `Node`
   can carry a `delay`.
-- **`values`**: The `ValuePool`. Every number an action or seed refers
-  to, addressed by id so the tree itself stays plain data.
+- `values` is the `ValuePool`, which holds every value an action or
+  seed refers to. They are addressed by id so the tree stays plain
+  data.
 
 The examples below use a toy backend with one `f32` column and a
 `Point` world, defined in
@@ -72,13 +75,10 @@ assert_eq!(scene, back);
 
 ## 2. Registry
 
-`SceneRegistry<B>` is where the app teaches the format its types,
-before any scene is compiled. It binds names to code:
-
-- **`register_field`**: Binds a `FieldRef` (owner `"Point"`, path
-  `"::x"`) to a typed `FieldAccessor`.
-- **`register_op`**: Binds an `OpId` to a closure that builds a
-  `motiongfx` `Action<T>`.
+`SceneRegistry<B>` is where the app registers its types before any
+scene is compiled. `register_field` binds a `FieldRef` (owner
+`"Point"`, path `"::x"`) to a typed `FieldAccessor`, and `register_op`
+binds an `OpId` to a closure that builds a `motiongfx` `Action<T>`.
 
 ```rust
 # #[path = "docs/backend.rs"] mod _doc; use _doc::*;
@@ -94,7 +94,7 @@ registry.register_op::<f32, _>(Op::To, |value: &f32| {
 });
 ```
 
-Op registration is keyed by the *value* type, not the owning type: one
+Ops are registered per value type, so one
 `register_op::<f32, _>(Op::To, ..)` serves `Point::x`, `Circle::radius`,
 and every other `f32` field.
 
@@ -103,8 +103,8 @@ and every other `f32` field.
 `Scene::compile` walks the block tree, resolves every `FieldRef` and
 `OpId` through the registry, and folds the blocks by their combinators
 into a `motiongfx::Timeline`. `Scene::stage` writes the seed values
-straight into the world - what `Timeline::bake_actions` then reads as
-each track's starting point.
+straight into the world, and `Timeline::bake_actions` then reads them
+as each track's starting point.
 
 ```rust
 # #[path = "docs/backend.rs"] mod _doc; use _doc::*;
@@ -128,8 +128,8 @@ timeline.sample_queued_actions(&runtime, &mut world);
 assert_eq!(world.points[&0].x, 5.0);
 ```
 
-Resolution is fallible: an unregistered field or op is a
-`CompileError`, never a panic.
+An unregistered field or op returns a `CompileError` instead of
+panicking.
 
 ## Join the community!
 
@@ -139,8 +139,8 @@ You can join us on the [Voxell discord server](https://discord.gg/Mhnyp6VYEQ).
 
 `motiongfx_scene` is dual-licensed under either:
 
-- MIT License ([LICENSE-MIT](/LICENSE-MIT) or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
-- Apache License, Version 2.0 ([LICENSE-APACHE](/LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
+- MIT License ([LICENSE-MIT](../../LICENSE-MIT) or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](../../LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
 
 This means you can select the license you prefer!
 This dual-licensing approach is the de-facto standard in the Rust ecosystem and there are [very good reasons](https://github.com/bevyengine/bevy/issues/2373) to include both.

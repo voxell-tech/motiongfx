@@ -1,5 +1,7 @@
 use bevy_math::*;
-use motiongfx::motiongfx_interp::impl_float_interpolation;
+use motiongfx::motiongfx_interp::{
+    impl_float_interpolation, impl_int_interpolation,
+};
 use motiongfx::prelude::*;
 
 #[derive(Debug)]
@@ -37,14 +39,9 @@ impl_slerp_interpolation!(Dir2, f32);
 impl_slerp_interpolation!(Dir3, f32);
 impl_slerp_interpolation!(Dir3A, f32);
 
-impl Interpolation<Bevy> for u8 {
-    fn interp(a: &Self, b: &Self, t: f32) -> Self {
-        let a = *a as f32;
-        let b = *b as f32;
-
-        ((b - a) * t + a) as u8
-    }
-}
+impl_int_interpolation!(UVec2, u32, Bevy);
+impl_int_interpolation!(UVec3, u32, Bevy);
+impl_int_interpolation!(UVec4, u32, Bevy);
 
 #[cfg(feature = "color")]
 pub mod color {
