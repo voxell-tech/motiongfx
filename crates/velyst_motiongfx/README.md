@@ -45,13 +45,13 @@ Declare `scene()` as a Rust type and register it, so Velyst can call
 it:
 
 ```rust
-# use bevy::prelude::*;
-# use velyst_motiongfx::prelude::*;
+use bevy::prelude::*;
+use velyst_motiongfx::prelude::*;
 typst_func!("scene", #[derive(Default, Clone)] struct SceneFunc {});
 
-# fn build(app: &mut App) {
-app.register_typst_func::<SceneFunc>();
-# }
+fn build(app: &mut App) {
+    app.register_typst_func::<SceneFunc>();
+}
 ```
 
 Then spawn it with a `VelystKanva`, and pick and animate its paths:
@@ -84,23 +84,23 @@ Animate `KanvaAnim.t` to `1.0` on a timeline:
 
 ```rust
 # #[path = "docs/scene.rs"] mod _doc; use _doc::*;
-# fn play(
-#     mut commands: Commands,
-#     mut motiongfx: ResMut<MotionGfxManager>,
-#     grid: Entity,
-# ) {
-let mut b = motiongfx.create_builder();
-let track = b
-    .act(grid, path!(KanvaAnim.t), |_| 1.0)
-    .play(s(2))
-    .compile();
-let timeline = b.compile(track);
+fn play(
+    mut commands: Commands,
+    mut motiongfx: ResMut<MotionGfxManager>,
+    grid: Entity,
+) {
+    let mut b = motiongfx.create_builder();
+    let track = b
+        .act(grid, path!(KanvaAnim.t), |_| 1.0)
+        .play(s(2))
+        .compile();
+    let timeline = b.compile(track);
 
-commands.spawn((
-    motiongfx.add_timeline(timeline),
-    RealtimePlayer::new().with_playing(true),
-));
-# }
+    commands.spawn((
+        motiongfx.add_timeline(timeline),
+        RealtimePlayer::new().with_playing(true),
+    ));
+}
 ```
 
 See [`velyst_demo.rs`](../../examples/bevy_examples/examples/velyst_demo.rs)
