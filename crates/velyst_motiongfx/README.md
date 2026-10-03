@@ -41,6 +41,21 @@ Wrap what you want to animate in two empty labelled boxes:
 
 ## 2. Pick Them and Choose an Animation
 
+Declare `scene()` as a Rust type and register it, so Velyst can call
+it:
+
+```rust
+# use bevy::prelude::*;
+# use velyst_motiongfx::prelude::*;
+typst_func!("scene", #[derive(Default, Clone)] struct SceneFunc {});
+
+# fn build(app: &mut App) {
+app.register_typst_func::<SceneFunc>();
+# }
+```
+
+Then spawn it with a `VelystKanva`, and pick and animate its paths:
+
 ```rust
 # #[path = "docs/scene.rs"] mod _doc; use _doc::*;
 fn setup(mut commands: Commands, assets: Res<AssetServer>) {
