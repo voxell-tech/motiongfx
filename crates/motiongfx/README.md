@@ -7,7 +7,7 @@
 [![CI](https://github.com/voxell-tech/motiongfx/workflows/CI/badge.svg)](https://github.com/voxell-tech/motiongfx/actions)
 [![Discord](https://img.shields.io/discord/442334985471655946.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/Mhnyp6VYEQ)
 
-**MotionGfx** is a backend-agnostic motion graphics framework. It
+[**MotionGfx**](https://motiongfx.voxell.dev) is a backend-agnostic motion graphics framework. It
 provides a modular foundation for procedural animations.
 
 ## Key Features
