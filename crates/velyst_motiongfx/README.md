@@ -1,5 +1,12 @@
 # Velyst MotionGfx
 
+[![License](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)](https://github.com/voxell-tech/motiongfx#license)
+[![Crates.io](https://img.shields.io/crates/v/velyst_motiongfx.svg)](https://crates.io/crates/velyst_motiongfx)
+[![Downloads](https://img.shields.io/crates/d/velyst_motiongfx.svg)](https://crates.io/crates/velyst_motiongfx)
+[![Docs](https://docs.rs/velyst_motiongfx/badge.svg)](https://docs.rs/velyst_motiongfx/latest/velyst_motiongfx/)
+[![CI](https://github.com/voxell-tech/motiongfx/workflows/CI/badge.svg)](https://github.com/voxell-tech/motiongfx/actions)
+[![Discord](https://img.shields.io/discord/442334985471655946.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/Mhnyp6VYEQ)
+
 **Velyst MotionGfx** animates the typeset paths inside a
 [Velyst](https://github.com/voxell-tech/velyst) `VelystKanva` with
 [Bevy MotionGfx](https://crates.io/crates/bevy_motiongfx).
