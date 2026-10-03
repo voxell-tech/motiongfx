@@ -10,263 +10,85 @@
 **Velyst MotionGfx** animates [Typst](https://typst.app) content
 rendered by [Velyst](https://github.com/voxell-tech/velyst), path by
 path, with [Bevy MotionGfx](https://crates.io/crates/bevy_motiongfx).
-Trace a graph's grid line by line, fade an equation in, or pop a
-shape into place.
 
-## How It Works
+## Core Concepts
 
-Velyst lays out a Typst function and draws it into a `VelystKanva`, a
-flat list of paths. This crate adds two components that sit beside
-it:
+- **`VelystKanva`** holds the paths Velyst draws for a Typst
+  function.
+- **`KanvaGroup`** picks some of those paths, by labels you write in
+  Typst.
+- **`KanvaAnim`** reveals the picked paths one after another. Its `t`
+  goes from `0.0` (hidden) to `1.0` (shown), and you animate it like
+  any other field.
 
-- `KanvaGroup` picks which paths to animate, using labels you write
-  in Typst.
-- `KanvaAnim` says how those paths appear. Its `t` goes from `0.0`
-  (hidden) to `1.0` (fully shown), and you animate `t` with a
-  MotionGfx timeline like any other field.
+Add `VelystMotionGfxPlugin` next to `VelloPlugin`, `VelystPlugin` and
+`BevyMotionGfxPlugin`.
 
-The steps below build a small scene: a grid that traces in, followed
-by a circle that scales in.
+## 1. Label the Paths in Typst
 
-## 1. Add the Plugins
-
-`VelystMotionGfxPlugin` needs Vello, Velyst and Bevy MotionGfx
-alongside it.
-
-```rust,no_run
-use bevy::prelude::*;
-use bevy_motiongfx::BevyMotionGfxPlugin;
-use velyst_motiongfx::prelude::*;
-use velyst_motiongfx::velyst::VelystPlugin;
-use velyst_motiongfx::velyst::bevy_vello::VelloPlugin;
-
-App::new()
-    .add_plugins((
-        DefaultPlugins,
-        VelloPlugin::default(),
-        BevyMotionGfxPlugin,
-        VelystPlugin,
-        VelystMotionGfxPlugin,
-    ))
-    .run();
-```
-
-## 2. Label What You Want to Animate
-
-In your Typst file, mark each part you want to animate on its own.
-Put an empty labelled box before and after it:
+Wrap what you want to animate in two empty labelled boxes:
 
 ```typ
-// assets/scene.typ
-#import "@preview/cetz:0.5.2": canvas, draw
-
 #let scene() = canvas(length: 1pt, {
   import draw: *
-
   content((0, 0), [#box() <grid-start>])
-  grid((-200, -200), (200, 200), step: 40, stroke: gray)
+  grid((-200, -200), (200, 200), step: 40)
   content((0, 0), [#box() <grid-end>])
-
-  content((0, 0), [#box() <circle-start>])
-  circle((0, 0), radius: 20, fill: purple)
-  content((0, 0), [#box() <circle-end>])
 })
 ```
 
-Every path drawn between `<grid-start>` and `<grid-end>` now belongs
-to the grid. You can also put a label on the content itself, such as
-`#box[$x^2$] <eq>`, to select everything inside it.
-
-## 3. Spawn the Typst Function
-
-Declare the Typst function with `typst_func!`, register it, and spawn
-it with a `VelystKanva` so its paths can be animated. A camera with
-`VelloView` renders it.
-
-```rust,no_run
-# use bevy::prelude::*;
-# use velyst_motiongfx::prelude::*;
-use velyst_motiongfx::velyst::bevy_vello::prelude::*;
-
-// Matches `#let scene() = ...` in `scene.typ`.
-typst_func!("scene", #[derive(Default, Clone)] struct SceneFunc {});
-
-# fn plugin(app: &mut App) {
-// When building the app:
-app.register_typst_func::<SceneFunc>();
-# }
-
-fn spawn_scene(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
-    commands.spawn((Camera2d, VelloView));
-
-    commands.spawn((
-        VelystFunc::new(
-            asset_server.load("scene.typ"),
-            SceneFunc::default(),
-        ),
-        WorldScene::default().with_anchor(Vec2::splat(0.5)),
-        VelystKanva::default(),
-    ));
-}
-```
-
-## 4. Pick the Paths
-
-Spawn an entity with a `KanvaGroup` for each part, pointing at the
-scene with `with_target`.
-
-| Constructor | Selects |
-| --- | --- |
-| `KanvaGroup::all()` | every path in the kanva |
-| `KanvaGroup::inner("eq")` | the paths inside the content labelled `<eq>` |
-| `KanvaGroup::wrap("grid-start", "grid-end")` | the paths between two marker labels |
-
-Without `with_target`, the group animates the kanva on its own
-entity, so a single-part scene can put everything on one entity.
-
-## 5. Choose How They Appear
-
-Add a `KanvaAnim` next to each `KanvaGroup`. Each preset describes
-what one path does as it appears:
-
-| Preset | Each path |
-| --- | --- |
-| `KanvaAnim::trace(w)` | draws its outline from start to end |
-| `KanvaAnim::fade(w)` | fades in |
-| `KanvaAnim::trace_fade(w, r)` | traces, then fades its fill in (`r` is the share spent tracing) |
-| `KanvaAnim::scale_fade(w)` | grows from half size while fading in |
-| `KanvaAnim::fade_up(w)` | slides up while fading in |
-| `KanvaAnim::scale_pulse(w)` | pops bigger, then settles back |
-
-Paths appear one after another rather than all at once. The `w`
-argument (`path_window`) sets how much of the animation each path
-takes, from `0.0` to `1.0`:
-
-- `1.0`: every path animates together.
-- `0.5`: each path takes half the time, so the paths overlap.
-- Close to `0.0`: each path snaps in, one after another.
+## 2. Pick Them and Choose an Animation
 
 ```rust
-# use bevy::prelude::*;
-# use velyst_motiongfx::prelude::*;
-fn spawn_parts(mut commands: Commands, scene: Entity) {
+# #[path = "docs/scene.rs"] mod _doc; use _doc::*;
+fn setup(mut commands: Commands, assets: Res<AssetServer>) {
+    let scene = commands
+        .spawn((
+            VelystFunc::new(assets.load("scene.typ"), SceneFunc {}),
+            WorldScene::default(),
+            VelystKanva::default(),
+        ))
+        .id();
+
     commands.spawn((
-        KanvaGroup::wrap("grid-start", "grid-end")
-            .with_target(scene),
+        KanvaGroup::wrap("grid-start", "grid-end").with_target(scene),
+        // Each path takes half of `t`, so they overlap.
         KanvaAnim::trace(0.5),
     ));
-    commands.spawn((
-        KanvaGroup::wrap("circle-start", "circle-end")
-            .with_target(scene),
-        KanvaAnim::scale_fade(0.3),
-    ));
 }
 ```
 
-## 6. Play It
+Other presets are `fade`, `trace_fade`, `scale_fade`, `fade_up` and
+`scale_pulse`, or build your own from `KanvaPhase`s.
 
-Animate each part's `KanvaAnim.t` to `1.0` on a timeline. `ord_chain`
-plays them one after another.
+## 3. Play It
+
+Animate `KanvaAnim.t` to `1.0` on a timeline:
 
 ```rust
-# use bevy::prelude::*;
-use bevy_motiongfx::prelude::*;
-# use velyst_motiongfx::prelude::*;
-
-fn play(
-    mut commands: Commands,
-    mut motiongfx: ResMut<MotionGfxManager>,
-    grid: Entity,
-    circle: Entity,
-) {
-    let mut b = motiongfx.create_builder();
-
-    let track = [
-        b.act(grid, path!(KanvaAnim.t), |_| 1.0)
-            .with_ease(ease::cubic::ease_in_out)
-            .play(s(2)),
-        b.act(circle, path!(KanvaAnim.t), |_| 1.0)
-            .with_ease(ease::cubic::ease_in_out)
-            .play(s(1)),
-    ]
-    .ord_chain()
+# #[path = "docs/scene.rs"] mod _doc; use _doc::*;
+# fn play(
+#     mut commands: Commands,
+#     mut motiongfx: ResMut<MotionGfxManager>,
+#     grid: Entity,
+# ) {
+let mut b = motiongfx.create_builder();
+let track = b
+    .act(grid, path!(KanvaAnim.t), |_| 1.0)
+    .play(s(2))
     .compile();
+let timeline = b.compile(track);
 
-    let timeline = b.compile(track);
-    commands.spawn((
-        motiongfx.add_timeline(timeline),
-        RealtimePlayer::new().with_playing(true),
-    ));
-}
-```
-
-## Animating Typst Arguments
-
-The fields of a `typst_func!` struct are the Typst function's
-arguments, and they can be animated too. Velyst lays the content out
-again whenever they change.
-
-```typ
-#let plot(circle_x, circle_y) = canvas(length: 1pt, {
-  import draw: *
-  circle((circle_x * 40, circle_y * 40), radius: 20)
-})
-```
-
-```rust
-# use bevy::prelude::*;
-use bevy_motiongfx::prelude::*;
-# use velyst_motiongfx::prelude::*;
-
-typst_func!(
-    "plot",
-    #[derive(Default, Clone)]
-    struct PlotFunc {},
-    positional_args { circle_x: f64, circle_y: f64 }
-);
-
-type VPlotFunc = VelystFunc<PlotFunc>;
-
-# fn act(b: &mut BevyTimelineBuilder, plot: Entity) {
-// Moves the circle 3 steps along the grid.
-b.act(plot, path!(VPlotFunc.data.circle_x), |_| 3.0)
-    .play(s(2));
+commands.spawn((
+    motiongfx.add_timeline(timeline),
+    RealtimePlayer::new().with_playing(true),
+));
 # }
 ```
 
-## Custom Animations
-
-Each preset is a list of `KanvaPhase`s. A phase is a function that
-changes one path for a given `t`, plus the part of that path's
-animation it runs in. Build your own `KanvaAnim` from them:
-
-```rust
-# use velyst_motiongfx::prelude::*;
-use velyst_motiongfx::{alpha_phase, trace_phase};
-
-// Trace for the first 70%, then fade the whole path in.
-let anim = KanvaAnim {
-    t: 0.0,
-    path_window: 0.4,
-    phases: vec![
-        KanvaPhase::new(trace_phase, 0.0, 0.7),
-        KanvaPhase::new(alpha_phase, 0.7, 1.0),
-    ],
-};
-```
-
-## Full Example
-
-[`velyst_demo.rs`](../../examples/bevy_examples/examples/velyst_demo.rs)
-puts all of this together with a coordinate plot from
-[`velyst_demo.typ`](../../examples/bevy_examples/assets/typst/velyst_demo.typ):
-
-```sh
-cargo run -p bevy_examples --example velyst_demo
-```
+See [`velyst_demo.rs`](../../examples/bevy_examples/examples/velyst_demo.rs)
+for a full scene, run with
+`cargo run -p bevy_examples --example velyst_demo`.
 
 ## Join the community!
 
