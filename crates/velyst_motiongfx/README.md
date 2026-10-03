@@ -29,6 +29,8 @@ Add `VelystMotionGfxPlugin` next to `VelloPlugin`, `VelystPlugin` and
 Wrap what you want to animate in two empty labelled boxes:
 
 ```typ
+#import "@preview/cetz:0.5.2": canvas, draw
+
 #let scene() = canvas(length: 1pt, {
   import draw: *
   content((0, 0), [#box() <grid-start>])
