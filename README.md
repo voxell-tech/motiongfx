@@ -7,8 +7,8 @@
 [![CI](https://github.com/voxell-tech/motiongfx/workflows/CI/badge.svg)](https://github.com/voxell-tech/motiongfx/actions)
 [![Discord](https://img.shields.io/discord/442334985471655946.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/Mhnyp6VYEQ)
 
-**MotionGfx** is a backend-agnostic motion graphics creation framework
-for Rust. Free and open-source forever.
+[**MotionGfx**](https://motiongfx.voxell.dev) is a backend-agnostic motion graphics creation framework.
+Free and open-source forever.
 
 <p align="center">
   <img src="assets/hero.webp" alt="Ten bars grow upward one after another, then play back in reverse.">
