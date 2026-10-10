@@ -6,7 +6,7 @@ use motiongfx::prelude::*;
 
 mod common;
 use common::{
-    CUBE, Transform, Vec3, World, lerp_f32, lerp_vec3, sample_at,
+    CUBE, Vec3, World, lerp_f32, lerp_vec3, sample_at, transform,
     world_starting_at,
 };
 
@@ -19,7 +19,7 @@ fn backward_jump_resamples_an_earlier_clip() {
 
     let track = [
         builder
-            .act_builder(CUBE, path!(Transform.translation), |_| {
+            .act_builder(CUBE, transform::translation, |_| {
                 Vec3 {
                     x: 10.0,
                     ..Default::default()
@@ -28,7 +28,7 @@ fn backward_jump_resamples_an_earlier_clip() {
             .with_interp(lerp_vec3)
             .play(s(2)),
         builder
-            .act_builder(CUBE, path!(Transform.translation), |_| {
+            .act_builder(CUBE, transform::translation, |_| {
                 Vec3 {
                     x: 20.0,
                     ..Default::default()
@@ -69,14 +69,14 @@ fn backward_jump_into_a_gap_holds_the_preceding_clips_end() {
     // A: [0,1] -> x=10.  gap [1,2].  B: [2,3] -> x=20.
     let track = [
         builder
-            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+            .act_builder(CUBE, transform::translation::x, |_| {
                 10.0
             })
             .with_interp(lerp_f32)
             .play(s(1)),
         TrackFragment::silent(s(1)),
         builder
-            .act_builder(CUBE, path!(Transform.translation.x), |_| {
+            .act_builder(CUBE, transform::translation::x, |_| {
                 20.0
             })
             .with_interp(lerp_f32)

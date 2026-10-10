@@ -8,6 +8,7 @@ readme.workspace = true
 publish = false
 
 [dependencies]
+motiongfx = { workspace = true }
 bevy = { workspace = true, default-features = true, features = ["debug", "file_watcher"] }
 bevy_motiongfx = { workspace = true, default-features = true, features = ["scene"] }
 velyst_motiongfx = { workspace = true }

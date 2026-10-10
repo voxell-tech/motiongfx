@@ -13,6 +13,7 @@ pub mod controller;
 pub mod interpolation;
 pub mod manager;
 pub mod world;
+pub mod paths;
 
 #[cfg(feature = "scene")]
 pub mod scene;
@@ -23,6 +24,7 @@ pub mod prelude {
     pub use crate::controller::{FixedRatePlayer, RealtimePlayer};
     pub use crate::manager::{MotionGfxManager, TimelineId};
     pub use crate::world::{BevyTimeline, BevyTimelineBuilder};
+    pub use crate::paths::*;
 
     #[cfg(feature = "scene")]
     pub use crate::scene::id::EntityUid;

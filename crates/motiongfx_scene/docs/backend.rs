@@ -59,7 +59,7 @@ impl ValueColumn<u64, f32> for Pool {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, MotionPaths)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -87,8 +87,8 @@ impl SubjectSource<u64, Point> for World {
 /// A registry that knows `Point.x` / `Point.y` and the `To` op.
 pub fn registry() -> SceneRegistry<Toy> {
     let mut r = SceneRegistry::new();
-    r.register_field::<Point, f32>("Point".into(), path!(Point.x));
-    r.register_field::<Point, f32>("Point".into(), path!(Point.y));
+    r.register_field::<Point, f32>("Point".into(), point::x);
+    r.register_field::<Point, f32>("Point".into(), point::y);
     r.register_op::<f32, _>(
         Op::To,
         |value: &f32| -> Box<dyn Action<f32>> {

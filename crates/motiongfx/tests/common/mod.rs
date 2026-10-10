@@ -20,6 +20,17 @@ pub struct Transform {
     pub translation: Vec3,
 }
 
+motion_paths! {
+    Vec3 {
+        x: f32,
+        y: f32,
+        z: f32,
+    },
+    Transform {
+        translation: Vec3,
+    }
+}
+
 #[derive(Default)]
 pub struct World {
     pub subjects: HashMap<u32, Transform>,

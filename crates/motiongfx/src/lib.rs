@@ -18,6 +18,9 @@ pub use field_path;
 pub use motiongfx_interp;
 pub use nonempty;
 
+#[cfg(feature = "motiongfx_derive")]
+pub use motiongfx_derive::{MotionPaths, motion_paths};
+
 pub mod prelude {
     pub use field_path::path::Path;
     pub use motiongfx_interp::ease::{self, EaseFn};
@@ -31,6 +34,8 @@ pub mod prelude {
     };
     pub use crate::nonempty::{self, nonempty};
     pub use crate::path;
+    #[cfg(feature = "motiongfx_derive")]
+    pub use crate::{MotionPaths, motion_paths};
     pub use crate::pipeline::PipelineKey;
     pub use crate::registry::{
         LensRegistry, PipelineRegistry, Registry,

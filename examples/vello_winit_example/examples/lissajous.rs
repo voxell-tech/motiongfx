@@ -1,7 +1,7 @@
 use core::f64;
 use std::time::{Duration, Instant};
 
-use kurbo::{Affine, BezPath, Vec2};
+use vello::kurbo::{Affine, BezPath, Vec2};
 use motiongfx::prelude::*;
 use peniko::{Color, Fill};
 use peniko_motiongfx::prelude::*;
@@ -40,7 +40,7 @@ fn lissajous_pt(
 
 #[derive(Clone)]
 struct GridLine {
-    line: kurbo::Line,
+    line: vello::kurbo::Line,
     width: f64,
     color: Color,
 }
@@ -48,6 +48,27 @@ struct GridLine {
 #[derive(Clone)]
 struct CurveState {
     tracer: PathTracer,
+}
+
+use vello::kurbo::Line;
+
+macro_rules! __motion_paths_Point { ($root:ty, $($path:tt)*) => {} }
+macro_rules! __motion_paths_Line { ($root:ty, $($path:tt)*) => {} }
+motion_paths! {
+    Line {
+        p1: vello::kurbo::Point,
+    }
+    GridLine {
+        line: vello::kurbo::Line,
+    }
+
+    PathTracer {
+        t_start: f32,
+        t_end: f32,
+    }
+    CurveState {
+        tracer: PathTracer,
+    }
 }
 
 struct TableWorld {
@@ -94,7 +115,7 @@ struct LissajousTableDemo {
     timeline: Timeline<TableWorld>,
     grid_duration: Duration,
     curve_duration: Duration,
-    window_size: kurbo::Size,
+    window_size: vello::kurbo::Size,
 }
 
 impl LissajousTableDemo {
@@ -136,30 +157,30 @@ impl LissajousTableDemo {
 
         // Grid lines: p1 starts at p0 (zero length) so they draw in.
         let grid_col = Color::from_rgba8(105, 105, 140, 255);
-        let mut vert_entries: Vec<(usize, kurbo::Point)> = Vec::new();
-        let mut horiz_entries: Vec<(usize, kurbo::Point)> =
+        let mut vert_entries: Vec<(usize, vello::kurbo::Point)> = Vec::new();
+        let mut horiz_entries: Vec<(usize, vello::kurbo::Point)> =
             Vec::new();
         for c in 0..=(N_X + 1) {
             let x = c as f64 * CELL_W;
-            let p0 = kurbo::Point::new(x, 0.0);
+            let p0 = vello::kurbo::Point::new(x, 0.0);
             let id = world.grid_lines.len();
             world.grid_lines.push(GridLine {
-                line: kurbo::Line::new(p0, p0),
+                line: vello::kurbo::Line::new(p0, p0),
                 width: 0.5,
                 color: grid_col,
             });
-            vert_entries.push((id, kurbo::Point::new(x, table_h)));
+            vert_entries.push((id, vello::kurbo::Point::new(x, table_h)));
         }
         for r in 0..=(N_Y + 1) {
             let y = r as f64 * CELL_H;
-            let p0 = kurbo::Point::new(0.0, y);
+            let p0 = vello::kurbo::Point::new(0.0, y);
             let id = world.grid_lines.len();
             world.grid_lines.push(GridLine {
-                line: kurbo::Line::new(p0, p0),
+                line: vello::kurbo::Line::new(p0, p0),
                 width: 0.5,
                 color: grid_col,
             });
-            horiz_entries.push((id, kurbo::Point::new(table_w, y)));
+            horiz_entries.push((id, vello::kurbo::Point::new(table_w, y)));
         }
 
         let mut b = registry.create_builder::<TableWorld>();
@@ -169,12 +190,12 @@ impl LissajousTableDemo {
         let mut pair_tracks = Vec::with_capacity(n_steps);
         for i in 0..n_steps {
             let v = vert_entries.get(i).map(|&(id, p1)| {
-                b.act(id, path!(GridLine.line.p1), move |_| p1)
+                b.act(id, grid_line::line::p1, move |_| p1)
                     .with_ease(ease::cubic::ease_in_out)
                     .play(cs(60))
             });
             let h = horiz_entries.get(i).map(|&(id, p1)| {
-                b.act(id, path!(GridLine.line.p1), move |_| p1)
+                b.act(id, grid_line::line::p1, move |_| p1)
                     .with_ease(ease::cubic::ease_in_out)
                     .play(cs(60))
             });
@@ -202,7 +223,7 @@ impl LissajousTableDemo {
                         let draw_in = b
                             .act(
                                 id,
-                                path!(CurveState.tracer.t_end),
+                                curve_state::tracer::t_end,
                                 |_| 1.0f32,
                             )
                             .with_ease(ease::cubic::ease_in_out)
@@ -210,7 +231,7 @@ impl LissajousTableDemo {
                         let draw_out = b
                             .act(
                                 id,
-                                path!(CurveState.tracer.t_start),
+                                curve_state::tracer::t_start,
                                 |_| 1.0f32,
                             )
                             .with_ease(ease::cubic::ease_in_out)
@@ -237,7 +258,7 @@ impl LissajousTableDemo {
             timeline,
             grid_duration,
             curve_duration,
-            window_size: kurbo::Size::new(
+            window_size: vello::kurbo::Size::new(
                 (N_X + 1) as f64 * CELL_W,
                 (N_Y + 1) as f64 * CELL_H,
             ),
@@ -254,7 +275,7 @@ impl VelloDemo for LissajousTableDemo {
         ((N_X + 1) as f64 * CELL_W, (N_Y + 1) as f64 * CELL_H)
     }
 
-    fn size_changed(&mut self, size: kurbo::Size) {
+    fn size_changed(&mut self, size: vello::kurbo::Size) {
         self.window_size = size;
     }
 
@@ -293,7 +314,7 @@ impl VelloDemo for LissajousTableDemo {
         // Grid lines
         for line in &self.world.grid_lines {
             scene.stroke(
-                &kurbo::Stroke::new(line.width),
+                &vello::kurbo::Stroke::new(line.width),
                 xf,
                 line.color,
                 None,
@@ -303,8 +324,8 @@ impl VelloDemo for LissajousTableDemo {
 
         // Reference circles: dot tracks the curve tip of row 1 / col 1.
         let xhair_col = Color::from_rgba8(90, 90, 110, 255);
-        let xhair_st = kurbo::Stroke::new(0.5);
-        let ref_st = kurbo::Stroke::new(1.0);
+        let xhair_st = vello::kurbo::Stroke::new(0.5);
+        let ref_st = vello::kurbo::Stroke::new(1.0);
 
         for c in 1..=N_X {
             let a = c as f64;
@@ -315,21 +336,21 @@ impl VelloDemo for LissajousTableDemo {
                 xf,
                 css::GAINSBORO,
                 None,
-                &kurbo::Circle::new((cx, cy), REF_R),
+                &vello::kurbo::Circle::new((cx, cy), REF_R),
             );
             scene.stroke(
                 &xhair_st,
                 xf,
                 xhair_col,
                 None,
-                &kurbo::Line::new((cx, cy - REF_R), (cx, cy + REF_R)),
+                &vello::kurbo::Line::new((cx, cy - REF_R), (cx, cy + REF_R)),
             );
             scene.stroke(
                 &xhair_st,
                 xf,
                 xhair_col,
                 None,
-                &kurbo::Line::new((cx - REF_R, cy), (cx + REF_R, cy)),
+                &vello::kurbo::Line::new((cx - REF_R, cy), (cx + REF_R, cy)),
             );
             // x-component of curve tip: sin(a * t_end + DELTA)
             let t_end = self.world.curves[curve_id(c, 1)].tracer.t_end
@@ -341,7 +362,7 @@ impl VelloDemo for LissajousTableDemo {
                 xf,
                 css::WHITE,
                 None,
-                &kurbo::Circle::new(
+                &vello::kurbo::Circle::new(
                     (
                         cx + REF_R * angle.cos(),
                         cy + REF_R * angle.sin(),
@@ -360,21 +381,21 @@ impl VelloDemo for LissajousTableDemo {
                 xf,
                 css::GAINSBORO,
                 None,
-                &kurbo::Circle::new((cx, cy), REF_R),
+                &vello::kurbo::Circle::new((cx, cy), REF_R),
             );
             scene.stroke(
                 &xhair_st,
                 xf,
                 xhair_col,
                 None,
-                &kurbo::Line::new((cx, cy - REF_R), (cx, cy + REF_R)),
+                &vello::kurbo::Line::new((cx, cy - REF_R), (cx, cy + REF_R)),
             );
             scene.stroke(
                 &xhair_st,
                 xf,
                 xhair_col,
                 None,
-                &kurbo::Line::new((cx - REF_R, cy), (cx + REF_R, cy)),
+                &vello::kurbo::Line::new((cx - REF_R, cy), (cx + REF_R, cy)),
             );
             // y-component of curve tip: sin(b * t_end)
             let t_end = self.world.curves[curve_id(1, r)].tracer.t_end
@@ -386,7 +407,7 @@ impl VelloDemo for LissajousTableDemo {
                 xf,
                 css::WHITE,
                 None,
-                &kurbo::Circle::new(
+                &vello::kurbo::Circle::new(
                     (
                         cx + REF_R * angle.cos(),
                         cy + REF_R * angle.sin(),
@@ -411,7 +432,7 @@ impl VelloDemo for LissajousTableDemo {
 
                 let visible = state.tracer.trace();
                 scene.stroke(
-                    &kurbo::Stroke::new(2.0),
+                    &vello::kurbo::Stroke::new(2.0),
                     xf,
                     curve_color(c),
                     None,

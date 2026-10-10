@@ -31,7 +31,7 @@ use motiongfx::prelude::*;
 )]
 struct Id(u64);
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, MotionPaths)]
 #[allow(dead_code)] // `y` rounds out a realistic 2-field subject.
 struct Point {
     x: f32,
@@ -79,7 +79,7 @@ fn build_timeline(
     let fragments = (0..n)
         .map(|i| {
             builder
-                .act_builder(Id(i), path!(Point.x), |x| x + 72.0)
+                .act_builder(Id(i), point::x, |x| x + 72.0)
                 .with_interp(linear_f32)
                 .play(s(1))
         })
@@ -187,17 +187,20 @@ fn bench_scrub(c: &mut Criterion) {
 // ---------------------------------------------------------------------
 
 #[derive(Debug, Default, Clone, Copy)]
+#[derive(MotionPaths)]
 struct V2 {
     x: f32,
     y: f32,
 }
 #[derive(Debug, Default, Clone, Copy)]
+#[derive(MotionPaths)]
 struct V3 {
     x: f32,
     y: f32,
     z: f32,
 }
 #[derive(Debug, Default, Clone, Copy)]
+#[derive(MotionPaths)]
 struct V4 {
     x: f32,
     y: f32,
@@ -206,7 +209,7 @@ struct V4 {
 }
 
 /// A subject with four distinct field types, each its own pipeline.
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, MotionPaths)]
 struct Widget {
     s: f32,
     p: V2,
@@ -272,11 +275,11 @@ fn build_mixed(
         .flat_map(|i| {
             [
                 builder
-                    .act_builder(Id(i), path!(Widget.s), |v| v + 1.0)
+                    .act_builder(Id(i), widget::s, |v| v + 1.0)
                     .with_interp(linear_f32)
                     .play(s(1)),
                 builder
-                    .act_builder(Id(i), path!(Widget.p), |v: &V2| {
+                    .act_builder(Id(i), widget::p, |v: &V2| {
                         V2 {
                             x: v.x + 1.0,
                             y: v.y + 1.0,
@@ -285,7 +288,7 @@ fn build_mixed(
                     .with_interp(lerp2)
                     .play(s(1)),
                 builder
-                    .act_builder(Id(i), path!(Widget.r), |v: &V3| {
+                    .act_builder(Id(i), widget::r, |v: &V3| {
                         V3 {
                             x: v.x + 1.0,
                             y: v.y + 1.0,
@@ -295,7 +298,7 @@ fn build_mixed(
                     .with_interp(lerp3)
                     .play(s(1)),
                 builder
-                    .act_builder(Id(i), path!(Widget.c), |v: &V4| {
+                    .act_builder(Id(i), widget::c, |v: &V4| {
                         V4 {
                             x: v.x + 1.0,
                             y: v.y + 1.0,

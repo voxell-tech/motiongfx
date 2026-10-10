@@ -111,12 +111,12 @@ fn spawn_timeline(
     // Top: chained, so no time overlap. `translation` lifts the cube,
     // then `translation.x` continues x from the composed position.
     let compose_track = [
-        b.act(compose, path!(Transform.translation), |_| {
+        b.act(compose, transform::translation, |_| {
             START + Vec3::new(3.0, 6.0, 0.0)
         })
         .with_ease(ease)
         .play(s(2)),
-        b.act(compose, path!(Transform.translation.x), |_| {
+        b.act(compose, transform::translation::x, |_| {
             START.x + 10.0
         })
         .with_ease(ease)
@@ -127,12 +127,12 @@ fn spawn_timeline(
     // Bottom: `translation.x` starts one second in, overlapping
     // `translation`. The `translation` clip is removed at compile.
     let conflict_track = [
-        b.act(conflict, path!(Transform.translation), |_| {
+        b.act(conflict, transform::translation, |_| {
             START + Vec3::new(3.0, 6.0, 0.0)
         })
         .with_ease(ease)
         .play(s(4)),
-        b.act(conflict, path!(Transform.translation.x), |_| {
+        b.act(conflict, transform::translation::x, |_| {
             START.x + 10.0
         })
         .with_ease(ease)
