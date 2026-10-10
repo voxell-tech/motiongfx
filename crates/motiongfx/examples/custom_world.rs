@@ -37,15 +37,26 @@ enum Subject {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-struct Point {
-    x: f32,
-    y: f32,
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-struct Line {
-    p0: Point,
-    p1: Point,
+pub struct Line {
+    pub p0: Point,
+    pub p1: Point,
+}
+
+motion_paths! {
+    Point {
+        x: f32,
+        y: f32,
+    },
+    Line {
+        p0: Point,
+        p1: Point,
+    }
 }
 
 fn main() {
@@ -66,16 +77,16 @@ fn main() {
     // Create the track.
     let track = [
         builder
-            .act_builder(Id(0), path!(Point.x), |x| x + 72.0)
+            .act_builder(Id(0), point::x, |x| x + 72.0)
             .with_interp(linear_f32)
             .play(s(1)),
         [
             builder
-                .act_builder(Id(1), path!(Line.p0.y), |y| y + 42.0)
+                .act_builder(Id(1), line::p0::y, |y| y + 42.0)
                 .with_interp(linear_f32)
                 .play(s(2)),
             builder
-                .act_builder(Id(1), path!(Line.p1), |_| Point {
+                .act_builder(Id(1), line::p1, |_| Point {
                     x: 6.0,
                     y: 6.0,
                 })

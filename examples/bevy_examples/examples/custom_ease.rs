@@ -35,7 +35,7 @@ fn spawn_timeline(
     let mut b = motiongfx.create_builder();
 
     let track = b
-        .act(cube_id, path!(Transform.translation.x), |x| x + 10.0)
+        .act(cube_id, transform::translation::x, |x| x + 10.0)
         // A custom 10 step easing.
         .with_ease(|t| ((t * 10.0) as u32) as f32 / 10.0)
         .play(s(1))

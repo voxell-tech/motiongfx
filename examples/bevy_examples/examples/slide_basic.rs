@@ -1,3 +1,12 @@
+
+macro_rules! __motion_paths_Color { ($root:ty, $($path:tt)*) => {} }
+macro_rules! __motion_paths_LinearRgba { ($root:ty, $($path:tt)*) => {} }
+motion_paths! {
+    StandardMaterial {
+        base_color: bevy::color::Color,
+        emissive: bevy::color::LinearRgba,
+    }
+}
 use std::time::Duration;
 
 use bevy::camera::Hdr;
@@ -53,28 +62,28 @@ fn spawn_timeline(
 
     // Generate slide sequences.
     let slide0 = b
-        .act(cube, path!(Transform.scale), |_| Vec3::ONE)
+        .act(cube, transform::scale, |_| Vec3::ONE)
         .with_ease(ease::cubic::ease_out)
         .play(s(1))
         .compile();
 
     let slide1 = [
         [
-            b.act(cube, path!(Transform.translation.x), move |_| {
+            b.act(cube, transform::translation::x, move |_| {
                 -X_OFFSET
             })
             .with_ease(ease::cubic::ease_out)
             .play(s(1)),
             b.act(
                 cube_mat_id,
-                path!(StandardMaterial.base_color),
+                standard_material::base_color,
                 move |_| palettes::tailwind::ZINC_700.into(),
             )
             .with_ease(ease::cubic::ease_out)
             .play(s(1)),
         ]
         .ord_all(),
-        b.act(sphere, path!(Transform.scale), |_| Vec3::ONE)
+        b.act(sphere, transform::scale, |_| Vec3::ONE)
             .with_ease(ease::cubic::ease_out)
             .play(s(1)),
     ]

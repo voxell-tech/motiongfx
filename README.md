@@ -32,10 +32,10 @@ Free and open-source forever.
 ```rust
 // Move a ball up, then back down.
 let track = [
-    b.act(ball, path!(Ball.y), |_| 30.0)
+    b.act(ball, ball::y, |_| 30.0)
         .with_ease(ease::quad::ease_out)
         .play(ms(600)),
-    b.act(ball, path!(Ball.y), |_| 140.0)
+    b.act(ball, ball::y, |_| 140.0)
         .with_ease(ease::quad::ease_in)
         .play(ms(600)),
 ]

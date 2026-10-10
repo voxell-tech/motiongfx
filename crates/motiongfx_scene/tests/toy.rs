@@ -55,13 +55,13 @@ impl ValueColumn<Uuid, f32> for ToyValuePool {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, MotionPaths)]
 struct Point {
     x: f32,
     y: f32,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, MotionPaths)]
 struct Circle {
     radius: f32,
 }
@@ -145,9 +145,9 @@ fn subject(
 fn registry_with_to_op() -> SceneRegistry<ToyBackend> {
     let mut registry = SceneRegistry::new();
     registry
-        .register_field::<Point, f32>("Point".into(), path!(Point.x));
+        .register_field::<Point, f32>("Point".into(), point::x);
     registry
-        .register_field::<Point, f32>("Point".into(), path!(Point.y));
+        .register_field::<Point, f32>("Point".into(), point::y);
     registry.register_op::<f32, _>(
         Op::To,
         |value: &f32| -> Box<dyn Action<f32>> {
@@ -376,10 +376,10 @@ fn one_op_registration_covers_every_owning_type_sharing_t() {
     let mut scene_registry: SceneRegistry<ToyBackend> =
         SceneRegistry::new();
     scene_registry
-        .register_field::<Point, f32>("Point".into(), path!(Point.x));
+        .register_field::<Point, f32>("Point".into(), point::x);
     scene_registry.register_field::<Circle, f32>(
         "Circle".into(),
-        path!(Circle.radius),
+        circle::radius,
     );
     // Registered once, for T = f32; never registered again for Circle.
     scene_registry.register_op::<f32, _>(
@@ -472,7 +472,7 @@ fn unregistered_op_is_a_compile_error() {
     let mut scene_registry: SceneRegistry<ToyBackend> =
         SceneRegistry::new();
     scene_registry
-        .register_field::<Point, f32>("Point".into(), path!(Point.x));
+        .register_field::<Point, f32>("Point".into(), point::x);
 
     let mut values = ToyValuePool::default();
     let scene: Scene<ToyBackend> = Scene {

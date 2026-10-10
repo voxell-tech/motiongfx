@@ -1,4 +1,14 @@
 use bevy::prelude::*;
+use bevy_motiongfx::prelude::*;
+
+macro_rules! __motion_paths_Color { ($root:ty, $($path:tt)*) => {} }
+macro_rules! __motion_paths_LinearRgba { ($root:ty, $($path:tt)*) => {} }
+motion_paths! {
+    StandardMaterial {
+        base_color: bevy::color::Color,
+        emissive: bevy::color::LinearRgba,
+    }
+}
 use bevy_motiongfx::BevyMotionGfxPlugin;
 use bevy_motiongfx::manager::TimelineComplete;
 use bevy_motiongfx::prelude::*;
@@ -51,11 +61,11 @@ fn build_timeline(
     // Build the timeline.
     let mut b = motiongfx.create_builder();
     let track = [
-        b.act(cube_id, path!(Transform.translation.x), |x| x + 6.0)
+        b.act(cube_id, transform::translation::x, |x| x + 6.0)
             .play(s(1)),
         b.act(
             cube_mat_id,
-            path!(StandardMaterial.base_color),
+            standard_material::base_color,
             |_| Srgba::RED.into(),
         )
         .play(s(1)),

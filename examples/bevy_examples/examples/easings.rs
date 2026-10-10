@@ -1,3 +1,12 @@
+
+macro_rules! __motion_paths_Color { ($root:ty, $($path:tt)*) => {} }
+macro_rules! __motion_paths_LinearRgba { ($root:ty, $($path:tt)*) => {} }
+motion_paths! {
+    StandardMaterial {
+        base_color: bevy::color::Color,
+        emissive: bevy::color::LinearRgba,
+    }
+}
 use bevy::camera::Hdr;
 use bevy::color::palettes;
 use bevy::light::NotShadowCaster;
@@ -81,14 +90,14 @@ fn spawn_timeline(
             [
                 b.act(
                     sphere_ids[i],
-                    path!(Transform.translation.x),
+                    transform::translation::x,
                     |x| x + 10.0,
                 )
                 .with_ease(ease_fn)
                 .play(s(1)),
                 b.act(
                     sphere_mat_ids[i],
-                    path!(StandardMaterial.emissive),
+                    standard_material::emissive,
                     move |_| red,
                 )
                 .with_ease(ease_fn)

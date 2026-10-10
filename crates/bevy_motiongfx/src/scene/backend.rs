@@ -182,9 +182,9 @@ pub fn default_scene_registry() -> BackendRegistry {
     let mut registry = SceneRegistry::new();
 
     registry
-        .register_bundle(path!(Transform.translation))
-        .register_bundle(path!(Transform.rotation))
-        .register_bundle(path!(Transform.scale))
+        .register_bundle(crate::paths::transform::translation::PATH)
+        .register_bundle(crate::paths::transform::rotation::PATH)
+        .register_bundle(crate::paths::transform::scale::PATH)
         .register_eases(&[
             (AnimEase::Linear, ease::linear),
             (AnimEase::CubicEaseInOut, ease::cubic::ease_in_out),
