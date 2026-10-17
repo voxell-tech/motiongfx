@@ -25,7 +25,7 @@ fn setup(mut commands: Commands) {
             .looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
-fn log_complete(_: On<Add, TimelineComplete>) {
+fn log_complete(_: On<Add<TimelineComplete>>) {
     info!("Timeline is complete")
 }
 

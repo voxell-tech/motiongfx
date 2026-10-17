@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = ["crates/*", "examples/*", ]
+# Parked until velyst and bevy_vello support Bevy 0.20.
+exclude = ["crates/velyst_motiongfx"]
 
 [workspace.package]
 version = "0.4.0"
@@ -18,17 +20,17 @@ peniko_motiongfx = { version = "0.4.0", path = "crates/peniko_motiongfx", defaul
 velyst_motiongfx = { version = "0.4.0", path = "crates/velyst_motiongfx" }
 
 # bevy
-bevy = { version = "0.19", default-features = false }
-bevy_ecs = { version = "0.19", default-features = false }
-bevy_app = { version = "0.19", default-features = false }
-bevy_platform = { version = "0.19", default-features = false }
-bevy_derive = { version = "0.19", default-features = false }
-bevy_math = { version = "0.19", default-features = false, features = [ "libm" ] }
-bevy_asset = { version = "0.19", default-features = false }
-bevy_reflect = { version = "0.19", default-features = false }
-bevy_time = { version = "0.19", default-features = false }
-bevy_transform = { version = "0.19", default-features = false, features = ["bevy-support"] }
-bevy_color = { version = "0.19", default-features = false }
+bevy = { version = "0.20", default-features = false }
+bevy_ecs = { version = "0.20", default-features = false }
+bevy_app = { version = "0.20", default-features = false }
+bevy_platform = { version = "0.20", default-features = false }
+bevy_derive = { version = "0.20", default-features = false }
+bevy_math = { version = "0.20", default-features = false, features = [ "libm" ] }
+bevy_asset = { version = "0.20", default-features = false }
+bevy_reflect = { version = "0.20", default-features = false }
+bevy_time = { version = "0.20", default-features = false }
+bevy_transform = { version = "0.20", default-features = false, features = ["bevy-support"] }
+bevy_color = { version = "0.20", default-features = false }
 bevy_vello = { version = "0.14", default-features = false }
 velyst = "0.0.1"
 

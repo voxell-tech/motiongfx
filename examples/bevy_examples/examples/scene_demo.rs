@@ -76,7 +76,7 @@ fn on_composition_ready(
 /// composition files carry the marker, not the asset handles
 /// themselves, since meshes/materials aren't part of this format yet.
 fn on_add_cube(
-    trigger: On<Add, Cube>,
+    trigger: On<Add<Cube>>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
