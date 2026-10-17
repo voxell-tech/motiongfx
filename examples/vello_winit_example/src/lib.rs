@@ -134,7 +134,7 @@ impl<'s, D: VelloDemo> VelloWinitApp<'s, D> {
         );
 
         dev.queue.submit([enc.finish()]);
-        texture.present();
+        dev.queue.present(texture);
     }
 
     fn handle_resize(

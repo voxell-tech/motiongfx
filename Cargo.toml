@@ -44,12 +44,12 @@ indexmap = { version = "2.14", default-features = false }
 uuid = { version = "1.24", default-features = false }
 tracing = { version = "0.1", default-features = false }
 serde = { version = "1", default-features = false }
-educe = { version = "0.7.4", default-features = false }
+educe = { version = "0.8.1", default-features = false }
 ron = { version = "0.12", default-features = false, features = ["std"] }
 peniko = { version = "0.6", default-features = false }
-vello = "0.9.0"
+vello = "0.11.0"
 winit = "0.30"
-pollster = "0.4"
+pollster = "1.0"
 
 [workspace.lints.clippy]
 redundant_type_annotations = "warn"

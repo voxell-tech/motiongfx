@@ -20,7 +20,7 @@ indexmap = { workspace = true }
 tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
 name = "action_storage"
