@@ -880,7 +880,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_examples"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bevy",
  "bevy_motiongfx",
@@ -1341,7 +1341,7 @@ checksum = "bff34eb29ff4b8a8688bc7299f14fb6b597461ca80fec03ed7d22939ab33e48f"
 
 [[package]]
 name = "bevy_motiongfx"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bevy",
  "bevy_app",
@@ -3969,7 +3969,7 @@ dependencies = [
 
 [[package]]
 name = "motiongfx"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "criterion",
  "field_path",
@@ -3983,14 +3983,14 @@ dependencies = [
 
 [[package]]
 name = "motiongfx_interp"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "libm",
 ]
 
 [[package]]
 name = "motiongfx_scene"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "educe",
  "hashbrown 0.17.1",
@@ -4771,7 +4771,7 @@ dependencies = [
 
 [[package]]
 name = "peniko_motiongfx"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "motiongfx",
  "peniko",
@@ -6029,7 +6029,7 @@ dependencies = [
 
 [[package]]
 name = "vello_winit_example"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "motiongfx",
  "peniko_motiongfx",

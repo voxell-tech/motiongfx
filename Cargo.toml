@@ -5,18 +5,18 @@ members = ["crates/*", "examples/*", ]
 exclude = ["crates/velyst_motiongfx"]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/voxell-tech/motiongfx"
 
 [workspace.dependencies]
 # motiongfx
-motiongfx = { version = "0.4.0", path = "crates/motiongfx", default-features = false }
-motiongfx_interp = { version = "0.4.0", path = "crates/motiongfx_interp", default-features = false }
-motiongfx_scene = { version = "0.4.0", path = "crates/motiongfx_scene", default-features = false }
-bevy_motiongfx = { version = "0.4.0", path = "crates/bevy_motiongfx", default-features = false }
-peniko_motiongfx = { version = "0.4.0", path = "crates/peniko_motiongfx", default-features = false }
+motiongfx = { version = "0.5.0", path = "crates/motiongfx", default-features = false }
+motiongfx_interp = { version = "0.5.0", path = "crates/motiongfx_interp", default-features = false }
+motiongfx_scene = { version = "0.5.0", path = "crates/motiongfx_scene", default-features = false }
+bevy_motiongfx = { version = "0.5.0", path = "crates/bevy_motiongfx", default-features = false }
+peniko_motiongfx = { version = "0.5.0", path = "crates/peniko_motiongfx", default-features = false }
 velyst_motiongfx = { version = "0.4.0", path = "crates/velyst_motiongfx" }
 
 # bevy
