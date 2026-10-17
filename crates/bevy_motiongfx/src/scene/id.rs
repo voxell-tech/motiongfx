@@ -115,7 +115,7 @@ impl SceneUidMap {
 /// Records `id`'s entity in [`SceneUidMap`] whenever an [`EntityUid`]
 /// is added to it.
 pub(crate) fn on_add_entity_uid(
-    trigger: On<Add, EntityUid>,
+    trigger: On<Add<EntityUid>>,
     query: Query<&EntityUid>,
     mut uid_map: ResMut<SceneUidMap>,
 ) {
@@ -138,7 +138,7 @@ pub(crate) fn on_add_entity_uid(
 /// Removes `id`'s entry from [`SceneUidMap`] whenever an [`EntityUid`]
 /// is removed from it (including on despawn).
 pub(crate) fn on_remove_entity_uid(
-    trigger: On<Remove, EntityUid>,
+    trigger: On<Remove<EntityUid>>,
     query: Query<&EntityUid>,
     mut uid_map: ResMut<SceneUidMap>,
 ) {

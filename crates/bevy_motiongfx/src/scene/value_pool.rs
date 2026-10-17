@@ -7,7 +7,7 @@ use bevy_asset::uuid::Uuid;
 use bevy_math::{Quat, Vec3};
 use bevy_platform::hash::FixedHasher;
 use bevy_reflect::{
-    FromReflect, FromType, PartialReflect, TypeRegistry,
+    CreateTypeData, FromReflect, PartialReflect, TypeRegistry,
 };
 use indexmap::IndexMap;
 use motiongfx_scene::prelude::*;
@@ -85,12 +85,12 @@ impl ReflectSceneValue {
     }
 }
 
-impl<T> FromType<T> for ReflectSceneValue
+impl<T> CreateTypeData<T> for ReflectSceneValue
 where
     T: FromReflect,
     ValuePool: ValueColumn<Uuid, T>,
 {
-    fn from_type() -> Self {
+    fn create_type_data(_input: ()) -> Self {
         Self {
             insert: |pool, value| {
                 let value = T::from_reflect(value)?;
