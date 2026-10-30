@@ -46,6 +46,18 @@ impl Sequence {
             clip.start = clip.start.saturating_add(duration);
         }
     }
+
+    /// Sorts clips by `(start, id)` for playback binary search.
+    pub(crate) fn sort_by_start(&mut self) {
+        if self.clips.len() <= 1 {
+            return;
+        }
+
+        let mut sorted = self.clips.iter().copied().collect::<Vec<_>>();
+        sorted.sort_by_key(|clip| (clip.start, clip.id));
+        self.clips = NonEmpty::from_vec(sorted)
+            .expect("sorting preserves non-empty");
+    }
 }
 
 impl Sequence {

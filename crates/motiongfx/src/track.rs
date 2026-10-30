@@ -172,9 +172,9 @@ impl TrackFragment {
     }
 
     /// A fragment with no clips of its own, reserving `duration` of
-    /// time - for a slot in the tree nothing resolves into an action
-    /// yet.
-    pub fn silent(duration: Duration) -> Self {
+    /// time — for timeline pauses or slots nothing resolves into an
+    /// action yet.
+    pub fn sleep(duration: Duration) -> Self {
         Self {
             sequences: HashMap::new(),
             duration,
@@ -203,6 +203,7 @@ impl TrackFragment {
         match self.sequences.get_mut(&key) {
             Some(sequence) => {
                 sequence.extend(new_sequence);
+                sequence.sort_by_start();
             }
             None => {
                 self.sequences.insert(key, new_sequence);
@@ -871,6 +872,30 @@ mod tests {
         /// The order `Track::bake_clips` yields.
         fn baked(track: &Track) -> Vec<ActionId> {
             track.bake_clips().map(|clip| clip.id).collect()
+        }
+
+        #[test]
+        fn upsert_sorts_merged_clips_by_start_time() {
+            let id = ids(2);
+            // Same shape as `all` merging parallel tracks on one key:
+            // the later fragment's clip is appended out of start order.
+            let track = TrackFragment::new()
+                .upsert_sequence(
+                    key("a"),
+                    seq(&[clip(id[0], 200, 100)]),
+                )
+                .upsert_sequence(
+                    key("a"),
+                    seq(&[clip(id[1], 0, 100)]),
+                );
+
+            let starts = track.sequences[&key("a")]
+                .clips
+                .iter()
+                .map(|clip| clip.start)
+                .collect::<Vec<_>>();
+
+            assert_eq!(starts, [cs(0), cs(200)]);
         }
 
         #[test]

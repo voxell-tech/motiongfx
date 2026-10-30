@@ -84,7 +84,7 @@ fn walk_node<B: SceneBackend>(
         }
         | Node::Draft {
             delay, duration, ..
-        } => (delay, TrackFragment::silent(*duration)),
+        } => (delay, TrackFragment::sleep(*duration)),
     };
 
     Ok(match offset {
