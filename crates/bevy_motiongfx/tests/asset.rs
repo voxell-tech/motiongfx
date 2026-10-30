@@ -54,7 +54,7 @@ fn cube_scene_deserializes() {
                         action.subject
                     );
                 }
-                Node::Draft { .. } => {}
+                Node::Draft { .. } | Node::Sleep { .. } => {}
             }
         }
     }

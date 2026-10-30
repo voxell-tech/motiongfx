@@ -79,7 +79,10 @@ fn walk_node<B: SceneBackend>(
             delay,
             resolve_action(action, registry, values, builder)?,
         ),
-        Node::Draft {
+        Node::Sleep {
+            delay, duration, ..
+        }
+        | Node::Draft {
             delay, duration, ..
         } => (delay, TrackFragment::silent(*duration)),
     };

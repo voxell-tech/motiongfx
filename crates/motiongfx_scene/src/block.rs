@@ -1,8 +1,8 @@
 //! The animation tree: nested [`Block`]s of [`Node`]s.
 //!
 //! A [`Block`] carries a [`Combinator`] for how its children combine;
-//! a [`Node`] is a nested block, an action leaf, or an unassigned
-//! draft, each with its own delay.
+//! a [`Node`] is a nested block, an action leaf, a timed sleep, or an
+//! unassigned draft, each with its own delay.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -72,6 +72,14 @@ pub enum Node<B: SceneBackend> {
         delay: Option<Duration>,
         action: ActionCmd<B>,
     },
+    /// Pauses the timeline for `duration` without changing the world.
+    Sleep {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        delay: Option<Duration>,
+        duration: Duration,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        name: Option<String>,
+    },
     /// Not yet a real action: reserves a timing slot without a
     /// subject or field picked yet.
     Draft {
@@ -97,6 +105,15 @@ impl<B: SceneBackend> Node<B> {
         }
     }
 
+    /// A pause of `duration`, starting with its parent.
+    pub fn sleep(duration: Duration) -> Self {
+        Self::Sleep {
+            delay: None,
+            duration,
+            name: None,
+        }
+    }
+
     /// An unassigned slot of `duration`, starting with its parent.
     pub fn draft(duration: Duration) -> Self {
         Self::Draft {
@@ -112,6 +129,7 @@ impl<B: SceneBackend> Node<B> {
         *match &mut self {
             Self::Block { delay, .. }
             | Self::Action { delay, .. }
+            | Self::Sleep { delay, .. }
             | Self::Draft { delay, .. } => delay,
         } = Some(offset);
         self

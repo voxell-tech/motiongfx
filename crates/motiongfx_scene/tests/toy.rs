@@ -339,6 +339,41 @@ fn all_combinator_runs_children_simultaneously() {
 }
 
 #[test]
+fn sleep_pauses_the_timeline_without_changing_values() {
+    let scene_registry = registry_with_to_op();
+    let mut values = ToyValuePool::default();
+    let scene: Scene<ToyBackend> = Scene {
+        stage: Stage {
+            subjects: vec![subject(&mut values, 0, &["x"])],
+        },
+        animation: Block::chain(vec![
+            Node::action(action_cmd(&mut values, 0, "x", 5.0, 100)),
+            Node::sleep(ms(200)),
+            Node::action(action_cmd(&mut values, 0, "x", 10.0, 100)),
+        ]),
+        values,
+    };
+
+    let mut runtime_registry = Registry::new();
+    let mut timeline = scene
+        .compile(&scene_registry, &mut runtime_registry)
+        .expect("scene should compile");
+
+    let mut world = ToyWorld::default();
+    world.points.insert(0, Point::default());
+    timeline.bake_actions(&runtime_registry, &world);
+
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(150));
+    assert_eq!(world.points[&0].x, 5.0);
+
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(250));
+    assert_eq!(world.points[&0].x, 5.0);
+
+    sample_at(&mut timeline, &runtime_registry, &mut world, ms(400));
+    assert_eq!(world.points[&0].x, 10.0);
+}
+
+#[test]
 fn delayed_node_shifts_the_start_time() {
     let scene_registry = registry_with_to_op();
     let mut values = ToyValuePool::default();
