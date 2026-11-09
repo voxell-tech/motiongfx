@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::time::Duration;
 
 use nonempty::NonEmpty;
@@ -53,7 +54,8 @@ impl Sequence {
             return;
         }
 
-        let mut sorted = self.clips.iter().copied().collect::<Vec<_>>();
+        let mut sorted =
+            self.clips.iter().copied().collect::<Vec<_>>();
         sorted.sort_by_key(|clip| (clip.start, clip.id));
         self.clips = NonEmpty::from_vec(sorted)
             .expect("sorting preserves non-empty");
