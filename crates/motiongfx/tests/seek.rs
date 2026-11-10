@@ -74,7 +74,7 @@ fn backward_jump_into_a_gap_holds_the_preceding_clips_end() {
             })
             .with_interp(lerp_f32)
             .play(s(1)),
-        TrackFragment::silent(s(1)),
+        TrackFragment::sleep(s(1)),
         builder
             .act_builder(CUBE, path!(Transform.translation.x), |_| {
                 20.0

@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::time::Duration;
 
 use nonempty::NonEmpty;
@@ -45,6 +46,23 @@ impl Sequence {
         for clip in self.clips.iter_mut() {
             clip.start = clip.start.saturating_add(duration);
         }
+    }
+
+    /// Sorts clips by `(start, id)` for timeline playback binary search.
+    ///
+    /// A single chained fragment keeps clips in start order, but [`TrackFragment::upsert_sequence`]
+    /// (used by `all`, `any`, and `flow`) appends merged clips in track order, so starts can be
+    /// out of order until this runs.
+    pub(crate) fn sort_by_start(&mut self) {
+        if self.clips.len() <= 1 {
+            return;
+        }
+
+        let mut sorted =
+            self.clips.iter().copied().collect::<Vec<_>>();
+        sorted.sort_by_key(|clip| (clip.start, clip.id));
+        self.clips = NonEmpty::from_vec(sorted)
+            .expect("sorting preserves non-empty");
     }
 }
 
