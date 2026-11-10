@@ -172,8 +172,7 @@ impl TrackFragment {
     }
 
     /// A fragment with no clips of its own, reserving `duration` of
-    /// time — for timeline pauses or slots nothing resolves into an
-    /// action yet.
+    /// time.
     pub fn sleep(duration: Duration) -> Self {
         Self {
             sequences: HashMap::new(),

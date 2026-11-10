@@ -48,7 +48,11 @@ impl Sequence {
         }
     }
 
-    /// Sorts clips by `(start, id)` for playback binary search.
+    /// Sorts clips by `(start, id)` for timeline playback binary search.
+    ///
+    /// A single chained fragment keeps clips in start order, but [`TrackFragment::upsert_sequence`]
+    /// (used by `all`, `any`, and `flow`) appends merged clips in track order, so starts can be
+    /// out of order until this runs.
     pub(crate) fn sort_by_start(&mut self) {
         if self.clips.len() <= 1 {
             return;
